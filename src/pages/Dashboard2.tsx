@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 const Dashboard2 = () => {
   const [menuOpen, setMenuOpen] = useState(false);
