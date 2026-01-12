@@ -1,0 +1,56 @@
+import { ReactNode, useState } from 'react';
+import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+
+interface PageLayoutProps {
+  children: ReactNode;
+}
+
+const PageLayout = ({ children }: PageLayoutProps) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const [dictionariesOpen, setDictionariesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd > 75) {
+      setMenuOpen(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen overflow-x-hidden" style={{ background: 'linear-gradient(135deg, #0f1535 0%, #1b254b 100%)' }}>
+      <PaymentsSidebar
+        menuOpen={menuOpen}
+        dictionariesOpen={dictionariesOpen}
+        setDictionariesOpen={setDictionariesOpen}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        handleTouchStart={handleTouchStart}
+        handleTouchMove={handleTouchMove}
+        handleTouchEnd={handleTouchEnd}
+      />
+
+      {menuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
+      <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
+        {children}
+      </main>
+    </div>
+  );
+};
+
+export default PageLayout;
