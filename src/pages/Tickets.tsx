@@ -59,8 +59,7 @@ const Tickets = () => {
   const { token, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [dictionariesOpen, setDictionariesOpen] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [bulkMode, setBulkMode] = useState(false);
@@ -91,14 +90,6 @@ const Tickets = () => {
     setFormData,
     handleSubmit,
   } = useTicketForm(customFields, loadTickets);
-
-  const {
-    menuOpen,
-    setMenuOpen,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-  } = useSidebarTouch();
 
   const {
     selectedTicketIds,
