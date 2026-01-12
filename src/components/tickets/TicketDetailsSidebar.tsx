@@ -108,8 +108,32 @@ const TicketDetailsSidebar = ({
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
 
+  const getWorkTime = () => {
+    if (!ticket.created_at) return '00:00:00';
+    
+    const created = new Date(ticket.created_at);
+    const now = ticket.closed_at ? new Date(ticket.closed_at) : new Date();
+    const diff = now.getTime() - created.getTime();
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
+      <div className="p-6 rounded-lg bg-background border">
+        <div className="flex flex-col items-center">
+          <h3 className="text-sm font-medium mb-4 text-foreground">Время выполнения</h3>
+          <div className="w-24 h-24 rounded-full border-4 border-primary flex items-center justify-center mb-4">
+            <Icon name="Clock" size={32} className="text-primary" />
+          </div>
+          <div className="text-3xl font-bold text-foreground">{getWorkTime()}</div>
+        </div>
+      </div>
+
       {onSendPing && (
         <div className="p-4 rounded-lg border-2 border-orange-500">
           <Button
