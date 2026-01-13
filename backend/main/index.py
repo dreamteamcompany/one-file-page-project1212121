@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 # Deploy version: v2.4 - using stderr for logging
 
-SCHEMA = 't_p61788166_html_to_frontend'
-VERSION = '2.4.0'
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
+VERSION = '2.5.0'
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -120,7 +120,7 @@ def get_db_connection():
     dsn = os.environ.get('DATABASE_URL')
     if not dsn:
         raise Exception('DATABASE_URL not found')
-    return psycopg2.connect(dsn)
+    return psycopg2.connect(dsn, options=f'-c search_path={SCHEMA},public')
 
 def create_jwt_token(user_id: int, email: str) -> str:
     secret = os.environ.get('JWT_SECRET')
@@ -152,33 +152,27 @@ def verify_jwt_token(token: str) -> Optional[Dict[str, Any]]:
 def get_user_with_permissions(conn, user_id: int) -> Optional[Dict[str, Any]]:
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    cur.execute("""
-        SELECT u.id, u.username, u.email, u.full_name, u.is_active, u.last_login
-        FROM users u
-        WHERE u.id = %s AND u.is_active = true
-    """, (user_id,))
+    cur.execute(
+        f"SELECT u.id, u.username, u.email, u.full_name, u.is_active, u.last_login FROM {SCHEMA}.users u WHERE u.id = %s AND u.is_active = true",
+        (user_id,)
+    )
     
     user = cur.fetchone()
     if not user:
         cur.close()
         return None
     
-    cur.execute("""
-        SELECT DISTINCT p.name, p.resource, p.action
-        FROM permissions p
-        JOIN role_permissions rp ON p.id = rp.permission_id
-        JOIN user_roles ur ON rp.role_id = ur.role_id
-        WHERE ur.user_id = %s
-    """, (user_id,))
+    cur.execute(
+        f"SELECT DISTINCT p.name, p.resource, p.action FROM {SCHEMA}.permissions p JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id WHERE ur.user_id = %s",
+        (user_id,)
+    )
     
     permissions = [dict(row) for row in cur.fetchall()]
     
-    cur.execute("""
-        SELECT r.id, r.name, r.description
-        FROM roles r
-        JOIN user_roles ur ON r.id = ur.role_id
-        WHERE ur.user_id = %s
-    """, (user_id,))
+    cur.execute(
+        f"SELECT r.id, r.name, r.description FROM {SCHEMA}.roles r JOIN {SCHEMA}.user_roles ur ON r.id = ur.role_id WHERE ur.user_id = %s",
+        (user_id,)
+    )
     
     roles = [dict(row) for row in cur.fetchall()]
     
@@ -214,12 +208,10 @@ def verify_token_and_permission(event: Dict[str, Any], conn, required_permission
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     # Проверяем, является ли пользователь администратором
-    cur.execute("""
-        SELECT r.name
-        FROM roles r
-        JOIN user_roles ur ON r.id = ur.role_id
-        WHERE ur.user_id = %s
-    """, (payload['user_id'],))
+    cur.execute(
+        f"SELECT r.name FROM {SCHEMA}.roles r JOIN {SCHEMA}.user_roles ur ON r.id = ur.role_id WHERE ur.user_id = %s",
+        (payload['user_id'],)
+    )
     
     roles = [row['name'] for row in cur.fetchall()]
     
@@ -229,13 +221,10 @@ def verify_token_and_permission(event: Dict[str, Any], conn, required_permission
         return payload, None
     
     # Иначе проверяем конкретное разрешение
-    cur.execute("""
-        SELECT DISTINCT p.name
-        FROM permissions p
-        JOIN role_permissions rp ON p.id = rp.permission_id
-        JOIN user_roles ur ON rp.role_id = ur.role_id
-        WHERE ur.user_id = %s
-    """, (payload['user_id'],))
+    cur.execute(
+        f"SELECT DISTINCT p.name FROM {SCHEMA}.permissions p JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id WHERE ur.user_id = %s",
+        (payload['user_id'],)
+    )
     
     permissions = [row['name'] for row in cur.fetchall()]
     cur.close()
@@ -452,11 +441,10 @@ def handle_login(event: Dict[str, Any], conn) -> Dict[str, Any]:
         return response(400, {'error': 'Логин и пароль обязательны'})
     
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("""
-        SELECT id, email, username, password_hash, full_name, is_active
-        FROM users
-        WHERE username = %s
-    """, (username,))
+    cur.execute(
+        "SELECT id, email, username, password_hash, full_name, is_active FROM users WHERE username = %s",
+        (username,)
+    )
     
     user = cur.fetchone()
     cur.close()
@@ -471,9 +459,10 @@ def handle_login(event: Dict[str, Any], conn) -> Dict[str, Any]:
         return response(401, {'error': 'Неверный логин или пароль'})
     
     cur = conn.cursor()
-    cur.execute("""
-        UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s
-    """, (user['id'],))
+    cur.execute(
+        f"UPDATE {SCHEMA}.users SET last_login = CURRENT_TIMESTAMP WHERE id = %s",
+        (user['id'],)
+    )
     conn.commit()
     cur.close()
     
@@ -520,19 +509,18 @@ def handle_register(event: Dict[str, Any], conn) -> Dict[str, Any]:
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
-        cur.execute("""
-            INSERT INTO users (username, email, password_hash, full_name, is_active)
-            VALUES (%s, %s, %s, %s, true)
-            RETURNING id, username, email, full_name, is_active, created_at
-        """, (username, email, password_hash, full_name))
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.users (username, email, password_hash, full_name, is_active) VALUES (%s, %s, %s, %s, true) RETURNING id, username, email, full_name, is_active, created_at",
+            (username, email, password_hash, full_name)
+        )
         
         new_user = cur.fetchone()
         
         if role_id:
-            cur.execute("""
-                INSERT INTO user_roles (user_id, role_id, assigned_by)
-                VALUES (%s, %s, %s)
-            """, (new_user['id'], role_id, admin_user['id']))
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id, assigned_by) VALUES (%s, %s, %s)",
+                (new_user['id'], role_id, admin_user['id'])
+            )
         
         conn.commit()
         cur.close()
@@ -573,7 +561,7 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return error
         
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("""
+        cur.execute(f"""
             SELECT 
                 u.id, u.username, u.full_name, u.position, u.photo_url, u.is_active, 
                 u.created_at, u.last_login,
@@ -581,9 +569,9 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     array_agg(json_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL),
                     ARRAY[]::json[]
                 ) as roles
-            FROM users u
-            LEFT JOIN user_roles ur ON u.id = ur.user_id
-            LEFT JOIN roles r ON ur.role_id = r.id
+            FROM {SCHEMA}.users u
+            LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
+            LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
             GROUP BY u.id
             ORDER BY u.created_at DESC
         """)
@@ -617,8 +605,8 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         try:
-            cur.execute("""
-                INSERT INTO users (username, password_hash, full_name, position, photo_url, email, is_active)
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.users (username, password_hash, full_name, position, photo_url, email, is_active)
                 VALUES (%s, %s, %s, %s, %s, %s, true)
                 RETURNING id, username, full_name, position, photo_url, is_active, created_at
             """, (username, password_hash, full_name, position, photo_url, username + '@example.com'))
@@ -627,14 +615,14 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             
             if role_ids:
                 for role_id in role_ids:
-                    cur.execute("""
-                        INSERT INTO user_roles (user_id, role_id, assigned_by)
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.user_roles (user_id, role_id, assigned_by)
                         VALUES (%s, %s, %s)
                     """, (new_user['id'], role_id, user_payload['user_id']))
             
             conn.commit()
             
-            cur.execute("""
+            cur.execute(f"""
                 SELECT 
                     u.id, u.username, u.full_name, u.position, u.photo_url, u.is_active, 
                     u.created_at, u.last_login,
@@ -642,9 +630,9 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                         array_agg(json_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL),
                         ARRAY[]::json[]
                     ) as roles
-                FROM users u
-                LEFT JOIN user_roles ur ON u.id = ur.user_id
-                LEFT JOIN roles r ON ur.role_id = r.id
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
+                LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
                 WHERE u.id = %s
                 GROUP BY u.id
             """, (new_user['id'],))
@@ -674,8 +662,8 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         if 'is_active' in body_data:
-            cur.execute("""
-                UPDATE users SET is_active = %s
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users SET is_active = %s
                 WHERE id = %s
                 RETURNING id, username, full_name, position, photo_url, is_active
             """, (body_data['is_active'], user_id))
@@ -697,27 +685,27 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(400, {'error': 'Логин и имя обязательны'})
         
         try:
-            cur.execute("""
-                UPDATE users 
+            cur.execute(f"""
+                UPDATE {SCHEMA}.users 
                 SET username = %s, full_name = %s, position = %s, photo_url = %s
                 WHERE id = %s
             """, (username, full_name, position, photo_url, user_id))
             
             if password and len(password) >= 4:
                 password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user_id))
+                cur.execute(f"UPDATE {SCHEMA}.users SET password_hash = %s WHERE id = %s", (password_hash, user_id))
             
             if role_ids is not None:
-                cur.execute("DELETE FROM user_roles WHERE user_id = %s", (user_id,))
+                cur.execute(f"DELETE FROM {SCHEMA}.user_roles WHERE user_id = %s", (user_id,))
                 for role_id in role_ids:
-                    cur.execute("""
-                        INSERT INTO user_roles (user_id, role_id, assigned_by)
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.user_roles (user_id, role_id, assigned_by)
                         VALUES (%s, %s, %s)
                     """, (user_id, role_id, user_payload['user_id']))
             
             conn.commit()
             
-            cur.execute("""
+            cur.execute(f"""
                 SELECT 
                     u.id, u.username, u.full_name, u.position, u.photo_url, u.is_active, 
                     u.created_at, u.last_login,
@@ -725,9 +713,9 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                         array_agg(json_build_object('id', r.id, 'name', r.name)) FILTER (WHERE r.id IS NOT NULL),
                         ARRAY[]::json[]
                     ) as roles
-                FROM users u
-                LEFT JOIN user_roles ur ON u.id = ur.user_id
-                LEFT JOIN roles r ON ur.role_id = r.id
+                FROM {SCHEMA}.users u
+                LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
+                LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
                 WHERE u.id = %s
                 GROUP BY u.id
             """, (user_id,))
@@ -758,8 +746,8 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         try:
-            cur.execute("DELETE FROM user_roles WHERE user_id = %s", (user_id,))
-            cur.execute("DELETE FROM users WHERE id = %s RETURNING id, username", (user_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.user_roles WHERE user_id = %s", (user_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id = %s RETURNING id, username", (user_id,))
             deleted_user = cur.fetchone()
             
             if not deleted_user:
