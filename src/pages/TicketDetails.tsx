@@ -4,8 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/layout/PageLayout';
-import AppHeader from '@/components/layout/AppHeader';
-import TicketDetailsPageHeader from '@/components/tickets/TicketDetailsPageHeader';
 import TicketDetailsContent from '@/components/tickets/TicketDetailsContent';
 import TicketDetailsSidebar from '@/components/tickets/TicketDetailsSidebar';
 
@@ -426,12 +424,31 @@ const TicketDetails = () => {
 
   return (
     <PageLayout>
-      <AppHeader />
-      
-      <TicketDetailsPageHeader 
-        ticketId={ticket.id}
-        onBack={() => navigate('/tickets')}
-      />
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 px-4 md:px-[25px] py-4 md:py-[18px] bg-[#1b254b]/50 backdrop-blur-[20px] rounded-[15px] border border-white/10">
+        <div className="flex items-center gap-3 flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/tickets')}
+            className="text-white hover:bg-white/10"
+          >
+            <Icon name="ArrowLeft" size={20} />
+          </Button>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-white">Заявка #{ticket.id}</h1>
+            <p className="text-sm text-white/60">{ticket.title}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 md:gap-3 px-3 md:px-[15px] py-2 md:py-[10px] rounded-[12px] bg-white/5 border border-white/10">
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-[10px] bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-bold text-white text-sm md:text-base">
+            {user?.full_name?.charAt(0) || 'U'}
+          </div>
+          <div className="hidden sm:block">
+            <div className="text-sm font-medium text-white">{user?.full_name}</div>
+            <div className="text-xs text-white/60">{user?.email}</div>
+          </div>
+        </div>
+      </header>
 
       <div className="flex-1 overflow-auto">
         <div className="container max-w-[1600px] mx-auto px-4 lg:px-6 py-6">
