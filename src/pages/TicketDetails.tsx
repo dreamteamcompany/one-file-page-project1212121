@@ -425,17 +425,17 @@ const TicketDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <PageLayout>
-        <AppHeader />
-        
-        <TicketDetailsPageHeader 
-          ticketId={ticket.id}
-          onBack={() => navigate('/tickets')}
-        />
+    <PageLayout>
+      <AppHeader />
+      
+      <TicketDetailsPageHeader 
+        ticketId={ticket.id}
+        onBack={() => navigate('/tickets')}
+      />
 
-        <div className="container max-w-[1600px] mx-auto px-4 lg:px-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-[1600px] mx-auto px-4 lg:px-6 py-6">
+          <div className="flex flex-col lg:flex-row gap-6">
           <div className="hidden lg:block">
             <TicketDetailsSidebar 
               ticket={ticket}
@@ -488,10 +488,9 @@ const TicketDetails = () => {
               onUpdateDueDate={handleUpdateDueDate}
             />
           </div>
-        </div>
+          </div>
         </div>
       </PageLayout>
-    </div>
   );
 };
 
