@@ -490,7 +490,8 @@ const TicketDetails = () => {
           </div>
           </div>
         </div>
-      </PageLayout>
+      </div>
+    </PageLayout>
   );
 };
 
