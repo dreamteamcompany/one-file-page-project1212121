@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
@@ -81,6 +81,17 @@ const TicketDetailsSidebar = ({
 }: TicketDetailsSidebarProps) => {
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  
+  useEffect(() => {
+    if (!ticket.due_date) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [ticket.due_date]);
   const getDeadlineInfo = (dueDate?: string) => {
     if (!dueDate) return null;
     
@@ -111,33 +122,52 @@ const TicketDetailsSidebar = ({
   const getTimeLeft = () => {
     if (!ticket.due_date) return null;
     
-    const now = new Date().getTime();
     const due = new Date(ticket.due_date).getTime();
-    const diff = due - now;
+    const diff = due - currentTime;
     
     if (diff < 0) {
       return { time: '00:00:00', expired: true };
     }
     
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
     
-    return { time: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`, expired: false };
+    return { 
+      days,
+      time: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`, 
+      expired: false 
+    };
   };
 
   return (
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
       {ticket.due_date && (
-        <div className="p-6 rounded-lg bg-card border">
-          <div className="flex flex-col items-center">
-            <h3 className="text-sm font-semibold mb-4 text-foreground">Времени осталось</h3>
-            <div className={`w-24 h-24 rounded-full ${getTimeLeft()?.expired ? 'bg-red-500/20 border-red-500' : 'bg-primary/20 border-primary'} border-2 flex items-center justify-center mb-4`}>
-              <Icon name="Clock" size={32} className={getTimeLeft()?.expired ? 'text-red-500' : 'text-primary'} />
+        <div className="relative overflow-hidden p-6 rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5" />
+          <div className="relative flex flex-col items-center">
+            <h3 className="text-sm font-semibold mb-6 text-white/80 uppercase tracking-wider">Времени осталось</h3>
+            <div className={`w-32 h-32 rounded-full ${getTimeLeft()?.expired ? 'bg-gradient-to-br from-red-500/30 to-red-600/30 border-red-500/50 shadow-lg shadow-red-500/20' : 'bg-gradient-to-br from-white/10 to-white/5 border-white/20 shadow-lg shadow-white/10'} border-2 flex items-center justify-center mb-6 backdrop-blur-sm`}>
+              <Icon name="Clock" size={40} className={getTimeLeft()?.expired ? 'text-red-400' : 'text-white'} />
             </div>
-            <div className={`text-3xl font-bold ${getTimeLeft()?.expired ? 'text-red-500' : 'text-foreground'}`}>
-              {getTimeLeft()?.expired ? 'Просрочено' : getTimeLeft()?.time}
-            </div>
+            {getTimeLeft()?.expired ? (
+              <div className="text-center">
+                <div className="text-4xl font-bold text-red-400 mb-2">Просрочено</div>
+              </div>
+            ) : (
+              <div className="text-center">
+                {getTimeLeft() && getTimeLeft()!.days > 0 && (
+                  <div className="text-sm text-white/60 mb-2">
+                    {getTimeLeft()!.days} {getTimeLeft()!.days === 1 ? 'день' : getTimeLeft()!.days < 5 ? 'дня' : 'дней'}
+                  </div>
+                )}
+                <div className="text-4xl font-bold text-white tabular-nums tracking-wider">
+                  {getTimeLeft()?.time}
+                </div>
+                <div className="text-xs text-white/50 mt-2 tracking-wide">ЧЧ : ММ : СС</div>
+              </div>
+            )}
           </div>
         </div>
       )}
