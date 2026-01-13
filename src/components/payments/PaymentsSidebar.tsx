@@ -79,44 +79,44 @@ const PaymentsSidebar = ({
         </button>
       </div>
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
-        <ul className="px-[15px] py-5 space-y-1 pb-4">
+        <ul className={`${collapsed ? 'px-2' : 'px-[15px]'} py-5 space-y-1 pb-4`}>
         <li>
-          <Link to="/" className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-[15px] py-3 rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Дашборд">
-            <Icon name="Home" size={20} />
+          <Link to="/" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Дашборд">
+            <Icon name="Home" size={22} />
             {!collapsed && <span>Дашборд</span>}
           </Link>
         </li>
         <li>
-          <Link to="/tickets" className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-[15px] py-3 rounded-lg ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Заявки">
-            <Icon name="Ticket" size={20} />
+          <Link to="/tickets" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Заявки">
+            <Icon name="Ticket" size={22} />
             {!collapsed && <span>Заявки</span>}
           </Link>
         </li>
         {hasPermission('users', 'read') && (
           <li>
-            <Link to="/users" className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-[15px] py-3 rounded-lg ${isActive('/users') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Пользователи">
-              <Icon name="Users" size={20} />
+            <Link to="/users" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/users') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Пользователи">
+              <Icon name="Users" size={22} />
               {!collapsed && <span>Пользователи</span>}
             </Link>
           </li>
         )}
         {hasPermission('roles', 'read') && (
           <li>
-            <Link to="/roles" className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-[15px] py-3 rounded-lg ${isActive('/roles') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Права доступа">
-              <Icon name="Shield" size={20} />
+            <Link to="/roles" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/roles') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Права доступа">
+              <Icon name="Shield" size={22} />
               {!collapsed && <span>Права доступа</span>}
             </Link>
           </li>
         )}
         <li>
-          <Link to="/settings" className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-[15px] py-3 rounded-lg ${isActive('/settings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Настройки">
-            <Icon name="Settings" size={20} />
+          <Link to="/settings" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/settings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Настройки">
+            <Icon name="Settings" size={22} />
             {!collapsed && <span>Настройки</span>}
           </Link>
         </li>
         <li>
-          <Link to="/log-analyzer" className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-[15px] py-3 rounded-lg ${isActive('/log-analyzer') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Анализатор логов">
-            <Icon name="FileText" size={20} />
+          <Link to="/log-analyzer" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/log-analyzer') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Анализатор логов">
+            <Icon name="FileText" size={22} />
             {!collapsed && <span>Анализатор логов</span>}
           </Link>
         </li>
