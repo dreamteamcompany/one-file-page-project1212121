@@ -112,56 +112,56 @@ const TicketDetailsContent = ({
   return (
     <div className="flex-1 p-4 lg:p-6">
       {/* Суть заявки */}
-      <div className="mb-6 border border-muted rounded-xl p-5 lg:p-6 bg-muted/20">
-        <button className="flex items-center gap-2 text-sm font-medium mb-5 w-full text-muted-foreground">
+      <div className="mb-6 border rounded-lg p-5 lg:p-6 bg-card">
+        <button className="flex items-center gap-2 text-sm font-semibold mb-5 w-full text-foreground">
           <Icon name="ChevronDown" size={16} />
           Суть заявки
         </button>
         
         <div className="space-y-4">
           <div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Тема</span>
-            <p className="text-base font-medium text-foreground/90">{ticket.title}</p>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Тема</span>
+            <p className="text-base font-semibold text-foreground">{ticket.title}</p>
           </div>
           
           {ticket.description && (
             <div>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">Описание</span>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/80">{ticket.description}</p>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Описание</span>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{ticket.description}</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
-      <div className="border-b border-muted/50 mb-6">
-        <div className="flex gap-8">
+      <div className="border-b mb-6">
+        <div className="flex gap-6">
           <button 
             onClick={() => setActiveTab('comments')}
-            className={`pb-3 border-b-2 text-sm font-medium transition-all ${
+            className={`pb-2 border-b-2 text-sm font-semibold transition-all ${
               activeTab === 'comments' 
                 ? 'border-primary text-foreground' 
-                : 'border-transparent text-muted-foreground hover:text-foreground/80'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             Комментарии ({comments.length})
           </button>
           <button 
             onClick={() => setActiveTab('files')}
-            className={`pb-3 border-b-2 text-sm transition-all ${
+            className={`pb-2 border-b-2 text-sm transition-all ${
               activeTab === 'files' 
-                ? 'border-primary text-foreground font-medium' 
-                : 'border-transparent text-muted-foreground hover:text-foreground/80'
+                ? 'border-primary text-foreground font-semibold' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             Файлы (0)
           </button>
           <button 
             onClick={() => setActiveTab('history')}
-            className={`pb-3 border-b-2 text-sm transition-all ${
+            className={`pb-2 border-b-2 text-sm transition-all ${
               activeTab === 'history' 
-                ? 'border-primary text-foreground font-medium' 
-                : 'border-transparent text-muted-foreground hover:text-foreground/80'
+                ? 'border-primary text-foreground font-semibold' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             История ({auditLogs.length})
