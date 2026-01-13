@@ -7,6 +7,7 @@ interface PageLayoutProps {
 
 const PageLayout = ({ children }: PageLayoutProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const [dictionariesOpen, setDictionariesOpen] = useState(false);
@@ -30,6 +31,8 @@ const PageLayout = ({ children }: PageLayoutProps) => {
     <div className="flex min-h-screen overflow-x-hidden" style={{ background: 'linear-gradient(135deg, #0f1535 0%, #1b254b 100%)' }}>
       <PaymentsSidebar
         menuOpen={menuOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         dictionariesOpen={dictionariesOpen}
         setDictionariesOpen={setDictionariesOpen}
         settingsOpen={settingsOpen}
@@ -46,7 +49,7 @@ const PageLayout = ({ children }: PageLayoutProps) => {
         />
       )}
 
-      <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
+      <main className={`${sidebarCollapsed ? 'lg:ml-[70px]' : 'lg:ml-[250px]'} p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full transition-all duration-300`}>
         {children}
       </main>
     </div>
