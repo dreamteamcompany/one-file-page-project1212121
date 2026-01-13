@@ -211,7 +211,7 @@ const TicketComments = ({
       </div>
 
       {/* Форма добавления комментария */}
-      <div className="space-y-3 mb-6 pb-4 border-b">
+      <div className="space-y-3 mb-6 pb-6 border-b border-muted/50">
         {isCustomer && hasAssignee && (
           <Button
             onClick={onSendPing}
@@ -235,7 +235,7 @@ const TicketComments = ({
         )}
 
         {replyToComment && (
-          <div className="p-3 bg-muted/50 rounded-lg border border-primary/20">
+          <div className="p-3 bg-muted/30 rounded-lg border border-primary/30">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -369,12 +369,12 @@ const TicketComments = ({
             return (
               <div 
                 key={comment.id} 
-                className={`p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors ${
+                className={`p-4 rounded-xl border border-muted bg-muted/10 hover:bg-muted/20 transition-all ${
                   comment.parent_comment_id ? 'ml-4 lg:ml-8 border-l-2 border-primary/30' : ''
                 }`}
               >
                 {parentComment && (
-                  <div className="mb-2 p-2 bg-muted/30 rounded text-xs border-l-2 border-primary/50">
+                  <div className="mb-3 p-2.5 bg-muted/20 rounded-lg text-xs border-l-2 border-primary/40">
                     <div className="flex items-center gap-1 mb-1">
                       <Icon name="CornerDownRight" size={12} className="text-primary" />
                       <span className="font-medium">{parentComment.user_name}</span>
@@ -384,7 +384,7 @@ const TicketComments = ({
                 )}
                 
                 <div className="flex items-start gap-2 lg:gap-3">
-                  <div className="w-6 h-6 lg:w-7 lg:h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Icon name="User" size={14} className="text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -394,7 +394,7 @@ const TicketComments = ({
                         {formatDate(comment.created_at)}
                       </p>
                     </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground/90">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground/85">
                       {renderCommentText(comment.comment, comment.mentioned_user_ids)}
                     </p>
                     
@@ -406,7 +406,7 @@ const TicketComments = ({
                             href={file.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded bg-background/50 hover:bg-background transition-colors group"
+                            className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
                           >
                             <Icon name="Paperclip" size={14} className="text-muted-foreground" />
                             <span className="text-xs flex-1 group-hover:text-primary transition-colors">{file.filename}</span>
@@ -420,7 +420,7 @@ const TicketComments = ({
                         {comment.reactions.map((reaction, idx) => (
                           <button
                             key={idx}
-                            className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 hover:bg-muted transition-colors text-xs"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-muted/40 hover:bg-muted/60 transition-colors text-xs"
                           >
                             <span style={{ fontSize: '1.5em' }}>{reaction.emoji}</span>
                             <span className="text-muted-foreground">{reaction.count}</span>
