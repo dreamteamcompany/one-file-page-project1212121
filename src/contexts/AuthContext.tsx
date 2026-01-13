@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!currentToken) return;
 
     try {
-      const response = await fetch('https://functions.poehali.dev/597de3a8-5db2-4e46-8835-5a37042b00f1?action=refresh', {
+      const response = await fetch(`${API_URL}?endpoint=refresh`, {
         headers: {
           'X-Auth-Token': currentToken,
         },
@@ -173,7 +173,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (!currentToken) return;
 
         try {
-          const response = await fetch('https://functions.poehali.dev/597de3a8-5db2-4e46-8835-5a37042b00f1?action=refresh', {
+          const response = await fetch(`${API_URL}?endpoint=refresh`, {
             headers: {
               'X-Auth-Token': currentToken,
             },
