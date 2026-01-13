@@ -144,28 +144,27 @@ const TicketDetailsSidebar = ({
   return (
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
       {ticket.due_date && (
-        <div className="relative overflow-hidden p-6 rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-white/10">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5" />
-          <div className="relative flex flex-col items-center">
-            <h3 className="text-sm font-semibold mb-6 text-white/80 uppercase tracking-wider">Времени осталось</h3>
-            <div className={`w-32 h-32 rounded-full ${getTimeLeft()?.expired ? 'bg-gradient-to-br from-red-500/30 to-red-600/30 border-red-500/50 shadow-lg shadow-red-500/20' : 'bg-gradient-to-br from-white/10 to-white/5 border-white/20 shadow-lg shadow-white/10'} border-2 flex items-center justify-center mb-6 backdrop-blur-sm`}>
-              <Icon name="Clock" size={40} className={getTimeLeft()?.expired ? 'text-red-400' : 'text-white'} />
+        <div className="p-6 rounded-lg bg-card border">
+          <div className="flex flex-col items-center">
+            <h3 className="text-sm font-semibold mb-4 text-foreground">Времени осталось</h3>
+            <div className={`w-24 h-24 rounded-full ${getTimeLeft()?.expired ? 'bg-red-500/10 border-red-500' : 'bg-muted'} border-2 flex items-center justify-center mb-4`}>
+              <Icon name="Clock" size={32} className={getTimeLeft()?.expired ? 'text-red-500' : 'text-foreground'} />
             </div>
             {getTimeLeft()?.expired ? (
               <div className="text-center">
-                <div className="text-4xl font-bold text-red-400 mb-2">Просрочено</div>
+                <div className="text-3xl font-bold text-red-500">Просрочено</div>
               </div>
             ) : (
               <div className="text-center">
                 {getTimeLeft() && getTimeLeft()!.days > 0 && (
-                  <div className="text-sm text-white/60 mb-2">
+                  <div className="text-sm text-muted-foreground mb-2">
                     {getTimeLeft()!.days} {getTimeLeft()!.days === 1 ? 'день' : getTimeLeft()!.days < 5 ? 'дня' : 'дней'}
                   </div>
                 )}
-                <div className="text-4xl font-bold text-white tabular-nums tracking-wider">
+                <div className="text-3xl font-bold text-foreground tabular-nums">
                   {getTimeLeft()?.time}
                 </div>
-                <div className="text-xs text-white/50 mt-2 tracking-wide">ЧЧ : ММ : СС</div>
+                <div className="text-xs text-muted-foreground mt-1">ЧЧ : ММ : СС</div>
               </div>
             )}
           </div>
