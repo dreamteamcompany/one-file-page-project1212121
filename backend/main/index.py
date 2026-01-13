@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-import jwt 
+import jwt
 import bcrypt
 import psycopg2
 from psycopg2.extras import RealDictCursor

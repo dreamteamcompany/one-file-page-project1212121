@@ -214,8 +214,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response = await fetch(`${API_URL}?endpoint=login`, {
         method: 'POST',
+        mode: 'cors',
         headers: {
-          'Content-Type': 'text/plain',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
       });
