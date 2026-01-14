@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
+import { API_URL } from '@/utils/api';
 
 interface AuditLog {
   id: number;
@@ -29,7 +30,7 @@ const PaymentAuditLog = ({ paymentId }: PaymentAuditLogProps) => {
     const loadLogs = async () => {
       try {
         const response = await fetch(
-          `https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=audit-logs&entity_type=payment&entity_id=${paymentId}`,
+          `${API_URL}?endpoint=audit-logs&entity_type=payment&entity_id=${paymentId}`,
           {
             headers: { 'X-Auth-Token': token },
           }

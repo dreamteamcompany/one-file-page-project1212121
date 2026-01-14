@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/utils/api';
 
 interface CustomField {
   id: number;
@@ -44,8 +45,7 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
     }
 
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

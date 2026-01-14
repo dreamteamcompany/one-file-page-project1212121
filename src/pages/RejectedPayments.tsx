@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import PaymentsHeader from '@/components/payments/PaymentsHeader';
@@ -65,7 +65,7 @@ const RejectedPayments = () => {
   const fetchRejectedPayments = async () => {
     setLoading(true);
     try {
-      const response = await apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=payments');
+      const response = await apiFetch(`${API_URL}?endpoint=payments`);
       const data = await response.json();
       
       const rejectedPayments = (Array.isArray(data) ? data : []).filter((p: Payment) => 

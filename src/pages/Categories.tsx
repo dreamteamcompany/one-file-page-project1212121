@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -64,7 +64,7 @@ const Categories = () => {
   };
 
   const loadCategories = () => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=categories')
+    apiFetch(`${API_URL}?endpoint=categories`)
       .then(res => res.json())
       .then((data) => {
         setCategories(Array.isArray(data) ? data : []);
@@ -85,7 +85,7 @@ const Categories = () => {
     e.preventDefault();
     
     try {
-      const url = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=categories';
+      const url = `${API_URL}?endpoint=categories`;
       const method = editingCategory ? 'PUT' : 'POST';
       const body = editingCategory 
         ? { id: editingCategory.id, ...formData }

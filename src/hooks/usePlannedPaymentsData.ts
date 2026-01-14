@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/utils/api';
 
 interface CustomField {
   id: number;
@@ -97,7 +98,7 @@ export const usePlannedPaymentsData = () => {
 
   const loadPayments = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=planned-payments', {
+      const response = await fetch(`${API_URL}?endpoint=planned-payments`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -115,7 +116,7 @@ export const usePlannedPaymentsData = () => {
   const loadCategories = async () => {
     if (dataLoaded.categories) return;
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=categories', {
+      const response = await fetch(`${API_URL}?endpoint=categories`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -134,7 +135,7 @@ export const usePlannedPaymentsData = () => {
   const loadLegalEntities = async () => {
     if (dataLoaded.legalEntities) return;
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=legal-entities', {
+      const response = await fetch(`${API_URL}?endpoint=legal-entities`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -153,7 +154,7 @@ export const usePlannedPaymentsData = () => {
   const loadContractors = async () => {
     if (dataLoaded.contractors) return;
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=contractors', {
+      const response = await fetch(`${API_URL}?endpoint=contractors`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -172,7 +173,7 @@ export const usePlannedPaymentsData = () => {
   const loadCustomerDepartments = async () => {
     if (dataLoaded.customerDepartments) return;
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=customer-departments', {
+      const response = await fetch(`${API_URL}?endpoint=customer-departments`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -191,7 +192,7 @@ export const usePlannedPaymentsData = () => {
   const loadCustomFields = async () => {
     if (dataLoaded.customFields) return;
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=custom-fields', {
+      const response = await fetch(`${API_URL}?endpoint=custom-fields`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -210,7 +211,7 @@ export const usePlannedPaymentsData = () => {
   const loadServices = async () => {
     if (dataLoaded.services) return;
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=services', {
+      const response = await fetch(`${API_URL}?endpoint=services`, {
         headers: {
           'X-Auth-Token': token || '',
         },

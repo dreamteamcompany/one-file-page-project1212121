@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/utils/api';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/layout/PageLayout';
@@ -114,8 +115,7 @@ const TicketDetails = () => {
   const loadTicket = async () => {
     try {
       setLoading(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -136,8 +136,7 @@ const TicketDetails = () => {
 
   const loadStatuses = async () => {
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-dictionaries-api`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -153,8 +152,7 @@ const TicketDetails = () => {
 
   const loadUsers = async () => {
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=users`, {
+      const response = await fetch(`${API_URL}?endpoint=users`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -177,8 +175,7 @@ const TicketDetails = () => {
   const loadHistory = async () => {
     try {
       setLoadingHistory(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-history&ticket_id=${id}`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-history&ticket_id=${id}`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -197,8 +194,7 @@ const TicketDetails = () => {
   const loadComments = async () => {
     try {
       setLoadingComments(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-comments-api&ticket_id=${id}`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${id}`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -219,8 +215,7 @@ const TicketDetails = () => {
     
     try {
       setSubmittingComment(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-comments-api`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -249,8 +244,7 @@ const TicketDetails = () => {
   const handleUpdateStatus = async (statusId: number) => {
     try {
       setUpdating(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -383,8 +377,7 @@ const TicketDetails = () => {
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

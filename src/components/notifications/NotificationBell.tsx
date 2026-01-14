@@ -7,6 +7,7 @@ import Icon from '@/components/ui/icon';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '@/utils/api';
 
 interface Notification {
   id: number;
@@ -31,7 +32,7 @@ const NotificationBell = () => {
 
     try {
       const response = await fetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=notifications',
+        `${API_URL}?endpoint=notifications`,
         {
           headers: {
             'X-Auth-Token': token,
@@ -60,7 +61,7 @@ const NotificationBell = () => {
 
     try {
       await fetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=notifications',
+        `${API_URL}?endpoint=notifications`,
         {
           method: 'PUT',
           headers: {
@@ -83,7 +84,7 @@ const NotificationBell = () => {
     setLoading(true);
     try {
       await fetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=notifications',
+        `${API_URL}?endpoint=notifications`,
         {
           method: 'PUT',
           headers: {

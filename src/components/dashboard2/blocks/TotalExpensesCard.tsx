@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/utils/api';
 
 interface DashboardStats {
   total_amount: number;
@@ -21,7 +22,7 @@ const TotalExpensesCard = () => {
       
       try {
         const response = await fetch(
-          'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=dashboard-stats',
+          `${API_URL}?endpoint=dashboard-stats`,
           {
             headers: {
               'X-Auth-Token': token,

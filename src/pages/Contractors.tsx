@@ -3,7 +3,7 @@ import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import ContractorsHeader from '@/components/contractors/ContractorsHeader';
 import ContractorForm from '@/components/contractors/ContractorForm';
 import ContractorsList from '@/components/contractors/ContractorsList';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 
 interface Contractor {
   id: number;
@@ -68,7 +68,7 @@ const Contractors = () => {
   };
 
   const loadContractors = () => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=contractors')
+    apiFetch(`${API_URL}?endpoint=contractors`)
       .then(res => res.json())
       .then(data => {
         setContractors(Array.isArray(data) ? data : []);

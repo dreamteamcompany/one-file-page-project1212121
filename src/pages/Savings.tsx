@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/utils/api';
 import Icon from '@/components/ui/icon';
 import SavingFormDialog from './Savings/SavingFormDialog';
 import SavingsTable from './Savings/SavingsTable';
@@ -48,7 +49,7 @@ const Savings = () => {
 
   const loadSavings = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=savings', {
+      const response = await fetch(`${API_URL}?endpoint=savings`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -70,7 +71,7 @@ const Savings = () => {
 
   const loadServices = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=services', {
+      const response = await fetch(`${API_URL}?endpoint=services`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -96,7 +97,7 @@ const Savings = () => {
 
   const loadEmployees = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users', {
+      const response = await fetch(`${API_URL}?endpoint=users`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -114,7 +115,7 @@ const Savings = () => {
 
   const loadSavingReasons = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=saving-reasons', {
+      const response = await fetch(`${API_URL}?endpoint=saving-reasons`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -158,7 +159,7 @@ const Savings = () => {
     e.preventDefault();
     
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=savings', {
+      const response = await fetch(`${API_URL}?endpoint=savings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

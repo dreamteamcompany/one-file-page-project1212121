@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Bar } from 'react-chartjs-2';
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 
 const ContractorComparisonChart = () => {
   const [contractorData, setContractorData] = useState<{name: string, amount: number}[]>([]);
@@ -21,7 +21,7 @@ const ContractorComparisonChart = () => {
   useEffect(() => {
     const fetchContractorData = async () => {
       try {
-        const response = await apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=payments');
+        const response = await apiFetch(`${API_URL}?endpoint=payments`);
         const data = await response.json();
         
         const approvedPayments = (Array.isArray(data) ? data : []).filter((p: any) => 

@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 import {
   Dialog,
   DialogContent,
@@ -59,7 +59,7 @@ const LegalEntities = () => {
   };
 
   const loadEntities = () => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=legal-entities')
+    apiFetch(`${API_URL}?endpoint=legal-entities`)
       .then(res => res.json())
       .then((data) => {
         setEntities(Array.isArray(data) ? data : []);
@@ -80,7 +80,7 @@ const LegalEntities = () => {
     e.preventDefault();
     
     try {
-      const url = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=legal-entities';
+      const url = `${API_URL}?endpoint=legal-entities`;
       const method = editingEntity ? 'PUT' : 'POST';
       const body = editingEntity 
         ? { id: editingEntity.id, ...formData }
@@ -116,7 +116,7 @@ const LegalEntities = () => {
 
     try {
       const response = await apiFetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=legal-entities',
+        `${API_URL}?endpoint=legal-entities`,
         {
           method: 'DELETE',
           headers: {

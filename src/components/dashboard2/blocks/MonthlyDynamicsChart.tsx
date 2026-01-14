@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Line } from 'react-chartjs-2';
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 
 const MonthlyDynamicsChart = () => {
   const [monthlyData, setMonthlyData] = useState<number[]>(Array(12).fill(0));
@@ -22,7 +22,7 @@ const MonthlyDynamicsChart = () => {
   useEffect(() => {
     const fetchApprovedPayments = async () => {
       try {
-        const response = await apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=payments');
+        const response = await apiFetch(`${API_URL}?endpoint=payments`);
         const data = await response.json();
         
         const approvedPayments = (Array.isArray(data) ? data : []).filter((p: any) => 

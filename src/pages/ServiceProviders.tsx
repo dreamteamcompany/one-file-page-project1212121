@@ -24,8 +24,9 @@ import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/utils/api';
 
-const BACKEND_URL = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
+const BACKEND_URL = API_URL;
 
 interface Service {
   id: number;

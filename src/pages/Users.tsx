@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/utils/api';
 import UsersHeader from '@/components/users/UsersHeader';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UsersTable from '@/components/users/UsersTable';
@@ -63,7 +64,7 @@ const Users = () => {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users', {
+      const response = await fetch(`${API_URL}?endpoint=users`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -85,7 +86,7 @@ const Users = () => {
 
   const loadRoles = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=roles', {
+      const response = await fetch(`${API_URL}?endpoint=roles`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -114,7 +115,7 @@ const Users = () => {
     try {
       const url = editingUser 
         ? `https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users&id=${editingUser.id}`
-        : 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users';
+        : `${API_URL}?endpoint=users`;
       
       const method = editingUser ? 'PUT' : 'POST';
       

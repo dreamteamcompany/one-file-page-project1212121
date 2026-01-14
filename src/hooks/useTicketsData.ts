@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/utils/api';
 
 interface Category {
   id: number;
@@ -85,8 +86,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const apiUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=tickets';
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`${API_URL}?endpoint=tickets`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -109,8 +109,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=services`, {
+      const response = await fetch(`${API_URL}?endpoint=services`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -129,8 +128,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-dictionaries-api`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
         headers: {
           'X-Auth-Token': token,
         },

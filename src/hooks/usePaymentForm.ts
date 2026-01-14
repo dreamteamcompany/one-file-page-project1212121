@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/utils/api';
 
 interface CustomFieldDefinition {
   id: number;
@@ -85,7 +86,7 @@ export const usePaymentForm = (customFields: CustomFieldDefinition[], onSuccess:
         }
       });
 
-      const response = await fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=payments', {
+      const response = await fetch(`${API_URL}?endpoint=payments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

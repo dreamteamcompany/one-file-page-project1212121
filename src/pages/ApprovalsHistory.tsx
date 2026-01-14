@@ -4,6 +4,7 @@ import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { API_URL } from '@/utils/api';
 
 interface Approval {
   id: number;
@@ -45,7 +46,7 @@ const ApprovalsHistory = () => {
   useEffect(() => {
     if (!token) return;
 
-    fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=approvals', {
+    fetch(`${API_URL}?endpoint=approvals`, {
       headers: {
         'X-Auth-Token': token,
       },

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/utils/api';
 
 interface Comment {
   id: number;
@@ -37,7 +38,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
   const loadComments = async () => {
     try {
       const response = await fetch(
-        `https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=comments&payment_id=${paymentId}`,
+        `${API_URL}?endpoint=comments&payment_id=${paymentId}`,
         {
           headers: { 'X-Auth-Token': token! },
         }
@@ -59,7 +60,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
 
     try {
       const response = await fetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=comments',
+        `${API_URL}?endpoint=comments`,
         {
           method: 'POST',
           headers: {
@@ -95,7 +96,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
 
     try {
       const response = await fetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=comments',
+        `${API_URL}?endpoint=comments`,
         {
           method: 'POST',
           headers: {
@@ -131,7 +132,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
   const handleLike = async (commentId: number, isLiked: boolean) => {
     try {
       const response = await fetch(
-        'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=comment-likes',
+        `${API_URL}?endpoint=comment-likes`,
         {
           method: isLiked ? 'DELETE' : 'POST',
           headers: {

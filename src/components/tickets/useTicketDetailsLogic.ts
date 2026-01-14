@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Ticket, Comment, User } from './TicketDetailsModalTypes';
+import { API_URL } from '@/utils/api';
 
 export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: () => void) => {
   const { token, user } = useAuth();
@@ -30,8 +31,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     console.log('[loadUsers] Starting to load users...');
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=users`, {
+      const response = await fetch(`${API_URL}?endpoint=users`, {
         headers: { 'X-Auth-Token': token },
       });
 
@@ -64,8 +64,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setLoadingComments(true);
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
         headers: { 'X-Auth-Token': token },
       });
 
@@ -99,7 +98,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
           });
           
           const uploadResponse = await fetch(
-            'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=upload-file',
+            `${API_URL}?endpoint=upload-file`,
             {
               method: 'POST',
               headers: { 
@@ -125,8 +124,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
         fileUrls = results.filter((r): r is { filename: string; url: string; size: number } => r !== null);
       }
       
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=ticket-comments-api`, {
+      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -171,8 +169,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setUpdating(true);
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -216,8 +213,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setSendingPing(true);
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      await fetch(`${mainUrl}?endpoint=ticket-comments-api`, {
+      await fetch(`${API_URL}?endpoint=ticket-comments-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -246,8 +242,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
     if (!token) return;
 
     try {
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-      await fetch(`${mainUrl}?endpoint=comment-reactions`, {
+      await fetch(`${API_URL}?endpoint=comment-reactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

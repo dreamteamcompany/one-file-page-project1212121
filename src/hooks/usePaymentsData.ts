@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 
 interface CustomField {
   id: number;
@@ -90,7 +90,7 @@ export const usePaymentsData = () => {
   const [loading, setLoading] = useState(true);
 
   const loadPayments = () => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=payments')
+    apiFetch(`${API_URL}?endpoint=payments`)
       .then(res => res.json())
       .then(data => {
         setPayments(Array.isArray(data) ? data : []);
@@ -105,27 +105,27 @@ export const usePaymentsData = () => {
 
   useEffect(() => {
     loadPayments();
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=categories')
+    apiFetch(`${API_URL}?endpoint=categories`)
       .then(res => res.json())
       .then(data => setCategories(Array.isArray(data) ? data : []))
       .catch(err => { console.error('Failed to load categories:', err); setCategories([]); });
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=legal-entities')
+    apiFetch(`${API_URL}?endpoint=legal-entities`)
       .then(res => res.json())
       .then(data => setLegalEntities(Array.isArray(data) ? data : []))
       .catch(err => { console.error('Failed to load legal entities:', err); setLegalEntities([]); });
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=contractors')
+    apiFetch(`${API_URL}?endpoint=contractors`)
       .then(res => res.json())
       .then(data => setContractors(Array.isArray(data) ? data : []))
       .catch(err => { console.error('Failed to load contractors:', err); setContractors([]); });
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=customer_departments')
+    apiFetch(`${API_URL}?endpoint=customer_departments`)
       .then(res => res.json())
       .then(data => setCustomerDepartments(Array.isArray(data) ? data : []))
       .catch(err => { console.error('Failed to load customer departments:', err); setCustomerDepartments([]); });
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=services')
+    apiFetch(`${API_URL}?endpoint=services`)
       .then(res => res.json())
       .then(data => setServices(data.services || []))
       .catch(err => { console.error('Failed to load services:', err); setServices([]); });
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=custom-fields')
+    apiFetch(`${API_URL}?endpoint=custom-fields`)
       .then(res => res.json())
       .then((fields) => {
         setCustomFields(Array.isArray(fields) ? fields : []);

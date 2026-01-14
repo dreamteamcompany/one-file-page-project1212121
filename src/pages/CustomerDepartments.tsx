@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
@@ -66,7 +66,7 @@ const CustomerDepartments = () => {
   };
 
   const loadDepartments = () => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=customer_departments')
+    apiFetch(`${API_URL}?endpoint=customer_departments`)
       .then(res => res.json())
       .then((data) => {
         setDepartments(Array.isArray(data) ? data : []);
@@ -87,7 +87,7 @@ const CustomerDepartments = () => {
     e.preventDefault();
     
     try {
-      const url = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=customer_departments';
+      const url = `${API_URL}?endpoint=customer_departments`;
       const method = editingDepartment ? 'PUT' : 'POST';
       const body = editingDepartment 
         ? { id: editingDepartment.id, ...formData }
@@ -130,7 +130,7 @@ const CustomerDepartments = () => {
     if (!departmentToDelete) return;
 
     try {
-      const response = await apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=customer_departments', {
+      const response = await apiFetch(`${API_URL}?endpoint=customer_departments`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

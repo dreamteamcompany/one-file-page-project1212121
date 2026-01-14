@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,7 @@ const SavingReasons = () => {
   };
 
   const loadReasons = () => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=saving-reasons')
+    apiFetch(`${API_URL}?endpoint=saving-reasons`)
       .then(res => res.json())
       .then((data) => {
         setReasons(Array.isArray(data) ? data : []);
@@ -84,7 +84,7 @@ const SavingReasons = () => {
     e.preventDefault();
     
     try {
-      const url = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=saving-reasons';
+      const url = `${API_URL}?endpoint=saving-reasons`;
       const method = editingReason ? 'PUT' : 'POST';
       const body = editingReason 
         ? { id: editingReason.id, ...formData }

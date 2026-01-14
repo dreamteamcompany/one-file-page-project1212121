@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { API_URL } from '@/utils/api';
 
 interface Payment {
   id: number;
@@ -31,10 +32,10 @@ export const usePendingApprovals = () => {
     const loadPendingApprovals = async () => {
       try {
         const [paymentsRes, servicesRes] = await Promise.all([
-          fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=payments', {
+          fetch(`${API_URL}?endpoint=payments`, {
             headers: { 'X-Auth-Token': token },
           }),
-          fetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=services', {
+          fetch(`${API_URL}?endpoint=services`, {
             headers: { 'X-Auth-Token': token },
           }),
         ]);

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { Chart, registerables } from 'chart.js';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 
 Chart.register(...registerables);
 
@@ -75,7 +75,7 @@ const Index = () => {
   };
 
   useEffect(() => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=stats')
+    apiFetch(`${API_URL}?endpoint=stats`)
       .then(res => res.json())
       .then(data => {
         setStats({

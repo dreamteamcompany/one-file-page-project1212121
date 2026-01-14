@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_URL } from '@/utils/api';
 
 interface Payment {
   service: string;
@@ -26,7 +26,7 @@ const Dashboard2BudgetBreakdown = () => {
   const [totalBudget, setTotalBudget] = useState(0);
 
   useEffect(() => {
-    apiFetch('https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=budget-breakdown')
+    apiFetch(`${API_URL}?endpoint=budget-breakdown`)
       .then(res => res.json())
       .then((data: BudgetCategory[]) => {
         setCategories(Array.isArray(data) ? data : []);
