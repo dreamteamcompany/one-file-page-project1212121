@@ -43,18 +43,22 @@ const TicketFormStep2 = ({
             {availableTicketServices.map((service) => (
               <Card
                 key={service.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${
+                className={`cursor-pointer transition-all duration-200 ${
                   formData.service_id === service.id.toString()
-                    ? 'ring-2 ring-primary bg-accent/50'
-                    : 'hover:bg-accent/30'
+                    ? 'border-primary border-2 shadow-lg shadow-primary/20 bg-primary/5'
+                    : 'hover:border-primary/50 hover:shadow-md'
                 }`}
                 onClick={() => onServiceSelect(service.id)}
               >
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-start justify-between gap-2">
-                    {service.name}
+                    <span className={formData.service_id === service.id.toString() ? 'text-primary font-semibold' : ''}>
+                      {service.name}
+                    </span>
                     {formData.service_id === service.id.toString() && (
-                      <Icon name="CheckCircle2" size={20} className="text-primary flex-shrink-0" />
+                      <div className="rounded-full bg-primary p-1">
+                        <Icon name="Check" size={16} className="text-primary-foreground flex-shrink-0" />
+                      </div>
                     )}
                   </CardTitle>
                   {service.category_name && (
