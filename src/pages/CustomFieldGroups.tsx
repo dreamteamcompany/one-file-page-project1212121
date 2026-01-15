@@ -115,21 +115,16 @@ const CustomFieldGroups = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (fieldGroups.length > 0) {
-      localStorage.setItem('customFieldGroups', JSON.stringify(fieldGroups));
-    }
-  }, [fieldGroups]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    let updatedGroups: FieldGroup[];
     if (editingGroup) {
-      setFieldGroups(fieldGroups.map(g => 
+      updatedGroups = fieldGroups.map(g => 
         g.id === editingGroup.id 
           ? { ...g, name: formData.name, description: formData.description, field_ids: formData.field_ids }
           : g
-      ));
+      );
     } else {
       const newGroup: FieldGroup = {
         id: Math.max(0, ...fieldGroups.map(g => g.id)) + 1,
@@ -138,9 +133,11 @@ const CustomFieldGroups = () => {
         field_ids: formData.field_ids,
         created_at: new Date().toISOString(),
       };
-      setFieldGroups([...fieldGroups, newGroup]);
+      updatedGroups = [...fieldGroups, newGroup];
     }
     
+    setFieldGroups(updatedGroups);
+    localStorage.setItem('customFieldGroups', JSON.stringify(updatedGroups));
     closeDialog();
   };
 

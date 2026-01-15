@@ -93,21 +93,16 @@ const FieldRegistry = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (fields.length > 0) {
-      localStorage.setItem('fieldRegistry', JSON.stringify(fields));
-    }
-  }, [fields]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    let updatedFields: Field[];
     if (editingField) {
-      setFields(fields.map(f => 
+      updatedFields = fields.map(f => 
         f.id === editingField.id 
           ? { ...f, name: formData.name, field_type: formData.field_type }
           : f
-      ));
+      );
     } else {
       const newField: Field = {
         id: Math.max(0, ...fields.map(f => f.id)) + 1,
@@ -115,9 +110,11 @@ const FieldRegistry = () => {
         field_type: formData.field_type,
         created_at: new Date().toISOString(),
       };
-      setFields([...fields, newField]);
+      updatedFields = [...fields, newField];
     }
     
+    setFields(updatedFields);
+    localStorage.setItem('fieldRegistry', JSON.stringify(updatedFields));
     closeDialog();
   };
 
