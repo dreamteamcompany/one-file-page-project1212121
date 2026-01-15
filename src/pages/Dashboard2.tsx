@@ -23,7 +23,7 @@ const Dashboard2 = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'year' | 'custom'>('month');
 
   return (
-    <PageLayout>
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
       <div style={{ padding: '20px 0' }}>

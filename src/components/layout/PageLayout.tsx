@@ -3,10 +3,15 @@ import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 
 interface PageLayoutProps {
   children: ReactNode;
+  menuOpen?: boolean;
+  setMenuOpen?: (open: boolean) => void;
 }
 
-const PageLayout = ({ children }: PageLayoutProps) => {
-  const [menuOpen, setMenuOpen] = useState(false);
+const PageLayout = ({ children, menuOpen: externalMenuOpen, setMenuOpen: externalSetMenuOpen }: PageLayoutProps) => {
+  const [internalMenuOpen, setInternalMenuOpen] = useState(false);
+  const menuOpen = externalMenuOpen !== undefined ? externalMenuOpen : internalMenuOpen;
+  const setMenuOpen = externalSetMenuOpen || setInternalMenuOpen;
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
