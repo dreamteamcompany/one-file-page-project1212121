@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -155,14 +155,14 @@ const CustomFieldGroups = () => {
     setFieldGroups(fieldGroups.filter(g => g.id !== id));
   };
 
-  const handleDialogClose = (open: boolean) => {
+  const handleDialogClose = useCallback((open: boolean) => {
     setDialogOpen(open);
     if (!open) {
       setEditingGroup(null);
       setFormData({ name: '', description: '', field_ids: [] });
       setFieldSearchQuery('');
     }
-  };
+  }, []);
 
   const toggleField = (fieldId: number) => {
     setFormData(prev => ({

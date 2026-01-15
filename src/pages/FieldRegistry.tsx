@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,13 +125,13 @@ const FieldRegistry = () => {
     setFields(fields.filter(f => f.id !== id));
   };
 
-  const handleDialogClose = (open: boolean) => {
+  const handleDialogClose = useCallback((open: boolean) => {
     setDialogOpen(open);
     if (!open) {
       setEditingField(null);
       setFormData({ name: '', field_type: 'text' });
     }
-  };
+  }, []);
 
   const getFieldTypeLabel = (type: string) => {
     return fieldTypes.find(ft => ft.value === type)?.label || type;
