@@ -107,7 +107,7 @@ const PaymentsSidebar = ({
                 </Link>
               </li>
               <li>
-                <Link to="/ticket-services" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-services') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
+                <Link to="/ticket-services-management" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-services-management') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
                   <Icon name="Wrench" size={18} />
                   <span>Услуги заявок</span>
                 </Link>

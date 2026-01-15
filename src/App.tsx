@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Tickets from "./pages/Tickets";
 import TicketDetails from "./pages/TicketDetails";
 import TicketServices from "./pages/TicketServices";
+import TicketServicesManagement from "./pages/TicketServicesManagement";
 import TicketServiceCategories from "./pages/TicketServiceCategories";
 import ServiceProviders from "./pages/ServiceProviders";
 import NotFound from "./pages/NotFound";
@@ -44,6 +45,7 @@ const App = () => {
             <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
             <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetails /></ProtectedRoute>} />
             <Route path="/ticket-services" element={<ProtectedRoute><TicketServices /></ProtectedRoute>} />
+            <Route path="/ticket-services-management" element={<ProtectedRoute><TicketServicesManagement /></ProtectedRoute>} />
             <Route path="/ticket-service-categories" element={<ProtectedRoute><TicketServiceCategories /></ProtectedRoute>} />
             <Route path="/service-providers" element={<ProtectedRoute><ServiceProviders /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
