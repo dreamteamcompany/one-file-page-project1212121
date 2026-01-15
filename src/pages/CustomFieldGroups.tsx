@@ -66,6 +66,7 @@ const CustomFieldGroups = () => {
   const [fieldSearchQuery, setFieldSearchQuery] = useState('');
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
 
@@ -197,6 +198,8 @@ const CustomFieldGroups = () => {
     <div className="flex min-h-screen overflow-hidden">
       <PaymentsSidebar
         menuOpen={menuOpen}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(!collapsed)}
         dictionariesOpen={dictionariesOpen}
         setDictionariesOpen={setDictionariesOpen}
         settingsOpen={false}
