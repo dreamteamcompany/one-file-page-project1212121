@@ -69,6 +69,7 @@ interface TicketFormProps {
     priority_id: string;
     status_id: string;
     service_id: string;
+    service_ids: number[];
     due_date: string;
     custom_fields: Record<string, string>;
   };
@@ -79,6 +80,7 @@ interface TicketFormProps {
   departments: Department[];
   customFields: CustomField[];
   services: Service[];
+  ticketServices?: Service[];
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   onDialogOpen?: () => void;
 }
@@ -94,10 +96,12 @@ const TicketForm = ({
   departments,
   customFields,
   services,
+  ticketServices = [],
   handleSubmit,
   onDialogOpen,
 }: TicketFormProps) => {
   const [step, setStep] = useState(1);
+  const [selectedServices, setSelectedServices] = useState<number[]>([]);
 
 
   
@@ -110,8 +114,19 @@ const TicketForm = ({
     setStep(2);
   };
 
+  const handleNextToServices = () => {
+    if (!formData.service_id) {
+      return;
+    }
+    setStep(3);
+  };
+
   const handleBack = () => {
-    setStep(1);
+    if (step === 3) {
+      setStep(2);
+    } else {
+      setStep(1);
+    }
   };
 
   const handleServiceSelect = (serviceId: number) => {
@@ -124,15 +139,40 @@ const TicketForm = ({
     }
     setDialogOpen(open);
     if (!open) {
-      setTimeout(() => setStep(1), 300);
+      setTimeout(() => {
+        setStep(1);
+        setSelectedServices([]);
+      }, 300);
     }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Обновляем formData с выбранными сервисами перед отправкой
+    const updatedFormData = { ...formData, service_ids: selectedServices };
+    setFormData(updatedFormData);
+    
+    // Небольшая задержка для применения setState
+    await new Promise(resolve => setTimeout(resolve, 10));
     await handleSubmit(e);
     // Форма закроется в handleSubmit, шаг сбросится в handleDialogChange
   };
+
+  const toggleService = (serviceId: number) => {
+    setSelectedServices(prev => 
+      prev.includes(serviceId) 
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  // Фильтруем сервисы по выбранной услуге (используем ticketServices на шаге 2, services на шаге 3)
+  const filteredServices = services.filter(
+    service => service.category_id?.toString() === formData.service_id
+  );
+  
+  // Используем ticketServices для шага 2
+  const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
@@ -148,20 +188,17 @@ const TicketForm = ({
             <Icon name="TicketPlus" size={24} />
             Новая заявка
             <Badge variant="secondary" className="ml-auto text-xs">
-              Шаг {step} из 2
-            </Badge>
-            <Badge variant="destructive" className="text-xs">
-              step={step}
+              Шаг {step} из 3
             </Badge>
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {step === 1 ? '📝 Заполните основную информацию о заявке' : '🎯 Выберите услугу для вашей заявки'}
+            {step === 1 && '📝 Заполните основную информацию о заявке'}
+            {step === 2 && '🎯 Выберите услугу для вашей заявки'}
+            {step === 3 && '🔧 Выберите сервисы для услуги'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-4 bg-yellow-100 dark:bg-yellow-900 rounded text-sm mb-4">
-          DEBUG: Текущий шаг = {step}, Показываю {step === 1 ? 'ФОРМУ' : 'УСЛУГИ'}
-        </div>
+
 
         {step === 1 ? (
           <div className="space-y-4 mt-4">
@@ -302,40 +339,114 @@ const TicketForm = ({
               </Button>
             </div>
           </div>
+        ) : step === 2 ? (
+          <div className="space-y-4 mt-4">
+            <div className="space-y-3">
+              <Label>Выберите услугу *</Label>
+              {availableTicketServices.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Icon name="Package" size={48} className="mx-auto mb-2 opacity-50" />
+                  <p>Нет доступных услуг</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                  {availableTicketServices.map((service) => (
+                    <Card
+                      key={service.id}
+                      className={`cursor-pointer transition-all hover:shadow-md ${
+                        formData.service_id === service.id.toString()
+                          ? 'ring-2 ring-primary bg-accent/50'
+                          : 'hover:bg-accent/30'
+                      }`}
+                      onClick={() => handleServiceSelect(service.id)}
+                    >
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-start justify-between gap-2">
+                          {service.name}
+                          {formData.service_id === service.id.toString() && (
+                            <Icon name="CheckCircle2" size={20} className="text-primary flex-shrink-0" />
+                          )}
+                        </CardTitle>
+                        {service.category_name && (
+                          <Badge variant="secondary" className="w-fit text-xs">
+                            {service.category_name}
+                          </Badge>
+                        )}
+                      </CardHeader>
+                      {service.description && (
+                        <CardContent className="pt-0">
+                          <CardDescription className="text-sm line-clamp-2">
+                            {service.description}
+                          </CardDescription>
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBack}
+                className="gap-2"
+              >
+                <Icon name="ArrowLeft" size={18} />
+                Назад
+              </Button>
+              <Button
+                type="button"
+                onClick={handleNextToServices}
+                className="flex-1 gap-2"
+                disabled={!formData.service_id}
+              >
+                Далее
+                <Icon name="ArrowRight" size={18} />
+              </Button>
+            </div>
+          </div>
         ) : (
           <form onSubmit={onSubmit}>
             <div className="space-y-4 mt-4">
               <div className="space-y-3">
-                <Label>Выберите услугу</Label>
-                {services.length === 0 ? (
+                <Label>Выберите сервисы (минимум 1) *</Label>
+                <p className="text-sm text-muted-foreground">
+                  Выберите один или несколько сервисов для выбранной услуги
+                </p>
+                {filteredServices.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Icon name="Package" size={48} className="mx-auto mb-2 opacity-50" />
-                    <p>Нет доступных услуг</p>
+                    <Icon name="AlertCircle" size={48} className="mx-auto mb-2 opacity-50" />
+                    <p>Нет доступных сервисов для этой услуги</p>
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={handleBack}
+                      className="mt-2"
+                    >
+                      Выбрать другую услугу
+                    </Button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                    {services.map((service) => (
+                    {filteredServices.map((service) => (
                       <Card
                         key={service.id}
                         className={`cursor-pointer transition-all hover:shadow-md ${
-                          formData.service_id === service.id.toString()
+                          selectedServices.includes(service.id)
                             ? 'ring-2 ring-primary bg-accent/50'
                             : 'hover:bg-accent/30'
                         }`}
-                        onClick={() => handleServiceSelect(service.id)}
+                        onClick={() => toggleService(service.id)}
                       >
                         <CardHeader className="pb-3">
                           <CardTitle className="text-base flex items-start justify-between gap-2">
                             {service.name}
-                            {formData.service_id === service.id.toString() && (
+                            {selectedServices.includes(service.id) && (
                               <Icon name="CheckCircle2" size={20} className="text-primary flex-shrink-0" />
                             )}
                           </CardTitle>
-                          {service.category_name && (
-                            <Badge variant="secondary" className="w-fit text-xs">
-                              {service.category_name}
-                            </Badge>
-                          )}
                         </CardHeader>
                         {service.description && (
                           <CardContent className="pt-0">
@@ -350,6 +461,24 @@ const TicketForm = ({
                 )}
               </div>
 
+              {selectedServices.length > 0 && (
+                <div className="p-3 bg-accent/30 rounded-lg">
+                  <p className="text-sm font-medium mb-2">
+                    Выбрано сервисов: {selectedServices.length}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedServices.map(id => {
+                      const service = filteredServices.find(s => s.id === id);
+                      return service ? (
+                        <Badge key={id} variant="secondary">
+                          {service.name}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4 border-t">
                 <Button
                   type="button"
@@ -363,7 +492,7 @@ const TicketForm = ({
                 <Button
                   type="submit"
                   className="flex-1 gap-2"
-                  disabled={!formData.service_id}
+                  disabled={selectedServices.length === 0}
                 >
                   <Icon name="Send" size={18} />
                   Создать заявку

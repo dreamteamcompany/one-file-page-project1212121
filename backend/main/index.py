@@ -965,6 +965,104 @@ def handle_ticket_service_categories(method: str, event: Dict[str, Any], conn) -
     finally:
         cur.close()
 
+def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    cur = conn.cursor()
+    
+    try:
+        if method == 'GET':
+            cur.execute(f'''
+                SELECT ts.id, ts.name, ts.description, ts.category_id, 
+                       tsc.name as category_name, ts.created_at 
+                FROM {SCHEMA}.ticket_services ts
+                LEFT JOIN {SCHEMA}.ticket_service_categories tsc ON ts.category_id = tsc.id
+                WHERE ts.is_active = true
+                ORDER BY ts.name
+            ''')
+            rows = cur.fetchall()
+            ticket_services = [
+                {
+                    'id': row[0],
+                    'name': row[1],
+                    'description': row[2] or '',
+                    'category_id': row[3],
+                    'category_name': row[4],
+                    'created_at': row[5].isoformat() if row[5] else None
+                }
+                for row in rows
+            ]
+            return response(200, ticket_services)
+        
+        elif method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            name = body.get('name')
+            description = body.get('description', '')
+            category_id = body.get('category_id')
+            
+            if not name:
+                return response(400, {'error': 'Name is required'})
+            
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.ticket_services (name, description, category_id) VALUES (%s, %s, %s) RETURNING id, name, description, category_id, created_at",
+                (name, description, category_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+            
+            return response(201, {
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'category_id': row[3],
+                'created_at': row[4].isoformat() if row[4] else None
+            })
+        
+        elif method == 'PUT':
+            body = json.loads(event.get('body', '{}'))
+            ticket_service_id = body.get('id')
+            name = body.get('name')
+            description = body.get('description', '')
+            category_id = body.get('category_id')
+            
+            if not ticket_service_id or not name:
+                return response(400, {'error': 'ID and name are required'})
+            
+            cur.execute(
+                f"UPDATE {SCHEMA}.ticket_services SET name = %s, description = %s, category_id = %s WHERE id = %s RETURNING id, name, description, category_id, created_at",
+                (name, description, category_id, ticket_service_id)
+            )
+            row = cur.fetchone()
+            
+            if not row:
+                return response(404, {'error': 'Ticket service not found'})
+            
+            conn.commit()
+            
+            return response(200, {
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'category_id': row[3],
+                'created_at': row[4].isoformat() if row[4] else None
+            })
+        
+        elif method == 'DELETE':
+            params = event.get('queryStringParameters', {})
+            ticket_service_id = params.get('id')
+            
+            if not ticket_service_id:
+                return response(400, {'error': 'ID is required'})
+            
+            # Мягкое удаление
+            cur.execute(f'UPDATE {SCHEMA}.ticket_services SET is_active = false WHERE id = %s', (ticket_service_id,))
+            conn.commit()
+            
+            return response(200, {'success': True})
+        
+        return response(405, {'error': 'Method not allowed'})
+    
+    finally:
+        cur.close()
+
 def handle_saving_reasons(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     cur = conn.cursor()
     
@@ -2867,6 +2965,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             result = handle_saving_reasons(method, event, conn)
         elif endpoint == 'ticket-service-categories':
             result = handle_ticket_service_categories(method, event, conn)
+        elif endpoint == 'ticket-services':
+            result = handle_ticket_services(method, event, conn)
         elif endpoint == 'users':
             result = handle_users(method, event, conn)
         elif endpoint == 'roles':

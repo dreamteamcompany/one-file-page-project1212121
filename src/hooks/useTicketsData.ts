@@ -42,6 +42,8 @@ interface Service {
   id: number;
   name: string;
   description: string;
+  category_id?: number;
+  category_name?: string;
 }
 
 interface Ticket {
@@ -80,6 +82,7 @@ export const useTicketsData = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [ticketServices, setTicketServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadTickets = async () => {
@@ -109,14 +112,27 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}?endpoint=services`, {
+      // Загружаем "Услуги заявок" (ticket_services) для выбора на шаге 2
+      const ticketServicesResponse = await fetch(`${API_URL}?endpoint=ticket-services`, {
         headers: {
           'X-Auth-Token': token,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (ticketServicesResponse.ok) {
+        const data = await ticketServicesResponse.json();
+        setTicketServices(data || []);
+      }
+
+      // Загружаем "Сервисы услуг" (services) для выбора на шаге 3
+      const servicesResponse = await fetch(`${API_URL}?endpoint=services`, {
+        headers: {
+          'X-Auth-Token': token,
+        },
+      });
+
+      if (servicesResponse.ok) {
+        const data = await servicesResponse.json();
         setServices(data.services || []);
       }
     } catch (err) {
@@ -178,6 +194,7 @@ export const useTicketsData = () => {
     departments,
     customFields,
     services,
+    ticketServices,
     loading,
     loadTickets,
     loadDictionaries,

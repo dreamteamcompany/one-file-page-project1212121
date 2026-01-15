@@ -72,6 +72,7 @@ const Tickets = () => {
     departments,
     customFields,
     services,
+    ticketServices,
     loading,
     loadTickets,
     loadDictionaries,
@@ -171,6 +172,7 @@ const Tickets = () => {
             departments={departments}
             customFields={customFields}
             services={services}
+            ticketServices={ticketServices}
             handleSubmit={handleSubmit}
             onDialogOpen={handleFormOpen}
           />
