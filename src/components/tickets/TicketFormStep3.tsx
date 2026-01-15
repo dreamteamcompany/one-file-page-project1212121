@@ -118,7 +118,6 @@ const TicketFormStep3 = ({
             <Icon name="ArrowRight" size={18} />
           </Button>
         </div>
-      </div>
     </div>
   );
 };
