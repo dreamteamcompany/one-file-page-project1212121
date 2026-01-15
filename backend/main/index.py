@@ -1049,8 +1049,9 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             })
         
         elif method == 'PUT':
+            params = event.get('queryStringParameters', {})
             body = json.loads(event.get('body', '{}'))
-            ticket_service_id = body.get('id')
+            ticket_service_id = params.get('id') or body.get('id')
             name = body.get('name')
             description = body.get('description', '')
             category_id = body.get('category_id')
