@@ -134,9 +134,15 @@ const PaymentsSidebar = ({
           </Link>
         </li>
         <li>
-          <Link to="/custom-field-groups" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/custom-field-groups') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Дополнительные поля">
+          <Link to="/custom-field-groups" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/custom-field-groups') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Группы полей">
             <Icon name="Layers" size={22} />
-            {!collapsed && <span>Дополнительные поля</span>}
+            {!collapsed && <span>Группы полей</span>}
+          </Link>
+        </li>
+        <li>
+          <Link to="/service-field-mappings" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/service-field-mappings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Связь услуг с полями">
+            <Icon name="Link" size={22} />
+            {!collapsed && <span>Связь услуг с полями</span>}
           </Link>
         </li>
         {hasPermission('users', 'read') && (

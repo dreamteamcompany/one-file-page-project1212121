@@ -23,6 +23,7 @@ import TicketServiceCategories from "./pages/TicketServiceCategories";
 import ServiceProviders from "./pages/ServiceProviders";
 import FieldRegistry from "./pages/FieldRegistry";
 import CustomFieldGroups from "./pages/CustomFieldGroups";
+import ServiceFieldMappings from "./pages/ServiceFieldMappings";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -52,6 +53,7 @@ const App = () => {
             <Route path="/service-providers" element={<ProtectedRoute><ServiceProviders /></ProtectedRoute>} />
             <Route path="/field-registry" element={<ProtectedRoute><FieldRegistry /></ProtectedRoute>} />
             <Route path="/custom-field-groups" element={<ProtectedRoute><CustomFieldGroups /></ProtectedRoute>} />
+            <Route path="/service-field-mappings" element={<ProtectedRoute><ServiceFieldMappings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
