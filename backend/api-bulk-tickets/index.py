@@ -3,10 +3,14 @@ API для массовых операций с заявками
 """
 import json
 import os
+import sys
 import jwt
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Dict, Any, Optional
+
+def log(msg):
+    print(msg, file=sys.stderr, flush=True)
 
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
 
@@ -71,6 +75,8 @@ def handler(event, context):
         action = body.get('action')
         ticket_ids = body.get('ticket_ids', [])
         
+        log(f"[BULK-TICKETS] Action: {action}, IDs count: {len(ticket_ids)}")
+        
         if not ticket_ids:
             return response(400, {'error': 'Не указаны ID заявок'})
         
@@ -83,20 +89,35 @@ def handler(event, context):
         if action == 'delete':
             # Массовое удаление заявок
             placeholders = ','.join(['%s'] * len(ticket_ids))
+            log(f"[BULK-TICKETS] Deleting tickets: {ticket_ids}")
             
-            # Сначала удаляем связанные комментарии
-            cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders})", ticket_ids)
+            try:
+                # Сначала удаляем связанные комментарии
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted comments")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting comments: {e}")
             
-            # Удаляем связи с сервисами
-            cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id IN ({placeholders})", ticket_ids)
+            try:
+                # Удаляем связи с сервисами
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted service mappings")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting mappings: {e}")
             
-            # Удаляем кастомные значения полей
-            cur.execute(f"DELETE FROM {SCHEMA}.ticket_custom_field_values WHERE ticket_id IN ({placeholders})", ticket_ids)
+            try:
+                # Удаляем кастомные значения полей
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_custom_field_values WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted custom fields")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting custom fields: {e}")
             
             # Теперь удаляем сами заявки
             cur.execute(f"DELETE FROM {SCHEMA}.tickets WHERE id IN ({placeholders})", ticket_ids)
             successful = cur.rowcount
             conn.commit()
+            
+            log(f"[BULK-TICKETS] Successfully deleted {successful} tickets")
             
             return response(200, {
                 'total': len(ticket_ids),
@@ -148,6 +169,9 @@ def handler(event, context):
             return response(400, {'error': f'Неизвестное действие: {action}'})
     
     except Exception as e:
+        log(f"[BULK-TICKETS] Fatal error: {e}")
+        import traceback
+        log(traceback.format_exc())
         return response(500, {'error': str(e)})
     
     finally:
