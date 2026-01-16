@@ -93,6 +93,7 @@ const TicketDetails = () => {
       <div className="flex-1 overflow-auto -mx-4 md:-mx-6 lg:-mx-[30px] px-4 md:px-6 lg:px-[30px] -mb-4 md:-mb-6 lg:-mb-[30px] pb-4 md:pb-6 lg:pb-[30px]">
         <div className="container max-w-[1600px] mx-auto px-4 lg:px-6 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
+          {/* Desktop: Sidebar слева */}
           <div className="hidden lg:block">
             <TicketDetailsSidebar 
               ticket={ticket}
@@ -110,6 +111,25 @@ const TicketDetails = () => {
             />
           </div>
 
+          {/* Mobile: Sidebar сверху */}
+          <div className="lg:hidden">
+            <TicketDetailsSidebar 
+              ticket={ticket}
+              statuses={statuses}
+              users={users}
+              updating={updating}
+              sendingPing={sendingPing}
+              isCustomer={ticket.created_by === user?.id}
+              hasAssignee={!!ticket.assigned_to}
+              onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
+              onAssignUser={handleAssignUser}
+              onSendPing={handleSendPing}
+              onApprovalChange={loadTicket}
+              onUpdateDueDate={handleUpdateDueDate}
+            />
+          </div>
+
+          {/* Content: на десктопе в центре, на мобилке под сайдбаром */}
           <TicketDetailsContent
             ticket={ticket}
             comments={comments}
@@ -128,23 +148,6 @@ const TicketDetails = () => {
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}
           />
-
-          <div className="lg:hidden">
-            <TicketDetailsSidebar 
-              ticket={ticket}
-              statuses={statuses}
-              users={users}
-              updating={updating}
-              sendingPing={sendingPing}
-              isCustomer={ticket.created_by === user?.id}
-              hasAssignee={!!ticket.assigned_to}
-              onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
-              onAssignUser={handleAssignUser}
-              onSendPing={handleSendPing}
-              onApprovalChange={loadTicket}
-              onUpdateDueDate={handleUpdateDueDate}
-            />
-          </div>
           </div>
         </div>
       </div>
