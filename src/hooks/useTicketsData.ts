@@ -90,7 +90,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}?endpoint=tickets`, {
+      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
         headers: {
           'X-Auth-Token': token,
         },
