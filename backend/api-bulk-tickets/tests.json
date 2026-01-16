@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS request",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST without auth",
+      "method": "POST",
+      "path": "/",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      }
+    }
+  ]
+}

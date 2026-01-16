@@ -197,7 +197,7 @@ const Tickets = () => {
                   priorities={priorities}
                   onChangeStatus={async (statusId) => {
                     try {
-                      const response = await fetch('https://functions.poehali.dev/744488c0-48b7-46cc-8ea8-bb3fc43c2d76', {
+                      const response = await fetch('https://functions.poehali.dev/582ca427-5c6d-4995-b1b5-f4f206c12a07', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -232,7 +232,7 @@ const Tickets = () => {
                   }}
                   onChangePriority={async (priorityId) => {
                     try {
-                      const response = await fetch('https://functions.poehali.dev/744488c0-48b7-46cc-8ea8-bb3fc43c2d76', {
+                      const response = await fetch('https://functions.poehali.dev/582ca427-5c6d-4995-b1b5-f4f206c12a07', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
@@ -267,7 +267,7 @@ const Tickets = () => {
                   }}
                   onDelete={async () => {
                     try {
-                      const response = await fetch('https://functions.poehali.dev/744488c0-48b7-46cc-8ea8-bb3fc43c2d76', {
+                      const response = await fetch('https://functions.poehali.dev/582ca427-5c6d-4995-b1b5-f4f206c12a07', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',
