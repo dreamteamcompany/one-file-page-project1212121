@@ -83,6 +83,17 @@ def handler(event, context):
         if action == 'delete':
             # Массовое удаление заявок
             placeholders = ','.join(['%s'] * len(ticket_ids))
+            
+            # Сначала удаляем связанные комментарии
+            cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders})", ticket_ids)
+            
+            # Удаляем связи с сервисами
+            cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id IN ({placeholders})", ticket_ids)
+            
+            # Удаляем кастомные значения полей
+            cur.execute(f"DELETE FROM {SCHEMA}.ticket_custom_field_values WHERE ticket_id IN ({placeholders})", ticket_ids)
+            
+            # Теперь удаляем сами заявки
             cur.execute(f"DELETE FROM {SCHEMA}.tickets WHERE id IN ({placeholders})", ticket_ids)
             successful = cur.rowcount
             conn.commit()
