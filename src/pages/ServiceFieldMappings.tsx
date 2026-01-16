@@ -36,7 +36,7 @@ const ServiceFieldMappings = () => {
   }, []);
 
   const loadData = async () => {
-    // Load service categories from API
+    // Load service categories from "Услуги заявок" page
     try {
       const response = await apiFetch(`${API_URL}?endpoint=ticket-service-categories`);
       const data = await response.json();
@@ -47,14 +47,15 @@ const ServiceFieldMappings = () => {
       setServiceCategories([]);
     }
 
-    // Load services from API
+    // Load ticket services from "Сервисы услуг" page (NOT services!)
     try {
       const response = await apiFetch(`${API_URL}?endpoint=ticket-services`);
       const data = await response.json();
-      console.log('Loaded services:', data);
+      console.log('Loaded ticket services:', data);
+      // ticket-services endpoint returns objects with category_id field
       setServices(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Failed to load services:', error);
+      console.error('Failed to load ticket services:', error);
       setServices([]);
     }
 
@@ -174,6 +175,13 @@ const ServiceFieldMappings = () => {
   const filteredServices = services.filter(
     (s) => s.category_id === formData.service_category_id
   );
+
+  // Debug logging
+  if (formData.service_category_id > 0) {
+    console.log('Selected category_id:', formData.service_category_id);
+    console.log('All services:', services);
+    console.log('Filtered services:', filteredServices);
+  }
 
   const filteredMappings = mappings.filter((mapping) => {
     const categoryName = getCategoryName(mapping.service_category_id).toLowerCase();
