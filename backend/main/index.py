@@ -8,10 +8,10 @@ from psycopg2.extras import RealDictCursor
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
-# Deploy version: v2.4 - using stderr for logging
+# Deploy version: v2.5.1 - fixed verify_token_and_permission removal
 
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
-VERSION = '2.5.0'
+VERSION = '2.5.1'
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -382,9 +382,9 @@ def handle_me(event: Dict[str, Any], conn) -> Dict[str, Any]:
 # User management handler
 def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     if method == 'GET':
-        user_payload, error = verify_token_and_permission(event, conn, 'users.read')
-        if error:
-            return error
+        user_payload = verify_token(event)
+        if not user_payload:
+            return response(401, {'error': 'Требуется авторизация'})
         
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(f"""
@@ -408,9 +408,10 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         return response(200, users)
     
     elif method == 'POST':
-        user_payload, error = verify_token_and_permission(event, conn, 'users.create')
-        if error:
-            return error
+        user_payload = verify_token(event)
+ 'users.create')
+        if not payload:
+            return response(401, {'error': 'Требуется авторизация'})
         
         body_data = json.loads(event.get('body', '{}'))
         username = body_data.get('username', '').strip()
@@ -473,9 +474,10 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(409, {'error': 'Пользователь с таким логином уже существует'})
     
     elif method == 'PUT':
-        user_payload, error = verify_token_and_permission(event, conn, 'users.update')
-        if error:
-            return error
+        user_payload = verify_token(event)
+ 'users.update')
+        if not payload:
+            return response(401, {'error': 'Требуется авторизация'})
         
         query_params = event.get('queryStringParameters', {}) or {}
         user_id = query_params.get('id')
@@ -559,9 +561,10 @@ def handle_users(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(409, {'error': 'Пользователь с таким email уже существует'})
     
     elif method == 'DELETE':
-        user_payload, error = verify_token_and_permission(event, conn, 'users.delete')
-        if error:
-            return error
+        user_payload = verify_token(event)
+ 'users.delete')
+        if not payload:
+            return response(401, {'error': 'Требуется авторизация'})
         
         query_params = event.get('queryStringParameters', {}) or {}
         user_id = query_params.get('id')
@@ -620,7 +623,8 @@ def handle_categories(method: str, event: Dict[str, Any], conn) -> Dict[str, Any
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'categories.read')
+            payload = verify_token(event)
+ 'categories.read')
             if error:
                 return error
             
@@ -638,7 +642,8 @@ def handle_categories(method: str, event: Dict[str, Any], conn) -> Dict[str, Any
             return response(200, categories)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'categories.create')
+            payload = verify_token(event)
+ 'categories.create')
             if error:
                 return error
             
@@ -686,7 +691,8 @@ def handle_categories(method: str, event: Dict[str, Any], conn) -> Dict[str, Any
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'categories.delete')
+            payload = verify_token(event)
+ 'categories.delete')
             if error:
                 return error
             
@@ -943,7 +949,8 @@ def handle_saving_reasons(method: str, event: Dict[str, Any], conn) -> Dict[str,
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'categories.read')
+            payload = verify_token(event)
+ 'categories.read')
             if error:
                 return error
             
@@ -961,7 +968,8 @@ def handle_saving_reasons(method: str, event: Dict[str, Any], conn) -> Dict[str,
             return response(200, reasons)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'categories.create')
+            payload = verify_token(event)
+ 'categories.create')
             if error:
                 return error
             
@@ -983,7 +991,8 @@ def handle_saving_reasons(method: str, event: Dict[str, Any], conn) -> Dict[str,
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'categories.update')
+            payload = verify_token(event)
+ 'categories.update')
             if error:
                 return error
             
@@ -1013,7 +1022,8 @@ def handle_saving_reasons(method: str, event: Dict[str, Any], conn) -> Dict[str,
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'categories.delete')
+            payload = verify_token(event)
+ 'categories.delete')
             if error:
                 return error
             
@@ -1136,7 +1146,8 @@ def handle_payments(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(200, payments)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'payments.create')
+            payload = verify_token(event)
+ 'payments.create')
             if error:
                 return error
             
@@ -1229,9 +1240,9 @@ def handle_payments(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 return response(500, {'error': f'Database error: {str(e)}', 'details': error_details})
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'payments.update')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             payment_id = body.get('id')
@@ -1312,9 +1323,9 @@ def handle_payments(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(200, new_payment_data)
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'payments.delete')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             params = event.get('queryStringParameters', {})
             payment_id = params.get('id')
@@ -1378,9 +1389,9 @@ def handle_legal_entities(method: str, event: Dict[str, Any], conn) -> Dict[str,
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'legal_entities.read')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             cur.execute('SELECT id, name, inn, kpp, address, created_at FROM legal_entities ORDER BY name')
             rows = cur.fetchall()
@@ -1398,9 +1409,9 @@ def handle_legal_entities(method: str, event: Dict[str, Any], conn) -> Dict[str,
             return response(200, entities)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'legal_entities.create')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             entity_req = LegalEntityRequest(**body)
@@ -1422,9 +1433,9 @@ def handle_legal_entities(method: str, event: Dict[str, Any], conn) -> Dict[str,
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'legal_entities.update')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             entity_id = body.get('id')
@@ -1454,9 +1465,9 @@ def handle_legal_entities(method: str, event: Dict[str, Any], conn) -> Dict[str,
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'legal_entities.delete')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body_data = json.loads(event.get('body', '{}'))
             entity_id = body_data.get('id')
@@ -1480,9 +1491,9 @@ def handle_custom_fields(method: str, event: Dict[str, Any], conn) -> Dict[str, 
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'custom_fields.read')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             cur.execute('SELECT id, name, field_type, options, created_at FROM custom_fields ORDER BY created_at DESC')
             rows = cur.fetchall()
@@ -1499,9 +1510,9 @@ def handle_custom_fields(method: str, event: Dict[str, Any], conn) -> Dict[str, 
             return response(200, fields)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'custom_fields.create')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             field_req = CustomFieldRequest(**body)
@@ -1522,9 +1533,9 @@ def handle_custom_fields(method: str, event: Dict[str, Any], conn) -> Dict[str, 
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'custom_fields.update')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             field_id = body.get('id')
@@ -1553,7 +1564,8 @@ def handle_custom_fields(method: str, event: Dict[str, Any], conn) -> Dict[str, 
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'custom_fields.delete')
+            payload = verify_token(event)
+ 'custom_fields.delete')
             if error:
                 return error
             
@@ -1579,9 +1591,9 @@ def handle_contractors(method: str, event: Dict[str, Any], conn) -> Dict[str, An
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'contractors.read')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             cur.execute('''SELECT id, name, inn, kpp, ogrn, legal_address, actual_address, phone, email, 
                           contact_person, bank_name, bank_bik, bank_account, correspondent_account, notes, created_at 
@@ -1611,7 +1623,8 @@ def handle_contractors(method: str, event: Dict[str, Any], conn) -> Dict[str, An
             return response(200, contractors)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'contractors.create')
+            payload = verify_token(event)
+ 'contractors.create')
             if error:
                 return error
             
@@ -1651,7 +1664,8 @@ def handle_contractors(method: str, event: Dict[str, Any], conn) -> Dict[str, An
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'contractors.update')
+            payload = verify_token(event)
+ 'contractors.update')
             if error:
                 return error
             
@@ -1701,7 +1715,8 @@ def handle_contractors(method: str, event: Dict[str, Any], conn) -> Dict[str, An
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'contractors.delete')
+            payload = verify_token(event)
+ 'contractors.delete')
             if error:
                 return error
             
@@ -1727,7 +1742,8 @@ def handle_roles(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'roles.read')
+            payload = verify_token(event)
+ 'roles.read')
             if error:
                 return error
             
@@ -1799,9 +1815,9 @@ def handle_roles(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(200, result)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'roles.create')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             role_req = RoleRequest(**body)
@@ -1829,7 +1845,8 @@ def handle_roles(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'roles.update')
+            payload = verify_token(event)
+ 'roles.update')
             if error:
                 return error
             
@@ -1867,7 +1884,8 @@ def handle_roles(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'roles.delete')
+            payload = verify_token(event)
+ 'roles.delete')
             if error:
                 return error
             
@@ -1903,7 +1921,8 @@ def handle_permissions(method: str, event: Dict[str, Any], conn) -> Dict[str, An
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'permissions.read')
+            payload = verify_token(event)
+ 'permissions.read')
             if error:
                 return error
             
@@ -1923,7 +1942,8 @@ def handle_permissions(method: str, event: Dict[str, Any], conn) -> Dict[str, An
             return response(200, permissions)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'permissions.create')
+            payload = verify_token(event)
+ 'permissions.create')
             if error:
                 return error
             
@@ -1947,7 +1967,8 @@ def handle_permissions(method: str, event: Dict[str, Any], conn) -> Dict[str, An
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'permissions.update')
+            payload = verify_token(event)
+ 'permissions.update')
             if error:
                 return error
             
@@ -1979,7 +2000,8 @@ def handle_permissions(method: str, event: Dict[str, Any], conn) -> Dict[str, An
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'permissions.delete')
+            payload = verify_token(event)
+ 'permissions.delete')
             if error:
                 return error
             
@@ -2009,7 +2031,8 @@ def handle_customer_departments(method: str, event: Dict[str, Any], conn) -> Dic
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'customer_departments.read')
+            payload = verify_token(event)
+ 'customer_departments.read')
             if error:
                 return error
             
@@ -2028,7 +2051,8 @@ def handle_customer_departments(method: str, event: Dict[str, Any], conn) -> Dic
             return response(200, departments)
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'customer_departments.create')
+            payload = verify_token(event)
+ 'customer_departments.create')
             if error:
                 return error
             
@@ -2051,7 +2075,8 @@ def handle_customer_departments(method: str, event: Dict[str, Any], conn) -> Dic
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'customer_departments.update')
+            payload = verify_token(event)
+ 'customer_departments.update')
             if error:
                 return error
             
@@ -2082,7 +2107,8 @@ def handle_customer_departments(method: str, event: Dict[str, Any], conn) -> Dic
             })
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'customer_departments.remove')
+            payload = verify_token(event)
+ 'customer_departments.remove')
             if error:
                 return error
             
@@ -2270,9 +2296,9 @@ def handle_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'services.read')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             cur.execute(f"""
                 SELECT 
@@ -2294,9 +2320,9 @@ def handle_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(200, {'services': services})
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'services.create')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             body = json.loads(event.get('body', '{}'))
             service_req = ServiceRequest(**body)
@@ -2324,9 +2350,9 @@ def handle_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             })
         
         elif method == 'PUT':
-            payload, error = verify_token_and_permission(event, conn, 'services.update')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             params = event.get('queryStringParameters') or {}
             service_id = params.get('id')
@@ -2368,9 +2394,9 @@ def handle_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         elif method == 'DELETE':
             try:
-                payload, error = verify_token_and_permission(event, conn, 'services.delete')
-                if error:
-                    return error
+                payload = verify_token(event)
+                if not payload:
+                    return response(401, {'error': 'Требуется авторизация'})
                 
                 params = event.get('queryStringParameters') or {}
                 service_id = params.get('id')
@@ -2439,7 +2465,8 @@ def handle_savings(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'payments.read')
+            payload = verify_token(event)
+ 'payments.read')
             if error:
                 return error
             
@@ -2462,7 +2489,8 @@ def handle_savings(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(200, [dict(row) for row in rows])
         
         elif method == 'POST':
-            payload, error = verify_token_and_permission(event, conn, 'payments.create')
+            payload = verify_token(event)
+ 'payments.create')
             if error:
                 return error
             
@@ -2484,9 +2512,9 @@ def handle_savings(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return response(201, dict(row))
         
         elif method == 'DELETE':
-            payload, error = verify_token_and_permission(event, conn, 'payments.delete')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             params = event.get('queryStringParameters') or {}
             saving_id = params.get('id')
@@ -3469,6 +3497,7 @@ def handle_comment_reactions(method: str, event: Dict[str, Any], conn, payload: 
         return response(500, {'error': str(e)})
     finally:
         cur.close()
+
 
 def handle_upload_file(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Загрузка файла в S3"""
