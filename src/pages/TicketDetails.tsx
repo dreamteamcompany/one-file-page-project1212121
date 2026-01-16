@@ -90,7 +90,7 @@ const TicketDetails = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto light:bg-[#f3f3f9]">
+      <div className="flex-1 overflow-auto">
         <div className="container max-w-[1600px] mx-auto px-4 lg:px-6 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
           <div className="hidden lg:block">
