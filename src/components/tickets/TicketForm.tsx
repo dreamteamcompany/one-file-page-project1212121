@@ -140,12 +140,13 @@ const TicketForm = ({
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Автоматически проставляем title и category_id из выбранной услуги
+    // Автоматически проставляем title из выбранной услуги
+    // НЕ передаем category_id, так как он относится к ticket_service_categories, а не ticket_categories
     const updatedFormData = { 
       ...formData, 
       service_ids: selectedServices,
       title: selectedTicketService?.ticket_title || formData.title || 'Новая заявка',
-      category_id: selectedTicketService?.category_id?.toString() || formData.category_id,
+      category_id: '', // Оставляем пустым, чтобы не нарушать FK constraint
     };
     
     // Обновляем formData синхронно

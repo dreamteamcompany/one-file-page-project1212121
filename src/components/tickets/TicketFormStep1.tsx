@@ -60,9 +60,9 @@ const TicketFormStep1 = ({
   onSubmit,
   onBack,
 }: TicketFormStep1Props) => {
-  // Автоматически устанавливаем название заявки и категорию из выбранной услуги
+  // Автоматически устанавливаем название заявки из выбранной услуги
   const ticketTitle = selectedTicketService?.ticket_title || '';
-  const categoryName = selectedTicketService?.category_name || 'Не указана';
+  
   return (
     <form onSubmit={onSubmit}>
       <div className="space-y-4 mt-4">
@@ -73,13 +73,6 @@ const TicketFormStep1 = ({
             <Label className="text-sm font-medium">Название заявки</Label>
           </div>
           <p className="text-base font-semibold">{ticketTitle}</p>
-          {categoryName !== 'Не указана' && (
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-              <Icon name="Folder" size={16} className="text-muted-foreground" />
-              <Label className="text-sm font-medium">Категория</Label>
-              <span className="text-sm ml-auto">{categoryName}</span>
-            </div>
-          )}
         </div>
       )}
 
