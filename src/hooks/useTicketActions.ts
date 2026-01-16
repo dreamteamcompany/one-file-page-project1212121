@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 export const useTicketActions = (
   ticketId: string | undefined,
@@ -20,7 +20,7 @@ export const useTicketActions = (
     
     try {
       setSubmittingComment(true);
-      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ export const useTicketActions = (
   const handleUpdateStatus = async (statusId: number) => {
     try {
       setUpdating(true);
-      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ export const useTicketActions = (
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
-      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 interface CustomField {
   id: number;
@@ -48,7 +48,7 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
     const dataToSubmit = overrideData || formData;
 
     try {
-      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

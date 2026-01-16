@@ -41,7 +41,6 @@ export const apiFetch = async (url: string, options: RequestInit = {}): Promise<
     if (endpoint && ENDPOINT_MAP[endpoint]) {
       const newBase = ENDPOINT_MAP[endpoint];
       finalUrl = newBase + urlObj.search;
-      console.log(`[API] Redirecting ${endpoint}: ${url} -> ${finalUrl}`);
     }
   } catch (e) {
     console.error('[API] URL parsing error:', e);

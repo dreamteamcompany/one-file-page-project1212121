@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 import UsersHeader from '@/components/users/UsersHeader';
 import UserFormDialog from '@/components/users/UserFormDialog';
 import UsersTable from '@/components/users/UsersTable';
@@ -64,7 +64,7 @@ const Users = () => {
 
   const loadUsers = async () => {
     try {
-      const response = await fetch(`${API_URL}?endpoint=users`, {
+      const response = await apiFetch(`${API_URL}?endpoint=users`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -86,7 +86,7 @@ const Users = () => {
 
   const loadRoles = async () => {
     try {
-      const response = await fetch(`${API_URL}?endpoint=roles`, {
+      const response = await apiFetch(`${API_URL}?endpoint=roles`, {
         headers: {
           'X-Auth-Token': token || '',
         },
@@ -134,7 +134,7 @@ const Users = () => {
         body.photo_url = formData.photo_url;
       }
       
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',

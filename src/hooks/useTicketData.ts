@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 export interface CustomField {
   id: number;
@@ -98,7 +98,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadTicket = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -119,7 +119,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
 
   const loadStatuses = async () => {
     try {
-      const response = await fetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -135,7 +135,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
 
   const loadUsers = async () => {
     try {
-      const response = await fetch(`${API_URL}?endpoint=users`, {
+      const response = await apiFetch(`${API_URL}?endpoint=users`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -158,7 +158,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadHistory = async () => {
     try {
       setLoadingHistory(true);
-      const response = await fetch(`${API_URL}?endpoint=ticket-history&ticket_id=${id}`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-history&ticket_id=${id}`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -177,7 +177,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadComments = async () => {
     try {
       setLoadingComments(true);
-      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${id}`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${id}`, {
         headers: {
           'X-Auth-Token': token,
         },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import PaymentsHeader from '@/components/payments/PaymentsHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -64,7 +64,7 @@ const AuditLogs = () => {
           ...(actionFilter && actionFilter !== 'all' && { action: actionFilter }),
         });
 
-        const response = await fetch(`${API_URL}?endpoint=audit-logs&${params}`, {
+        const response = await apiFetch(`${API_URL}?endpoint=audit-logs&${params}`, {
           headers: { 'X-Auth-Token': token },
         });
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 interface Payment {
   id: number;
@@ -32,10 +32,10 @@ export const usePendingApprovals = () => {
     const loadPendingApprovals = async () => {
       try {
         const [paymentsRes, servicesRes] = await Promise.all([
-          fetch(`${API_URL}?endpoint=payments`, {
+          apiFetch(`${API_URL}?endpoint=payments`, {
             headers: { 'X-Auth-Token': token },
           }),
-          fetch(`${API_URL}?endpoint=services`, {
+          apiFetch(`${API_URL}?endpoint=services`, {
             headers: { 'X-Auth-Token': token },
           }),
         ]);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 interface Category {
   id: number;
@@ -90,7 +90,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -114,7 +114,7 @@ export const useTicketsData = () => {
 
     try {
       // Загружаем "Услуги заявок" (ticket_services) для выбора на шаге 2
-      const ticketServicesResponse = await fetch(`${API_URL}?endpoint=ticket-services`, {
+      const ticketServicesResponse = await apiFetch(`${API_URL}?endpoint=ticket-services`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -126,7 +126,7 @@ export const useTicketsData = () => {
       }
 
       // Загружаем "Сервисы услуг" (services) для выбора на шаге 3
-      const servicesResponse = await fetch(`${API_URL}?endpoint=services`, {
+      const servicesResponse = await apiFetch(`${API_URL}?endpoint=services`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -145,7 +145,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
         headers: {
           'X-Auth-Token': token,
         },

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Ticket, Comment, User } from './TicketDetailsModalTypes';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: () => void) => {
   const { token, user } = useAuth();
@@ -31,7 +31,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     console.log('[loadUsers] Starting to load users...');
     try {
-      const response = await fetch(`${API_URL}?endpoint=users`, {
+      const response = await apiFetch(`${API_URL}?endpoint=users`, {
         headers: { 'X-Auth-Token': token },
       });
 
@@ -64,7 +64,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setLoadingComments(true);
     try {
-      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
         headers: { 'X-Auth-Token': token },
       });
 
@@ -97,7 +97,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
             reader.readAsDataURL(file);
           });
           
-          const uploadResponse = await fetch(
+          const uploadResponse = await apiFetch(
             `${API_URL}?endpoint=upload-file`,
             {
               method: 'POST',
@@ -124,7 +124,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
         fileUrls = results.filter((r): r is { filename: string; url: string; size: number } => r !== null);
       }
       
-      const response = await fetch(`${API_URL}?endpoint=ticket-comments-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setUpdating(true);
     try {
-      const response = await fetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setSendingPing(true);
     try {
-      await fetch(`${API_URL}?endpoint=ticket-comments-api`, {
+      await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -242,7 +242,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
     if (!token) return;
 
     try {
-      await fetch(`${API_URL}?endpoint=comment-reactions`, {
+      await apiFetch(`${API_URL}?endpoint=comment-reactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 interface CustomField {
   id: number;
@@ -56,10 +56,10 @@ export const usePendingApprovalsData = () => {
     const loadData = async () => {
       try {
         const [paymentsRes, servicesRes] = await Promise.all([
-          fetch(`${API_URL}?endpoint=payments`, {
+          apiFetch(`${API_URL}?endpoint=payments`, {
             headers: { 'X-Auth-Token': token },
           }),
-          fetch(`${API_URL}?endpoint=services`, {
+          apiFetch(`${API_URL}?endpoint=services`, {
             headers: { 'X-Auth-Token': token },
           }),
         ]);
@@ -108,7 +108,7 @@ export const usePendingApprovalsData = () => {
   const handleApprove = async (paymentId: number, approveComment?: string) => {
     console.log('[handleApprove] Called with paymentId:', paymentId, 'comment:', approveComment);
     try {
-      const response = await fetch(`${API_URL}?endpoint=approvals`, {
+      const response = await apiFetch(`${API_URL}?endpoint=approvals`, {
         method: 'PUT',
         headers: {
           'X-Auth-Token': token!,
@@ -148,7 +148,7 @@ export const usePendingApprovalsData = () => {
   const handleReject = async (paymentId: number, rejectComment?: string) => {
     console.log('[handleReject] Called with paymentId:', paymentId, 'comment:', rejectComment);
     try {
-      const response = await fetch(`${API_URL}?endpoint=approvals`, {
+      const response = await apiFetch(`${API_URL}?endpoint=approvals`, {
         method: 'PUT',
         headers: {
           'X-Auth-Token': token!,

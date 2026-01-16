@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { API_URL } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
 
 interface Permission {
   name: string;
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!currentToken) return;
 
     try {
-      const response = await fetch(`${API_URL}?endpoint=refresh`, {
+      const response = await apiFetch(`${API_URL}?endpoint=refresh`, {
         headers: {
           'X-Auth-Token': currentToken,
         },
@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     try {
       console.log('[checkAuth] Verifying token with backend...');
-      const response = await fetch(`${API_URL}?endpoint=me`, {
+      const response = await apiFetch(`${API_URL}?endpoint=me`, {
         headers: {
           'X-Auth-Token': savedToken,
         },
@@ -173,7 +173,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (!currentToken) return;
 
         try {
-          const response = await fetch(`${API_URL}?endpoint=refresh`, {
+          const response = await apiFetch(`${API_URL}?endpoint=refresh`, {
             headers: {
               'X-Auth-Token': currentToken,
             },
@@ -212,7 +212,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     console.log('[Login] Starting login request...', { username, url: `${API_URL}?endpoint=login` });
     
     try {
-      const response = await fetch(`${API_URL}?endpoint=login`, {
+      const response = await apiFetch(`${API_URL}?endpoint=login`, {
         method: 'POST',
         mode: 'cors',
         headers: {
