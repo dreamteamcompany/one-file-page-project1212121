@@ -188,50 +188,7 @@ def get_user_with_permissions(conn, user_id: int) -> Optional[Dict[str, Any]]:
         'permissions': permissions
     }
 
-def verify_token_and_permission(event: Dict[str, Any], conn, required_permission: str):
-    token = event.get('headers', {}).get('X-Auth-Token') or event.get('headers', {}).get('x-auth-token')
-    if not token:
-        return None, response(401, {'error': 'Требуется авторизация'})
-    
-    secret = os.environ.get('JWT_SECRET')
-    if not secret:
-        return None, response(500, {'error': 'Server configuration error'})
-    
-    try:
-        payload = jwt.decode(token, secret, algorithms=['HS256'])
-    except jwt.ExpiredSignatureError:
-        return None, response(401, {'error': 'Токен истек'})
-    except jwt.InvalidTokenError:
-        return None, response(401, {'error': 'Недействительный токен'})
-    
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # Проверяем, является ли пользователь администратором
-    cur.execute(
-        f"SELECT r.name FROM {SCHEMA}.roles r JOIN {SCHEMA}.user_roles ur ON r.id = ur.role_id WHERE ur.user_id = %s",
-        (payload['user_id'],)
-    )
-    
-    roles = [row['name'] for row in cur.fetchall()]
-    
-    # Если у пользователя роль администратора - даём полный доступ
-    if 'Администратор' in roles or 'Admin' in roles:
-        cur.close()
-        return payload, None
-    
-    # Иначе проверяем конкретное разрешение
-    cur.execute(
-        f"SELECT DISTINCT p.name FROM {SCHEMA}.permissions p JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id WHERE ur.user_id = %s",
-        (payload['user_id'],)
-    )
-    
-    permissions = [row['name'] for row in cur.fetchall()]
-    cur.close()
-    
-    if required_permission not in permissions:
-        return None, response(403, {'error': 'Недостаточно прав'})
-    
-    return payload, None
+# Removed old verify_token_and_permission function - replaced with verify_token
 
 def create_audit_log(
     conn,
@@ -1081,9 +1038,9 @@ def handle_payments(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     
     try:
         if method == 'GET':
-            payload, error = verify_token_and_permission(event, conn, 'payments.read')
-            if error:
-                return error
+            payload = verify_token(event)
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             
             cur.execute(f"""
                 SELECT 
