@@ -114,7 +114,7 @@ const Services = () => {
     try {
       const response = await apiFetch(`${API_URL}?endpoint=services`);
       const data = await response.json();
-      setServices(data.services || []);
+      setServices(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load services:', error);
       setServices([]);
