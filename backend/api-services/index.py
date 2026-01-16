@@ -125,6 +125,19 @@ def handler(event, context):
             
             return response(201, new_service)
         
+        elif method == 'DELETE':
+            service_id = event.get('queryStringParameters', {}).get('id')
+            
+            if not service_id:
+                return response(400, {'error': 'ID сервиса обязателен'})
+            
+            cur = conn.cursor()
+            cur.execute(f"DELETE FROM {SCHEMA}.services WHERE id = %s", (service_id,))
+            conn.commit()
+            cur.close()
+            
+            return response(200, {'message': 'Сервис удален'})
+        
         else:
             return response(405, {'error': 'Method not allowed'})
     
