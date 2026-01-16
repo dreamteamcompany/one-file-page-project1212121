@@ -47,6 +47,7 @@ interface Service {
   id: number;
   name: string;
   description: string;
+  ticket_title?: string;
   category_id?: number;
   category_name?: string;
   service_ids?: number[];
@@ -138,7 +139,14 @@ const TicketForm = ({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedFormData = { ...formData, service_ids: selectedServices };
+    
+    // Автоматически проставляем title и category_id из выбранной услуги
+    const updatedFormData = { 
+      ...formData, 
+      service_ids: selectedServices,
+      title: selectedTicketService?.ticket_title || formData.title,
+      category_id: selectedTicketService?.category_id?.toString() || formData.category_id,
+    };
     setFormData(updatedFormData);
     
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -211,9 +219,9 @@ const TicketForm = ({
           <TicketFormStep1
             formData={formData}
             setFormData={setFormData}
-            categories={categories}
             priorities={priorities}
             customFields={customFields}
+            selectedTicketService={selectedTicketService}
             onSubmit={onSubmit}
             onBack={handleBack}
           />

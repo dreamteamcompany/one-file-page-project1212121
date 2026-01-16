@@ -11,10 +11,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-interface Category {
+interface TicketService {
   id: number;
   name: string;
-  icon: string;
+  description?: string;
+  ticket_title?: string;
+  category_id?: number;
+  category_name?: string;
+  service_ids?: number[];
 }
 
 interface Priority {
@@ -40,9 +44,9 @@ interface TicketFormStep1Props {
     custom_fields: Record<string, string>;
   };
   setFormData: (data: any) => void;
-  categories: Category[];
   priorities: Priority[];
   customFields: CustomField[];
+  selectedTicketService?: TicketService;
   onSubmit: (e: React.FormEvent) => Promise<void>;
   onBack: () => void;
 }
@@ -50,27 +54,34 @@ interface TicketFormStep1Props {
 const TicketFormStep1 = ({
   formData,
   setFormData,
-  categories,
   priorities,
   customFields,
+  selectedTicketService,
   onSubmit,
   onBack,
 }: TicketFormStep1Props) => {
+  // Автоматически устанавливаем название заявки и категорию из выбранной услуги
+  const ticketTitle = selectedTicketService?.ticket_title || '';
+  const categoryName = selectedTicketService?.category_name || 'Не указана';
   return (
     <form onSubmit={onSubmit}>
       <div className="space-y-4 mt-4">
-      <div className="space-y-2">
-        <Label htmlFor="title">Название заявки *</Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={(e) =>
-            setFormData({ ...formData, title: e.target.value })
-          }
-          placeholder="Краткое описание проблемы"
-          required
-        />
-      </div>
+      {ticketTitle && (
+        <div className="p-4 bg-accent/30 rounded-lg border">
+          <div className="flex items-center gap-2 mb-2">
+            <Icon name="Tag" size={16} className="text-muted-foreground" />
+            <Label className="text-sm font-medium">Название заявки</Label>
+          </div>
+          <p className="text-base font-semibold">{ticketTitle}</p>
+          {categoryName !== 'Не указана' && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+              <Icon name="Folder" size={16} className="text-muted-foreground" />
+              <Label className="text-sm font-medium">Категория</Label>
+              <span className="text-sm ml-auto">{categoryName}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="description">Описание</Label>
@@ -85,32 +96,7 @@ const TicketFormStep1 = ({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="category_id">Категория</Label>
-          <Select
-            value={formData.category_id}
-            onValueChange={(value) =>
-              setFormData({ ...formData, category_id: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите категорию" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.id.toString()}>
-                  <div className="flex items-center gap-2">
-                    <Icon name={category.icon} size={16} />
-                    {category.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
+      <div className="space-y-2">
           <Label htmlFor="priority_id">Приоритет</Label>
           <Select
             value={formData.priority_id}
@@ -135,19 +121,6 @@ const TicketFormStep1 = ({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="due_date">Желаемый срок</Label>
-        <Input
-          id="due_date"
-          type="date"
-          value={formData.due_date}
-          onChange={(e) =>
-            setFormData({ ...formData, due_date: e.target.value })
-          }
-        />
       </div>
 
       {customFields.length > 0 && (
@@ -190,7 +163,6 @@ const TicketFormStep1 = ({
         <Button
           type="submit"
           className="flex-1 gap-2"
-          disabled={!formData.title.trim()}
         >
           <Icon name="Send" size={18} />
           Создать заявку
