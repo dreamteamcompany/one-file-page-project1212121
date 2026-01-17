@@ -105,9 +105,11 @@ const Users = () => {
   };
 
   useEffect(() => {
-    loadUsers();
-    loadRoles();
-  }, []);
+    if (token) {
+      loadUsers();
+      loadRoles();
+    }
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
