@@ -116,7 +116,7 @@ const Users = () => {
     
     try {
       const url = editingUser 
-        ? `https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users&id=${editingUser.id}`
+        ? `${API_URL}?endpoint=users&id=${editingUser.id}`
         : `${API_URL}?endpoint=users`;
       
       const method = editingUser ? 'PUT' : 'POST';
