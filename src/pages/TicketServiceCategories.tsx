@@ -63,14 +63,14 @@ const TicketServiceCategories = () => {
   };
 
   const loadCategories = () => {
-    apiFetch(`${API_URL}?endpoint=ticket-service-categories`)
+    apiFetch(`${API_URL}?endpoint=service_categories`)
       .then(res => res.json())
       .then((data) => {
         setCategories(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
-        console.error('Failed to load ticket service categories:', err);
+        console.error('Failed to load service categories:', err);
         setCategories([]);
         setLoading(false);
       });
@@ -84,7 +84,7 @@ const TicketServiceCategories = () => {
     e.preventDefault();
     
     try {
-      const url = `${API_URL}?endpoint=ticket-service-categories`;
+      const url = `${API_URL}?endpoint=service_categories`;
       const method = editingCategory ? 'PUT' : 'POST';
       const body = editingCategory 
         ? { id: editingCategory.id, ...formData }
@@ -120,7 +120,7 @@ const TicketServiceCategories = () => {
 
     try {
       const response = await apiFetch(
-        `${API_URL}?endpoint=ticket-service-categories&id=${id}`,
+        `${API_URL}?endpoint=service_categories&id=${id}`,
         { method: 'DELETE' }
       );
 

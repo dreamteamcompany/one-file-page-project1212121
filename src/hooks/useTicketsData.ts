@@ -90,7 +90,7 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -113,19 +113,19 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      // Загружаем "Услуги заявок" (ticket_services) для выбора на шаге 2
-      const ticketServicesResponse = await apiFetch(`${API_URL}?endpoint=ticket-services`, {
+      // Загружаем "Категории услуг" для выбора на шаге 2
+      const categoriesResponse = await apiFetch(`${API_URL}?endpoint=service_categories`, {
         headers: {
           'X-Auth-Token': token,
         },
       });
 
-      if (ticketServicesResponse.ok) {
-        const data = await ticketServicesResponse.json();
+      if (categoriesResponse.ok) {
+        const data = await categoriesResponse.json();
         setTicketServices(data || []);
       }
 
-      // Загружаем "Сервисы услуг" (services) для выбора на шаге 3
+      // Загружаем "Сервисы услуг" для выбора на шаге 3
       const servicesResponse = await apiFetch(`${API_URL}?endpoint=services`, {
         headers: {
           'X-Auth-Token': token,
