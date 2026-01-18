@@ -183,7 +183,11 @@ export const useTicketsData = () => {
   useEffect(() => {
     if (token) {
       setLoading(true);
-      loadTickets().finally(() => setLoading(false));
+      Promise.all([
+        loadTickets(),
+        loadDictionaries(),
+        loadServices()
+      ]).finally(() => setLoading(false));
     }
   }, [token]);
 

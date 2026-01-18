@@ -79,6 +79,8 @@ def handler(event: dict, context) -> dict:
             return handle_tickets(method, event, conn)
         elif endpoint == 'service_categories':
             return handle_service_categories(method, event, conn)
+        elif endpoint == 'ticket-dictionaries-api':
+            return handle_ticket_dictionaries(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -388,3 +390,43 @@ def handle_service_categories(method: str, event: Dict[str, Any], conn) -> Dict[
         return response(200, {'message': 'Категория удалена'})
     
     return response(405, {'error': 'Method not allowed'})
+
+def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Обработчик для получения справочников заявок"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+    
+    cur = conn.cursor()
+    
+    try:
+        cur.execute('SELECT id, name, icon FROM ticket_categories ORDER BY name')
+        categories = [dict(row) for row in cur.fetchall()]
+        
+        cur.execute('SELECT id, name, level, color FROM ticket_priorities ORDER BY level DESC')
+        priorities = [dict(row) for row in cur.fetchall()]
+        
+        cur.execute('SELECT id, name, color, is_closed FROM ticket_statuses ORDER BY id')
+        statuses = [dict(row) for row in cur.fetchall()]
+        
+        cur.execute('SELECT id, name, description FROM departments ORDER BY name')
+        departments = [dict(row) for row in cur.fetchall()]
+        
+        cur.execute('SELECT id, name, field_type, options, is_required FROM ticket_custom_fields ORDER BY name')
+        custom_fields = [dict(row) for row in cur.fetchall()]
+        
+        return response(200, {
+            'categories': categories,
+            'priorities': priorities,
+            'statuses': statuses,
+            'departments': departments,
+            'custom_fields': custom_fields
+        })
+    
+    except Exception as e:
+        return response(500, {'error': str(e)})
+    finally:
+        cur.close()

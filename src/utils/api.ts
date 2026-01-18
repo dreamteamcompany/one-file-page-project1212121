@@ -14,6 +14,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'customer_departments': GENERAL_API,
   'tickets': TICKETS_API,
   'service_categories': TICKETS_API,
+  'ticket-dictionaries-api': TICKETS_API,
   'services': 'https://functions.poehali.dev/2cfd72d5-c228-4dc9-af9b-f592d65be207',
   'payments': 'https://functions.poehali.dev/42303a3a-efd9-4863-9d99-b41962f017dc',
 };
