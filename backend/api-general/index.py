@@ -1,46 +1,12 @@
 import json
 import os
 import sys
-import jwt
 import bcrypt
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel, Field
-
-SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
-JWT_SECRET = os.environ.get('JWT_SECRET', 'super_secret_key_change_me')
-DATABASE_URL = os.environ.get('DATABASE_URL')
+from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA, JWT_SECRET
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
-
-def response(status: int, data: dict):
-    return {
-        'statusCode': status,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, X-User-Id, Authorization'
-        },
-        'body': json.dumps(data, ensure_ascii=False, default=str)
-    }
-
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-
-def verify_token(event: dict) -> dict | None:
-    headers = event.get('headers', {})
-    token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
-    
-    if not token:
-        return None
-    
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-        return payload
-    except:
-        return None
 
 class UserRequest(BaseModel):
     username: str = Field(..., min_length=1)
@@ -94,19 +60,19 @@ def handle_users(method, event, conn):
             user_id = params.get('id')
             
             if user_id:
-                cur.execute(f"SELECT * FROM {SCHEMA}.users WHERE id = %s", (user_id,))
+                cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
                 user = cur.fetchone()
                 if not user:
                     return response(404, {'error': 'User not found'})
                 return response(200, dict(user))
             else:
-                cur.execute(f"""
+                cur.execute("""
                     SELECT u.*, 
                            COALESCE(json_agg(DISTINCT jsonb_build_object('id', r.id, 'name', r.name)) 
                                     FILTER (WHERE r.id IS NOT NULL), '[]') as roles
-                    FROM {SCHEMA}.users u
-                    LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
-                    LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
+                    FROM users u
+                    LEFT JOIN user_roles ur ON u.id = ur.user_id
+                    LEFT JOIN roles r ON ur.role_id = r.id
                     GROUP BY u.id
                     ORDER BY u.id
                 """)
@@ -122,14 +88,14 @@ def handle_users(method, event, conn):
             
             password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.users (username, password_hash, full_name, position, email, photo_url)
+            cur.execute("""
+                INSERT INTO users (username, password_hash, full_name, position, email, photo_url)
                 VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
             """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
             user_id = cur.fetchone()['id']
             
             for role_id in req.role_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, role_id))
+                cur.execute("INSERT INTO user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, role_id))
             
             conn.commit()
             return response(201, {'id': user_id, 'message': 'User created'})
@@ -145,21 +111,21 @@ def handle_users(method, event, conn):
             
             if req.password:
                 password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                cur.execute(f"""
-                    UPDATE {SCHEMA}.users 
+                cur.execute("""
+                    UPDATE users 
                     SET username=%s, password_hash=%s, full_name=%s, position=%s, email=%s, photo_url=%s
                     WHERE id=%s
                 """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url, user_id))
             else:
-                cur.execute(f"""
-                    UPDATE {SCHEMA}.users 
+                cur.execute("""
+                    UPDATE users 
                     SET username=%s, full_name=%s, position=%s, email=%s, photo_url=%s
                     WHERE id=%s
                 """, (req.username, req.full_name, req.position, req.email, req.photo_url, user_id))
             
-            cur.execute(f"DELETE FROM {SCHEMA}.user_roles WHERE user_id=%s", (user_id,))
+            cur.execute("DELETE FROM user_roles WHERE user_id=%s", (user_id,))
             for role_id in req.role_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, role_id))
+                cur.execute("INSERT INTO user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, role_id))
             
             conn.commit()
             return response(200, {'message': 'User updated'})
@@ -170,7 +136,7 @@ def handle_users(method, event, conn):
             if not user_id:
                 return response(400, {'error': 'User ID required'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.users WHERE id=%s", (user_id,))
+            cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
             conn.commit()
             return response(200, {'message': 'User deleted'})
         
@@ -188,14 +154,14 @@ def handle_roles(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute(f"""
+            cur.execute("""
                 SELECT r.*, 
                        COALESCE(json_agg(DISTINCT jsonb_build_object(
                            'id', p.id, 'name', p.name, 'resource', p.resource, 'action', p.action
                        )) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions
-                FROM {SCHEMA}.roles r
-                LEFT JOIN {SCHEMA}.role_permissions rp ON r.id = rp.role_id
-                LEFT JOIN {SCHEMA}.permissions p ON rp.permission_id = p.id
+                FROM roles r
+                LEFT JOIN role_permissions rp ON r.id = rp.role_id
+                LEFT JOIN permissions p ON rp.permission_id = p.id
                 GROUP BY r.id
                 ORDER BY r.id
             """)
@@ -206,12 +172,12 @@ def handle_roles(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = RoleRequest(**body)
             
-            cur.execute(f"INSERT INTO {SCHEMA}.roles (name, description) VALUES (%s, %s) RETURNING id",
+            cur.execute("INSERT INTO roles (name, description) VALUES (%s, %s) RETURNING id",
                        (req.name, req.description))
             role_id = cur.fetchone()['id']
             
             for perm_id in req.permission_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s)",
+                cur.execute("INSERT INTO role_permissions (role_id, permission_id) VALUES (%s, %s)",
                            (role_id, perm_id))
             
             conn.commit()
@@ -226,12 +192,12 @@ def handle_roles(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = RoleRequest(**body)
             
-            cur.execute(f"UPDATE {SCHEMA}.roles SET name=%s, description=%s WHERE id=%s",
+            cur.execute("UPDATE roles SET name=%s, description=%s WHERE id=%s",
                        (req.name, req.description, role_id))
-            cur.execute(f"DELETE FROM {SCHEMA}.role_permissions WHERE role_id=%s", (role_id,))
+            cur.execute("DELETE FROM role_permissions WHERE role_id=%s", (role_id,))
             
             for perm_id in req.permission_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s)",
+                cur.execute("INSERT INTO role_permissions (role_id, permission_id) VALUES (%s, %s)",
                            (role_id, perm_id))
             
             conn.commit()
@@ -243,7 +209,7 @@ def handle_roles(method, event, conn, payload):
             if not role_id:
                 return response(400, {'error': 'Role ID required'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.roles WHERE id=%s", (role_id,))
+            cur.execute("DELETE FROM roles WHERE id=%s", (role_id,))
             conn.commit()
             return response(200, {'message': 'Role deleted'})
         
@@ -261,7 +227,7 @@ def handle_categories(method, event, conn):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute(f"SELECT * FROM {SCHEMA}.categories ORDER BY id")
+            cur.execute("SELECT * FROM categories ORDER BY id")
             categories = cur.fetchall()
             return response(200, [dict(c) for c in categories])
         
@@ -269,7 +235,7 @@ def handle_categories(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = CategoryRequest(**body)
             
-            cur.execute(f"INSERT INTO {SCHEMA}.categories (name, icon) VALUES (%s, %s) RETURNING id",
+            cur.execute("INSERT INTO categories (name, icon) VALUES (%s, %s) RETURNING id",
                        (req.name, req.icon))
             cat_id = cur.fetchone()['id']
             conn.commit()
@@ -284,7 +250,7 @@ def handle_categories(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = CategoryRequest(**body)
             
-            cur.execute(f"UPDATE {SCHEMA}.categories SET name=%s, icon=%s WHERE id=%s",
+            cur.execute("UPDATE categories SET name=%s, icon=%s WHERE id=%s",
                        (req.name, req.icon, cat_id))
             conn.commit()
             return response(200, {'message': 'Category updated'})
@@ -295,7 +261,7 @@ def handle_categories(method, event, conn):
             if not cat_id:
                 return response(400, {'error': 'Category ID required'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.categories WHERE id=%s", (cat_id,))
+            cur.execute("DELETE FROM categories WHERE id=%s", (cat_id,))
             conn.commit()
             return response(200, {'message': 'Category deleted'})
         
@@ -313,7 +279,7 @@ def handle_contractors(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute(f"SELECT * FROM {SCHEMA}.contractors ORDER BY id")
+            cur.execute("SELECT * FROM contractors ORDER BY id")
             contractors = cur.fetchall()
             return response(200, [dict(c) for c in contractors])
         
@@ -321,8 +287,8 @@ def handle_contractors(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = ContractorRequest(**body)
             
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.contractors 
+            cur.execute("""
+                INSERT INTO contractors 
                 (name, inn, kpp, ogrn, legal_address, actual_address, phone, email, contact_person,
                  bank_name, bank_bik, bank_account, correspondent_account, notes)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
@@ -342,8 +308,8 @@ def handle_contractors(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = ContractorRequest(**body)
             
-            cur.execute(f"""
-                UPDATE {SCHEMA}.contractors 
+            cur.execute("""
+                UPDATE contractors 
                 SET name=%s, inn=%s, kpp=%s, ogrn=%s, legal_address=%s, actual_address=%s,
                     phone=%s, email=%s, contact_person=%s, bank_name=%s, bank_bik=%s,
                     bank_account=%s, correspondent_account=%s, notes=%s
@@ -360,7 +326,7 @@ def handle_contractors(method, event, conn, payload):
             if not contractor_id:
                 return response(400, {'error': 'Contractor ID required'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.contractors WHERE id=%s", (contractor_id,))
+            cur.execute("DELETE FROM contractors WHERE id=%s", (contractor_id,))
             conn.commit()
             return response(200, {'message': 'Contractor deleted'})
         
@@ -378,7 +344,7 @@ def handle_legal_entities(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute(f"SELECT * FROM {SCHEMA}.legal_entities ORDER BY id")
+            cur.execute("SELECT * FROM legal_entities ORDER BY id")
             entities = cur.fetchall()
             return response(200, [dict(e) for e in entities])
         
@@ -386,7 +352,7 @@ def handle_legal_entities(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = LegalEntityRequest(**body)
             
-            cur.execute(f"INSERT INTO {SCHEMA}.legal_entities (name, inn, kpp, address) VALUES (%s, %s, %s, %s) RETURNING id",
+            cur.execute("INSERT INTO legal_entities (name, inn, kpp, address) VALUES (%s, %s, %s, %s) RETURNING id",
                        (req.name, req.inn, req.kpp, req.address))
             entity_id = cur.fetchone()['id']
             conn.commit()
@@ -401,7 +367,7 @@ def handle_legal_entities(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = LegalEntityRequest(**body)
             
-            cur.execute(f"UPDATE {SCHEMA}.legal_entities SET name=%s, inn=%s, kpp=%s, address=%s WHERE id=%s",
+            cur.execute("UPDATE legal_entities SET name=%s, inn=%s, kpp=%s, address=%s WHERE id=%s",
                        (req.name, req.inn, req.kpp, req.address, entity_id))
             conn.commit()
             return response(200, {'message': 'Legal entity updated'})
@@ -412,7 +378,7 @@ def handle_legal_entities(method, event, conn, payload):
             if not entity_id:
                 return response(400, {'error': 'Legal entity ID required'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.legal_entities WHERE id=%s", (entity_id,))
+            cur.execute("DELETE FROM legal_entities WHERE id=%s", (entity_id,))
             conn.commit()
             return response(200, {'message': 'Legal entity deleted'})
         
@@ -430,7 +396,7 @@ def handle_customer_departments(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute(f"SELECT * FROM {SCHEMA}.customer_departments ORDER BY id")
+            cur.execute("SELECT * FROM customer_departments ORDER BY id")
             depts = cur.fetchall()
             return response(200, [dict(d) for d in depts])
         
@@ -438,7 +404,7 @@ def handle_customer_departments(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = CustomerDepartmentRequest(**body)
             
-            cur.execute(f"INSERT INTO {SCHEMA}.customer_departments (name, description) VALUES (%s, %s) RETURNING id",
+            cur.execute("INSERT INTO customer_departments (name, description) VALUES (%s, %s) RETURNING id",
                        (req.name, req.description))
             dept_id = cur.fetchone()['id']
             conn.commit()
@@ -453,7 +419,7 @@ def handle_customer_departments(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = CustomerDepartmentRequest(**body)
             
-            cur.execute(f"UPDATE {SCHEMA}.customer_departments SET name=%s, description=%s WHERE id=%s",
+            cur.execute("UPDATE customer_departments SET name=%s, description=%s WHERE id=%s",
                        (req.name, req.description, dept_id))
             conn.commit()
             return response(200, {'message': 'Department updated'})
@@ -464,7 +430,7 @@ def handle_customer_departments(method, event, conn, payload):
             if not dept_id:
                 return response(400, {'error': 'Department ID required'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.customer_departments WHERE id=%s", (dept_id,))
+            cur.execute("DELETE FROM customer_departments WHERE id=%s", (dept_id,))
             conn.commit()
             return response(200, {'message': 'Department deleted'})
         
@@ -484,7 +450,7 @@ def handler(event, context):
     method = event.get('httpMethod', 'GET')
     
     if method == 'OPTIONS':
-        return response(200, {'message': 'OK'})
+        return handle_options()
     
     params = event.get('queryStringParameters') or {}
     endpoint = params.get('endpoint', '')

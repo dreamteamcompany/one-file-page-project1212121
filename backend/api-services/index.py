@@ -3,54 +3,14 @@ API для работы с сервисами (services)
 Облегченная версия для быстрого деплоя
 """
 import json
-import os
-import jwt
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from typing import Dict, Any, Optional
-
-SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
-
-def response(status_code: int, body: Any) -> Dict[str, Any]:
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, Authorization',
-            'Access-Control-Max-Age': '86400',
-        },
-        'body': json.dumps(body, ensure_ascii=False, default=str),
-        'isBase64Encoded': False
-    }
-
-def get_db_connection():
-    dsn = os.environ.get('DATABASE_URL')
-    if not dsn:
-        raise Exception('DATABASE_URL not found')
-    return psycopg2.connect(dsn, options=f'-c search_path={SCHEMA},public')
-
-def verify_token(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    token = event.get('headers', {}).get('X-Auth-Token') or event.get('headers', {}).get('x-auth-token')
-    if not token:
-        return None
-    
-    secret = os.environ.get('JWT_SECRET')
-    if not secret:
-        return None
-    
-    try:
-        payload = jwt.decode(token, secret, algorithms=['HS256'])
-        return payload
-    except:
-        return None
+from typing import Dict, Any
+from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
 
 def handler(event, context):
     """API эндпоинт для services"""
     
     if event.get('httpMethod') == 'OPTIONS':
-        return response(200, {'message': 'OK'})
+        return handle_options()
     
     method = event.get('httpMethod', 'GET')
     payload = verify_token(event)
@@ -65,8 +25,8 @@ def handler(event, context):
     
     try:
         if method == 'GET':
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute(f"""
+            cur = conn.cursor()
+            cur.execute("""
                 SELECT 
                     s.id,
                     s.name,
@@ -79,10 +39,10 @@ def handler(event, context):
                     u1.full_name as intermediate_approver_name,
                     u2.full_name as final_approver_name,
                     cd.name as customer_department_name
-                FROM {SCHEMA}.services s
-                LEFT JOIN {SCHEMA}.users u1 ON s.intermediate_approver_id = u1.id
-                LEFT JOIN {SCHEMA}.users u2 ON s.final_approver_id = u2.id
-                LEFT JOIN {SCHEMA}.customer_departments cd ON s.customer_department_id = cd.id
+                FROM services s
+                LEFT JOIN users u1 ON s.intermediate_approver_id = u1.id
+                LEFT JOIN users u2 ON s.final_approver_id = u2.id
+                LEFT JOIN customer_departments cd ON s.customer_department_id = cd.id
                 ORDER BY s.name
             """)
             
@@ -103,9 +63,9 @@ def handler(event, context):
             if not name:
                 return response(400, {'error': 'Название сервиса обязательно'})
             
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.services (
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO services (
                     name, 
                     description, 
                     intermediate_approver_id, 
@@ -133,12 +93,11 @@ def handler(event, context):
             
             cur = conn.cursor()
             
-            # Проверяем связи с другими таблицами
-            cur.execute(f"""
+            cur.execute("""
                 SELECT 
-                  (SELECT COUNT(*) FROM {SCHEMA}.payments WHERE service_id = %s) as payments_count,
-                  (SELECT COUNT(*) FROM {SCHEMA}.savings WHERE service_id = %s) as savings_count,
-                  (SELECT COUNT(*) FROM {SCHEMA}.ticket_service_mappings WHERE service_id = %s) as mappings_count
+                  (SELECT COUNT(*) FROM payments WHERE service_id = %s) as payments_count,
+                  (SELECT COUNT(*) FROM savings WHERE service_id = %s) as savings_count,
+                  (SELECT COUNT(*) FROM ticket_service_mappings WHERE service_id = %s) as mappings_count
             """, (service_id, service_id, service_id))
             
             counts = cur.fetchone()
@@ -154,7 +113,7 @@ def handler(event, context):
                 cur.close()
                 return response(400, {'error': f'Невозможно удалить: есть {", ".join(errors)}'})
             
-            cur.execute(f"DELETE FROM {SCHEMA}.services WHERE id = %s", (service_id,))
+            cur.execute("DELETE FROM services WHERE id = %s", (service_id,))
             conn.commit()
             cur.close()
             

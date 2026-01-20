@@ -1,51 +1,13 @@
 """API для работы с платежами (payments) - минимальная версия"""
 import json
-import os
-import jwt
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from typing import Dict, Any, Optional
-
-SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
-
-def response(status_code: int, body: Any) -> Dict[str, Any]:
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token',
-            'Access-Control-Max-Age': '86400',
-        },
-        'body': json.dumps(body, ensure_ascii=False, default=str),
-        'isBase64Encoded': False
-    }
-
-def get_db_connection():
-    dsn = os.environ.get('DATABASE_URL')
-    if not dsn:
-        raise Exception('DATABASE_URL not found')
-    return psycopg2.connect(dsn, options=f'-c search_path={SCHEMA},public')
-
-def verify_token(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    token = event.get('headers', {}).get('X-Auth-Token') or event.get('headers', {}).get('x-auth-token')
-    if not token:
-        return None
-    secret = os.environ.get('JWT_SECRET')
-    if not secret:
-        return None
-    try:
-        payload = jwt.decode(token, secret, algorithms=['HS256'])
-        return payload
-    except:
-        return None
+from typing import Dict, Any
+from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
 
 def handler(event, context):
     """API для payments"""
     
     if event.get('httpMethod') == 'OPTIONS':
-        return response(200, {'message': 'OK'})
+        return handle_options()
     
     method = event.get('httpMethod', 'GET')
     payload = verify_token(event)
@@ -60,8 +22,8 @@ def handler(event, context):
     
     try:
         if method == 'GET':
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute(f"""
+            cur = conn.cursor()
+            cur.execute("""
                 SELECT 
                     p.id,
                     p.amount,
@@ -75,11 +37,11 @@ def handler(event, context):
                     le.name as legal_entity_name,
                     con.name as contractor_name,
                     s.name as service_name
-                FROM {SCHEMA}.payments p
-                LEFT JOIN {SCHEMA}.categories c ON p.category_id = c.id
-                LEFT JOIN {SCHEMA}.legal_entities le ON p.legal_entity_id = le.id
-                LEFT JOIN {SCHEMA}.contractors con ON p.contractor_id = con.id
-                LEFT JOIN {SCHEMA}.services s ON p.service_id = s.id
+                FROM payments p
+                LEFT JOIN categories c ON p.category_id = c.id
+                LEFT JOIN legal_entities le ON p.legal_entity_id = le.id
+                LEFT JOIN contractors con ON p.contractor_id = con.id
+                LEFT JOIN services s ON p.service_id = s.id
                 ORDER BY p.created_at DESC
                 LIMIT 100
             """)
