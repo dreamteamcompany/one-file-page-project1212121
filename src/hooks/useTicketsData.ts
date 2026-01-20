@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URL, apiFetch } from '@/utils/api';
 
@@ -86,7 +86,7 @@ export const useTicketsData = () => {
   const [ticketServices, setTicketServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -107,9 +107,9 @@ export const useTicketsData = () => {
       console.error('Failed to load tickets:', err);
       setTickets([]);
     }
-  };
+  }, [token]);
 
-  const loadServices = async () => {
+  const loadServices = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -139,9 +139,9 @@ export const useTicketsData = () => {
     } catch (err) {
       console.error('Failed to load services:', err);
     }
-  };
+  }, [token]);
 
-  const loadDictionaries = async () => {
+  const loadDictionaries = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -178,7 +178,7 @@ export const useTicketsData = () => {
     } catch (err) {
       console.error('Failed to load dictionaries:', err);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {

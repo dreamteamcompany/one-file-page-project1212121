@@ -62,7 +62,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Cache-busting fix for production deployment
+  // Хелпер для получения токена из storage
+  const getStoredToken = () => {
+    const rememberMe = localStorage.getItem('remember_me') === 'true';
+    return rememberMe 
+      ? localStorage.getItem('auth_token')
+      : sessionStorage.getItem('auth_token');
+  };
+  
+  // Хелпер для сохранения токена
+  const saveToken = (newToken: string) => {
+    const rememberMe = localStorage.getItem('remember_me') === 'true';
+    if (rememberMe) {
+      localStorage.setItem('auth_token', newToken);
+    } else {
+      sessionStorage.setItem('auth_token', newToken);
+    }
+  };
   
   const logout = () => {
     if (refreshIntervalRef.current) {
@@ -77,10 +93,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
   
   const refreshToken = async () => {
-    const rememberMe = localStorage.getItem('remember_me') === 'true';
-    const currentToken = rememberMe 
-      ? localStorage.getItem('auth_token')
-      : sessionStorage.getItem('auth_token');
+    const currentToken = getStoredToken();
     
     if (!currentToken) return;
 
@@ -93,13 +106,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (response.ok) {
         const data = await response.json();
-        setToken(data.token);
-        setUser(data.user);
-        
-        if (rememberMe) {
-          localStorage.setItem('auth_token', data.token);
-        } else {
-          sessionStorage.setItem('auth_token', data.token);
+        if (data.token && data.user) {
+          setToken(data.token);
+          setUser(data.user);
+          saveToken(data.token);
         }
       }
     } catch (error) {
@@ -108,12 +118,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const checkAuth = async () => {
-    const rememberMe = localStorage.getItem('remember_me') === 'true';
-    const savedToken = rememberMe 
-      ? localStorage.getItem('auth_token')
-      : sessionStorage.getItem('auth_token');
+    const savedToken = getStoredToken();
     
-    console.log('[checkAuth] rememberMe:', rememberMe, 'savedToken:', savedToken ? 'exists' : 'null');
+    console.log('[checkAuth] savedToken:', savedToken ? 'exists' : 'null');
     
     if (!savedToken) {
       console.log('[checkAuth] No token found, skipping auth check');
@@ -136,19 +143,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setToken(savedToken);
       } else {
         console.log('[checkAuth] Token invalid, status:', response.status);
-        localStorage.removeItem('auth_token');
-        sessionStorage.removeItem('auth_token');
-        localStorage.removeItem('remember_me');
-        setToken(null);
-        setUser(null);
+        logout();
       }
     } catch (error) {
       console.error('[checkAuth] Auth check failed:', error);
-      localStorage.removeItem('auth_token');
-      sessionStorage.removeItem('auth_token');
-      localStorage.removeItem('remember_me');
-      setToken(null);
-      setUser(null);
+      logout();
     } finally {
       setLoading(false);
     }
@@ -164,39 +163,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         clearInterval(refreshIntervalRef.current);
       }
       
-      const doRefresh = async () => {
-        const rememberMe = localStorage.getItem('remember_me') === 'true';
-        const currentToken = rememberMe 
-          ? localStorage.getItem('auth_token')
-          : sessionStorage.getItem('auth_token');
-        
-        if (!currentToken) return;
-
-        try {
-          const response = await apiFetch(`${API_URL}?endpoint=refresh`, {
-            headers: {
-              'X-Auth-Token': currentToken,
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setToken(data.token);
-            setUser(data.user);
-            
-            if (rememberMe) {
-              localStorage.setItem('auth_token', data.token);
-            } else {
-              sessionStorage.setItem('auth_token', data.token);
-            }
-          }
-        } catch (error) {
-          console.error('Token refresh failed:', error);
-        }
-      };
-      
+      // Используем ту же функцию refreshToken
       refreshIntervalRef.current = setInterval(() => {
-        doRefresh();
+        refreshToken();
       }, 6 * 60 * 60 * 1000);
     }
 

@@ -2,14 +2,9 @@
 API для работы с заявками (tickets) и категориями сервисов (service_categories)
 """
 import json
-import os
-import jwt
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
-
-SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
+from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -25,49 +20,18 @@ class ServiceCategoryRequest(BaseModel):
     description: str = Field(default='')
     icon: str = Field(default='Folder')
 
-def response(status_code: int, body: Any) -> Dict[str, Any]:
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, Authorization',
-            'Access-Control-Max-Age': '86400',
-        },
-        'body': json.dumps(body, ensure_ascii=False, default=str),
-        'isBase64Encoded': False
-    }
-
-def get_db_connection():
-    dsn = os.environ.get('DATABASE_URL')
-    if not dsn:
-        raise Exception('DATABASE_URL not found')
-    return psycopg2.connect(dsn, cursor_factory=RealDictCursor, options=f'-c search_path={SCHEMA},public')
-
-def verify_token(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    token = event.get('headers', {}).get('X-Auth-Token') or event.get('headers', {}).get('x-auth-token')
-    if not token:
-        return None
-    
-    secret = os.environ.get('JWT_SECRET')
-    if not secret:
-        return None
-    
-    try:
-        payload = jwt.decode(token, secret, algorithms=['HS256'])
-        return payload
-    except:
-        return None
+class CategoryRequest(BaseModel):
+    name: str = Field(..., min_length=1)
+    icon: str = Field(default='Tag')
 
 def handler(event: dict, context) -> dict:
     """API для работы с заявками и категориями сервисов"""
     method = event.get('httpMethod', 'GET')
     
     if method == 'OPTIONS':
-        return response(200, {})
+        return handle_options()
     
-    endpoint = event.get('queryStringParameters', {}).get('endpoint', '')
+    endpoint = get_endpoint(event)
     
     try:
         conn = get_db_connection()
