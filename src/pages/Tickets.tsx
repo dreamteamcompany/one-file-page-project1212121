@@ -1,20 +1,28 @@
+/**
+ * Страница управления заявками
+ * Рефакторинг: разделено по Single Responsibility Principle
+ * - Поиск вынесен в useTicketsSearch
+ * - Режим просмотра в useTicketsView
+ * - Bulk операции в useBulkTicketOperations
+ * - UI переключения в TicketsViewToggle
+ */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTicketsData } from '@/hooks/useTicketsData';
 import { useTicketForm } from '@/hooks/useTicketForm';
 import { useBulkTicketActions } from '@/hooks/useBulkTicketActions';
-import { useToast } from '@/hooks/use-toast';
+import { useTicketsSearch } from '@/hooks/useTicketsSearch';
+import { useTicketsView } from '@/hooks/useTicketsView';
+import { useBulkTicketOperations } from '@/hooks/useBulkTicketOperations';
 import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
-import TicketsHeader from '@/components/tickets/TicketsHeader';
 import TicketsSearch from '@/components/tickets/TicketsSearch';
+import TicketsViewToggle from '@/components/tickets/TicketsViewToggle';
 import TicketForm from '@/components/tickets/TicketForm';
 import TicketsList from '@/components/tickets/TicketsList';
 import TicketsKanban from '@/components/tickets/TicketsKanban';
 import BulkActionsBar from '@/components/tickets/BulkActionsBar';
-import { Button } from '@/components/ui/button';
-import Icon from '@/components/ui/icon';
 
 interface CustomField {
   id: number;
@@ -56,13 +64,10 @@ interface Ticket {
 }
 
 const Tickets = () => {
-  const { token, user } = useAuth();
-  const { toast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
-  const [bulkMode, setBulkMode] = useState(false);
 
   const {
     tickets,
@@ -79,6 +84,18 @@ const Tickets = () => {
     loadServices,
   } = useTicketsData();
 
+  const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
+  
+  const filteredTickets = useTicketsSearch(tickets, searchQuery);
+
+  const {
+    selectedTicketIds,
+    selectedCount,
+    toggleTicketSelection,
+    toggleAllTickets,
+    clearSelection,
+  } = useBulkTicketActions();
+
   const handleFormOpen = () => {
     loadDictionaries();
     loadServices();
@@ -93,28 +110,18 @@ const Tickets = () => {
   } = useTicketForm(customFields, loadTickets);
 
   const {
-    selectedTicketIds,
-    selectedCount,
-    toggleTicketSelection,
-    toggleAllTickets,
-    clearSelection,
-    isTicketSelected,
-  } = useBulkTicketActions();
+    handleChangeStatus,
+    handleChangePriority,
+    handleAssign,
+    handleDelete,
+  } = useBulkTicketOperations(selectedTicketIds, loadTickets, clearSelection);
 
-  const filteredTickets = tickets.filter(ticket => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = (
-        ticket.title.toLowerCase().includes(query) ||
-        ticket.description?.toLowerCase().includes(query) ||
-        ticket.category_name?.toLowerCase().includes(query) ||
-        ticket.priority_name?.toLowerCase().includes(query) ||
-        ticket.department_name?.toLowerCase().includes(query)
-      );
-      if (!matchesSearch) return false;
+  const handleBulkModeToggle = () => {
+    toggleBulkMode();
+    if (bulkMode) {
+      clearSelection();
     }
-    return true;
-  });
+  };
 
   return (
     <PageLayout>
@@ -123,46 +130,12 @@ const Tickets = () => {
       <div className="max-w-7xl mx-auto">
         <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="flex items-center gap-2"
-              >
-                <Icon name="List" size={16} className="hidden sm:inline" />
-                <span className="hidden sm:inline">Список</span>
-                <Icon name="List" size={16} className="sm:hidden" />
-              </Button>
-              <Button
-                variant={viewMode === 'kanban' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('kanban')}
-                className="flex items-center gap-2"
-              >
-                <Icon name="LayoutGrid" size={16} className="hidden sm:inline" />
-                <span className="hidden sm:inline">Канбан</span>
-                <Icon name="LayoutGrid" size={16} className="sm:hidden" />
-              </Button>
-            </div>
-
-            {viewMode === 'list' && (
-              <Button
-                variant={bulkMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setBulkMode(!bulkMode);
-                  if (bulkMode) clearSelection();
-                }}
-                className="flex items-center gap-2 text-sm sm:text-base"
-              >
-                <Icon name="CheckSquare" size={16} />
-                <span className="hidden sm:inline">{bulkMode ? 'Отменить выбор' : 'Массовые действия'}</span>
-                <span className="sm:hidden">{bulkMode ? 'Отмена' : 'Массовые'}</span>
-              </Button>
-            )}
-          </div>
+        <TicketsViewToggle
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          bulkMode={bulkMode}
+          onBulkModeToggle={handleBulkModeToggle}
+        />
 
           <TicketForm
             dialogOpen={dialogOpen}
@@ -198,113 +171,12 @@ const Tickets = () => {
                   selectedCount={selectedCount}
                   statuses={statuses}
                   priorities={priorities}
-                  onChangeStatus={async (statusId) => {
-                    try {
-                      const response = await fetch('https://functions.poehali.dev/582ca427-5c6d-4995-b1b5-f4f206c12a07', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'X-Auth-Token': token,
-                        },
-                        body: JSON.stringify({
-                          ticket_ids: selectedTicketIds,
-                          action: 'change_status',
-                          status_id: statusId,
-                        }),
-                      });
-                      
-                      const result = await response.json();
-                      
-                      if (response.ok) {
-                        toast({
-                          title: 'Статус изменён',
-                          description: `Обновлено ${result.successful} из ${result.total} заявок`,
-                        });
-                        loadTickets();
-                        clearSelection();
-                      } else {
-                        throw new Error(result.error || 'Ошибка изменения статуса');
-                      }
-                    } catch (error) {
-                      toast({
-                        title: 'Ошибка',
-                        description: error instanceof Error ? error.message : 'Не удалось изменить статус',
-                        variant: 'destructive',
-                      });
-                    }
-                  }}
-                  onChangePriority={async (priorityId) => {
-                    try {
-                      const response = await fetch('https://functions.poehali.dev/582ca427-5c6d-4995-b1b5-f4f206c12a07', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'X-Auth-Token': token,
-                        },
-                        body: JSON.stringify({
-                          ticket_ids: selectedTicketIds,
-                          action: 'change_priority',
-                          priority_id: priorityId,
-                        }),
-                      });
-                      
-                      const result = await response.json();
-                      
-                      if (response.ok) {
-                        toast({
-                          title: 'Приоритет изменён',
-                          description: `Обновлено ${result.successful} из ${result.total} заявок`,
-                        });
-                        loadTickets();
-                        clearSelection();
-                      } else {
-                        throw new Error(result.error || 'Ошибка изменения приоритета');
-                      }
-                    } catch (error) {
-                      toast({
-                        title: 'Ошибка',
-                        description: error instanceof Error ? error.message : 'Не удалось изменить приоритет',
-                        variant: 'destructive',
-                      });
-                    }
-                  }}
-                  onDelete={async () => {
-                    try {
-                      const response = await fetch('https://functions.poehali.dev/582ca427-5c6d-4995-b1b5-f4f206c12a07', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'X-Auth-Token': token,
-                        },
-                        body: JSON.stringify({
-                          ticket_ids: selectedTicketIds,
-                          action: 'delete',
-                        }),
-                      });
-                      
-                      const result = await response.json();
-                      
-                      if (response.ok) {
-                        toast({
-                          title: 'Заявки удалены',
-                          description: `Удалено ${result.successful} из ${result.total} заявок`,
-                        });
-                        loadTickets();
-                        clearSelection();
-                      } else {
-                        throw new Error(result.error || 'Ошибка удаления');
-                      }
-                    } catch (error) {
-                      toast({
-                        title: 'Ошибка',
-                        description: error instanceof Error ? error.message : 'Не удалось удалить заявки',
-                        variant: 'destructive',
-                      });
-                    }
-                  }}
+                  onChangeStatus={handleChangeStatus}
+                  onChangePriority={handleChangePriority}
+                  onDelete={handleDelete}
                   onCancel={() => {
                     clearSelection();
-                    setBulkMode(false);
+                    disableBulkMode();
                   }}
                 />
               )}
