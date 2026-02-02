@@ -50,8 +50,8 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      // Загружаем "Категории услуг" для выбора на шаге 2
-      const categoriesResponse = await apiFetch(`${API_URL}?endpoint=service_categories`, {
+      // Загружаем "Услуги заявок" для выбора на шаге 1
+      const categoriesResponse = await apiFetch(`${API_URL}?endpoint=ticket_services`, {
         headers: {
           'X-Auth-Token': token,
         },
