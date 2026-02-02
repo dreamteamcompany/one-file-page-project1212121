@@ -422,17 +422,17 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                     SELECT service_id 
                     FROM {SCHEMA}.ticket_service_mappings 
                     WHERE ticket_service_id = %s
-                ''', (row[0],))
-                service_ids = [r[0] for r in cur.fetchall()]
+                ''', (row['id'],))
+                service_ids = [r['service_id'] for r in cur.fetchall()]
                 
                 ticket_services.append({
-                    'id': row[0],
-                    'name': row[1],
-                    'description': row[2] or '',
-                    'ticket_title': row[3] or '',
-                    'category_id': row[4],
-                    'category_name': row[5],
-                    'created_at': row[6].isoformat() if row[6] else None,
+                    'id': row['id'],
+                    'name': row['name'],
+                    'description': row['description'] or '',
+                    'ticket_title': row['ticket_title'] or '',
+                    'category_id': row['category_id'],
+                    'category_name': row['category_name'],
+                    'created_at': row['created_at'].isoformat() if row['created_at'] else None,
                     'service_ids': service_ids
                 })
             return response(200, ticket_services)
@@ -453,7 +453,7 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                 (name, description, ticket_title, category_id)
             )
             row = cur.fetchone()
-            ticket_service_id = row[0]
+            ticket_service_id = row['id']
             
             for service_id in service_ids:
                 cur.execute(
@@ -464,12 +464,12 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             conn.commit()
             
             return response(201, {
-                'id': row[0],
-                'name': row[1],
-                'description': row[2],
-                'ticket_title': row[3],
-                'category_id': row[4],
-                'created_at': row[5].isoformat() if row[5] else None,
+                'id': row['id'],
+                'name': row['name'],
+                'description': row['description'],
+                'ticket_title': row['ticket_title'],
+                'category_id': row['category_id'],
+                'created_at': row['created_at'].isoformat() if row['created_at'] else None,
                 'service_ids': service_ids
             })
         
@@ -509,12 +509,12 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             conn.commit()
             
             return response(200, {
-                'id': row[0],
-                'name': row[1],
-                'description': row[2],
-                'ticket_title': row[3],
-                'category_id': row[4],
-                'created_at': row[5].isoformat() if row[5] else None,
+                'id': row['id'],
+                'name': row['name'],
+                'description': row['description'],
+                'ticket_title': row['ticket_title'],
+                'category_id': row['category_id'],
+                'created_at': row['created_at'].isoformat() if row['created_at'] else None,
                 'service_ids': service_ids
             })
         
