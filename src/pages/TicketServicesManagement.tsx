@@ -103,7 +103,7 @@ const TicketServicesManagement = () => {
 
   const loadTicketServices = async () => {
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-services`);
+      const response = await apiFetch(`${API_URL}?endpoint=ticket_services`);
       const data = await response.json();
       console.log('Loaded ticket services:', data);
       setTicketServices(Array.isArray(data) ? data : []);
@@ -166,8 +166,8 @@ const TicketServicesManagement = () => {
 
     try {
       const url = editingService
-        ? `${API_URL}?endpoint=ticket-services&id=${editingService.id}`
-        : `${API_URL}?endpoint=ticket-services`;
+        ? `${API_URL}?endpoint=ticket_services&id=${editingService.id}`
+        : `${API_URL}?endpoint=ticket_services`;
 
       const response = await apiFetch(url, {
         method: editingService ? 'PUT' : 'POST',
@@ -217,7 +217,7 @@ const TicketServicesManagement = () => {
     if (!confirm('Удалить эту услугу заявки?')) return;
 
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-services&id=${id}`, {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket_services&id=${id}`, {
         method: 'DELETE',
       });
 

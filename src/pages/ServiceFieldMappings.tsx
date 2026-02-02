@@ -38,7 +38,7 @@ const ServiceFieldMappings = () => {
   const loadData = async () => {
     // Load ticket-services (Услуга: Заблокировать доступ, Предоставить доступ)
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-services`);
+      const response = await apiFetch(`${API_URL}?endpoint=ticket_services`);
       const data = await response.json();
       console.log('Loaded ticket-services (услуги):', data);
       setTicketServices(Array.isArray(data) ? data : []);
