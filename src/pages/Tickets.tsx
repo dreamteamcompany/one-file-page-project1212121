@@ -89,7 +89,7 @@ const Tickets = () => {
     <PageLayout>
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
         <TicketsViewToggle
