@@ -4,7 +4,7 @@ API для работы с заявками (tickets) и категориями 
 import json
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
-from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint
+from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -45,6 +45,8 @@ def handler(event: dict, context) -> dict:
             return handle_service_categories(method, event, conn)
         elif endpoint == 'ticket-dictionaries-api':
             return handle_ticket_dictionaries(method, event, conn)
+        elif endpoint == 'ticket_services':
+            return handle_ticket_services(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -392,5 +394,143 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
     
     except Exception as e:
         return response(500, {'error': str(e)})
+    finally:
+        cur.close()
+
+def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Обработчик для управления услугами заявок (ticket_services)"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    
+    cur = conn.cursor()
+    
+    try:
+        if method == 'GET':
+            cur.execute(f'''
+                SELECT ts.id, ts.name, ts.description, ts.ticket_title, ts.category_id, 
+                       tsc.name as category_name, ts.created_at 
+                FROM {SCHEMA}.ticket_services ts
+                LEFT JOIN {SCHEMA}.ticket_service_categories tsc ON ts.category_id = tsc.id
+                WHERE ts.is_active = true
+                ORDER BY ts.name
+            ''')
+            rows = cur.fetchall()
+            ticket_services = []
+            for row in rows:
+                cur.execute(f'''
+                    SELECT service_id 
+                    FROM {SCHEMA}.ticket_service_mappings 
+                    WHERE ticket_service_id = %s
+                ''', (row[0],))
+                service_ids = [r[0] for r in cur.fetchall()]
+                
+                ticket_services.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'description': row[2] or '',
+                    'ticket_title': row[3] or '',
+                    'category_id': row[4],
+                    'category_name': row[5],
+                    'created_at': row[6].isoformat() if row[6] else None,
+                    'service_ids': service_ids
+                })
+            return response(200, ticket_services)
+        
+        elif method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            name = body.get('name')
+            description = body.get('description', '')
+            ticket_title = body.get('ticket_title', '')
+            category_id = body.get('category_id')
+            service_ids = body.get('service_ids', [])
+            
+            if not name:
+                return response(400, {'error': 'Name is required'})
+            
+            cur.execute(
+                f"INSERT INTO {SCHEMA}.ticket_services (name, description, ticket_title, category_id) VALUES (%s, %s, %s, %s) RETURNING id, name, description, ticket_title, category_id, created_at",
+                (name, description, ticket_title, category_id)
+            )
+            row = cur.fetchone()
+            ticket_service_id = row[0]
+            
+            for service_id in service_ids:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.ticket_service_mappings (ticket_service_id, service_id) VALUES (%s, %s)",
+                    (ticket_service_id, service_id)
+                )
+            
+            conn.commit()
+            
+            return response(201, {
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'ticket_title': row[3],
+                'category_id': row[4],
+                'created_at': row[5].isoformat() if row[5] else None,
+                'service_ids': service_ids
+            })
+        
+        elif method == 'PUT':
+            params = event.get('queryStringParameters', {})
+            body = json.loads(event.get('body', '{}'))
+            ticket_service_id = params.get('id') or body.get('id')
+            name = body.get('name')
+            description = body.get('description', '')
+            ticket_title = body.get('ticket_title', '')
+            category_id = body.get('category_id')
+            service_ids = body.get('service_ids', [])
+            
+            if not ticket_service_id or not name:
+                return response(400, {'error': 'ID and name are required'})
+            
+            cur.execute(
+                f"UPDATE {SCHEMA}.ticket_services SET name = %s, description = %s, ticket_title = %s, category_id = %s WHERE id = %s RETURNING id, name, description, ticket_title, category_id, created_at",
+                (name, description, ticket_title, category_id, ticket_service_id)
+            )
+            row = cur.fetchone()
+            
+            if not row:
+                return response(404, {'error': 'Ticket service not found'})
+            
+            cur.execute(
+                f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_service_id = %s",
+                (ticket_service_id,)
+            )
+            
+            for service_id in service_ids:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.ticket_service_mappings (ticket_service_id, service_id) VALUES (%s, %s)",
+                    (ticket_service_id, service_id)
+                )
+            
+            conn.commit()
+            
+            return response(200, {
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'ticket_title': row[3],
+                'category_id': row[4],
+                'created_at': row[5].isoformat() if row[5] else None,
+                'service_ids': service_ids
+            })
+        
+        elif method == 'DELETE':
+            params = event.get('queryStringParameters', {})
+            ticket_service_id = params.get('id')
+            
+            if not ticket_service_id:
+                return response(400, {'error': 'ID is required'})
+            
+            cur.execute(f'DELETE FROM {SCHEMA}.ticket_services WHERE id = %s', (ticket_service_id,))
+            conn.commit()
+            
+            return response(200, {'success': True})
+        
+        return response(405, {'error': 'Method not allowed'})
+    
     finally:
         cur.close()
