@@ -105,6 +105,7 @@ const TicketServicesManagement = () => {
     try {
       const response = await apiFetch(`${API_URL}?endpoint=ticket-services`);
       const data = await response.json();
+      console.log('Loaded ticket services:', data);
       setTicketServices(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load ticket services:', error);
@@ -153,6 +154,16 @@ const TicketServicesManagement = () => {
       return;
     }
 
+    const payload = {
+      name: formData.name,
+      description: formData.description,
+      ticket_title: formData.ticket_title,
+      category_id: formData.category_id ? parseInt(formData.category_id) : null,
+      service_ids: selectedServiceIds,
+    };
+    
+    console.log('Saving ticket service with payload:', payload);
+
     try {
       const url = editingService
         ? `${API_URL}?endpoint=ticket-services&id=${editingService.id}`
@@ -161,14 +172,11 @@ const TicketServicesManagement = () => {
       const response = await apiFetch(url, {
         method: editingService ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description,
-          ticket_title: formData.ticket_title,
-          category_id: formData.category_id ? parseInt(formData.category_id) : null,
-          service_ids: selectedServiceIds,
-        }),
+        body: JSON.stringify(payload),
       });
+
+      const responseData = await response.json();
+      console.log('Response from server:', responseData);
 
       if (response.ok) {
         toast({
@@ -177,21 +185,23 @@ const TicketServicesManagement = () => {
         });
         setDialogOpen(false);
         resetForm();
-        loadTicketServices();
+        await loadTicketServices();
       } else {
-        throw new Error('Failed to save ticket service');
+        throw new Error(responseData.error || 'Failed to save ticket service');
       }
     } catch (error) {
       console.error('Failed to save ticket service:', error);
       toast({
         title: 'Ошибка',
-        description: 'Не удалось сохранить услугу',
+        description: error instanceof Error ? error.message : 'Не удалось сохранить услугу',
         variant: 'destructive',
       });
     }
   };
 
   const handleEdit = (ticketService: TicketService) => {
+    console.log('Editing ticket service:', ticketService);
+    console.log('Service IDs from ticket service:', ticketService.service_ids);
     setEditingService(ticketService);
     setFormData({
       name: ticketService.name,
