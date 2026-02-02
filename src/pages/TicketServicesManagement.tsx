@@ -488,7 +488,20 @@ const TicketServicesManagement = () => {
                         </TableCell>
                         <TableCell className="max-w-md truncate">{service.description}</TableCell>
                         <TableCell>
-                          <Badge>{service.service_ids?.length || 0}</Badge>
+                          {service.service_ids && service.service_ids.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {service.service_ids.map((serviceId) => {
+                                const linkedService = services.find(s => s.id === serviceId);
+                                return linkedService ? (
+                                  <Badge key={serviceId} variant="outline" className="text-xs">
+                                    {linkedService.name}
+                                  </Badge>
+                                ) : null;
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
