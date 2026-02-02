@@ -8,10 +8,10 @@ from psycopg2.extras import RealDictCursor
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
-# Deploy version: v2.5.3 - fixed login schema prefix
+# Deploy version: v2.5.4 - fixed ticket_services auth
 
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 't_p67567221_one_file_page_projec')
-VERSION = '2.5.3'
+VERSION = '2.5.4'
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -4023,6 +4023,8 @@ def handler(event, context):
             return handle_tickets(method, event, conn, payload)
         
         elif endpoint == 'ticket_services':
+            if not payload:
+                return response(401, {'error': 'Требуется авторизация'})
             return handle_ticket_services(method, event, conn, payload)
         
         elif endpoint == 'ticket_priorities':
