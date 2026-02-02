@@ -525,6 +525,10 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             if not ticket_service_id:
                 return response(400, {'error': 'ID is required'})
             
+            # First delete all related records from ticket_service_mappings table
+            cur.execute(f'DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_service_id = %s', (ticket_service_id,))
+            
+            # Then delete from ticket_services table
             cur.execute(f'DELETE FROM {SCHEMA}.ticket_services WHERE id = %s', (ticket_service_id,))
             conn.commit()
             
