@@ -181,6 +181,7 @@ export const useTicketActions = (
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
+      console.log('[UpdateDueDate] Отправка:', { ticket_id: ticketId, due_date: dueDate });
       const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
@@ -190,12 +191,15 @@ export const useTicketActions = (
         body: JSON.stringify({ ticket_id: ticketId, due_date: dueDate }),
       });
       
+      console.log('[UpdateDueDate] Ответ:', response.status, await response.text());
+      
       if (response.ok) {
-        loadTicket();
-        loadHistory();
+        await loadTicket();
+        await loadHistory();
+        console.log('[UpdateDueDate] Данные обновлены');
       }
     } catch (error) {
-      console.error('Error updating due date:', error);
+      console.error('[UpdateDueDate] Ошибка:', error);
     } finally {
       setUpdating(false);
     }
