@@ -140,8 +140,11 @@ const Roles = () => {
     
     try {
       const response = await apiFetch(
-        `https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=roles&id=${id}`,
-        { method: 'DELETE' }
+        `${API_URL}?endpoint=roles`,
+        { 
+          method: 'DELETE',
+          body: JSON.stringify({ id })
+        }
       );
 
       if (response.ok) {

@@ -60,11 +60,19 @@ def handle_roles(method, event, conn, payload):
             return response(200, {'message': 'Role updated'})
         
         elif method == 'DELETE':
-            params = event.get('queryStringParameters', {}) or {}
-            role_id = params.get('id')
+            body = json.loads(event.get('body', '{}'))
+            role_id = body.get('id')
             if not role_id:
                 return response(400, {'error': 'Role ID required'})
             
+            # Check if role has assigned users
+            cur.execute("SELECT COUNT(*) as count FROM user_roles WHERE role_id=%s", (role_id,))
+            user_count = cur.fetchone()['count']
+            if user_count > 0:
+                return response(400, {'error': 'Cannot delete role with assigned users'})
+            
+            # Delete role permissions first (foreign key constraint)
+            cur.execute("DELETE FROM role_permissions WHERE role_id=%s", (role_id,))
             cur.execute("DELETE FROM roles WHERE id=%s", (role_id,))
             conn.commit()
             return response(200, {'message': 'Role deleted'})

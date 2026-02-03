@@ -1882,7 +1882,7 @@ def handle_roles(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         elif method == 'DELETE':
             payload = verify_token(event)
- 'roles.delete')
+            error = check_permission(payload, 'roles.delete')
             if error:
                 return error
             
