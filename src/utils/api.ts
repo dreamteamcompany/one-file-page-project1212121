@@ -50,6 +50,11 @@ export const apiFetch = async (url: string, options: RequestInit = {}): Promise<
     headers['X-Auth-Token'] = token;
   }
 
+  // Add Content-Type for requests with body
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   let finalUrl = url;
   
   try {
