@@ -54,9 +54,15 @@ export const apiFetch = async (url: string, options: RequestInit = {}): Promise<
     const urlObj = new URL(url);
     const endpoint = urlObj.searchParams.get('endpoint');
     
+    console.log('[API] Original URL:', url);
+    console.log('[API] Endpoint param:', endpoint);
+    
     if (endpoint && ENDPOINT_MAP[endpoint]) {
       const newBase = ENDPOINT_MAP[endpoint];
       finalUrl = newBase + urlObj.search;
+      console.log('[API] Mapped to:', finalUrl);
+    } else {
+      console.log('[API] No mapping found, using original URL');
     }
   } catch (e) {
     console.error('[API] URL parsing error:', e);
