@@ -124,6 +124,12 @@ const PaymentsSidebar = ({
                   <span>Сервисы услуг</span>
                 </Link>
               </li>
+              <li>
+                <Link to="/ticket-statuses" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-statuses') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
+                  <Icon name="CircleDot" size={18} />
+                  <span>Статусы заявок</span>
+                </Link>
+              </li>
             </ul>
           )}
         </li>

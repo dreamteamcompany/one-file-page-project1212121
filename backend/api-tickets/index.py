@@ -47,6 +47,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_dictionaries(method, event, conn)
         elif endpoint == 'ticket_services':
             return handle_ticket_services(method, event, conn)
+        elif endpoint == 'ticket-statuses':
+            return handle_ticket_statuses(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -448,6 +450,78 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
         return response(500, {'error': str(e)})
     finally:
         cur.close()
+
+def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Обработчик для управления статусами заявок (ticket_statuses)"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    
+    if method == 'GET':
+        cur = conn.cursor()
+        cur.execute(f'SELECT id, name, color, is_closed FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        statuses = [dict(row) for row in cur.fetchall()]
+        cur.close()
+        return response(200, statuses)
+    
+    elif method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        name = body.get('name')
+        color = body.get('color', '#3b82f6')
+        is_closed = body.get('is_closed', False)
+        
+        if not name:
+            return response(400, {'error': 'Name is required'})
+        
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.ticket_statuses (name, color, is_closed) VALUES (%s, %s, %s) RETURNING id, name, color, is_closed",
+            (name, color, is_closed)
+        )
+        status = dict(cur.fetchone())
+        conn.commit()
+        cur.close()
+        return response(201, status)
+    
+    elif method == 'PUT':
+        body = json.loads(event.get('body', '{}'))
+        status_id = body.get('id')
+        name = body.get('name')
+        color = body.get('color', '#3b82f6')
+        is_closed = body.get('is_closed', False)
+        
+        if not status_id or not name:
+            return response(400, {'error': 'ID and name are required'})
+        
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.ticket_statuses SET name = %s, color = %s, is_closed = %s WHERE id = %s RETURNING id, name, color, is_closed",
+            (name, color, is_closed, status_id)
+        )
+        status = dict(cur.fetchone())
+        
+        if not status:
+            cur.close()
+            return response(404, {'error': 'Status not found'})
+        
+        conn.commit()
+        cur.close()
+        return response(200, status)
+    
+    elif method == 'DELETE':
+        body = json.loads(event.get('body', '{}'))
+        status_id = body.get('id')
+        
+        if not status_id:
+            return response(400, {'error': 'ID is required'})
+        
+        cur = conn.cursor()
+        cur.execute(f'DELETE FROM {SCHEMA}.ticket_statuses WHERE id = %s', (status_id,))
+        conn.commit()
+        cur.close()
+        return response(200, {'success': True})
+    
+    return response(405, {'error': 'Method not allowed'})
 
 def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     """Обработчик для управления услугами заявок (ticket_services)"""
