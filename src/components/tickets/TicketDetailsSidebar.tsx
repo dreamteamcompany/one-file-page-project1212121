@@ -150,10 +150,10 @@ const TicketDetailsSidebar = ({
 
   return (
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
       {ticket.due_date && (
-        <div className="p-4 rounded-lg bg-card border">
-          <div className="flex flex-col items-center">
+        <div className="p-4 rounded-lg bg-card border h-full flex flex-col">
+          <div className="flex flex-col items-center flex-1 justify-center">
             <h3 className="text-sm font-semibold mb-4 text-foreground">Времени осталось</h3>
             <div className={`w-24 h-24 rounded-full ${getTimeLeft()?.expired ? 'bg-red-500/10 border-red-500' : 'bg-muted'} border-2 flex items-center justify-center mb-4`}>
               <Icon name="Clock" size={32} className={getTimeLeft()?.expired ? 'text-red-500' : 'text-foreground'} />
@@ -180,13 +180,13 @@ const TicketDetailsSidebar = ({
       )}
 
       {onSendPing && (
-        <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+        <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 h-full flex flex-col justify-center">
           <h3 className="text-sm font-semibold mb-4 text-transparent select-none">.</h3>
           <Button
             onClick={onSendPing}
             disabled={sendingPing}
             size="lg"
-            className="w-full font-semibold bg-orange-500 hover:bg-orange-600 text-white"
+            className="w-full font-semibold bg-orange-500 hover:bg-orange-600 text-white flex-shrink-0"
           >
             {sendingPing ? (
               <>
