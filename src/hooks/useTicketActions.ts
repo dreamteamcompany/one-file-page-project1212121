@@ -49,13 +49,13 @@ export const useTicketActions = (
   const handleUpdateStatus = async (statusId: number) => {
     try {
       setUpdating(true);
-      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ ticket_id: ticketId, status_id: statusId }),
+        body: JSON.stringify({ id: ticketId, status_id: statusId }),
       });
       
       if (response.ok) {
@@ -157,13 +157,13 @@ export const useTicketActions = (
       
       console.log('Sending assign request:', { ticket_id: ticketId, assigned_to: assignedUserId });
       
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${mainUrl}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ ticket_id: ticketId, assigned_to: assignedUserId }),
+        body: JSON.stringify({ id: ticketId, assigned_to: assignedUserId }),
       });
       
       console.log('Assign response:', response.status, await response.text());
@@ -182,13 +182,13 @@ export const useTicketActions = (
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
-      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ ticket_id: ticketId, due_date: dueDate }),
+        body: JSON.stringify({ id: ticketId, due_date: dueDate }),
       });
       
       if (response.ok) {
