@@ -92,7 +92,7 @@ const TicketDetails = () => {
 
       <div className="flex-1 overflow-auto -mx-4 md:-mx-6 lg:-mx-[30px] px-4 md:px-6 lg:px-[30px] -mb-4 md:-mb-6 lg:-mb-[30px] pb-4 md:pb-6 lg:pb-[30px]">
         <div className="w-full px-4 lg:px-6 py-6">
-          <div className="flex flex-col lg:flex-row gap-6 items-start">
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
           {/* Desktop: Sidebar слева */}
           <div className="hidden lg:block">
             <TicketDetailsSidebar 
