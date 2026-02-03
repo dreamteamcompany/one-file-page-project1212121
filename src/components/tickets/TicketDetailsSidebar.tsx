@@ -81,6 +81,13 @@ const TicketDetailsSidebar = ({
 }: TicketDetailsSidebarProps) => {
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
+  const [dueTimeValue, setDueTimeValue] = useState(() => {
+    if (ticket.due_date) {
+      const date = new Date(ticket.due_date);
+      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+    return '12:00';
+  });
   const [currentTime, setCurrentTime] = useState(Date.now());
   
   useEffect(() => {
@@ -297,7 +304,17 @@ const TicketDetailsSidebar = ({
                   onClick={() => {
                     setIsEditingDueDate(!isEditingDueDate);
                     if (!isEditingDueDate) {
-                      setDueDateValue(ticket.due_date || '');
+                      if (ticket.due_date) {
+                        const date = new Date(ticket.due_date);
+                        const year = date.getFullYear();
+                        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                        const day = date.getDate().toString().padStart(2, '0');
+                        setDueDateValue(`${year}-${month}-${day}`);
+                        setDueTimeValue(`${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`);
+                      } else {
+                        setDueDateValue('');
+                        setDueTimeValue('12:00');
+                      }
                     }
                   }}
                   className="text-xs text-primary hover:underline flex items-center gap-1"
@@ -310,17 +327,34 @@ const TicketDetailsSidebar = ({
             
             {isEditingDueDate ? (
               <div className="space-y-2">
-                <input
-                  type="date"
-                  value={dueDateValue}
-                  onChange={(e) => setDueDateValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground"
-                />
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Дата</label>
+                  <input
+                    type="date"
+                    value={dueDateValue}
+                    onChange={(e) => setDueDateValue(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Время (МСК)</label>
+                  <input
+                    type="time"
+                    value={dueTimeValue}
+                    onChange={(e) => setDueTimeValue(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
                     onClick={() => {
-                      onUpdateDueDate(dueDateValue || null);
+                      if (dueDateValue) {
+                        const combinedDateTime = `${dueDateValue}T${dueTimeValue}:00+03:00`;
+                        onUpdateDueDate(combinedDateTime);
+                      } else {
+                        onUpdateDueDate(null);
+                      }
                       setIsEditingDueDate(false);
                     }}
                     className="flex-1"
@@ -334,6 +368,7 @@ const TicketDetailsSidebar = ({
                       onClick={() => {
                         onUpdateDueDate(null);
                         setDueDateValue('');
+                        setDueTimeValue('12:00');
                         setIsEditingDueDate(false);
                       }}
                     >
@@ -359,6 +394,13 @@ const TicketDetailsSidebar = ({
                       month: 'long',
                       year: 'numeric'
                     })}
+                    {' в '}
+                    {new Date(ticket.due_date).toLocaleTimeString('ru-RU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      timeZone: 'Europe/Moscow'
+                    })}
+                    {' МСК'}
                   </p>
                 </div>
                 {deadlineInfo.urgent && (
