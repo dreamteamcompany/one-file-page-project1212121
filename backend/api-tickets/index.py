@@ -181,7 +181,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                         VALUES (%s, %s)
                     """, (ticket['id'], service_id))
                 except Exception as e:
-                    log(f"[TICKETS] Error linking service {service_id}: {e}")
+                    print(f"[TICKETS] Error linking service {service_id}: {e}")
                     # Откатываем транзакцию и возвращаем ошибку
                     conn.rollback()
                     cur.close()
@@ -196,7 +196,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                         VALUES (%s, %s, %s)
                     """, (ticket['id'], int(field_id), value))
                 except Exception as e:
-                    log(f"[TICKETS] Error saving custom field {field_id}: {e}")
+                    print(f"[TICKETS] Error saving custom field {field_id}: {e}")
                     # Продолжаем, не критично
         
         conn.commit()
