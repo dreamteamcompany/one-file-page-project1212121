@@ -48,7 +48,7 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
     const dataToSubmit = overrideData || formData;
 
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=api-tickets`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
