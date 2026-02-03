@@ -794,19 +794,36 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
             if not result:
                 return response(404, {'error': 'Approval not found or already processed'})
             
-            # Если отозвали или отклонили согласование, проверяем нужно ли менять статус заявки
-            if action in ['revoked', 'rejected']:
-                # Получаем все согласования для этой заявки
+            # Получаем все согласования для этой заявки
+            cur.execute(f"""
+                SELECT status FROM {SCHEMA}.ticket_approvals
+                WHERE ticket_id = %s
+            """, (ticket_id,))
+            all_approvals = [dict(row) for row in cur.fetchall()]
+            
+            total_approvers = len(all_approvals)
+            approved_count = sum(1 for a in all_approvals if a['status'] == 'approved')
+            revoked_count = sum(1 for a in all_approvals if a['status'] == 'revoked')
+            rejected_count = sum(1 for a in all_approvals if a['status'] == 'rejected')
+            
+            # Если все согласующие одобрили - переходим в статус "Согласовано"
+            if action == 'approved' and (total_approvers == 1 or approved_count == total_approvers):
                 cur.execute(f"""
-                    SELECT status FROM {SCHEMA}.ticket_approvals
-                    WHERE ticket_id = %s
-                """, (ticket_id,))
-                all_approvals = [dict(row) for row in cur.fetchall()]
+                    SELECT id FROM {SCHEMA}.ticket_statuses
+                    WHERE is_approved = true
+                    LIMIT 1
+                """)
+                approved_status = cur.fetchone()
                 
-                # Проверяем условия для смены статуса на "Согласование отозвано"
-                total_approvers = len(all_approvals)
-                revoked_count = sum(1 for a in all_approvals if a['status'] == 'revoked')
-                rejected_count = sum(1 for a in all_approvals if a['status'] == 'rejected')
+                if approved_status:
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.tickets
+                        SET status_id = %s, updated_at = NOW()
+                        WHERE id = %s
+                    """, (approved_status['id'], ticket_id))
+            
+            # Если отозвали или отклонили согласование, проверяем нужно ли менять статус заявки
+            elif action in ['revoked', 'rejected']:
                 negative_count = revoked_count + rejected_count
                 
                 # Если единственный согласующий или все отозвали/отклонили - меняем статус
