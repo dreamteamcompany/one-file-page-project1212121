@@ -199,16 +199,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         Согласование
       </h3>
 
-      {canSubmit && !showApproverSelect && (
-        <Button
-          onClick={() => setShowApproverSelect(true)}
-          className="w-full"
-        >
-          Отправить на согласование
-        </Button>
-      )}
-
-      {canSubmit && showApproverSelect && (
+      {canSubmit && (
         <div className="space-y-3">
           <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
             <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2">
@@ -233,25 +224,27 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSubmitForApproval}
-              disabled={submitting || selectedApprovers.length === 0}
-              className="flex-1"
-            >
-              {submitting ? 'Отправка...' : `Отправить (${selectedApprovers.length})`}
-            </Button>
-            <Button
-              onClick={() => {
-                setShowApproverSelect(false);
-                setSelectedApprovers([]);
-              }}
-              variant="outline"
-              disabled={submitting}
-            >
-              Отмена
-            </Button>
-          </div>
+          
+          {selectedApprovers.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSubmitForApproval}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? 'Отправка...' : `Отправить на согласование (${selectedApprovers.length})`}
+              </Button>
+              <Button
+                onClick={() => {
+                  setSelectedApprovers([]);
+                }}
+                variant="outline"
+                disabled={submitting}
+              >
+                Сбросить
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
