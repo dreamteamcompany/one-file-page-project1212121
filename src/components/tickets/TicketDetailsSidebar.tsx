@@ -152,7 +152,7 @@ const TicketDetailsSidebar = ({
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 items-start">
       {ticket.due_date && (
-        <div className="p-6 rounded-lg bg-card border">
+        <div className="p-4 rounded-lg bg-card border">
           <div className="flex flex-col items-center">
             <h3 className="text-sm font-semibold mb-4 text-foreground">Времени осталось</h3>
             <div className={`w-24 h-24 rounded-full ${getTimeLeft()?.expired ? 'bg-red-500/10 border-red-500' : 'bg-muted'} border-2 flex items-center justify-center mb-4`}>
