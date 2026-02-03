@@ -181,6 +181,7 @@ const TicketDetailsSidebar = ({
 
       {onSendPing && (
         <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+          <h3 className="text-sm font-semibold mb-4 text-transparent select-none">.</h3>
           <Button
             onClick={onSendPing}
             disabled={sendingPing}
