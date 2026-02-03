@@ -5,7 +5,13 @@ import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { API_URL, apiFetch } from '@/utils/api';
 
 interface ApprovalHistory {
@@ -40,7 +46,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const [showCommentField, setShowCommentField] = useState(false);
   const [actionType, setActionType] = useState<'approved' | 'rejected' | null>(null);
   const [showApproverSelect, setShowApproverSelect] = useState(false);
-  const [selectedApprovers, setSelectedApprovers] = useState<number[]>([]);
+  const [selectedApproverId, setSelectedApproverId] = useState<string>('');
 
   const loadApprovalHistory = async () => {
     if (!token) return;
@@ -72,7 +78,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   }, [ticketId, token]);
 
   const handleSubmitForApproval = async () => {
-    if (!token || !user || selectedApprovers.length === 0) return;
+    if (!token || !user || !selectedApproverId) return;
 
     setSubmitting(true);
     try {
@@ -86,7 +92,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
           },
           body: JSON.stringify({ 
             ticket_id: ticketId,
-            approver_ids: selectedApprovers
+            approver_ids: [parseInt(selectedApproverId)]
           }),
         }
       );
@@ -94,7 +100,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
       if (response.ok) {
         await loadApprovalHistory();
         onStatusChange();
-        setSelectedApprovers([]);
+        setSelectedApproverId('');
       }
     } catch (error) {
       console.error('Failed to submit for approval:', error);
@@ -103,13 +109,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
     }
   };
 
-  const toggleApprover = (userId: number) => {
-    setSelectedApprovers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
+
 
   const handleApprovalAction = async () => {
     if (!token || !user || !actionType) return;
@@ -193,49 +193,40 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
       {canSubmit && (
         <div className="space-y-3">
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2">
-              <Icon name="Users" size={16} />
-              Выберите согласующих:
+          <div>
+            <p className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+              <Icon name="UserCheck" size={14} />
+              Согласующий
             </p>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {availableUsers.map((u) => (
-                <label
-                  key={u.id}
-                  className="flex items-center gap-2 p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded cursor-pointer"
-                >
-                  <Checkbox
-                    checked={selectedApprovers.includes(u.id)}
-                    onCheckedChange={() => toggleApprover(u.id)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-foreground">{u.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
+            <Select
+              value={selectedApproverId}
+              onValueChange={setSelectedApproverId}
+              disabled={submitting}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите согласующего" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id.toString()}>
+                    <div className="flex flex-col">
+                      <span className="text-sm">{u.name}</span>
+                      <span className="text-xs text-muted-foreground">{u.email}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
-          {selectedApprovers.length > 0 && (
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSubmitForApproval}
-                disabled={submitting}
-                className="flex-1"
-              >
-                {submitting ? 'Отправка...' : `Отправить на согласование (${selectedApprovers.length})`}
-              </Button>
-              <Button
-                onClick={() => {
-                  setSelectedApprovers([]);
-                }}
-                variant="outline"
-                disabled={submitting}
-              >
-                Сбросить
-              </Button>
-            </div>
+          {selectedApproverId && (
+            <Button
+              onClick={handleSubmitForApproval}
+              disabled={submitting}
+              className="w-full"
+            >
+              {submitting ? 'Отправка...' : 'Отправить на согласование'}
+            </Button>
           )}
         </div>
       )}
