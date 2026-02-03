@@ -207,7 +207,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         Согласование
       </h3>
 
-      {canSubmit && (
+      {canSubmit && approvalHistory.length === 0 && (
         <div className="space-y-3">
           <div>
             <p className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
@@ -261,7 +261,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         </div>
       )}
 
-      {approvalHistory.length > 0 && !canSubmit && (
+      {approvalHistory.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
             <Icon name="Users" size={14} />
