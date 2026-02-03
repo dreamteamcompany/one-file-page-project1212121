@@ -60,6 +60,9 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     if not payload:
         return response(401, {'error': 'Требуется авторизация'})
     
+    # CRITICAL DEBUG: выводим значение SCHEMA
+    print(f"🔍 DEBUG SCHEMA VALUE: '{SCHEMA}' (length: {len(SCHEMA)})")
+    
     if method == 'GET':
         query_params = event.get('queryStringParameters', {})
         
