@@ -786,8 +786,8 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
             if not result:
                 return response(404, {'error': 'Approval not found or already processed'})
             
-            # Если отозвали согласование, проверяем нужно ли менять статус заявки
-            if action == 'revoked':
+            # Если отозвали или отклонили согласование, проверяем нужно ли менять статус заявки
+            if action in ['revoked', 'rejected']:
                 # Получаем все согласования для этой заявки
                 cur.execute(f"""
                     SELECT status FROM {SCHEMA}.ticket_approvals
@@ -798,9 +798,11 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
                 # Проверяем условия для смены статуса на "Согласование отозвано"
                 total_approvers = len(all_approvals)
                 revoked_count = sum(1 for a in all_approvals if a['status'] == 'revoked')
+                rejected_count = sum(1 for a in all_approvals if a['status'] == 'rejected')
+                negative_count = revoked_count + rejected_count
                 
-                # Если единственный согласующий или все отозвали - меняем статус
-                if total_approvers == 1 or revoked_count == total_approvers:
+                # Если единственный согласующий или все отозвали/отклонили - меняем статус
+                if total_approvers == 1 or negative_count == total_approvers:
                     # Находим статус "Согласование отозвано"
                     cur.execute(f"""
                         SELECT id FROM {SCHEMA}.ticket_statuses
