@@ -261,6 +261,42 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         </div>
       )}
 
+      {approvalHistory.length > 0 && !canSubmit && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="Users" size={14} />
+            Согласующие
+          </p>
+          <div className="space-y-2">
+            {approvalHistory.map((approval) => (
+              <div 
+                key={approval.id} 
+                className="flex items-center justify-between p-2 rounded bg-muted/50"
+              >
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {approval.status === 'pending' && <Icon name="Clock" size={14} className="text-yellow-500 flex-shrink-0" />}
+                  {approval.status === 'approved' && <Icon name="CheckCircle" size={14} className="text-green-500 flex-shrink-0" />}
+                  {approval.status === 'rejected' && <Icon name="XCircle" size={14} className="text-red-500 flex-shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {approval.approver_name || `Пользователь #${approval.approver_id}`}
+                    </p>
+                    {approval.approver_email && (
+                      <p className="text-xs text-muted-foreground truncate">{approval.approver_email}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs font-medium flex-shrink-0 ml-2">
+                  {approval.status === 'pending' && <span className="text-yellow-600 dark:text-yellow-400">Ожидает</span>}
+                  {approval.status === 'approved' && <span className="text-green-600 dark:text-green-400">Одобрил</span>}
+                  {approval.status === 'rejected' && <span className="text-red-600 dark:text-red-400">Отклонил</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isAwaitingApproval && (
         <div className="space-y-3">
           <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
