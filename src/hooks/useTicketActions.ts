@@ -54,11 +54,12 @@ export const useTicketActions = (
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ ticket_id: ticketId, status_id: statusId }),
+        body: JSON.stringify({ id: ticketId, status_id: statusId }),
       });
       
       if (response.ok) {
         loadTicket();
+        loadHistory();
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -151,18 +152,17 @@ export const useTicketActions = (
     console.log('Assign user:', userId);
     try {
       setUpdating(true);
-      const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
       const assignedUserId = userId === 'unassign' ? null : Number(userId);
       
-      console.log('Sending assign request:', { ticket_id: ticketId, assigned_to: assignedUserId });
+      console.log('Sending assign request:', { id: ticketId, assigned_to: assignedUserId });
       
-      const response = await fetch(`${mainUrl}?endpoint=tickets`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ ticket_id: ticketId, assigned_to: assignedUserId }),
+        body: JSON.stringify({ id: ticketId, assigned_to: assignedUserId }),
       });
       
       console.log('Assign response:', response.status, await response.text());
