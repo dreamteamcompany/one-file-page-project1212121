@@ -151,13 +151,13 @@ const Tickets = () => {
               onUpdateStatus={async (ticketId, statusId) => {
                 try {
                   const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
-                  await fetch(`${mainUrl}?endpoint=tickets-api`, {
+                  await fetch(`${mainUrl}?endpoint=tickets`, {
                     method: 'PUT',
                     headers: {
                       'Content-Type': 'application/json',
                       'X-Auth-Token': token,
                     },
-                    body: JSON.stringify({ ticket_id: ticketId, status_id: statusId }),
+                    body: JSON.stringify({ id: ticketId, status_id: statusId }),
                   });
                   loadTickets();
                 } catch (error) {

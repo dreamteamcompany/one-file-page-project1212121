@@ -17,7 +17,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadTicket = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         headers: {
           'X-Auth-Token': token,
         },
@@ -77,15 +77,17 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadHistory = async () => {
     try {
       setLoadingHistory(true);
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-history&ticket_id=${id}`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAuditLogs(data.logs || []);
-      }
+      // TODO: endpoint 'ticket-history' не существует в api-tickets
+      // const response = await apiFetch(`${API_URL}?endpoint=ticket-history&ticket_id=${id}`, {
+      //   headers: {
+      //     'X-Auth-Token': token,
+      //   },
+      // });
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   setAuditLogs(data.logs || []);
+      // }
+      setAuditLogs([]);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
@@ -96,15 +98,17 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadComments = async () => {
     try {
       setLoadingComments(true);
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${id}`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setComments(data.comments || []);
-      }
+      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
+      // const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${id}`, {
+      //   headers: {
+      //     'X-Auth-Token': token,
+      //   },
+      // });
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   setComments(data.comments || []);
+      // }
+      setComments([]);
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {

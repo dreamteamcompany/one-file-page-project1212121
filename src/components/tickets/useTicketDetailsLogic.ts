@@ -64,14 +64,16 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setLoadingComments(true);
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
-        headers: { 'X-Auth-Token': token },
-      });
+      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
+      // const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
+      //   headers: { 'X-Auth-Token': token },
+      // });
 
-      if (response.ok) {
-        const data = await response.json();
-        setComments(data.comments || []);
-      }
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   setComments(data.comments || []);
+      // }
+      setComments([]);
     } catch (err) {
       console.error('Failed to load comments:', err);
     } finally {
@@ -124,26 +126,28 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
         fileUrls = results.filter((r): r is { filename: string; url: string; size: number } => r !== null);
       }
       
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Auth-Token': token,
-        },
-        body: JSON.stringify({
-          ticket_id: ticket.id,
-          comment: newComment,
-          is_internal: false,
-          attachments: fileUrls.length > 0 ? fileUrls : undefined,
-        }),
-      });
+      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
+      // const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'X-Auth-Token': token,
+      //   },
+      //   body: JSON.stringify({
+      //     ticket_id: ticket.id,
+      //     comment: newComment,
+      //     is_internal: false,
+      //     attachments: fileUrls.length > 0 ? fileUrls : undefined,
+      //   }),
+      // });
 
-      if (response.ok) {
+      // if (response.ok) {
         setNewComment('');
         await loadComments();
         toast({
-          title: 'Успешно',
-          description: 'Комментарий добавлен',
+          title: 'Комментарии временно отключены',
+          description: 'Функциональность в разработке',
+          variant: 'destructive',
         });
       } else {
         toast({
@@ -169,14 +173,14 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setUpdating(true);
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=tickets-api`, {
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
         body: JSON.stringify({
-          ticket_id: ticket.id,
+          id: ticket.id,
           status_id: parseInt(statusId),
         }),
       });
@@ -213,18 +217,20 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setSendingPing(true);
     try {
-      await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Auth-Token': token,
-        },
-        body: JSON.stringify({ ticket_id: ticket.id, is_ping: true }),
-      });
+      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
+      // await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'X-Auth-Token': token,
+      //   },
+      //   body: JSON.stringify({ ticket_id: ticket.id, is_ping: true }),
+      // });
       loadComments();
       toast({
-        title: 'Успешно',
-        description: 'Запрос статуса отправлен',
+        title: 'Функция временно отключена',
+        description: 'Пинги будут доступны позже',
+        variant: 'destructive',
       });
     } catch (err) {
       console.error('Failed to send ping:', err);
@@ -264,14 +270,14 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
       const mainUrl = 'https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd';
       const assignedUserId = userId === 'unassign' ? null : Number(userId);
       
-      const response = await fetch(`${mainUrl}?endpoint=tickets-api`, {
+      const response = await fetch(`${mainUrl}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
         body: JSON.stringify({ 
-          ticket_id: ticket.id, 
+          id: ticket.id, 
           assigned_to: assignedUserId 
         }),
       });
