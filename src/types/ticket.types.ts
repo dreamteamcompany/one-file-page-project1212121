@@ -35,8 +35,15 @@ export interface Ticket {
   updated_at?: string;
   closed_at?: string;
   custom_fields?: CustomField[];
+  services?: TicketServiceInfo[];
   unread_comments?: number;
   has_response?: boolean;
+}
+
+export interface TicketServiceInfo {
+  id: number;
+  name: string;
+  category_name?: string;
 }
 
 export interface TicketComment {
