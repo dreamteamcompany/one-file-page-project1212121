@@ -9,6 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import TicketApprovalBlock from './TicketApprovalBlock';
 
 interface User {
@@ -23,6 +31,7 @@ interface Status {
   name: string;
   color: string;
   is_closed: boolean;
+  is_approval?: boolean;
 }
 
 interface Ticket {
@@ -89,6 +98,36 @@ const TicketDetailsSidebar = ({
     return '12:00';
   });
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+  const [selectedApprovers, setSelectedApprovers] = useState<number[]>([]);
+  
+  const handleStatusChange = (statusId: string) => {
+    const status = statuses.find(s => s.id.toString() === statusId);
+    if (status?.is_approval) {
+      setPendingStatusId(statusId);
+      setShowApprovalDialog(true);
+    } else {
+      onUpdateStatus(statusId);
+    }
+  };
+  
+  const handleApprovalConfirm = () => {
+    if (pendingStatusId) {
+      onUpdateStatus(pendingStatusId);
+      setShowApprovalDialog(false);
+      setPendingStatusId(null);
+      setSelectedApprovers([]);
+    }
+  };
+  
+  const toggleApprover = (userId: number) => {
+    setSelectedApprovers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
   
   useEffect(() => {
     if (!ticket.due_date) return;
@@ -215,7 +254,7 @@ const TicketDetailsSidebar = ({
           </h3>
           <Select
             value={ticket.status_id?.toString()}
-            onValueChange={onUpdateStatus}
+            onValueChange={handleStatusChange}
             disabled={updating}
           >
             <SelectTrigger>
@@ -500,6 +539,55 @@ const TicketDetailsSidebar = ({
         onStatusChange={onApprovalChange || (() => {})}
         availableUsers={users}
       />
+      
+      <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Выберите согласующих</DialogTitle>
+            <DialogDescription>
+              Данный статус требует согласования. Выберите пользователей, которые должны согласовать заявку.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {users.map((u) => (
+                <label
+                  key={u.id}
+                  className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
+                >
+                  <Checkbox
+                    checked={selectedApprovers.includes(u.id)}
+                    onCheckedChange={() => toggleApprover(u.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{u.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={handleApprovalConfirm}
+                disabled={selectedApprovers.length === 0}
+                className="flex-1"
+              >
+                Подтвердить ({selectedApprovers.length})
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowApprovalDialog(false);
+                  setPendingStatusId(null);
+                  setSelectedApprovers([]);
+                }}
+                variant="outline"
+              >
+                Отмена
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

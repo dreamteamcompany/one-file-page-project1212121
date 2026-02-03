@@ -22,6 +22,7 @@ interface TicketStatus {
   color: string;
   is_closed: boolean;
   is_open: boolean;
+  is_approval: boolean;
 }
 
 const predefinedColors = [
@@ -45,6 +46,7 @@ const TicketStatuses = () => {
     color: '#3b82f6',
     is_closed: false,
     is_open: false,
+    is_approval: false,
   });
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -104,7 +106,7 @@ const TicketStatuses = () => {
       if (response.ok) {
         setDialogOpen(false);
         setEditingStatus(null);
-        setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false });
+        setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false, is_approval: false });
         loadStatuses();
       }
     } catch (err) {
@@ -118,7 +120,8 @@ const TicketStatuses = () => {
       name: status.name, 
       color: status.color,
       is_closed: status.is_closed,
-      is_open: status.is_open || false
+      is_open: status.is_open || false,
+      is_approval: status.is_approval || false
     });
     setDialogOpen(true);
   };
@@ -153,7 +156,7 @@ const TicketStatuses = () => {
     setDialogOpen(open);
     if (!open) {
       setEditingStatus(null);
-      setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false });
+      setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false, is_approval: false });
     }
   };
 
@@ -274,7 +277,7 @@ const TicketStatuses = () => {
                       id="is_open"
                       checked={formData.is_open}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_open: checked as boolean, is_closed: checked ? false : formData.is_closed })
+                        setFormData({ ...formData, is_open: checked as boolean, is_closed: checked ? false : formData.is_closed, is_approval: checked ? false : formData.is_approval })
                       }
                     />
                     <Label
@@ -286,10 +289,25 @@ const TicketStatuses = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
+                      id="is_approval"
+                      checked={formData.is_approval}
+                      onCheckedChange={(checked) => 
+                        setFormData({ ...formData, is_approval: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open })
+                      }
+                    />
+                    <Label
+                      htmlFor="is_approval"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      Согласующий статус (заявка на согласовании)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
                       id="is_closed"
                       checked={formData.is_closed}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open })
+                        setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval })
                       }
                     />
                     <Label
@@ -338,6 +356,12 @@ const TicketStatuses = () => {
                           <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                             <Icon name="Unlock" size={12} className="inline mr-1" />
                             Открытый статус
+                          </p>
+                        )}
+                        {status.is_approval && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            <Icon name="FileCheck" size={12} className="inline mr-1" />
+                            Согласующий статус
                           </p>
                         )}
                         {status.is_closed && (
