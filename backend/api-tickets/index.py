@@ -60,9 +60,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     if not payload:
         return response(401, {'error': 'Требуется авторизация'})
     
-    # CRITICAL DEBUG: выводим значение SCHEMA
-    print(f"🔍 DEBUG SCHEMA VALUE: '{SCHEMA}' (length: {len(SCHEMA)})")
-    
+
     if method == 'GET':
         query_params = event.get('queryStringParameters', {})
         
@@ -87,7 +85,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
             LEFT JOIN {SCHEMA}.users u1 ON t.assigned_to = u1.id
             LEFT JOIN {SCHEMA}.users u2 ON t.created_by = u2.id
-            LEFT JOIN {SCHEMA}.ticket_service_mappings tsm ON t.id = tsm.ticket_id
+            LEFT JOIN {SCHEMA}.ticket_to_service_mappings tsm ON t.id = tsm.ticket_id
             WHERE 1=1
         """
         
@@ -110,7 +108,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             params.append(int(created_by))
         
         if service_id:
-            query += " AND tsm.service_id = %s"
+            query += " AND tsm.ticket_service_id = %s"
             params.append(int(service_id))
         
         if from_date:
@@ -130,7 +128,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             cur.execute(f"""
                 SELECT s.id, s.name, sc.name as category_name
                 FROM {SCHEMA}.ticket_services s
-                JOIN {SCHEMA}.ticket_service_mappings tsm ON s.id = tsm.service_id
+                JOIN {SCHEMA}.ticket_to_service_mappings tsm ON s.id = tsm.ticket_service_id
                 LEFT JOIN {SCHEMA}.ticket_service_categories sc ON s.category_id = sc.id
                 WHERE tsm.ticket_id = %s
             """, (ticket['id'],))
@@ -150,9 +148,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     elif method == 'POST':
         body = json.loads(event.get('body', '{}'))
         
-        # Debug: проверяем значение SCHEMA
-        print(f"DEBUG: SCHEMA = '{SCHEMA}'")
-        
+
         try:
             data = TicketRequest(**body)
         except Exception as e:
@@ -178,7 +174,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         for service_id in data.service_ids:
             cur.execute(f"""
-                INSERT INTO {SCHEMA}.ticket_service_mappings (ticket_id, service_id)
+                INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, ticket_service_id)
                 VALUES (%s, %s)
             """, (ticket['id'], service_id))
         
@@ -237,10 +233,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         ticket = dict(cur.fetchone())
         
         if 'service_ids' in body:
-            cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id = %s", (ticket_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id = %s", (ticket_id,))
             for service_id in body['service_ids']:
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.ticket_service_mappings (ticket_id, service_id)
+                    INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, ticket_service_id)
                     VALUES (%s, %s)
                 """, (ticket_id, service_id))
         
@@ -265,7 +261,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
-        cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id = %s", (ticket_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id = %s", (ticket_id,))
         cur.execute(f"DELETE FROM {SCHEMA}.ticket_custom_field_values WHERE ticket_id = %s", (ticket_id,))
         cur.execute(f"DELETE FROM {SCHEMA}.tickets WHERE id = %s", (ticket_id,))
         
