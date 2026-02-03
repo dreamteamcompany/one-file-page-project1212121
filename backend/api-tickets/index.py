@@ -220,6 +220,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             update_fields.append("assigned_to = %s")
             params.append(body['assigned_to'])
         
+        if 'due_date' in body:
+            update_fields.append("due_date = %s")
+            params.append(body['due_date'])
+        
         update_fields.append("updated_at = NOW()")
         params.append(ticket_id)
         
@@ -227,7 +231,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             UPDATE {SCHEMA}.tickets 
             SET {', '.join(update_fields)}
             WHERE id = %s
-            RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at
+            RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, created_by, created_at, updated_at
         """, params)
         
         ticket = dict(cur.fetchone())

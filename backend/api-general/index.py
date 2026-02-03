@@ -23,10 +23,11 @@ def handler(event, context):
         return response(401, {'error': 'Unauthorized'})
     
     params = event.get('queryStringParameters', {}) or {}
-    resource = params.get('resource', '')
+    # Поддержка обоих параметров: resource и endpoint (для совместимости)
+    resource = params.get('resource', '') or params.get('endpoint', '')
     
     if not resource:
-        return response(400, {'error': 'Resource parameter required'})
+        return response(400, {'error': 'Resource or endpoint parameter required'})
     
     conn = get_db_connection()
     if not conn:
