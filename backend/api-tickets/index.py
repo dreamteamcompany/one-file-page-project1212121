@@ -9,7 +9,7 @@ from shared_utils import response, get_db_connection, verify_token, handle_optio
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
     description: str = Field(default='')
-    status_id: int = Field(..., gt=0)
+    status_id: Optional[int] = None
     priority_id: int = Field(..., gt=0)
     assigned_to: Optional[int] = None
     service_ids: list[int] = Field(default=[])
@@ -158,6 +158,13 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
+        status_id = data.status_id
+        if not status_id:
+            cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_open = true LIMIT 1")
+            open_status = cur.fetchone()
+            if open_status:
+                status_id = open_status['id']
+        
         cur.execute(f"""
             INSERT INTO {SCHEMA}.tickets 
             (title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at)
@@ -166,7 +173,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         """, (
             data.title,
             data.description,
-            data.status_id,
+            status_id,
             data.priority_id,
             data.assigned_to,
             payload['user_id']
@@ -459,7 +466,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
     
     if method == 'GET':
         cur = conn.cursor()
-        cur.execute(f'SELECT id, name, color, is_closed FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed, is_open FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         cur.close()
         return response(200, statuses)
@@ -469,14 +476,19 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         name = body.get('name')
         color = body.get('color', '#3b82f6')
         is_closed = body.get('is_closed', False)
+        is_open = body.get('is_open', False)
         
         if not name:
             return response(400, {'error': 'Name is required'})
         
         cur = conn.cursor()
+        
+        if is_open:
+            cur.execute(f"UPDATE {SCHEMA}.ticket_statuses SET is_open = false WHERE is_open = true")
+        
         cur.execute(
-            f"INSERT INTO {SCHEMA}.ticket_statuses (name, color, is_closed) VALUES (%s, %s, %s) RETURNING id, name, color, is_closed",
-            (name, color, is_closed)
+            f"INSERT INTO {SCHEMA}.ticket_statuses (name, color, is_closed, is_open) VALUES (%s, %s, %s, %s) RETURNING id, name, color, is_closed, is_open",
+            (name, color, is_closed, is_open)
         )
         status = dict(cur.fetchone())
         conn.commit()
@@ -489,14 +501,19 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         name = body.get('name')
         color = body.get('color', '#3b82f6')
         is_closed = body.get('is_closed', False)
+        is_open = body.get('is_open', False)
         
         if not status_id or not name:
             return response(400, {'error': 'ID and name are required'})
         
         cur = conn.cursor()
+        
+        if is_open:
+            cur.execute(f"UPDATE {SCHEMA}.ticket_statuses SET is_open = false WHERE is_open = true AND id != %s", (status_id,))
+        
         cur.execute(
-            f"UPDATE {SCHEMA}.ticket_statuses SET name = %s, color = %s, is_closed = %s WHERE id = %s RETURNING id, name, color, is_closed",
-            (name, color, is_closed, status_id)
+            f"UPDATE {SCHEMA}.ticket_statuses SET name = %s, color = %s, is_closed = %s, is_open = %s WHERE id = %s RETURNING id, name, color, is_closed, is_open",
+            (name, color, is_closed, is_open, status_id)
         )
         status = dict(cur.fetchone())
         

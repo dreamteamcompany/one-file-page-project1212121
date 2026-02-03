@@ -21,6 +21,7 @@ interface TicketStatus {
   name: string;
   color: string;
   is_closed: boolean;
+  is_open: boolean;
 }
 
 const predefinedColors = [
@@ -43,6 +44,7 @@ const TicketStatuses = () => {
     name: '',
     color: '#3b82f6',
     is_closed: false,
+    is_open: false,
   });
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -102,7 +104,7 @@ const TicketStatuses = () => {
       if (response.ok) {
         setDialogOpen(false);
         setEditingStatus(null);
-        setFormData({ name: '', color: '#3b82f6', is_closed: false });
+        setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false });
         loadStatuses();
       }
     } catch (err) {
@@ -115,7 +117,8 @@ const TicketStatuses = () => {
     setFormData({ 
       name: status.name, 
       color: status.color,
-      is_closed: status.is_closed 
+      is_closed: status.is_closed,
+      is_open: status.is_open || false
     });
     setDialogOpen(true);
   };
@@ -150,7 +153,7 @@ const TicketStatuses = () => {
     setDialogOpen(open);
     if (!open) {
       setEditingStatus(null);
-      setFormData({ name: '', color: '#3b82f6', is_closed: false });
+      setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false });
     }
   };
 
@@ -265,20 +268,37 @@ const TicketStatuses = () => {
                     <span className="text-sm text-muted-foreground">{formData.color}</span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_closed"
-                    checked={formData.is_closed}
-                    onCheckedChange={(checked) => 
-                      setFormData({ ...formData, is_closed: checked as boolean })
-                    }
-                  />
-                  <Label
-                    htmlFor="is_closed"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    Закрытый статус (заявка завершена)
-                  </Label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="is_open"
+                      checked={formData.is_open}
+                      onCheckedChange={(checked) => 
+                        setFormData({ ...formData, is_open: checked as boolean, is_closed: checked ? false : formData.is_closed })
+                      }
+                    />
+                    <Label
+                      htmlFor="is_open"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      Открытый статус (заявка открыта)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="is_closed"
+                      checked={formData.is_closed}
+                      onCheckedChange={(checked) => 
+                        setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open })
+                      }
+                    />
+                    <Label
+                      htmlFor="is_closed"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      Закрытый статус (заявка завершена)
+                    </Label>
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" className="flex-1">
@@ -314,6 +334,12 @@ const TicketStatuses = () => {
                       />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-base truncate">{status.name}</h3>
+                        {status.is_open && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            <Icon name="Unlock" size={12} className="inline mr-1" />
+                            Открытый статус
+                          </p>
+                        )}
                         {status.is_closed && (
                           <p className="text-xs text-muted-foreground mt-1">
                             <Icon name="Lock" size={12} className="inline mr-1" />
