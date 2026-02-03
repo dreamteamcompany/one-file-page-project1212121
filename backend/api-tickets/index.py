@@ -73,18 +73,18 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
-        query = """
+        query = f"""
             SELECT DISTINCT t.*, 
                    s.name as status_name, s.color as status_color,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assigned_to_name,
                    u2.username as created_by_name
-            FROM tickets t
-            LEFT JOIN ticket_statuses s ON t.status_id = s.id
-            LEFT JOIN ticket_priorities p ON t.priority_id = p.id
-            LEFT JOIN users u1 ON t.assigned_to = u1.id
-            LEFT JOIN users u2 ON t.created_by = u2.id
-            LEFT JOIN ticket_service_mappings tsm ON t.id = tsm.ticket_id
+            FROM {SCHEMA}.tickets t
+            LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
+            LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
+            LEFT JOIN {SCHEMA}.users u1 ON t.assigned_to = u1.id
+            LEFT JOIN {SCHEMA}.users u2 ON t.created_by = u2.id
+            LEFT JOIN {SCHEMA}.ticket_service_mappings tsm ON t.id = tsm.ticket_id
             WHERE 1=1
         """
         
@@ -124,19 +124,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         tickets = [dict(row) for row in cur.fetchall()]
         
         for ticket in tickets:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT s.id, s.name, sc.name as category_name
-                FROM ticket_services s
-                JOIN ticket_service_mappings tsm ON s.id = tsm.service_id
-                LEFT JOIN ticket_service_categories sc ON s.category_id = sc.id
+                FROM {SCHEMA}.ticket_services s
+                JOIN {SCHEMA}.ticket_service_mappings tsm ON s.id = tsm.service_id
+                LEFT JOIN {SCHEMA}.ticket_service_categories sc ON s.category_id = sc.id
                 WHERE tsm.ticket_id = %s
             """, (ticket['id'],))
             ticket['services'] = [dict(row) for row in cur.fetchall()]
             
-            cur.execute("""
+            cur.execute(f"""
                 SELECT cf.id, cf.name, cf.field_type, tcfv.value
-                FROM ticket_custom_field_values tcfv
-                JOIN ticket_custom_fields cf ON tcfv.field_id = cf.id
+                FROM {SCHEMA}.ticket_custom_field_values tcfv
+                JOIN {SCHEMA}.ticket_custom_fields cf ON tcfv.field_id = cf.id
                 WHERE tcfv.ticket_id = %s
             """, (ticket['id'],))
             ticket['custom_fields'] = [dict(row) for row in cur.fetchall()]
@@ -154,8 +154,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
-        cur.execute("""
-            INSERT INTO tickets 
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.tickets 
             (title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
             RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at
@@ -171,14 +171,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         ticket = dict(cur.fetchone())
         
         for service_id in data.service_ids:
-            cur.execute("""
-                INSERT INTO ticket_service_mappings (ticket_id, service_id)
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_service_mappings (ticket_id, service_id)
                 VALUES (%s, %s)
             """, (ticket['id'], service_id))
         
         for field_id, value in data.custom_fields.items():
-            cur.execute("""
-                INSERT INTO ticket_custom_field_values (ticket_id, field_id, value)
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_custom_field_values (ticket_id, field_id, value)
                 VALUES (%s, %s, %s)
             """, (ticket['id'], int(field_id), value))
         
@@ -222,7 +222,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         params.append(ticket_id)
         
         cur.execute(f"""
-            UPDATE tickets 
+            UPDATE {SCHEMA}.tickets 
             SET {', '.join(update_fields)}
             WHERE id = %s
             RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at
@@ -231,18 +231,18 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         ticket = dict(cur.fetchone())
         
         if 'service_ids' in body:
-            cur.execute("DELETE FROM ticket_service_mappings WHERE ticket_id = %s", (ticket_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id = %s", (ticket_id,))
             for service_id in body['service_ids']:
-                cur.execute("""
-                    INSERT INTO ticket_service_mappings (ticket_id, service_id)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_service_mappings (ticket_id, service_id)
                     VALUES (%s, %s)
                 """, (ticket_id, service_id))
         
         if 'custom_fields' in body:
             cur.execute("DELETE FROM ticket_custom_field_values WHERE ticket_id = %s", (ticket_id,))
             for field_id, value in body['custom_fields'].items():
-                cur.execute("""
-                    INSERT INTO ticket_custom_field_values (ticket_id, field_id, value)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_custom_field_values (ticket_id, field_id, value)
                     VALUES (%s, %s, %s)
                 """, (ticket_id, int(field_id), value))
         
@@ -259,9 +259,9 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
-        cur.execute("DELETE FROM ticket_service_mappings WHERE ticket_id = %s", (ticket_id,))
-        cur.execute("DELETE FROM ticket_custom_field_values WHERE ticket_id = %s", (ticket_id,))
-        cur.execute("DELETE FROM tickets WHERE id = %s", (ticket_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id = %s", (ticket_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.ticket_custom_field_values WHERE ticket_id = %s", (ticket_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.tickets WHERE id = %s", (ticket_id,))
         
         conn.commit()
         cur.close()
@@ -277,7 +277,7 @@ def handle_service_categories(method: str, event: Dict[str, Any], conn) -> Dict[
     
     if method == 'GET':
         cur = conn.cursor()
-        cur.execute('SELECT id, name, icon, created_at FROM ticket_service_categories ORDER BY name')
+        cur.execute(f'SELECT id, name, icon, created_at FROM {SCHEMA}.ticket_service_categories ORDER BY name')
         categories = [dict(row) for row in cur.fetchall()]
         cur.close()
         return response(200, categories)
@@ -292,8 +292,8 @@ def handle_service_categories(method: str, event: Dict[str, Any], conn) -> Dict[
         
         cur = conn.cursor()
         
-        cur.execute("""
-            INSERT INTO ticket_service_categories (name, icon)
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ticket_service_categories (name, icon)
             VALUES (%s, %s)
             RETURNING id, name, icon, created_at
         """, (data.name, data.icon))
@@ -330,7 +330,7 @@ def handle_service_categories(method: str, event: Dict[str, Any], conn) -> Dict[
         cur = conn.cursor()
         
         cur.execute(f"""
-            UPDATE ticket_service_categories 
+            UPDATE {SCHEMA}.ticket_service_categories 
             SET {', '.join(update_fields)}
             WHERE id = %s
             RETURNING id, name, icon, created_at
@@ -349,7 +349,7 @@ def handle_service_categories(method: str, event: Dict[str, Any], conn) -> Dict[
             return response(400, {'error': 'Category ID required'})
         
         cur = conn.cursor()
-        cur.execute("DELETE FROM ticket_service_categories WHERE id = %s", (category_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_categories WHERE id = %s", (category_id,))
         conn.commit()
         cur.close()
         
@@ -369,19 +369,19 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
     cur = conn.cursor()
     
     try:
-        cur.execute('SELECT id, name, icon FROM ticket_categories ORDER BY name')
+        cur.execute(f'SELECT id, name, icon FROM {SCHEMA}.ticket_categories ORDER BY name')
         categories = [dict(row) for row in cur.fetchall()]
         
-        cur.execute('SELECT id, name, level, color FROM ticket_priorities ORDER BY level DESC')
+        cur.execute(f'SELECT id, name, level, color FROM {SCHEMA}.ticket_priorities ORDER BY level DESC')
         priorities = [dict(row) for row in cur.fetchall()]
         
-        cur.execute('SELECT id, name, color, is_closed FROM ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         
-        cur.execute('SELECT id, name, description FROM departments ORDER BY name')
+        cur.execute(f'SELECT id, name, description FROM {SCHEMA}.departments ORDER BY name')
         departments = [dict(row) for row in cur.fetchall()]
         
-        cur.execute('SELECT id, name, field_type, options, is_required FROM ticket_custom_fields ORDER BY name')
+        cur.execute(f'SELECT id, name, field_type, options, is_required FROM {SCHEMA}.ticket_custom_fields ORDER BY name')
         custom_fields = [dict(row) for row in cur.fetchall()]
         
         return response(200, {
