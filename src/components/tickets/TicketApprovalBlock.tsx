@@ -170,14 +170,6 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const isRejected = statusName === 'Отклонена';
   const canSubmit = statusName === 'В работе' || statusName === 'Новая';
   const canApprove = pendingApprovals.some(a => a.approver_id === user?.id);
-  
-  console.log('[APPROVAL] Debug info:', {
-    userId: user?.id,
-    approvalHistory,
-    pendingApprovals,
-    canApprove,
-    statusName
-  });
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -303,79 +295,63 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         </div>
       )}
 
-      {isAwaitingApproval && (
-        <div className="space-y-3">
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
-            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
-              <Icon name="Clock" size={16} />
-              Ожидается согласование от:
-            </p>
-            <ul className="mt-2 space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
-              {pendingApprovals.map((approval) => (
-                <li key={approval.id}>• {approval.approver_name || `Пользователь #${approval.approver_id}`}</li>
-              ))}
-            </ul>
+      {canApprove && !showCommentField && (
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              setActionType('approved');
+              handleApprovalAction();
+            }}
+            disabled={submitting}
+            className="flex-1 bg-green-600 hover:bg-green-700"
+          >
+            <Icon name="Check" size={16} className="mr-1" />
+            Одобрить
+          </Button>
+          <Button
+            onClick={() => {
+              setActionType('rejected');
+              setShowCommentField(true);
+            }}
+            disabled={submitting}
+            variant="destructive"
+            className="flex-1"
+          >
+            <Icon name="X" size={16} className="mr-1" />
+            Отклонить
+          </Button>
+        </div>
+      )}
+
+      {showCommentField && (
+        <div className="space-y-2">
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Причина отклонения (опционально)"
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={handleApprovalAction}
+              disabled={submitting}
+              variant="destructive"
+              className="flex-1"
+            >
+              {submitting ? 'Отправка...' : 'Подтвердить отклонение'}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowCommentField(false);
+                setActionType(null);
+                setComment('');
+              }}
+              variant="outline"
+              disabled={submitting}
+            >
+              Отмена
+            </Button>
           </div>
-
-          {canApprove && !showCommentField && (
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  setActionType('approved');
-                  handleApprovalAction();
-                }}
-                disabled={submitting}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                <Icon name="Check" size={16} className="mr-1" />
-                Одобрить
-              </Button>
-              <Button
-                onClick={() => {
-                  setActionType('rejected');
-                  setShowCommentField(true);
-                }}
-                disabled={submitting}
-                variant="destructive"
-                className="flex-1"
-              >
-                <Icon name="X" size={16} className="mr-1" />
-                Отклонить
-              </Button>
-            </div>
-          )}
-
-          {showCommentField && (
-            <div className="space-y-2">
-              <Textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Причина отклонения (опционально)"
-                rows={3}
-              />
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleApprovalAction}
-                  disabled={submitting}
-                  variant="destructive"
-                  className="flex-1"
-                >
-                  {submitting ? 'Отправка...' : 'Подтвердить отклонение'}
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShowCommentField(false);
-                    setActionType(null);
-                    setComment('');
-                  }}
-                  variant="outline"
-                  disabled={submitting}
-                >
-                  Отмена
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
