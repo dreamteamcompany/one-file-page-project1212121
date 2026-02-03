@@ -187,10 +187,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if data.service_ids:
             for service_id in data.service_ids:
                 try:
+                    # Получаем ticket_service_id для этого сервиса через маппинг
                     cur.execute(f"""
-                        INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id)
-                        VALUES (%s, %s)
-                    """, (ticket['id'], service_id))
+                        SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
+                        WHERE service_id = %s
+                        LIMIT 1
+                    """, (service_id,))
+                    mapping = cur.fetchone()
+                    ticket_service_id = mapping['ticket_service_id'] if mapping else None
+                    
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id, ticket_service_id)
+                        VALUES (%s, %s, %s)
+                    """, (ticket['id'], service_id, ticket_service_id))
                 except Exception as e:
                     print(f"[TICKETS] Error linking service {service_id}: {e}")
                     # Откатываем транзакцию и возвращаем ошибку
@@ -304,10 +313,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if 'service_ids' in body:
             cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id = %s", (ticket_id,))
             for service_id in body['service_ids']:
+                # Получаем ticket_service_id для этого сервиса
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id)
-                    VALUES (%s, %s)
-                """, (ticket_id, service_id))
+                    SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
+                    WHERE service_id = %s
+                    LIMIT 1
+                """, (service_id,))
+                mapping = cur.fetchone()
+                ticket_service_id = mapping['ticket_service_id'] if mapping else None
+                
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id, ticket_service_id)
+                    VALUES (%s, %s, %s)
+                """, (ticket_id, service_id, ticket_service_id))
         
         if 'custom_fields' in body:
             cur.execute("DELETE FROM ticket_custom_field_values WHERE ticket_id = %s", (ticket_id,))
