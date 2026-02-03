@@ -193,7 +193,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   };
 
   return (
-    <div className="border rounded-lg p-4 space-y-4">
+    <div className="border rounded-lg p-4 space-y-4 bg-card flex flex-col justify-center md:h-[380px] lg:h-auto">
       <h3 className="font-semibold flex items-center gap-2">
         <Icon name="FileCheck" size={20} />
         Согласование
