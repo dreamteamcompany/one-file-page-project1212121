@@ -147,6 +147,9 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     elif method == 'POST':
         body = json.loads(event.get('body', '{}'))
         
+        # Debug: проверяем значение SCHEMA
+        print(f"DEBUG: SCHEMA = '{SCHEMA}'")
+        
         try:
             data = TicketRequest(**body)
         except Exception as e:
