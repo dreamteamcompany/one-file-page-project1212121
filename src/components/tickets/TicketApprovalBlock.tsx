@@ -16,6 +16,7 @@ import { API_URL, apiFetch } from '@/utils/api';
 interface ApprovalHistory {
   id: number;
   action: string;
+  status: string;
   comment?: string;
   created_at: string;
   approver_id: number;
@@ -169,6 +170,14 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const isRejected = statusName === 'Отклонена';
   const canSubmit = statusName === 'В работе' || statusName === 'Новая';
   const canApprove = pendingApprovals.some(a => a.approver_id === user?.id);
+  
+  console.log('[APPROVAL] Debug info:', {
+    userId: user?.id,
+    approvalHistory,
+    pendingApprovals,
+    canApprove,
+    statusName
+  });
 
   const getActionIcon = (action: string) => {
     switch (action) {
