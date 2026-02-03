@@ -181,14 +181,14 @@ export const useTicketActions = (
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
-      console.log('[UpdateDueDate] Отправка:', { ticket_id: ticketId, due_date: dueDate });
+      console.log('[UpdateDueDate] Отправка:', { id: ticketId, due_date: dueDate });
       const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ ticket_id: ticketId, due_date: dueDate }),
+        body: JSON.stringify({ id: ticketId, due_date: dueDate }),
       });
       
       console.log('[UpdateDueDate] Ответ:', response.status, await response.text());

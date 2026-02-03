@@ -240,8 +240,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             params.append(body['assigned_to'])
         
         if 'due_date' in body:
-            if body['due_date'] != old_ticket['due_date']:
-                history_entries.append(('due_date', str(old_ticket['due_date']) if old_ticket['due_date'] else 'Не установлен', str(body['due_date']) if body['due_date'] else 'Удален'))
+            old_due_date_str = old_ticket['due_date'].isoformat() if old_ticket['due_date'] else None
+            new_due_date_str = body['due_date']
+            if new_due_date_str != old_due_date_str:
+                history_entries.append(('due_date', old_due_date_str if old_due_date_str else 'Не установлен', new_due_date_str if new_due_date_str else 'Удален'))
             update_fields.append("due_date = %s")
             params.append(body['due_date'])
         
