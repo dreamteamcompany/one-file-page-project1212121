@@ -244,19 +244,20 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
                     </label>
                   ))}
                 </div>
+                {selectedApprovers.length > 0 && (
+                  <div className="border-t p-2">
+                    <Button
+                      onClick={handleSubmitForApproval}
+                      disabled={submitting}
+                      className="w-full"
+                    >
+                      {submitting ? 'Отправка...' : `Отправить на согласование (${selectedApprovers.length})`}
+                    </Button>
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
           </div>
-          
-          {selectedApprovers.length > 0 && (
-            <Button
-              onClick={handleSubmitForApproval}
-              disabled={submitting}
-              className="w-full"
-            >
-              {submitting ? 'Отправка...' : `Отправить на согласование (${selectedApprovers.length})`}
-            </Button>
-          )}
         </div>
       )}
 
