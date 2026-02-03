@@ -227,7 +227,11 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             FROM {SCHEMA}.tickets 
             WHERE id = %s
         """, (ticket_id,))
-        old_ticket = dict(cur.fetchone())
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            return response(404, {'error': 'Ticket not found'})
+        old_ticket = dict(row)
         
         update_fields = []
         params = []
@@ -270,6 +274,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 history_entries.append(('due_date', old_due_date_str if old_due_date_str else 'Не установлен', new_due_date_str if new_due_date_str else 'Удален'))
             update_fields.append("due_date = %s")
             params.append(body['due_date'])
+        
+        if not update_fields:
+            cur.close()
+            return response(400, {'error': 'No fields to update'})
         
         update_fields.append("updated_at = NOW()")
         params.append(ticket_id)
