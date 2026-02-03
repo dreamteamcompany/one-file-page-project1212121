@@ -131,10 +131,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         for ticket in tickets:
             cur.execute(f"""
                 SELECT s.id, s.name, sc.name as category_name
-                FROM {SCHEMA}.ticket_services s
-                JOIN {SCHEMA}.ticket_to_service_mappings tsm ON s.id = tsm.ticket_service_id
-                LEFT JOIN {SCHEMA}.ticket_service_categories sc ON s.category_id = sc.id
-                WHERE tsm.ticket_id = %s
+                FROM {SCHEMA}.services s
+                JOIN {SCHEMA}.ticket_to_service_mappings tsm ON s.id = tsm.service_id
+                LEFT JOIN {SCHEMA}.service_categories sc ON s.category_id = sc.id
+                WHERE tsm.ticket_id = %s AND tsm.service_id IS NOT NULL
             """, (ticket['id'],))
             ticket['services'] = [dict(row) for row in cur.fetchall()]
             
@@ -183,12 +183,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         ticket = dict(cur.fetchone())
         
-        # Привязываем услуги
+        # Привязываем сервисы (из таблицы services)
         if data.service_ids:
             for service_id in data.service_ids:
                 try:
                     cur.execute(f"""
-                        INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, ticket_service_id)
+                        INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id)
                         VALUES (%s, %s)
                     """, (ticket['id'], service_id))
                 except Exception as e:
@@ -196,7 +196,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     # Откатываем транзакцию и возвращаем ошибку
                     conn.rollback()
                     cur.close()
-                    return response(400, {'error': f'Услуга с ID {service_id} не найдена'})
+                    return response(400, {'error': f'Сервис с ID {service_id} не найден'})
         
         # Сохраняем кастомные поля
         if data.custom_fields:
@@ -305,7 +305,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id = %s", (ticket_id,))
             for service_id in body['service_ids']:
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, ticket_service_id)
+                    INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id)
                     VALUES (%s, %s)
                 """, (ticket_id, service_id))
         
