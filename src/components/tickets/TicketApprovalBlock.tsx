@@ -6,6 +6,7 @@ import Icon from '@/components/ui/icon';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
+import { API_URL, apiFetch } from '@/utils/api';
 
 interface ApprovalHistory {
   id: number;
@@ -46,19 +47,22 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://functions.poehali.dev/f1de2a37-a195-4b2c-9bae-c49c06b56326?ticket_id=${ticketId}`,
-        {
-          headers: {
-            'X-User-Id': user?.id.toString() || '',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setApprovalHistory(data);
-      }
+      // TODO: endpoint 'ticket-approvals' не существует в api-tickets
+      // Временно отключено до создания соответствующего backend endpoint
+      // const response = await apiFetch(
+      //   `${API_URL}?endpoint=ticket-approvals&ticket_id=${ticketId}`,
+      //   {
+      //     headers: {
+      //       'X-Auth-Token': token,
+      //     },
+      //   }
+      // );
+      //
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   setApprovalHistory(data);
+      // }
+      setApprovalHistory([]);
     } catch (error) {
       console.error('Failed to load approval history:', error);
     } finally {
@@ -75,27 +79,29 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
     setSubmitting(true);
     try {
-      const response = await fetch(
-        'https://functions.poehali.dev/f1de2a37-a195-4b2c-9bae-c49c06b56326',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': user.id.toString(),
-          },
-          body: JSON.stringify({ 
-            ticket_id: ticketId,
-            approver_ids: selectedApprovers
-          }),
-        }
-      );
-
-      if (response.ok) {
-        await loadApprovalHistory();
-        onStatusChange();
-        setShowApproverSelect(false);
-        setSelectedApprovers([]);
-      }
+      // TODO: endpoint 'ticket-approvals' не существует в api-tickets
+      // const response = await apiFetch(
+      //   `${API_URL}?endpoint=ticket-approvals`,
+      //   {
+      //     method: 'POST',
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       'X-Auth-Token': token,
+      //     },
+      //     body: JSON.stringify({ 
+      //       ticket_id: ticketId,
+      //       approver_ids: selectedApprovers
+      //     }),
+      //   }
+      // );
+      //
+      // if (response.ok) {
+      //   await loadApprovalHistory();
+      //   onStatusChange();
+      //   setShowApproverSelect(false);
+      //   setSelectedApprovers([]);
+      // }
+      console.log('Функция согласований временно отключена');
     } catch (error) {
       console.error('Failed to submit for approval:', error);
     } finally {
@@ -116,29 +122,31 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
     setSubmitting(true);
     try {
-      const response = await fetch(
-        'https://functions.poehali.dev/f1de2a37-a195-4b2c-9bae-c49c06b56326',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': user.id.toString(),
-          },
-          body: JSON.stringify({
-            ticket_id: ticketId,
-            action: actionType,
-            comment: comment,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        await loadApprovalHistory();
-        onStatusChange();
-        setComment('');
-        setShowCommentField(false);
-        setActionType(null);
-      }
+      // TODO: endpoint 'ticket-approvals' не существует в api-tickets
+      // const response = await apiFetch(
+      //   `${API_URL}?endpoint=ticket-approvals`,
+      //   {
+      //     method: 'PUT',
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       'X-Auth-Token': token,
+      //     },
+      //     body: JSON.stringify({
+      //       ticket_id: ticketId,
+      //       action: actionType,
+      //       comment: comment,
+      //     }),
+      //   }
+      // );
+      //
+      // if (response.ok) {
+      //   await loadApprovalHistory();
+      //   onStatusChange();
+      //   setComment('');
+      //   setShowCommentField(false);
+      //   setActionType(null);
+      // }
+      console.log('Функция согласований временно отключена');
     } catch (error) {
       console.error('Failed to process approval:', error);
     } finally {
