@@ -150,7 +150,7 @@ const TicketDetailsSidebar = ({
 
   return (
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 md:grid-rows-[1fr] md:auto-rows-fr">
       {ticket.due_date && (
         <div className="p-4 rounded-lg bg-card border h-full flex flex-col">
           <div className="flex flex-col items-center flex-1 justify-center">
