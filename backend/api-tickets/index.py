@@ -172,17 +172,32 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         ticket = dict(cur.fetchone())
         
-        for service_id in data.service_ids:
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, ticket_service_id)
-                VALUES (%s, %s)
-            """, (ticket['id'], service_id))
+        # Привязываем услуги
+        if data.service_ids:
+            for service_id in data.service_ids:
+                try:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, ticket_service_id)
+                        VALUES (%s, %s)
+                    """, (ticket['id'], service_id))
+                except Exception as e:
+                    log(f"[TICKETS] Error linking service {service_id}: {e}")
+                    # Откатываем транзакцию и возвращаем ошибку
+                    conn.rollback()
+                    cur.close()
+                    return response(400, {'error': f'Услуга с ID {service_id} не найдена'})
         
-        for field_id, value in data.custom_fields.items():
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.ticket_custom_field_values (ticket_id, field_id, value)
-                VALUES (%s, %s, %s)
-            """, (ticket['id'], int(field_id), value))
+        # Сохраняем кастомные поля
+        if data.custom_fields:
+            for field_id, value in data.custom_fields.items():
+                try:
+                    cur.execute(f"""
+                        INSERT INTO {SCHEMA}.ticket_custom_field_values (ticket_id, field_id, value)
+                        VALUES (%s, %s, %s)
+                    """, (ticket['id'], int(field_id), value))
+                except Exception as e:
+                    log(f"[TICKETS] Error saving custom field {field_id}: {e}")
+                    # Продолжаем, не критично
         
         conn.commit()
         cur.close()
