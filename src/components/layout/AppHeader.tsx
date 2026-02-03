@@ -18,6 +18,14 @@ const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
     navigate('/login');
   };
 
+  const handleMenuToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget;
+    setMenuOpen(!menuOpen);
+    setTimeout(() => target.blur(), 0);
+  };
+
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-4">
@@ -25,7 +33,7 @@ const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
           variant="ghost"
           size="icon"
           className="lg:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
+          onClick={handleMenuToggle}
         >
           <Icon name="Menu" size={24} />
         </Button>
