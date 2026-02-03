@@ -162,13 +162,13 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
     }
   };
 
-  const pendingApprovals = approvalHistory.filter(a => a.action === 'pending');
-  const completedApprovals = approvalHistory.filter(a => a.action !== 'pending' && a.action !== 'submitted');
+  const pendingApprovals = approvalHistory.filter(a => a.status === 'pending');
+  const completedApprovals = approvalHistory.filter(a => a.status !== 'pending');
   const isAwaitingApproval = statusName === 'На согласовании';
   const isApproved = statusName === 'Одобрена';
   const isRejected = statusName === 'Отклонена';
   const canSubmit = statusName === 'В работе' || statusName === 'Новая';
-  const canApprove = isAwaitingApproval && pendingApprovals.some(a => a.approver_id === user?.id);
+  const canApprove = pendingApprovals.some(a => a.approver_id === user?.id);
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -281,9 +281,6 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
                     <p className="text-sm font-medium truncate">
                       {approval.approver_name || `Пользователь #${approval.approver_id}`}
                     </p>
-                    {approval.approver_email && (
-                      <p className="text-xs text-muted-foreground truncate">{approval.approver_email}</p>
-                    )}
                   </div>
                 </div>
                 <div className="text-xs font-medium flex-shrink-0 ml-2">
@@ -379,7 +376,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
             <Icon name="CheckCircle" size={16} />
             Заявка одобрена
           </p>
-          {completedApprovals.filter(a => a.action === 'approved').map((approval) => (
+          {completedApprovals.filter(a => a.status === 'approved').map((approval) => (
             <p key={approval.id} className="text-xs text-green-700 dark:text-green-300 mt-1">
               {formatDistanceToNow(new Date(approval.created_at), { addSuffix: true, locale: ru })}
             </p>
@@ -393,7 +390,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
             <Icon name="XCircle" size={16} />
             Заявка отклонена
           </p>
-          {completedApprovals.filter(a => a.action === 'rejected').map((approval) => (
+          {completedApprovals.filter(a => a.status === 'rejected').map((approval) => (
             <div key={approval.id} className="mt-2">
               <p className="text-xs text-red-700 dark:text-red-300">
                 {formatDistanceToNow(new Date(approval.created_at), { addSuffix: true, locale: ru })}
@@ -420,27 +417,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         </div>
       )}
 
-      {approvalHistory.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">История согласований</h4>
-          <div className="space-y-2">
-            {approvalHistory.slice().reverse().map((item) => (
-              <div key={item.id} className="flex items-start gap-2 text-sm p-2 rounded bg-muted/50">
-                {getActionIcon(item.action)}
-                <div className="flex-1">
-                  <p className="font-medium">{getActionText(item.action)}</p>
-                  {item.comment && (
-                    <p className="text-muted-foreground text-xs mt-1">{item.comment}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ru })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
