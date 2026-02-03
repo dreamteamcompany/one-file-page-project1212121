@@ -91,24 +91,34 @@ def handler(event, context):
             placeholders = ','.join(['%s'] * len(ticket_ids))
             log(f"[BULK-TICKETS] Deleting tickets: {ticket_ids}")
             
+            # Удаляем все связанные записи перед удалением заявок
             try:
-                # Сначала удаляем связанные комментарии
+                cur.execute(f"DELETE FROM {SCHEMA}.notifications WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted notifications: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting notifications: {e}")
+            
+            try:
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_history WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted history: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting history: {e}")
+            
+            try:
                 cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders})", ticket_ids)
-                log(f"[BULK-TICKETS] Deleted comments")
+                log(f"[BULK-TICKETS] Deleted comments: {cur.rowcount}")
             except Exception as e:
                 log(f"[BULK-TICKETS] Error deleting comments: {e}")
             
             try:
-                # Удаляем связи с сервисами
-                cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id IN ({placeholders})", ticket_ids)
-                log(f"[BULK-TICKETS] Deleted service mappings")
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted service mappings: {cur.rowcount}")
             except Exception as e:
                 log(f"[BULK-TICKETS] Error deleting mappings: {e}")
             
             try:
-                # Удаляем кастомные значения полей
                 cur.execute(f"DELETE FROM {SCHEMA}.ticket_custom_field_values WHERE ticket_id IN ({placeholders})", ticket_ids)
-                log(f"[BULK-TICKETS] Deleted custom fields")
+                log(f"[BULK-TICKETS] Deleted custom fields: {cur.rowcount}")
             except Exception as e:
                 log(f"[BULK-TICKETS] Error deleting custom fields: {e}")
             
