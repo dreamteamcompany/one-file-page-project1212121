@@ -13,6 +13,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'legal_entities': GENERAL_API,
   'customer_departments': GENERAL_API,
   'tickets': TICKETS_API,
+  'api-tickets': TICKETS_API,
   'service_categories': TICKETS_API,
   'ticket-dictionaries-api': TICKETS_API,
   'ticket_services': TICKETS_API,
