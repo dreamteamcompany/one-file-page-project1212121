@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
+import Logo from '@/components/ui/Logo';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -35,12 +36,12 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] p-4">
       <Card className="w-full max-w-md border-white/10 bg-card/50 backdrop-blur-xl">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-[15px] flex items-center justify-center font-bold text-white text-2xl mb-4">
-            V
+          <div className="mx-auto mb-4 flex items-center justify-center">
+            <Logo className="h-10 w-auto text-white" />
           </div>
           <CardTitle className="text-2xl font-bold">Вход в систему</CardTitle>
           <CardDescription>
-            Введите email и пароль для доступа
+            Служба технической поддержки
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,11 +110,6 @@ const Login = () => {
               )}
             </Button>
           </form>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Тестовый доступ:</p>
-            <p className="text-xs mt-1">Логин: <b>admin</b> / Пароль: <b>admin</b></p>
-          </div>
         </CardContent>
       </Card>
     </div>
