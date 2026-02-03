@@ -5,13 +5,12 @@ import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { API_URL, apiFetch } from '@/utils/api';
 
 interface ApprovalHistory {
@@ -46,7 +45,8 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const [showCommentField, setShowCommentField] = useState(false);
   const [actionType, setActionType] = useState<'approved' | 'rejected' | null>(null);
   const [showApproverSelect, setShowApproverSelect] = useState(false);
-  const [selectedApproverId, setSelectedApproverId] = useState<string>('');
+  const [selectedApprovers, setSelectedApprovers] = useState<number[]>([]);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const loadApprovalHistory = async () => {
     if (!token) return;
@@ -78,7 +78,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   }, [ticketId, token]);
 
   const handleSubmitForApproval = async () => {
-    if (!token || !user || !selectedApproverId) return;
+    if (!token || !user || selectedApprovers.length === 0) return;
 
     setSubmitting(true);
     try {
@@ -92,7 +92,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
           },
           body: JSON.stringify({ 
             ticket_id: ticketId,
-            approver_ids: [parseInt(selectedApproverId)]
+            approver_ids: selectedApprovers
           }),
         }
       );
@@ -100,7 +100,8 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
       if (response.ok) {
         await loadApprovalHistory();
         onStatusChange();
-        setSelectedApproverId('');
+        setSelectedApprovers([]);
+        setIsPopoverOpen(false);
       }
     } catch (error) {
       console.error('Failed to submit for approval:', error);
@@ -109,7 +110,22 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
     }
   };
 
+  const toggleApprover = (userId: number) => {
+    setSelectedApprovers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
 
+  const getSelectedApproversText = () => {
+    if (selectedApprovers.length === 0) return 'Выберите согласующих';
+    if (selectedApprovers.length === 1) {
+      const user = availableUsers.find(u => u.id === selectedApprovers[0]);
+      return user?.name || 'Выбран 1';
+    }
+    return `Выбрано: ${selectedApprovers.length}`;
+  };
 
   const handleApprovalAction = async () => {
     if (!token || !user || !actionType) return;
@@ -196,36 +212,60 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
           <div>
             <p className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
               <Icon name="UserCheck" size={14} />
-              Согласующий
+              Согласующие
             </p>
-            <Select
-              value={selectedApproverId}
-              onValueChange={setSelectedApproverId}
-              disabled={submitting}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите согласующего" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id.toString()}>
-                    <div className="flex flex-col">
-                      <span className="text-sm">{u.name}</span>
-                      <span className="text-xs text-muted-foreground">{u.email}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={submitting}
+                >
+                  <span className={selectedApprovers.length === 0 ? 'text-muted-foreground' : ''}>
+                    {getSelectedApproversText()}
+                  </span>
+                  <Icon name="ChevronDown" size={16} className="opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <div className="max-h-[300px] overflow-y-auto p-2">
+                  {availableUsers.map((u) => (
+                    <label
+                      key={u.id}
+                      className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedApprovers.includes(u.id)}
+                        onCheckedChange={() => toggleApprover(u.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{u.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {selectedApprovers.length > 0 && (
+                  <div className="border-t p-2">
+                    <Button
+                      onClick={() => setIsPopoverOpen(false)}
+                      className="w-full"
+                      size="sm"
+                    >
+                      Применить
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
           
-          {selectedApproverId && (
+          {selectedApprovers.length > 0 && (
             <Button
               onClick={handleSubmitForApproval}
               disabled={submitting}
               className="w-full"
             >
-              {submitting ? 'Отправка...' : 'Отправить на согласование'}
+              {submitting ? 'Отправка...' : `Отправить на согласование (${selectedApprovers.length})`}
             </Button>
           )}
         </div>
