@@ -138,6 +138,17 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             """, (ticket['id'],))
             ticket['services'] = [dict(row) for row in cur.fetchall()]
             
+            # Получаем информацию об услуге (ticket_service)
+            cur.execute(f"""
+                SELECT DISTINCT ts.id, ts.name
+                FROM {SCHEMA}.ticket_services ts
+                JOIN {SCHEMA}.ticket_to_service_mappings tsm ON ts.id = tsm.ticket_service_id
+                WHERE tsm.ticket_id = %s AND tsm.ticket_service_id IS NOT NULL
+                LIMIT 1
+            """, (ticket['id'],))
+            ticket_service = cur.fetchone()
+            ticket['ticket_service'] = dict(ticket_service) if ticket_service else None
+            
             cur.execute(f"""
                 SELECT cf.id, cf.name, cf.field_type, tcfv.value
                 FROM {SCHEMA}.ticket_custom_field_values tcfv
