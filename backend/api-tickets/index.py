@@ -762,19 +762,59 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
             if not ticket_id or not action:
                 return response(400, {'error': 'ticket_id and action are required'})
             
-            if action not in ['approved', 'rejected']:
-                return response(400, {'error': 'action must be approved or rejected'})
+            if action not in ['approved', 'rejected', 'revoked']:
+                return response(400, {'error': 'action must be approved, rejected or revoked'})
             
-            cur.execute(f"""
-                UPDATE {SCHEMA}.ticket_approvals
-                SET status = %s, comment = %s, updated_at = NOW()
-                WHERE ticket_id = %s AND approver_id = %s AND status = 'pending'
-                RETURNING id
-            """, (action, comment, ticket_id, payload['user_id']))
+            # Для отзыва согласования обновляем approved статус
+            if action == 'revoked':
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.ticket_approvals
+                    SET status = %s, comment = %s, updated_at = NOW()
+                    WHERE ticket_id = %s AND approver_id = %s AND status = 'approved'
+                    RETURNING id
+                """, (action, comment, ticket_id, payload['user_id']))
+            else:
+                # Для одобрения/отклонения обновляем pending статус
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.ticket_approvals
+                    SET status = %s, comment = %s, updated_at = NOW()
+                    WHERE ticket_id = %s AND approver_id = %s AND status = 'pending'
+                    RETURNING id
+                """, (action, comment, ticket_id, payload['user_id']))
             
             result = cur.fetchone()
             if not result:
                 return response(404, {'error': 'Approval not found or already processed'})
+            
+            # Если отозвали согласование, проверяем нужно ли менять статус заявки
+            if action == 'revoked':
+                # Получаем все согласования для этой заявки
+                cur.execute(f"""
+                    SELECT status FROM {SCHEMA}.ticket_approvals
+                    WHERE ticket_id = %s
+                """, (ticket_id,))
+                all_approvals = [dict(row) for row in cur.fetchall()]
+                
+                # Проверяем условия для смены статуса на "Согласование отозвано"
+                total_approvers = len(all_approvals)
+                revoked_count = sum(1 for a in all_approvals if a['status'] == 'revoked')
+                
+                # Если единственный согласующий или все отозвали - меняем статус
+                if total_approvers == 1 or revoked_count == total_approvers:
+                    # Находим статус "Согласование отозвано"
+                    cur.execute(f"""
+                        SELECT id FROM {SCHEMA}.ticket_statuses
+                        WHERE is_approval_revoked = true
+                        LIMIT 1
+                    """)
+                    revoked_status = cur.fetchone()
+                    
+                    if revoked_status:
+                        cur.execute(f"""
+                            UPDATE {SCHEMA}.tickets
+                            SET status_id = %s, updated_at = NOW()
+                            WHERE id = %s
+                        """, (revoked_status['id'], ticket_id))
             
             conn.commit()
             return response(200, {'message': f'Ticket {action} successfully'})

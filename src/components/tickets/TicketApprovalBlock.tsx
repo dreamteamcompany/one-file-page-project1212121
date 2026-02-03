@@ -44,7 +44,9 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const [submitting, setSubmitting] = useState(false);
   const [comment, setComment] = useState('');
   const [showCommentField, setShowCommentField] = useState(false);
-  const [actionType, setActionType] = useState<'approved' | 'rejected' | null>(null);
+  const [actionType, setActionType] = useState<'approved' | 'rejected' | 'revoked' | null>(null);
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [revokeReason, setRevokeReason] = useState('');
   const [showApproverSelect, setShowApproverSelect] = useState(false);
   const [selectedApprovers, setSelectedApprovers] = useState<number[]>([]);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -155,6 +157,8 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         setComment('');
         setShowCommentField(false);
         setActionType(null);
+        setShowRevokeDialog(false);
+        setRevokeReason('');
       }
     } catch (error) {
       console.error('Failed to process approval:', error);
@@ -170,6 +174,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const isRejected = statusName === 'Отклонена';
   const canSubmit = statusName === 'В работе' || statusName === 'Новая';
   const canApprove = pendingApprovals.some(a => a.approver_id === user?.id);
+  const canRevoke = approvalHistory.some(a => a.approver_id === user?.id && a.status === 'approved');
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -278,6 +283,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
                   {approval.status === 'pending' && <Icon name="Clock" size={14} className="text-yellow-500 flex-shrink-0" />}
                   {approval.status === 'approved' && <Icon name="CheckCircle" size={14} className="text-green-500 flex-shrink-0" />}
                   {approval.status === 'rejected' && <Icon name="XCircle" size={14} className="text-red-500 flex-shrink-0" />}
+                  {approval.status === 'revoked' && <Icon name="XCircle" size={14} className="text-orange-500 flex-shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
                       {approval.approver_name || `Пользователь #${approval.approver_id}`}
@@ -288,6 +294,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
                   {approval.status === 'pending' && <span className="text-yellow-600 dark:text-yellow-400">Ожидает</span>}
                   {approval.status === 'approved' && <span className="text-green-600 dark:text-green-400">Одобрил</span>}
                   {approval.status === 'rejected' && <span className="text-red-600 dark:text-red-400">Отклонил</span>}
+                  {approval.status === 'revoked' && <span className="text-orange-600 dark:text-orange-400">Отозвал</span>}
                 </div>
               </div>
             ))}
@@ -295,7 +302,65 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
         </div>
       )}
 
-      {canApprove && !showCommentField && (
+      {canRevoke && !showRevokeDialog && (
+        <Button
+          onClick={() => setShowRevokeDialog(true)}
+          disabled={submitting}
+          variant="outline"
+          className="w-full border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20"
+        >
+          <Icon name="RotateCcw" size={16} className="mr-1" />
+          Отозвать согласование
+        </Button>
+      )}
+
+      {showRevokeDialog && (
+        <div className="space-y-3">
+          <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+            <p className="text-sm font-medium text-orange-800 dark:text-orange-200 flex items-center gap-2">
+              <Icon name="AlertCircle" size={16} />
+              Вы уверены, что хотите отозвать согласование?
+            </p>
+          </div>
+          <Textarea
+            value={revokeReason}
+            onChange={(e) => setRevokeReason(e.target.value)}
+            placeholder="Причина отзыва (обязательно)"
+            rows={3}
+            className="resize-none"
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                if (!revokeReason.trim()) {
+                  alert('Пожалуйста, укажите причину отзыва');
+                  return;
+                }
+                setActionType('revoked');
+                setComment(revokeReason);
+                handleApprovalAction();
+              }}
+              disabled={submitting || !revokeReason.trim()}
+              variant="destructive"
+              className="flex-1 bg-orange-600 hover:bg-orange-700"
+            >
+              {submitting ? 'Отзыв...' : 'Подтвердить отзыв'}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowRevokeDialog(false);
+                setRevokeReason('');
+              }}
+              variant="outline"
+              disabled={submitting}
+            >
+              Отмена
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {canApprove && !showCommentField && !showRevokeDialog && (
         <div className="flex gap-2">
           <Button
             onClick={() => {
