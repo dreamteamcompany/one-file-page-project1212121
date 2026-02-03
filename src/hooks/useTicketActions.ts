@@ -54,7 +54,7 @@ export const useTicketActions = (
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ id: ticketId, status_id: statusId }),
+        body: JSON.stringify({ ticket_id: ticketId, status_id: statusId }),
       });
       
       if (response.ok) {
@@ -162,7 +162,7 @@ export const useTicketActions = (
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ id: ticketId, assigned_to: assignedUserId }),
+        body: JSON.stringify({ ticket_id: ticketId, assigned_to: assignedUserId }),
       });
       
       console.log('Assign response:', response.status, await response.text());
@@ -187,7 +187,7 @@ export const useTicketActions = (
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ id: ticketId, due_date: dueDate }),
+        body: JSON.stringify({ ticket_id: ticketId, due_date: dueDate }),
       });
       
       if (response.ok) {
