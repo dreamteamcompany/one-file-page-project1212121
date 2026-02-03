@@ -150,9 +150,9 @@ const TicketDetailsSidebar = ({
 
   return (
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 md:items-stretch">
       {ticket.due_date && (
-        <div className="p-4 rounded-lg bg-card border flex flex-col md:min-h-[320px]">
+        <div className="p-4 rounded-lg bg-card border flex flex-col">
           <div className="flex flex-col items-center flex-1 justify-center">
             <h3 className="text-sm font-semibold mb-4 text-foreground">Времени осталось</h3>
             <div className={`w-24 h-24 rounded-full ${getTimeLeft()?.expired ? 'bg-red-500/10 border-red-500' : 'bg-muted'} border-2 flex items-center justify-center mb-4`}>
@@ -180,7 +180,7 @@ const TicketDetailsSidebar = ({
       )}
 
       {onSendPing && (
-        <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 flex flex-col justify-center md:min-h-[320px]">
+        <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 flex flex-col justify-center">
           <h3 className="text-sm font-semibold mb-4 text-transparent select-none">.</h3>
           <Button
             onClick={onSendPing}
