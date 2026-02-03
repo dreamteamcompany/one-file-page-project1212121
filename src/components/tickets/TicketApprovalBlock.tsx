@@ -244,17 +244,6 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
                     </label>
                   ))}
                 </div>
-                {selectedApprovers.length > 0 && (
-                  <div className="border-t p-2">
-                    <Button
-                      onClick={() => setIsPopoverOpen(false)}
-                      className="w-full"
-                      size="sm"
-                    >
-                      Применить
-                    </Button>
-                  </div>
-                )}
               </PopoverContent>
             </Popover>
           </div>
