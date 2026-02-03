@@ -64,16 +64,15 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setLoadingComments(true);
     try {
-      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
-      // const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${ticket.id}`, {
-      //   headers: { 'X-Auth-Token': token },
-      // });
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      const response = await apiFetch(`${commentsUrl}?ticket_id=${ticket.id}`, {
+        headers: { 'X-Auth-Token': token },
+      });
 
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setComments(data.comments || []);
-      // }
-      setComments([]);
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data.comments || []);
+      }
     } catch (err) {
       console.error('Failed to load comments:', err);
     } finally {
@@ -86,68 +85,26 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setSubmittingComment(true);
     try {
-      let fileUrls: { filename: string; url: string; size: number }[] = [];
-      
-      if (files && files.length > 0) {
-        const uploadPromises = files.map(async (file) => {
-          const reader = new FileReader();
-          const base64Data = await new Promise<string>((resolve) => {
-            reader.onload = () => {
-              const result = reader.result as string;
-              resolve(result.split(',')[1]);
-            };
-            reader.readAsDataURL(file);
-          });
-          
-          const uploadResponse = await apiFetch(
-            `${API_URL}?endpoint=upload-file`,
-            {
-              method: 'POST',
-              headers: { 
-                'X-Auth-Token': token,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                filename: file.name,
-                data: base64Data,
-                content_type: file.type
-              }),
-            }
-          );
-          
-          if (uploadResponse.ok) {
-            const data = await uploadResponse.json();
-            return { filename: file.name, url: data.url, size: file.size };
-          }
-          return null;
-        });
-        
-        const results = await Promise.all(uploadPromises);
-        fileUrls = results.filter((r): r is { filename: string; url: string; size: number } => r !== null);
-      }
-      
-      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
-      // const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-Auth-Token': token,
-      //   },
-      //   body: JSON.stringify({
-      //     ticket_id: ticket.id,
-      //     comment: newComment,
-      //     is_internal: false,
-      //     attachments: fileUrls.length > 0 ? fileUrls : undefined,
-      //   }),
-      // });
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      const response = await apiFetch(commentsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token,
+        },
+        body: JSON.stringify({
+          ticket_id: ticket.id,
+          comment: newComment,
+          is_internal: false,
+        }),
+      });
 
-      // if (response.ok) {
+      if (response.ok) {
         setNewComment('');
         await loadComments();
         toast({
-          title: 'Комментарии временно отключены',
-          description: 'Функциональность в разработке',
-          variant: 'destructive',
+          title: 'Успешно',
+          description: 'Комментарий добавлен',
         });
       } else {
         toast({
@@ -217,20 +174,23 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
 
     setSendingPing(true);
     try {
-      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
-      // await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-Auth-Token': token,
-      //   },
-      //   body: JSON.stringify({ ticket_id: ticket.id, is_ping: true }),
-      // });
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      await apiFetch(commentsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token,
+        },
+        body: JSON.stringify({ 
+          ticket_id: ticket.id, 
+          comment: '🔔 Запрос статуса заявки',
+          is_internal: false 
+        }),
+      });
       loadComments();
       toast({
-        title: 'Функция временно отключена',
-        description: 'Пинги будут доступны позже',
-        variant: 'destructive',
+        title: 'Успешно',
+        description: 'Запрос отправлен',
       });
     } catch (err) {
       console.error('Failed to send ping:', err);

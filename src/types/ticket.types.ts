@@ -44,9 +44,10 @@ export interface TicketComment {
   ticket_id: number;
   user_id: number;
   user_name?: string;
-  user_email?: string;
+  user_full_name?: string;
   comment: string;
   is_internal: boolean;
+  is_read?: boolean;
   created_at?: string;
   attachments?: {
     id: number;
@@ -63,12 +64,13 @@ export interface TicketComment {
 
 export interface TicketAuditLog {
   id: number;
-  action: string;
-  username: string;
-  changed_fields?: any;
-  old_values?: any;
-  new_values?: any;
-  metadata?: any;
+  ticket_id: number;
+  user_id?: number;
+  user_name?: string;
+  user_full_name?: string;
+  field_name?: string;
+  old_value?: string;
+  new_value?: string;
   created_at: string;
 }
 

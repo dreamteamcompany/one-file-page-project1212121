@@ -1,4 +1,6 @@
 {
+  "api-ticket-history": "https://functions.poehali.dev/429bf640-f15c-4a4f-b791-a7437061ba87",
+  "api-ticket-comments": "https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3",
   "api-tickets": "https://functions.poehali.dev/42feebee-e551-4872-901b-0512a2085c1a",
   "api-general": "https://functions.poehali.dev/adff2697-72f0-4316-9424-1f79ff8ed3cc",
   "auth": "https://functions.poehali.dev/390bc680-77ff-4e34-a383-c92f6b67d723",

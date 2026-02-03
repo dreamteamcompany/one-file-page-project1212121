@@ -77,17 +77,16 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadHistory = async () => {
     try {
       setLoadingHistory(true);
-      // TODO: endpoint 'ticket-history' не существует в api-tickets
-      // const response = await apiFetch(`${API_URL}?endpoint=ticket-history&ticket_id=${id}`, {
-      //   headers: {
-      //     'X-Auth-Token': token,
-      //   },
-      // });
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setAuditLogs(data.logs || []);
-      // }
-      setAuditLogs([]);
+      const historyUrl = 'https://functions.poehali.dev/429bf640-f15c-4a4f-b791-a7437061ba87';
+      const response = await apiFetch(`${historyUrl}?ticket_id=${id}`, {
+        headers: {
+          'X-Auth-Token': token,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAuditLogs(data.logs || []);
+      }
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
@@ -98,17 +97,16 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const loadComments = async () => {
     try {
       setLoadingComments(true);
-      // TODO: endpoint 'ticket-comments-api' не существует в api-tickets
-      // const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api&ticket_id=${id}`, {
-      //   headers: {
-      //     'X-Auth-Token': token,
-      //   },
-      // });
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setComments(data.comments || []);
-      // }
-      setComments([]);
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      const response = await apiFetch(`${commentsUrl}?ticket_id=${id}`, {
+        headers: {
+          'X-Auth-Token': token,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data.comments || []);
+      }
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {

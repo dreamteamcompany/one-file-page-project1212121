@@ -197,30 +197,51 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
+        # Получаем текущее состояние заявки для логирования изменений
+        cur.execute(f"""
+            SELECT title, description, status_id, priority_id, assigned_to, due_date
+            FROM {SCHEMA}.tickets 
+            WHERE id = %s
+        """, (ticket_id,))
+        old_ticket = dict(cur.fetchone())
+        
         update_fields = []
         params = []
+        history_entries = []
         
         if 'title' in body:
+            if body['title'] != old_ticket['title']:
+                history_entries.append(('title', old_ticket['title'], body['title']))
             update_fields.append("title = %s")
             params.append(body['title'])
         
         if 'description' in body:
+            if body['description'] != old_ticket['description']:
+                history_entries.append(('description', old_ticket['description'], body['description']))
             update_fields.append("description = %s")
             params.append(body['description'])
         
         if 'status_id' in body:
+            if body['status_id'] != old_ticket['status_id']:
+                history_entries.append(('status_id', str(old_ticket['status_id']), str(body['status_id'])))
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
         
         if 'priority_id' in body:
+            if body['priority_id'] != old_ticket['priority_id']:
+                history_entries.append(('priority_id', str(old_ticket['priority_id']), str(body['priority_id'])))
             update_fields.append("priority_id = %s")
             params.append(body['priority_id'])
         
         if 'assigned_to' in body:
+            if body['assigned_to'] != old_ticket['assigned_to']:
+                history_entries.append(('assigned_to', str(old_ticket['assigned_to']) if old_ticket['assigned_to'] else 'Не назначен', str(body['assigned_to']) if body['assigned_to'] else 'Снят с назначения'))
             update_fields.append("assigned_to = %s")
             params.append(body['assigned_to'])
         
         if 'due_date' in body:
+            if body['due_date'] != old_ticket['due_date']:
+                history_entries.append(('due_date', str(old_ticket['due_date']) if old_ticket['due_date'] else 'Не установлен', str(body['due_date']) if body['due_date'] else 'Удален'))
             update_fields.append("due_date = %s")
             params.append(body['due_date'])
         
@@ -235,6 +256,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         """, params)
         
         ticket = dict(cur.fetchone())
+        
+        # Добавляем записи в историю
+        for field_name, old_value, new_value in history_entries:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_history 
+                (ticket_id, user_id, field_name, old_value, new_value, created_at)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+            """, (ticket_id, payload['user_id'], field_name, old_value, new_value))
         
         if 'service_ids' in body:
             cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id = %s", (ticket_id,))

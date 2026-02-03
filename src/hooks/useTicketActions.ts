@@ -20,7 +20,8 @@ export const useTicketActions = (
     
     try {
       setSubmittingComment(true);
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-comments-api`, {
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      const response = await apiFetch(commentsUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -29,9 +30,7 @@ export const useTicketActions = (
         body: JSON.stringify({ 
           ticket_id: ticketId, 
           comment: newComment, 
-          is_internal: false,
-          parent_comment_id: parentCommentId,
-          mentioned_user_ids: mentionedUserIds || []
+          is_internal: false
         }),
       });
       

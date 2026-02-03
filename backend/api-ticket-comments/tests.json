@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Get comments unauthorized",
+      "method": "GET",
+      "path": "/?ticket_id=1",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create comment unauthorized",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "ticket_id": 1,
+        "comment": "Test comment"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
