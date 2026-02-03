@@ -231,6 +231,28 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     # Продолжаем, не критично
         
         conn.commit()
+        
+        # Загружаем связанные сервисы для ответа
+        cur.execute(f"""
+            SELECT s.id, s.name, sc.name as category_name
+            FROM {SCHEMA}.services s
+            JOIN {SCHEMA}.ticket_to_service_mappings tsm ON s.id = tsm.service_id
+            LEFT JOIN {SCHEMA}.service_categories sc ON s.category_id = sc.id
+            WHERE tsm.ticket_id = %s AND tsm.service_id IS NOT NULL
+        """, (ticket['id'],))
+        ticket['services'] = [dict(row) for row in cur.fetchall()]
+        
+        # Загружаем услугу (ticket_service) для ответа
+        cur.execute(f"""
+            SELECT DISTINCT ts.id, ts.name
+            FROM {SCHEMA}.ticket_services ts
+            JOIN {SCHEMA}.ticket_to_service_mappings tsm ON ts.id = tsm.ticket_service_id
+            WHERE tsm.ticket_id = %s AND tsm.ticket_service_id IS NOT NULL
+            LIMIT 1
+        """, (ticket['id'],))
+        ticket_service = cur.fetchone()
+        ticket['ticket_service'] = dict(ticket_service) if ticket_service else None
+        
         cur.close()
         
         return response(201, ticket)
