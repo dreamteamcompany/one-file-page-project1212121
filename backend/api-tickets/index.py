@@ -49,6 +49,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_services(method, event, conn)
         elif endpoint == 'ticket-statuses':
             return handle_ticket_statuses(method, event, conn)
+        elif endpoint == 'ticket-approvals':
+            return handle_ticket_approvals(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -692,6 +694,82 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             conn.commit()
             
             return response(200, {'success': True})
+        
+        return response(405, {'error': 'Method not allowed'})
+    
+    finally:
+        cur.close()
+
+def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Обработчик для управления согласованиями заявок"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    
+    cur = conn.cursor()
+    
+    try:
+        if method == 'GET':
+            query_params = event.get('queryStringParameters', {})
+            ticket_id = query_params.get('ticket_id')
+            
+            if not ticket_id:
+                return response(400, {'error': 'ticket_id is required'})
+            
+            cur.execute(f"""
+                SELECT ta.id, ta.ticket_id, ta.approver_id, ta.status, ta.comment, 
+                       ta.created_at, ta.updated_at,
+                       u.username as approver_name, u.email as approver_email
+                FROM {SCHEMA}.ticket_approvals ta
+                LEFT JOIN {SCHEMA}.users u ON ta.approver_id = u.id
+                WHERE ta.ticket_id = %s
+                ORDER BY ta.created_at DESC
+            """, (ticket_id,))
+            approvals = [dict(row) for row in cur.fetchall()]
+            return response(200, approvals)
+        
+        elif method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            ticket_id = body.get('ticket_id')
+            approver_ids = body.get('approver_ids', [])
+            
+            if not ticket_id or not approver_ids:
+                return response(400, {'error': 'ticket_id and approver_ids are required'})
+            
+            for approver_id in approver_ids:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_approvals (ticket_id, approver_id, status)
+                    VALUES (%s, %s, 'pending')
+                """, (ticket_id, approver_id))
+            
+            conn.commit()
+            return response(201, {'message': 'Approvers added successfully'})
+        
+        elif method == 'PUT':
+            body = json.loads(event.get('body', '{}'))
+            ticket_id = body.get('ticket_id')
+            action = body.get('action')
+            comment = body.get('comment', '')
+            
+            if not ticket_id or not action:
+                return response(400, {'error': 'ticket_id and action are required'})
+            
+            if action not in ['approved', 'rejected']:
+                return response(400, {'error': 'action must be approved or rejected'})
+            
+            cur.execute(f"""
+                UPDATE {SCHEMA}.ticket_approvals
+                SET status = %s, comment = %s, updated_at = NOW()
+                WHERE ticket_id = %s AND approver_id = %s AND status = 'pending'
+                RETURNING id
+            """, (action, comment, ticket_id, payload['user_id']))
+            
+            result = cur.fetchone()
+            if not result:
+                return response(404, {'error': 'Approval not found or already processed'})
+            
+            conn.commit()
+            return response(200, {'message': f'Ticket {action} successfully'})
         
         return response(405, {'error': 'Method not allowed'})
     

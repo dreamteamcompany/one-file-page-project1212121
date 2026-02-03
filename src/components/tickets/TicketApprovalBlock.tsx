@@ -47,22 +47,19 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
     setLoading(true);
     try {
-      // TODO: endpoint 'ticket-approvals' не существует в api-tickets
-      // Временно отключено до создания соответствующего backend endpoint
-      // const response = await apiFetch(
-      //   `${API_URL}?endpoint=ticket-approvals&ticket_id=${ticketId}`,
-      //   {
-      //     headers: {
-      //       'X-Auth-Token': token,
-      //     },
-      //   }
-      // );
-      //
-      // if (response.ok) {
-      //   const data = await response.json();
-      //   setApprovalHistory(data);
-      // }
-      setApprovalHistory([]);
+      const response = await apiFetch(
+        `${API_URL}?endpoint=ticket-approvals&ticket_id=${ticketId}`,
+        {
+          headers: {
+            'X-Auth-Token': token,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setApprovalHistory(data);
+      }
     } catch (error) {
       console.error('Failed to load approval history:', error);
     } finally {
@@ -79,29 +76,26 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
     setSubmitting(true);
     try {
-      // TODO: endpoint 'ticket-approvals' не существует в api-tickets
-      // const response = await apiFetch(
-      //   `${API_URL}?endpoint=ticket-approvals`,
-      //   {
-      //     method: 'POST',
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //       'X-Auth-Token': token,
-      //     },
-      //     body: JSON.stringify({ 
-      //       ticket_id: ticketId,
-      //       approver_ids: selectedApprovers
-      //     }),
-      //   }
-      // );
-      //
-      // if (response.ok) {
-      //   await loadApprovalHistory();
-      //   onStatusChange();
-      //   setShowApproverSelect(false);
-      //   setSelectedApprovers([]);
-      // }
-      console.log('Функция согласований временно отключена');
+      const response = await apiFetch(
+        `${API_URL}?endpoint=ticket-approvals`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Token': token,
+          },
+          body: JSON.stringify({ 
+            ticket_id: ticketId,
+            approver_ids: selectedApprovers
+          }),
+        }
+      );
+
+      if (response.ok) {
+        await loadApprovalHistory();
+        onStatusChange();
+        setSelectedApprovers([]);
+      }
     } catch (error) {
       console.error('Failed to submit for approval:', error);
     } finally {
@@ -122,31 +116,29 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
     setSubmitting(true);
     try {
-      // TODO: endpoint 'ticket-approvals' не существует в api-tickets
-      // const response = await apiFetch(
-      //   `${API_URL}?endpoint=ticket-approvals`,
-      //   {
-      //     method: 'PUT',
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //       'X-Auth-Token': token,
-      //     },
-      //     body: JSON.stringify({
-      //       ticket_id: ticketId,
-      //       action: actionType,
-      //       comment: comment,
-      //     }),
-      //   }
-      // );
-      //
-      // if (response.ok) {
-      //   await loadApprovalHistory();
-      //   onStatusChange();
-      //   setComment('');
-      //   setShowCommentField(false);
-      //   setActionType(null);
-      // }
-      console.log('Функция согласований временно отключена');
+      const response = await apiFetch(
+        `${API_URL}?endpoint=ticket-approvals`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Token': token,
+          },
+          body: JSON.stringify({
+            ticket_id: ticketId,
+            action: actionType,
+            comment: comment,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        await loadApprovalHistory();
+        onStatusChange();
+        setComment('');
+        setShowCommentField(false);
+        setActionType(null);
+      }
     } catch (error) {
       console.error('Failed to process approval:', error);
     } finally {

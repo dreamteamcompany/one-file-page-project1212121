@@ -112,12 +112,36 @@ const TicketDetailsSidebar = ({
     }
   };
   
-  const handleApprovalConfirm = () => {
-    if (pendingStatusId) {
-      onUpdateStatus(pendingStatusId);
+  const handleApprovalConfirm = async () => {
+    if (!pendingStatusId) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      
+      // Сначала меняем статус
+      await onUpdateStatus(pendingStatusId);
+      
+      // Затем добавляем согласующих
+      if (selectedApprovers.length > 0) {
+        const { apiFetch, API_URL } = await import('@/utils/api');
+        await apiFetch(`${API_URL}?endpoint=ticket-approvals`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Token': token || '',
+          },
+          body: JSON.stringify({
+            ticket_id: ticket.id,
+            approver_ids: selectedApprovers,
+          }),
+        });
+      }
+      
       setShowApprovalDialog(false);
       setPendingStatusId(null);
       setSelectedApprovers([]);
+    } catch (error) {
+      console.error('Error confirming approval:', error);
     }
   };
   
