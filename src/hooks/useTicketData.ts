@@ -10,7 +10,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<TicketAuditLog[]>([]);
-  const [loading, setLoading] = useState(!initialTicket);
+  const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -115,14 +115,14 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   };
 
   useEffect(() => {
-    if (id) {
+    if (id && token) {
       loadTicket();
       loadStatuses();
       loadComments();
       loadUsers();
       loadHistory();
     }
-  }, [id]);
+  }, [id, token]);
 
   return {
     ticket,
