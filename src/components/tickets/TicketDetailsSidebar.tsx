@@ -180,7 +180,7 @@ const TicketDetailsSidebar = ({
       )}
 
       {onSendPing && (
-        <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 flex flex-col justify-center md:h-[380px] lg:h-auto">
+        <div className="p-4 rounded-lg bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 flex flex-col justify-center md:h-[380px] lg:h-auto">
           <h3 className="text-sm font-semibold mb-4 text-transparent select-none">.</h3>
           <Button
             onClick={onSendPing}
