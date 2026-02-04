@@ -71,9 +71,12 @@ def handle_roles(method, event, conn, payload):
                 return response(400, {'error': 'Role ID required'})
             
             # Check if role has assigned users
+            log(f"[DELETE] Checking user assignments for role {role_id}")
             cur.execute("SELECT COUNT(*) as count FROM user_roles WHERE role_id=%s", (role_id,))
             user_count = cur.fetchone()['count']
+            log(f"[DELETE] User count: {user_count}")
             if user_count > 0:
+                log(f"[DELETE] Cannot delete - role has {user_count} assigned users")
                 return response(400, {'error': 'Cannot delete role with assigned users'})
             
             # Delete role permissions first (foreign key constraint)
