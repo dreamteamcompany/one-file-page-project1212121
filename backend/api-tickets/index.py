@@ -82,8 +82,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             SELECT DISTINCT t.*, 
                    s.name as status_name, s.color as status_color,
                    p.name as priority_name, p.color as priority_color,
-                   u1.username as assigned_to_name,
-                   u2.username as created_by_name
+                   u1.username as assignee_email, u1.full_name as assignee_name,
+                   u2.username as creator_email, u2.full_name as creator_name
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
