@@ -3,14 +3,22 @@ import sys
 import bcrypt
 from models import UserRequest
 from shared_utils import response
+from permissions_middleware import check_permission
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
-def handle_users(method, event, conn):
+def handle_users(method, event, conn, payload):
+    user_id = payload.get('user_id')
+    if not user_id:
+        return response(401, {'error': 'User ID not found in token'})
+    
     cur = conn.cursor()
     try:
         if method == 'GET':
+            # Проверка права на чтение пользователей
+            if not check_permission(conn, user_id, 'users', 'read'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to read users'})
             params = event.get('queryStringParameters', {}) or {}
             user_id = params.get('id')
             
@@ -35,6 +43,10 @@ def handle_users(method, event, conn):
                 return response(200, [dict(u) for u in users])
         
         elif method == 'POST':
+            # Проверка права на создание пользователей
+            if not check_permission(conn, user_id, 'users', 'create'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to create users'})
+            
             body = json.loads(event.get('body', '{}'))
             req = UserRequest(**body)
             
@@ -56,9 +68,13 @@ def handle_users(method, event, conn):
             return response(201, {'id': user_id, 'message': 'User created'})
         
         elif method == 'PUT':
+            # Проверка права на редактирование пользователей
+            if not check_permission(conn, user_id, 'users', 'update'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to update users'})
+            
             params = event.get('queryStringParameters', {}) or {}
-            user_id = params.get('id')
-            if not user_id:
+            target_user_id = params.get('id')
+            if not target_user_id:
                 return response(400, {'error': 'User ID required'})
             
             body = json.loads(event.get('body', '{}'))
@@ -70,38 +86,42 @@ def handle_users(method, event, conn):
                     UPDATE users 
                     SET username=%s, password_hash=%s, full_name=%s, position=%s, email=%s, photo_url=%s
                     WHERE id=%s
-                """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url, user_id))
+                """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url, target_user_id))
             else:
                 cur.execute("""
                     UPDATE users 
                     SET username=%s, full_name=%s, position=%s, email=%s, photo_url=%s
                     WHERE id=%s
-                """, (req.username, req.full_name, req.position, req.email, req.photo_url, user_id))
+                """, (req.username, req.full_name, req.position, req.email, req.photo_url, target_user_id))
             
-            cur.execute("DELETE FROM user_roles WHERE user_id=%s", (user_id,))
+            cur.execute("DELETE FROM user_roles WHERE user_id=%s", (target_user_id,))
             for role_id in req.role_ids:
-                cur.execute("INSERT INTO user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, role_id))
+                cur.execute("INSERT INTO user_roles (user_id, role_id) VALUES (%s, %s)", (target_user_id, role_id))
             
             conn.commit()
             return response(200, {'message': 'User updated'})
         
         elif method == 'DELETE':
+            # Проверка права на удаление пользователей
+            if not check_permission(conn, user_id, 'users', 'remove'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to delete users'})
+            
             body = json.loads(event.get('body', '{}'))
-            user_id = body.get('id')
-            if not user_id:
+            target_user_id = body.get('id')
+            if not target_user_id:
                 return response(400, {'error': 'User ID required'})
             
             # Проверяем, есть ли связанные заявки
-            cur.execute("SELECT COUNT(*) as count FROM tickets WHERE created_by=%s OR assigned_to=%s", (user_id, user_id))
+            cur.execute("SELECT COUNT(*) as count FROM tickets WHERE created_by=%s OR assigned_to=%s", (target_user_id, target_user_id))
             ticket_count = cur.fetchone()['count']
             if ticket_count > 0:
                 return response(400, {'error': f'Cannot delete user with {ticket_count} related tickets'})
             
             # Удаляем связи с ролями (можно удалить безопасно)
-            cur.execute("DELETE FROM user_roles WHERE user_id=%s", (user_id,))
+            cur.execute("DELETE FROM user_roles WHERE user_id=%s", (target_user_id,))
             
             # Удаляем пользователя
-            cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
+            cur.execute("DELETE FROM users WHERE id=%s", (target_user_id,))
             conn.commit()
             return response(200, {'message': 'User deleted'})
         

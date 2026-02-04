@@ -2,14 +2,21 @@ import json
 import sys
 from models import RoleRequest
 from shared_utils import response
+from permissions_middleware import check_permission
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
 def handle_roles(method, event, conn, payload):
+    user_id = payload.get('user_id')
+    if not user_id:
+        return response(401, {'error': 'User ID not found in token'})
     cur = conn.cursor()
     try:
         if method == 'GET':
+            # Проверка права на чтение ролей
+            if not check_permission(conn, user_id, 'roles', 'read'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to read roles'})
             cur.execute("""
                 SELECT r.*, 
                        COALESCE(json_agg(DISTINCT jsonb_build_object(
@@ -25,6 +32,10 @@ def handle_roles(method, event, conn, payload):
             return response(200, [dict(r) for r in roles])
         
         elif method == 'POST':
+            # Проверка права на создание ролей
+            if not check_permission(conn, user_id, 'roles', 'create'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to create roles'})
+            
             body = json.loads(event.get('body', '{}'))
             req = RoleRequest(**body)
             
@@ -40,6 +51,10 @@ def handle_roles(method, event, conn, payload):
             return response(201, {'id': role_id, 'message': 'Role created'})
         
         elif method == 'PUT':
+            # Проверка права на редактирование ролей
+            if not check_permission(conn, user_id, 'roles', 'update'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to update roles'})
+            
             params = event.get('queryStringParameters', {}) or {}
             role_id = params.get('id')
             if not role_id:
@@ -60,6 +75,10 @@ def handle_roles(method, event, conn, payload):
             return response(200, {'message': 'Role updated'})
         
         elif method == 'DELETE':
+            # Проверка права на удаление ролей
+            if not check_permission(conn, user_id, 'roles', 'remove'):
+                return response(403, {'error': 'Access denied', 'message': 'No permission to delete roles'})
+            
             body = json.loads(event.get('body', '{}'))
             role_id = body.get('id')
             if not role_id:

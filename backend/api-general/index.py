@@ -3,6 +3,7 @@ from shared_utils import response, get_db_connection, verify_token, handle_optio
 from users_handler import handle_users
 from roles_handler import handle_roles
 from permissions_handler import handle_permissions
+from user_permissions_handler import handle_user_permissions
 from categories_handler import handle_categories
 from contractors_handler import handle_contractors
 from legal_entities_handler import handle_legal_entities
@@ -36,11 +37,13 @@ def handler(event, context):
     
     try:
         if resource == 'users':
-            return handle_users(method, event, conn)
+            return handle_users(method, event, conn, payload)
         elif resource == 'roles':
             return handle_roles(method, event, conn, payload)
         elif resource == 'permissions':
             return handle_permissions(method, event, conn)
+        elif resource == 'user-permissions':
+            return handle_user_permissions(method, event, conn, payload)
         elif resource == 'categories':
             return handle_categories(method, event, conn)
         elif resource == 'contractors':
