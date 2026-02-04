@@ -134,9 +134,11 @@ const TicketDetailsContent = ({
     }
     
     const oneDay = 24 * 60 * 60 * 1000;
-    const daysLeft = Math.ceil(timeLeft / oneDay);
+    const daysLeft = Math.floor(timeLeft / oneDay);
     
-    if (daysLeft <= 1) {
+    if (daysLeft === 0) {
+      return { color: '#ef4444', label: `Менее суток` };
+    } else if (daysLeft === 1) {
       return { color: '#ef4444', label: `Остался ${daysLeft} день` };
     } else if (daysLeft <= 3) {
       return { color: '#f97316', label: `Осталось ${daysLeft} дня` };

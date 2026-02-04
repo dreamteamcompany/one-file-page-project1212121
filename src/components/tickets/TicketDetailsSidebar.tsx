@@ -174,9 +174,11 @@ const TicketDetailsSidebar = ({
     }
     
     const oneDay = 24 * 60 * 60 * 1000;
-    const daysLeft = Math.ceil(timeLeft / oneDay);
+    const daysLeft = Math.floor(timeLeft / oneDay);
     
-    if (daysLeft <= 1) {
+    if (daysLeft === 0) {
+      return { color: '#ef4444', label: `Менее суток`, urgent: true };
+    } else if (daysLeft === 1) {
       return { color: '#ef4444', label: `Остался ${daysLeft} день`, urgent: true };
     } else if (daysLeft <= 3) {
       return { color: '#f97316', label: `Осталось ${daysLeft} дня`, urgent: true };
