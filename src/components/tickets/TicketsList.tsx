@@ -10,6 +10,17 @@ interface CustomField {
   value: string;
 }
 
+interface TicketService {
+  id: number;
+  name: string;
+}
+
+interface Service {
+  id: number;
+  name: string;
+  category_name?: string;
+}
+
 interface Ticket {
   id: number;
   title: string;
@@ -33,6 +44,8 @@ interface Ticket {
   created_by?: number;
   unread_comments?: number;
   has_response?: boolean;
+  ticket_service?: TicketService;
+  services?: Service[];
 }
 
 interface TicketsListProps {
@@ -246,10 +259,16 @@ const TicketsList = ({
                   <span>{ticket.customer_name}</span>
                 </div>
               )}
-              {ticket.service_name && (
+              {ticket.ticket_service && (
+                <div className="flex items-center gap-1">
+                  <Icon name="Tag" size={12} />
+                  <span>{ticket.ticket_service.name}</span>
+                </div>
+              )}
+              {ticket.services && ticket.services.length > 0 && (
                 <div className="flex items-center gap-1">
                   <Icon name="Wrench" size={12} />
-                  <span>{ticket.service_name}</span>
+                  <span>{ticket.services.map(s => s.name).join(', ')}</span>
                 </div>
               )}
               {ticket.department_name && (
