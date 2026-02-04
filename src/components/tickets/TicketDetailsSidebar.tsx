@@ -514,7 +514,7 @@ const TicketDetailsSidebar = ({
             </h3>
             <div className="space-y-2">
               {ticket.services.map((service) => (
-                <div key={service.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/50">
+                <div key={service.id} className="flex items-start gap-2 p-2 rounded-md bg-primary/10">
                   <Icon name="CheckCircle2" size={14} className="text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{service.name}</p>
