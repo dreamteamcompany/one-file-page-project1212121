@@ -215,28 +215,30 @@ const TicketDetailsSidebar = ({
     <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
       {ticket.due_date && (
-        <div className="p-4 rounded-lg bg-card border">
-          <h3 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
-            <Icon name="Clock" size={16} className={getTimeLeft()?.expired ? 'text-red-500' : 'text-foreground'} />
-            Времени осталось
-          </h3>
-          {getTimeLeft()?.expired ? (
-            <div className="text-center py-2">
-              <div className="text-2xl font-bold text-red-500">Просрочено</div>
+        <div className="p-4 rounded-lg bg-card border flex flex-col">
+          <div className="flex flex-col items-center">
+            <h3 className="text-sm font-semibold mb-3 text-foreground">Времени осталось</h3>
+            <div className={`w-20 h-20 rounded-full ${getTimeLeft()?.expired ? 'bg-red-500/10 border-red-500' : 'bg-muted'} border-2 flex items-center justify-center mb-3`}>
+              <Icon name="Clock" size={28} className={getTimeLeft()?.expired ? 'text-red-500' : 'text-foreground'} />
             </div>
-          ) : (
-            <div className="text-center py-2">
-              {getTimeLeft() && getTimeLeft()!.days > 0 && (
-                <div className="text-sm text-muted-foreground mb-1">
-                  {getTimeLeft()!.days} {getTimeLeft()!.days === 1 ? 'день' : getTimeLeft()!.days < 5 ? 'дня' : 'дней'}
-                </div>
-              )}
-              <div className="text-3xl font-bold text-foreground tabular-nums">
-                {getTimeLeft()?.time}
+            {getTimeLeft()?.expired ? (
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-500">Просрочено</div>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">ЧЧ : ММ : СС</div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center">
+                {getTimeLeft() && getTimeLeft()!.days > 0 && (
+                  <div className="text-sm text-muted-foreground mb-1">
+                    {getTimeLeft()!.days} {getTimeLeft()!.days === 1 ? 'день' : getTimeLeft()!.days < 5 ? 'дня' : 'дней'}
+                  </div>
+                )}
+                <div className="text-2xl font-bold text-foreground tabular-nums">
+                  {getTimeLeft()?.time}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">ЧЧ : ММ : СС</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
