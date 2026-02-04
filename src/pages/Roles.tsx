@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 
 interface Permission {
@@ -33,6 +34,7 @@ interface Role {
 }
 
 const Roles = () => {
+  const { toast } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,10 @@ const Roles = () => {
   const loadPermissions = () => {
     apiFetch(`${API_URL}?endpoint=permissions`)
       .then(res => res.json())
-      .then(data => setPermissions(Array.isArray(data) ? data : []))
+      .then(data => {
+        console.log('[Roles] Loaded permissions:', data);
+        setPermissions(Array.isArray(data) ? data : []);
+      })
       .catch(err => {
         console.error('Failed to load permissions:', err);
         setPermissions([]);
@@ -217,6 +222,9 @@ const Roles = () => {
     acc[perm.resource].push(perm);
     return acc;
   }, {} as Record<string, Permission[]>);
+  
+  console.log('[Roles] permissions:', permissions);
+  console.log('[Roles] groupedPermissions:', groupedPermissions);
 
   return (
     <div className="flex min-h-screen">
