@@ -89,13 +89,6 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false }: TicketKanbanC
       )}
 
       <div className="flex flex-wrap gap-1.5 mb-2">
-        {ticket.category_name && (
-          <Badge variant="secondary" className="text-xs flex items-center gap-1">
-            {ticket.category_icon && <Icon name={ticket.category_icon} size={12} />}
-            {ticket.category_name}
-          </Badge>
-        )}
-
         {ticket.priority_name && (
           <Badge
             style={{

@@ -270,13 +270,6 @@ const TicketsList = ({
               </div>
 
               <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-3 text-sm">
-                {ticket.category_name && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Icon name="Tag" size={14} />
-                    <span>{ticket.category_name}</span>
-                  </div>
-                )}
-
                 {ticket.priority_name && (
                   <Badge
                     variant="outline"

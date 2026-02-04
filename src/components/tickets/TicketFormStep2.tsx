@@ -61,11 +61,6 @@ const TicketFormStep2 = ({
                       </div>
                     )}
                   </CardTitle>
-                  {service.category_name && (
-                    <Badge variant="secondary" className="w-fit text-xs">
-                      {service.category_name}
-                    </Badge>
-                  )}
                 </CardHeader>
                 {service.description && (
                   <CardContent className="pt-0">
