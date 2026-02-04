@@ -60,9 +60,14 @@ def handle_roles(method, event, conn, payload):
             return response(200, {'message': 'Role updated'})
         
         elif method == 'DELETE':
-            body = json.loads(event.get('body', '{}'))
+            body_raw = event.get('body', '{}')
+            log(f"[DELETE] Raw body: {body_raw}")
+            body = json.loads(body_raw)
+            log(f"[DELETE] Parsed body: {body}")
             role_id = body.get('id')
+            log(f"[DELETE] Role ID: {role_id}")
             if not role_id:
+                log("[DELETE] Error: Role ID not provided")
                 return response(400, {'error': 'Role ID required'})
             
             # Check if role has assigned users
