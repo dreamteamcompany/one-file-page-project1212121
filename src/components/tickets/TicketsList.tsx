@@ -149,7 +149,7 @@ const TicketsList = ({
         return (
         <Card
           key={ticket.id}
-          className={`p-5 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative max-w-4xl ${
+          className={`p-4 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative ${
             isCritical ? 'border-red-500 border-2' : ''
           } ${
             selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
@@ -167,8 +167,8 @@ const TicketsList = ({
             }
           }}
         >
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                 {bulkMode && onToggleTicket && (
                   <Checkbox
@@ -216,103 +216,81 @@ const TicketsList = ({
                         Критично
                       </Badge>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-base sm:text-lg line-clamp-2 sm:line-clamp-1 mb-1 flex-1">
-                      {ticket.status_name === 'На согласовании' && '🔔 '}
-                      {ticket.status_name === 'Отклонена' && '❌ '}
-                      {ticket.status_name === 'Одобрена' && '✅ '}
-                      {ticket.title}
-                    </h3>
                     {ticket.has_response && ticket.created_by === currentUserId && (
-                      <Badge variant="default" className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600">
+                      <Badge variant="default" className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-xs">
                         <Icon name="MessageSquareReply" size={12} />
                         Есть ответ
                       </Badge>
                     )}
                     {ticket.unread_comments && ticket.unread_comments > 0 && (
-                      <Badge variant="destructive" className="flex items-center gap-1 animate-pulse">
+                      <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
                         <Icon name="MessageCircle" size={12} />
                         {ticket.unread_comments}
                       </Badge>
                     )}
                   </div>
-                  {ticket.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                      {ticket.description}
-                    </p>
-                  )}
+                  <h3 className="font-semibold text-base line-clamp-1">
+                    {ticket.status_name === 'На согласовании' && '🔔 '}
+                    {ticket.status_name === 'Отклонена' && '❌ '}
+                    {ticket.status_name === 'Одобрена' && '✅ '}
+                    {ticket.title}
+                  </h3>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                {ticket.customer_name && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="User" size={14} className="flex-shrink-0" />
-                    <span className="font-medium">Заказчик:</span>
-                    <span className="truncate">{ticket.customer_name}</span>
-                  </div>
-                )}
-
-                {ticket.assigned_to_name && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="UserCheck" size={14} className="flex-shrink-0" />
-                    <span className="font-medium">Исполнитель:</span>
-                    <span className="truncate">{ticket.assigned_to_name}</span>
-                  </div>
-                )}
-
-                {ticket.service_name && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="Wrench" size={14} className="flex-shrink-0" />
-                    <span className="font-medium">Услуга:</span>
-                    <span className="truncate">{ticket.service_name}</span>
-                  </div>
-                )}
-
-                {ticket.department_name && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="Building" size={14} className="flex-shrink-0" />
-                    <span className="font-medium">Отдел:</span>
-                    <span className="truncate">{ticket.department_name}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                {ticket.priority_name && (
-                  <Badge
-                    variant="outline"
-                    className="flex items-center gap-1.5"
-                    style={{
-                      borderColor: ticket.priority_color,
-                      color: ticket.priority_color,
-                    }}
-                  >
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: ticket.priority_color }}
-                    />
-                    {ticket.priority_name}
-                  </Badge>
-                )}
-
-                {ticket.created_at && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
-                    <Icon name="Clock" size={14} />
-                    <span>
-                      {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                )}
-              </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {ticket.customer_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="User" size={12} />
+                  <span>{ticket.customer_name}</span>
+                </div>
+              )}
+              {ticket.service_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="Wrench" size={12} />
+                  <span>{ticket.service_name}</span>
+                </div>
+              )}
+              {ticket.department_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="Building" size={12} />
+                  <span>{ticket.department_name}</span>
+                </div>
+              )}
+              {ticket.assigned_to_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="UserCheck" size={12} />
+                  <span>{ticket.assigned_to_name}</span>
+                </div>
+              )}
+              {ticket.priority_name && (
+                <Badge
+                  variant="outline"
+                  className="h-5 text-xs px-1.5 flex items-center gap-1"
+                  style={{
+                    borderColor: ticket.priority_color,
+                    color: ticket.priority_color,
+                  }}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color }} />
+                  {ticket.priority_name}
+                </Badge>
+              )}
+              {ticket.created_at && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <Icon name="Clock" size={12} />
+                  <span>
+                    {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
 
               {ticket.due_date && (() => {
                 const deadline = getDeadlineProgress(ticket.due_date);
