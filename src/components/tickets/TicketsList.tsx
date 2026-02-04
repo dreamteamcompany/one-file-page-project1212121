@@ -64,20 +64,24 @@ const TicketsList = ({
     const timeLeft = due - now;
     
     if (timeLeft < 0) {
-      return { percent: 0, color: 'bg-red-500', label: 'Просрочена' };
+      return { percent: 0, color: '#ef4444', label: 'Просрочена' };
     }
     
     const oneDay = 24 * 60 * 60 * 1000;
-    const daysLeft = Math.ceil(timeLeft / oneDay);
+    const oneHour = 60 * 60 * 1000;
+    const daysLeft = Math.floor(timeLeft / oneDay);
+    const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
     
-    if (daysLeft <= 1) {
-      return { percent: 100, color: 'bg-red-500', label: `${daysLeft} день` };
+    if (daysLeft === 0) {
+      return { percent: 100, color: '#ef4444', label: `Менее суток (${hoursLeft} ч)` };
+    } else if (daysLeft === 1) {
+      return { percent: 100, color: '#ef4444', label: `Остался ${daysLeft} день ${hoursLeft} ч` };
     } else if (daysLeft <= 3) {
-      return { percent: 66, color: 'bg-orange-500', label: `${daysLeft} дня` };
+      return { percent: 66, color: '#f97316', label: `Осталось ${daysLeft} дня ${hoursLeft} ч` };
     } else if (daysLeft <= 7) {
-      return { percent: 33, color: 'bg-yellow-500', label: `${daysLeft} дней` };
+      return { percent: 33, color: '#eab308', label: `Осталось ${daysLeft} дней ${hoursLeft} ч` };
     } else {
-      return { percent: 15, color: 'bg-green-500', label: `${daysLeft} дней` };
+      return { percent: 15, color: '#22c55e', label: `Осталось ${daysLeft} дней ${hoursLeft} ч` };
     }
   };
 
@@ -145,7 +149,7 @@ const TicketsList = ({
         return (
         <Card
           key={ticket.id}
-          className={`p-5 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative ${
+          className={`p-5 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative max-w-4xl ${
             isCritical ? 'border-red-500 border-2' : ''
           } ${
             selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
@@ -243,10 +247,10 @@ const TicketsList = ({
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-3 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                 {ticket.customer_name && (
                   <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="User" size={14} />
+                    <Icon name="User" size={14} className="flex-shrink-0" />
                     <span className="font-medium">Заказчик:</span>
                     <span className="truncate">{ticket.customer_name}</span>
                   </div>
@@ -254,7 +258,7 @@ const TicketsList = ({
 
                 {ticket.assigned_to_name && (
                   <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="UserCheck" size={14} />
+                    <Icon name="UserCheck" size={14} className="flex-shrink-0" />
                     <span className="font-medium">Исполнитель:</span>
                     <span className="truncate">{ticket.assigned_to_name}</span>
                   </div>
@@ -262,14 +266,22 @@ const TicketsList = ({
 
                 {ticket.service_name && (
                   <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
-                    <Icon name="Wrench" size={14} />
+                    <Icon name="Wrench" size={14} className="flex-shrink-0" />
                     <span className="font-medium">Услуга:</span>
                     <span className="truncate">{ticket.service_name}</span>
                   </div>
                 )}
+
+                {ticket.department_name && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+                    <Icon name="Building" size={14} className="flex-shrink-0" />
+                    <span className="font-medium">Отдел:</span>
+                    <span className="truncate">{ticket.department_name}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
                 {ticket.priority_name && (
                   <Badge
                     variant="outline"
@@ -287,15 +299,8 @@ const TicketsList = ({
                   </Badge>
                 )}
 
-                {ticket.department_name && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Icon name="Building" size={14} />
-                    <span>{ticket.department_name}</span>
-                  </div>
-                )}
-
                 {ticket.created_at && (
-                  <div className="flex items-center gap-1.5 text-muted-foreground sm:ml-auto">
+                  <div className="flex items-center gap-1.5 text-muted-foreground ml-auto">
                     <Icon name="Clock" size={14} />
                     <span>
                       {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
@@ -318,19 +323,21 @@ const TicketsList = ({
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <Icon name="Calendar" size={12} />
-                        До {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
+                        Дедлайн: {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
                           day: 'numeric',
                           month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </span>
-                      <span className="font-medium" style={{ color: deadline.color.replace('bg-', '').replace('-500', '') === 'red' ? '#ef4444' : deadline.color.replace('bg-', '').replace('-500', '') === 'orange' ? '#f97316' : deadline.color.replace('bg-', '').replace('-500', '') === 'yellow' ? '#eab308' : '#22c55e' }}>
+                      <span className="font-medium" style={{ color: deadline.color }}>
                         {deadline.label}
                       </span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
-                        className={`h-full ${deadline.color} transition-all duration-300`}
-                        style={{ width: `${deadline.percent}%` }}
+                        className="h-full transition-all duration-300"
+                        style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }}
                       />
                     </div>
                   </div>
