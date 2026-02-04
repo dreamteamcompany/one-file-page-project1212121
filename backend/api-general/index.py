@@ -2,6 +2,7 @@ import sys
 from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
 from users_handler import handle_users
 from roles_handler import handle_roles
+from permissions_handler import handle_permissions
 from categories_handler import handle_categories
 from contractors_handler import handle_contractors
 from legal_entities_handler import handle_legal_entities
@@ -41,6 +42,8 @@ def handler(event, context):
             return handle_users(method, event, conn)
         elif resource == 'roles':
             return handle_roles(method, event, conn, payload)
+        elif resource == 'permissions':
+            return handle_permissions(method, event, conn)
         elif resource == 'categories':
             return handle_categories(method, event, conn)
         elif resource == 'contractors':
