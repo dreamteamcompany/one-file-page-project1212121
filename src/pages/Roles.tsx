@@ -83,7 +83,6 @@ const Roles = () => {
     apiFetch(`${API_URL}?endpoint=permissions`)
       .then(res => res.json())
       .then(data => {
-        console.log('[Roles] Loaded permissions:', data);
         setPermissions(Array.isArray(data) ? data : []);
       })
       .catch(err => {
@@ -222,9 +221,6 @@ const Roles = () => {
     acc[perm.resource].push(perm);
     return acc;
   }, {} as Record<string, Permission[]>);
-  
-  console.log('[Roles] permissions:', permissions);
-  console.log('[Roles] groupedPermissions:', groupedPermissions);
 
   return (
     <div className="flex min-h-screen">

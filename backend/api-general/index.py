@@ -15,9 +15,6 @@ def handler(event, context):
     '''API для управления справочниками: пользователи, роли, категории, контрагенты, юр.лица, отделы'''
     
     method = event.get('httpMethod', 'GET')
-    log(f"[HANDLER] Method: {method}")
-    log(f"[HANDLER] Query params: {event.get('queryStringParameters', {})}")
-    log(f"[HANDLER] Body: {event.get('body', 'NO BODY')}")
     
     if method == 'OPTIONS':
         return handle_options()

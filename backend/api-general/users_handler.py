@@ -88,17 +88,13 @@ def handle_users(method, event, conn):
         elif method == 'DELETE':
             body = json.loads(event.get('body', '{}'))
             user_id = body.get('id')
-            log(f"[DELETE] User ID: {user_id}")
             if not user_id:
-                log("[DELETE] Error: User ID not provided")
                 return response(400, {'error': 'User ID required'})
             
             # Проверяем, есть ли связанные заявки
             cur.execute("SELECT COUNT(*) as count FROM tickets WHERE created_by=%s OR assigned_to=%s", (user_id, user_id))
             ticket_count = cur.fetchone()['count']
-            log(f"[DELETE] Ticket count: {ticket_count}")
             if ticket_count > 0:
-                log(f"[DELETE] Cannot delete - user has {ticket_count} related tickets")
                 return response(400, {'error': f'Cannot delete user with {ticket_count} related tickets'})
             
             # Удаляем связи с ролями (можно удалить безопасно)
@@ -107,7 +103,6 @@ def handle_users(method, event, conn):
             # Удаляем пользователя
             cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
             conn.commit()
-            log(f"[DELETE] User {user_id} deleted successfully")
             return response(200, {'message': 'User deleted'})
         
         else:
