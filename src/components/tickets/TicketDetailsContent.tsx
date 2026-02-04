@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -111,6 +111,16 @@ const TicketDetailsContent = ({
   loadingHistory = false,
 }: TicketDetailsContentProps) => {
   const [activeTab, setActiveTab] = useState<'comments' | 'files' | 'history'>('comments');
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -125,7 +135,7 @@ const TicketDetailsContent = ({
   const getDeadlineInfo = (dueDate?: string) => {
     if (!dueDate) return null;
     
-    const now = new Date().getTime();
+    const now = currentTime;
     const due = new Date(dueDate).getTime();
     const timeLeft = due - now;
     
