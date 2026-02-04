@@ -86,13 +86,16 @@ def handle_users(method, event, conn):
             return response(200, {'message': 'User updated'})
         
         elif method == 'DELETE':
-            params = event.get('queryStringParameters', {}) or {}
-            user_id = params.get('id')
+            body = json.loads(event.get('body', '{}'))
+            user_id = body.get('id')
+            log(f"[DELETE] User ID: {user_id}")
             if not user_id:
+                log("[DELETE] Error: User ID not provided")
                 return response(400, {'error': 'User ID required'})
             
             cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
             conn.commit()
+            log(f"[DELETE] User {user_id} deleted successfully")
             return response(200, {'message': 'User deleted'})
         
         else:
