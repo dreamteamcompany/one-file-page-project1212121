@@ -148,10 +148,26 @@ const Roles = () => {
       );
 
       if (response.ok) {
+        toast({
+          title: 'Успешно',
+          description: 'Роль удалена',
+        });
         loadRoles();
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'Ошибка удаления',
+          description: error.error || 'Не удалось удалить роль',
+          variant: 'destructive',
+        });
       }
     } catch (err) {
       console.error('Failed to delete role:', err);
+      toast({
+        title: 'Ошибка сети',
+        description: 'Проверьте подключение к интернету',
+        variant: 'destructive',
+      });
     }
   };
 
