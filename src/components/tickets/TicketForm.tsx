@@ -125,16 +125,15 @@ const TicketForm = ({
   };
 
   const handleDialogChange = (open: boolean) => {
-    if (open && onDialogOpen) {
-      onDialogOpen();
+    if (open) {
+      // При открытии диалога всегда сбрасываем на шаг 1
+      setStep(1);
+      setSelectedServices([]);
+      if (onDialogOpen) {
+        onDialogOpen();
+      }
     }
     setDialogOpen(open);
-    if (!open) {
-      setTimeout(() => {
-        setStep(1);
-        setSelectedServices([]);
-      }, 300);
-    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -154,6 +153,10 @@ const TicketForm = ({
     
     // Отправляем обновленные данные
     await handleSubmit(e, updatedFormData);
+    
+    // Сбрасываем состояние формы после успешной отправки
+    setStep(1);
+    setSelectedServices([]);
   };
 
   const toggleService = (serviceId: number) => {
