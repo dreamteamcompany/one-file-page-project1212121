@@ -297,7 +297,7 @@ const TicketsList = ({
                 if (!deadline) return null;
                 
                 return (
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 mt-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <Icon name="Calendar" size={12} />
@@ -321,7 +321,6 @@ const TicketsList = ({
                   </div>
                 );
               })()}
-            </div>
           </div>
         </Card>
         );
