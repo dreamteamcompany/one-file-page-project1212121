@@ -25,6 +25,7 @@ interface TicketStatus {
   is_approval: boolean;
   is_approval_revoked: boolean;
   is_approved: boolean;
+  is_waiting_response: boolean;
 }
 
 const predefinedColors = [
@@ -51,6 +52,7 @@ const TicketStatuses = () => {
     is_approval: false,
     is_approval_revoked: false,
     is_approved: false,
+    is_waiting_response: false,
   });
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -110,7 +112,7 @@ const TicketStatuses = () => {
       if (response.ok) {
         setDialogOpen(false);
         setEditingStatus(null);
-        setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false, is_approval: false, is_approval_revoked: false, is_approved: false });
+        setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false, is_approval: false, is_approval_revoked: false, is_approved: false, is_waiting_response: false });
         loadStatuses();
       }
     } catch (err) {
@@ -127,7 +129,8 @@ const TicketStatuses = () => {
       is_open: status.is_open || false,
       is_approval: status.is_approval || false,
       is_approval_revoked: status.is_approval_revoked || false,
-      is_approved: status.is_approved || false
+      is_approved: status.is_approved || false,
+      is_waiting_response: status.is_waiting_response || false
     });
     setDialogOpen(true);
   };
@@ -162,7 +165,7 @@ const TicketStatuses = () => {
     setDialogOpen(open);
     if (!open) {
       setEditingStatus(null);
-      setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false, is_approval: false, is_approval_revoked: false, is_approved: false });
+      setFormData({ name: '', color: '#3b82f6', is_closed: false, is_open: false, is_approval: false, is_approval_revoked: false, is_approved: false, is_waiting_response: false });
     }
   };
 
@@ -283,7 +286,7 @@ const TicketStatuses = () => {
                       id="is_open"
                       checked={formData.is_open}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_open: checked as boolean, is_closed: checked ? false : formData.is_closed, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved })
+                        setFormData({ ...formData, is_open: checked as boolean, is_closed: checked ? false : formData.is_closed, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response })
                       }
                     />
                     <Label
@@ -298,7 +301,7 @@ const TicketStatuses = () => {
                       id="is_approval"
                       checked={formData.is_approval}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_approval: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved })
+                        setFormData({ ...formData, is_approval: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response })
                       }
                     />
                     <Label
@@ -313,7 +316,7 @@ const TicketStatuses = () => {
                       id="is_approved"
                       checked={formData.is_approved}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_approved: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked })
+                        setFormData({ ...formData, is_approved: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_waiting_response: checked ? false : formData.is_waiting_response })
                       }
                     />
                     <Label
@@ -328,7 +331,7 @@ const TicketStatuses = () => {
                       id="is_approval_revoked"
                       checked={formData.is_approval_revoked}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_approval_revoked: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approved: checked ? false : formData.is_approved })
+                        setFormData({ ...formData, is_approval_revoked: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response })
                       }
                     />
                     <Label
@@ -340,10 +343,25 @@ const TicketStatuses = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
+                      id="is_waiting_response"
+                      checked={formData.is_waiting_response}
+                      onCheckedChange={(checked) => 
+                        setFormData({ ...formData, is_waiting_response: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved })
+                      }
+                    />
+                    <Label
+                      htmlFor="is_waiting_response"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      Ожидание ответа (заявка ожидает ответа от исполнителя)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
                       id="is_closed"
                       checked={formData.is_closed}
                       onCheckedChange={(checked) => 
-                        setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved })
+                        setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response })
                       }
                     />
                     <Label
