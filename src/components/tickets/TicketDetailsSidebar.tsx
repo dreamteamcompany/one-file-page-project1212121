@@ -270,6 +270,34 @@ const TicketDetailsSidebar = ({
       </div>
       
       <div className="rounded-lg bg-card border divide-y">
+        {/* Создана */}
+        {ticket.created_at && (
+          <div className="p-4">
+            <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+              <Icon name="Calendar" size={14} />
+              Создана
+            </h3>
+            <div className="flex items-center gap-2">
+              <Icon name="CalendarDays" size={16} className="text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">
+                  {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(ticket.created_at).toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Статус */}
         <div className="p-4">
           <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
