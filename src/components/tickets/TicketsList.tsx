@@ -248,6 +248,11 @@ const TicketsList = ({
                     {ticket.status_name === 'Одобрена' && '✅ '}
                     {ticket.title}
                   </h3>
+                  {ticket.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {ticket.description}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
