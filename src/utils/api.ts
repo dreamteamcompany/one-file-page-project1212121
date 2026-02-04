@@ -8,6 +8,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'refresh': AUTH_API,
   'users': GENERAL_API,
   'roles': GENERAL_API,
+  'permissions': GENERAL_API,
   'categories': GENERAL_API,
   'contractors': GENERAL_API,
   'legal_entities': GENERAL_API,
