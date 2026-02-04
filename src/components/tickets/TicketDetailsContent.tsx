@@ -134,16 +134,18 @@ const TicketDetailsContent = ({
     }
     
     const oneDay = 24 * 60 * 60 * 1000;
+    const oneHour = 60 * 60 * 1000;
     const daysLeft = Math.floor(timeLeft / oneDay);
+    const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
     
     if (daysLeft === 0) {
-      return { color: '#ef4444', label: `Менее суток` };
+      return { color: '#ef4444', label: `Менее суток (${hoursLeft} ч)` };
     } else if (daysLeft === 1) {
-      return { color: '#ef4444', label: `Остался ${daysLeft} день` };
+      return { color: '#ef4444', label: `Остался ${daysLeft} день ${hoursLeft} ч` };
     } else if (daysLeft <= 3) {
-      return { color: '#f97316', label: `Осталось ${daysLeft} дня` };
+      return { color: '#f97316', label: `Осталось ${daysLeft} дня ${hoursLeft} ч` };
     }
-    return { color: '#22c55e', label: `Осталось ${daysLeft} дней` };
+    return { color: '#22c55e', label: `Осталось ${daysLeft} дней ${hoursLeft} ч` };
   };
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);

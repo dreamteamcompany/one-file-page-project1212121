@@ -174,18 +174,20 @@ const TicketDetailsSidebar = ({
     }
     
     const oneDay = 24 * 60 * 60 * 1000;
+    const oneHour = 60 * 60 * 1000;
     const daysLeft = Math.floor(timeLeft / oneDay);
+    const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
     
     if (daysLeft === 0) {
-      return { color: '#ef4444', label: `Менее суток`, urgent: true };
+      return { color: '#ef4444', label: `Менее суток (${hoursLeft} ч)`, urgent: true };
     } else if (daysLeft === 1) {
-      return { color: '#ef4444', label: `Остался ${daysLeft} день`, urgent: true };
+      return { color: '#ef4444', label: `Остался ${daysLeft} день ${hoursLeft} ч`, urgent: true };
     } else if (daysLeft <= 3) {
-      return { color: '#f97316', label: `Осталось ${daysLeft} дня`, urgent: true };
+      return { color: '#f97316', label: `Осталось ${daysLeft} дня ${hoursLeft} ч`, urgent: true };
     } else if (daysLeft <= 7) {
-      return { color: '#eab308', label: `Осталось ${daysLeft} дней`, urgent: false };
+      return { color: '#eab308', label: `Осталось ${daysLeft} дней ${hoursLeft} ч`, urgent: false };
     } else {
-      return { color: '#22c55e', label: `Осталось ${daysLeft} дней`, urgent: false };
+      return { color: '#22c55e', label: `Осталось ${daysLeft} дней ${hoursLeft} ч`, urgent: false };
     }
   };
 
