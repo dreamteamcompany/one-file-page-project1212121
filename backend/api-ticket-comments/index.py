@@ -65,7 +65,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
         FROM {SCHEMA}.ticket_comments tc
         LEFT JOIN {SCHEMA}.users u ON tc.user_id = u.id
         WHERE tc.ticket_id = %s
-        ORDER BY tc.created_at ASC
+        ORDER BY tc.created_at DESC
     """, (int(ticket_id),))
     
     comments = [dict(row) for row in cur.fetchall()]
