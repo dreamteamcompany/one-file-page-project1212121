@@ -192,11 +192,9 @@ const Users = () => {
     if (!confirm(`Вы уверены, что хотите удалить пользователя "${userName}"?`)) return;
     
     try {
-      const response = await fetch(`https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users&id=${userId}`, {
+      const response = await apiFetch(`${API_URL}?endpoint=users`, {
         method: 'DELETE',
-        headers: {
-          'X-Auth-Token': token || '',
-        },
+        body: JSON.stringify({ id: userId }),
       });
 
       if (response.ok) {
