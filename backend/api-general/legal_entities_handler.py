@@ -1,7 +1,10 @@
 import json
 import sys
+import os
 from models import LegalEntityRequest
 from shared_utils import response
+
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -10,7 +13,7 @@ def handle_legal_entities(method, event, conn):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute("SELECT * FROM legal_entities ORDER BY id")
+            cur.execute(f"SELECT * FROM {SCHEMA}.legal_entities ORDER BY id")
             entities = cur.fetchall()
             return response(200, [dict(e) for e in entities])
         
@@ -18,8 +21,8 @@ def handle_legal_entities(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = LegalEntityRequest(**body)
             
-            cur.execute("""
-                INSERT INTO legal_entities (name, inn, kpp, address)
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.legal_entities (name, inn, kpp, address)
                 VALUES (%s, %s, %s, %s) RETURNING id
             """, (req.name, req.inn, req.kpp, req.address))
             entity_id = cur.fetchone()['id']
@@ -35,8 +38,8 @@ def handle_legal_entities(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = LegalEntityRequest(**body)
             
-            cur.execute("""
-                UPDATE legal_entities SET name=%s, inn=%s, kpp=%s, address=%s
+            cur.execute(f"""
+                UPDATE {SCHEMA}.legal_entities SET name=%s, inn=%s, kpp=%s, address=%s
                 WHERE id=%s
             """, (req.name, req.inn, req.kpp, req.address, entity_id))
             conn.commit()
@@ -48,7 +51,7 @@ def handle_legal_entities(method, event, conn):
             if not entity_id:
                 return response(400, {'error': 'Legal entity ID required'})
             
-            cur.execute("DELETE FROM legal_entities WHERE id=%s", (entity_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.legal_entities WHERE id=%s", (entity_id,))
             conn.commit()
             return response(200, {'message': 'Legal entity deleted'})
         

@@ -3,11 +3,14 @@
 Single Responsibility: только авторизация пользователей
 """
 import json
+import os
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from jwt_service import create_token
 from database_service import get_user_by_username, get_user_by_id, update_last_login
+
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 
 def handle_login(event: dict, conn) -> Dict[str, Any]:
@@ -89,7 +92,7 @@ def handle_refresh(conn, payload: dict) -> Dict[str, Any]:
         username = payload['username']
         
         cur = conn.cursor()
-        cur.execute("SELECT is_active FROM users WHERE id = %s", (user_id,))
+        cur.execute(f"SELECT is_active FROM {SCHEMA}.users WHERE id = %s", (user_id,))
         user = cur.fetchone()
         cur.close()
         

@@ -1,7 +1,10 @@
 import json
 import sys
+import os
 from models import ContractorRequest
 from shared_utils import response
+
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -10,7 +13,7 @@ def handle_contractors(method, event, conn):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute("SELECT * FROM contractors ORDER BY id")
+            cur.execute(f"SELECT * FROM {SCHEMA}.contractors ORDER BY id")
             contractors = cur.fetchall()
             return response(200, [dict(c) for c in contractors])
         
@@ -18,8 +21,8 @@ def handle_contractors(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = ContractorRequest(**body)
             
-            cur.execute("""
-                INSERT INTO contractors 
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.contractors 
                 (name, inn, kpp, ogrn, legal_address, actual_address, phone, email, 
                  contact_person, bank_name, bank_bik, bank_account, correspondent_account, notes)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
@@ -39,8 +42,8 @@ def handle_contractors(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = ContractorRequest(**body)
             
-            cur.execute("""
-                UPDATE contractors SET 
+            cur.execute(f"""
+                UPDATE {SCHEMA}.contractors SET 
                 name=%s, inn=%s, kpp=%s, ogrn=%s, legal_address=%s, actual_address=%s,
                 phone=%s, email=%s, contact_person=%s, bank_name=%s, bank_bik=%s,
                 bank_account=%s, correspondent_account=%s, notes=%s
@@ -57,7 +60,7 @@ def handle_contractors(method, event, conn):
             if not contractor_id:
                 return response(400, {'error': 'Contractor ID required'})
             
-            cur.execute("DELETE FROM contractors WHERE id=%s", (contractor_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.contractors WHERE id=%s", (contractor_id,))
             conn.commit()
             return response(200, {'message': 'Contractor deleted'})
         

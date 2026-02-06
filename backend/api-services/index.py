@@ -26,7 +26,7 @@ def handler(event, context):
     try:
         if method == 'GET':
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(f"""
                 SELECT 
                     s.id,
                     s.name,
@@ -39,10 +39,10 @@ def handler(event, context):
                     u1.full_name as intermediate_approver_name,
                     u2.full_name as final_approver_name,
                     cd.name as customer_department_name
-                FROM services s
-                LEFT JOIN users u1 ON s.intermediate_approver_id = u1.id
-                LEFT JOIN users u2 ON s.final_approver_id = u2.id
-                LEFT JOIN customer_departments cd ON s.customer_department_id = cd.id
+                FROM {SCHEMA}.services s
+                LEFT JOIN {SCHEMA}.users u1 ON s.intermediate_approver_id = u1.id
+                LEFT JOIN {SCHEMA}.users u2 ON s.final_approver_id = u2.id
+                LEFT JOIN {SCHEMA}.customer_departments cd ON s.customer_department_id = cd.id
                 ORDER BY s.name
             """)
             
@@ -64,8 +64,8 @@ def handler(event, context):
                 return response(400, {'error': 'Название сервиса обязательно'})
             
             cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO services (
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.services (
                     name, 
                     description, 
                     intermediate_approver_id, 
@@ -93,11 +93,11 @@ def handler(event, context):
             
             cur = conn.cursor()
             
-            cur.execute("""
+            cur.execute(f"""
                 SELECT 
-                  (SELECT COUNT(*) FROM payments WHERE service_id = %s) as payments_count,
-                  (SELECT COUNT(*) FROM savings WHERE service_id = %s) as savings_count,
-                  (SELECT COUNT(*) FROM ticket_service_mappings WHERE service_id = %s) as mappings_count
+                  (SELECT COUNT(*) FROM {SCHEMA}.payments WHERE service_id = %s) as payments_count,
+                  (SELECT COUNT(*) FROM {SCHEMA}.savings WHERE service_id = %s) as savings_count,
+                  (SELECT COUNT(*) FROM {SCHEMA}.ticket_service_mappings WHERE service_id = %s) as mappings_count
             """, (service_id, service_id, service_id))
             
             counts = cur.fetchone()
@@ -113,7 +113,7 @@ def handler(event, context):
                 cur.close()
                 return response(400, {'error': f'Невозможно удалить: есть {", ".join(errors)}'})
             
-            cur.execute("DELETE FROM services WHERE id = %s", (service_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.services WHERE id = %s", (service_id,))
             conn.commit()
             cur.close()
             

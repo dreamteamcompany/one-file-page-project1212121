@@ -1,7 +1,10 @@
 import json
 import sys
+import os
 from models import CategoryRequest
 from shared_utils import response
+
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -10,7 +13,7 @@ def handle_categories(method, event, conn):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            cur.execute("SELECT * FROM categories ORDER BY id")
+            cur.execute(f"SELECT * FROM {SCHEMA}.categories ORDER BY id")
             categories = cur.fetchall()
             return response(200, [dict(c) for c in categories])
         
@@ -18,7 +21,7 @@ def handle_categories(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = CategoryRequest(**body)
             
-            cur.execute("INSERT INTO categories (name, icon) VALUES (%s, %s) RETURNING id",
+            cur.execute(f"INSERT INTO {SCHEMA}.categories (name, icon) VALUES (%s, %s) RETURNING id",
                        (req.name, req.icon))
             cat_id = cur.fetchone()['id']
             conn.commit()
@@ -33,7 +36,7 @@ def handle_categories(method, event, conn):
             body = json.loads(event.get('body', '{}'))
             req = CategoryRequest(**body)
             
-            cur.execute("UPDATE categories SET name=%s, icon=%s WHERE id=%s",
+            cur.execute(f"UPDATE {SCHEMA}.categories SET name=%s, icon=%s WHERE id=%s",
                        (req.name, req.icon, cat_id))
             conn.commit()
             return response(200, {'message': 'Category updated'})
@@ -44,7 +47,7 @@ def handle_categories(method, event, conn):
             if not cat_id:
                 return response(400, {'error': 'Category ID required'})
             
-            cur.execute("DELETE FROM categories WHERE id=%s", (cat_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.categories WHERE id=%s", (cat_id,))
             conn.commit()
             return response(200, {'message': 'Category deleted'})
         
