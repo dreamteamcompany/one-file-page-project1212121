@@ -80,12 +80,14 @@ const PaymentsSidebar = ({
       </div>
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
         <ul className={`${collapsed ? 'px-1' : 'px-[15px]'} py-5 space-y-1 pb-4`}>
-        <li>
-          <Link to="/" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Дашборд">
-            <Icon name="Home" size={22} />
-            {!collapsed && <span>Дашборд</span>}
-          </Link>
-        </li>
+        {hasPermission('dashboard', 'read') && (
+          <li>
+            <Link to="/" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Дашборд">
+              <Icon name="Home" size={22} />
+              {!collapsed && <span>Дашборд</span>}
+            </Link>
+          </li>
+        )}
         {hasPermission('tickets', 'read') && (
           <li>
             <button
@@ -133,7 +135,7 @@ const PaymentsSidebar = ({
                     </Link>
                   </li>
                 )}
-                {hasPermission('tickets', 'read') && (
+                {hasPermission('ticket_statuses', 'read') && (
                   <li>
                     <Link to="/ticket-statuses" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-statuses') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
                       <Icon name="CircleDot" size={18} />
@@ -145,7 +147,7 @@ const PaymentsSidebar = ({
             )}
           </li>
         )}
-        {hasPermission('tickets', 'read') && (
+        {hasPermission('field_registry', 'read') && (
           <li>
             <Link to="/field-registry" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/field-registry') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Реестр полей">
               <Icon name="Database" size={22} />
@@ -153,7 +155,7 @@ const PaymentsSidebar = ({
             </Link>
           </li>
         )}
-        {hasPermission('tickets', 'read') && (
+        {hasPermission('custom_field_groups', 'read') && (
           <li>
             <Link to="/custom-field-groups" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/custom-field-groups') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Группы полей">
               <Icon name="Layers" size={22} />
@@ -161,7 +163,7 @@ const PaymentsSidebar = ({
             </Link>
           </li>
         )}
-        {hasPermission('tickets', 'read') && (
+        {hasPermission('service_field_mappings', 'read') && (
           <li>
             <Link to="/service-field-mappings" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/service-field-mappings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Связь услуг с полями">
               <Icon name="Link" size={22} />
@@ -185,7 +187,7 @@ const PaymentsSidebar = ({
             </Link>
           </li>
         )}
-        {hasPermission('roles', 'read') && (
+        {hasPermission('settings', 'read') && (
           <li>
             <Link to="/settings" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/settings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Настройки">
               <Icon name="Settings" size={22} />
@@ -193,7 +195,7 @@ const PaymentsSidebar = ({
             </Link>
           </li>
         )}
-        {hasPermission('roles', 'read') && (
+        {hasPermission('log_analyzer', 'read') && (
           <li>
             <Link to="/log-analyzer" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/log-analyzer') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Анализатор логов">
               <Icon name="FileText" size={22} />
