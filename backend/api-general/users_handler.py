@@ -77,18 +77,15 @@ def handle_users(method, event, conn, payload):
                 next_id = cur.fetchone()['next_id']
                 log(f"[CREATE USER] Next ID: {next_id}")
                 
+                # Вставляем БЕЗ RETURNING (может быть проблема с правами на это)
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.users (id, username, password_hash, full_name, position, email, photo_url, is_active)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, true) RETURNING id
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, true)
                 """, (next_id, req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
                 
-                result = cur.fetchone()
-                log(f"[CREATE USER] Insert result: {result}")
+                log(f"[CREATE USER] Insert executed, rowcount: {cur.rowcount}")
                 
-                if not result:
-                    raise Exception("Failed to insert user - no result returned")
-                
-                new_user_id = result['id']
+                new_user_id = next_id
                 log(f"[CREATE USER] User created with ID: {new_user_id}")
                 
                 for role_id in req.role_ids:
