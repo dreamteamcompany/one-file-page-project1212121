@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { Chart, registerables } from 'chart.js';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { apiFetch, API_URL } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 Chart.register(...registerables);
 
@@ -39,6 +41,8 @@ interface Stats {
 }
 
 const Index = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const barChartRef = useRef<HTMLCanvasElement>(null);
   const doughnutChartRef = useRef<HTMLCanvasElement>(null);
   const departmentChartRef = useRef<HTMLCanvasElement>(null);
@@ -59,6 +63,12 @@ const Index = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+
+  useEffect(() => {
+    if (!hasPermission('dashboard', 'read')) {
+      navigate('/tickets');
+    }
+  }, [hasPermission, navigate]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);

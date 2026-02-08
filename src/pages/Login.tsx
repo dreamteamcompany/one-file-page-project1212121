@@ -17,6 +17,22 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const getFirstAvailableRoute = (user: { permissions?: Array<{ resource: string; action: string }> }) => {
+    const hasPermission = (resource: string, action: string) => {
+      return user?.permissions?.some(
+        (p) => p.resource === resource && p.action === action
+      );
+    };
+
+    if (hasPermission('dashboard', 'read')) return '/';
+    if (hasPermission('tickets', 'read')) return '/tickets';
+    if (hasPermission('users', 'read')) return '/users';
+    if (hasPermission('roles', 'read')) return '/roles';
+    if (hasPermission('settings', 'read')) return '/settings';
+    
+    return '/tickets';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -24,7 +40,20 @@ const Login = () => {
 
     try {
       await login(username, password, rememberMe);
-      navigate('/');
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://functions.poehali.dev/api'}?endpoint=me`, {
+        headers: {
+          'X-Auth-Token': sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token') || '',
+        },
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        const route = getFirstAvailableRoute(userData);
+        navigate(route);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');
     } finally {
