@@ -124,6 +124,12 @@ const Users = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const requiredPermission = editingUser ? 'update' : 'create';
+    if (!hasPermission('users', requiredPermission)) {
+      alert('У вас нет прав для этой операции');
+      return;
+    }
+    
     try {
       const url = editingUser 
         ? `${API_URL}?endpoint=users&id=${editingUser.id}`
@@ -178,6 +184,11 @@ const Users = () => {
   };
 
   const toggleUserStatus = async (userId: number, currentStatus: boolean) => {
+    if (!hasPermission('users', 'update')) {
+      alert('У вас нет прав для изменения статуса пользователя');
+      return;
+    }
+    
     try {
       const response = await fetch(`https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users&id=${userId}`, {
         method: 'PUT',
@@ -199,6 +210,11 @@ const Users = () => {
   };
 
   const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!hasPermission('users', 'remove')) {
+      alert('У вас нет прав для удаления пользователей');
+      return;
+    }
+    
     if (!confirm(`Вы уверены, что хотите удалить пользователя "${userName}"?`)) return;
     
     try {
@@ -220,6 +236,11 @@ const Users = () => {
   };
 
   const handleEditUser = (user: User) => {
+    if (!hasPermission('users', 'update')) {
+      alert('У вас нет прав для редактирования пользователей');
+      return;
+    }
+    
     setEditingUser(user);
     setFormData({
       username: user.username,
@@ -269,6 +290,7 @@ const Users = () => {
             setFormData={setFormData}
             roles={roles}
             handleSubmit={handleSubmit}
+            canCreate={hasPermission('users', 'create')}
           />
         </div>
 

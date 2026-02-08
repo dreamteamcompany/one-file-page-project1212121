@@ -18,9 +18,11 @@ interface UsersTableProps {
   onEdit: (user: User) => void;
   onToggleStatus: (userId: number, currentStatus: boolean) => void;
   onDelete: (userId: number, userName: string) => void;
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
-const UsersTable = ({ users, onEdit, onToggleStatus, onDelete }: UsersTableProps) => {
+const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true, canDelete = true }: UsersTableProps) => {
   return (
     <>
       {/* Desktop version */}
@@ -85,30 +87,36 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete }: UsersTableProps
               </td>
               <td className="p-4">
                 <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(user)}
-                    className="gap-2 text-blue-500 hover:text-blue-600"
-                  >
-                    <Icon name="Pencil" size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onToggleStatus(user.id, user.is_active)}
-                    className={`gap-2 ${user.is_active ? 'text-yellow-500 hover:text-yellow-600' : 'text-green-500 hover:text-green-600'}`}
-                  >
-                    <Icon name={user.is_active ? 'Ban' : 'Check'} size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDelete(user.id, user.full_name)}
-                    className="gap-2 text-red-500 hover:text-red-600"
-                  >
-                    <Icon name="Trash2" size={16} />
-                  </Button>
+                  {canUpdate && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(user)}
+                        className="gap-2 text-blue-500 hover:text-blue-600"
+                      >
+                        <Icon name="Pencil" size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onToggleStatus(user.id, user.is_active)}
+                        className={`gap-2 ${user.is_active ? 'text-yellow-500 hover:text-yellow-600' : 'text-green-500 hover:text-green-600'}`}
+                      >
+                        <Icon name={user.is_active ? 'Ban' : 'Check'} size={16} />
+                      </Button>
+                    </>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDelete(user.id, user.full_name)}
+                      className="gap-2 text-red-500 hover:text-red-600"
+                    >
+                      <Icon name="Trash2" size={16} />
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>

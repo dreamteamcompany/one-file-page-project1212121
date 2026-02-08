@@ -47,6 +47,7 @@ interface UserFormDialogProps {
   setFormData: (data: any) => void;
   roles: Role[];
   handleSubmit: (e: React.FormEvent) => void;
+  canCreate?: boolean;
 }
 
 const UserFormDialog = ({
@@ -58,6 +59,7 @@ const UserFormDialog = ({
   setFormData,
   roles,
   handleSubmit,
+  canCreate = true,
 }: UserFormDialogProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
