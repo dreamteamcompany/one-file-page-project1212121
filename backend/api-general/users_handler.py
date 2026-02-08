@@ -74,16 +74,31 @@ def handle_users(method, event, conn, payload):
                 
                 # Получаем следующий ID вручную
                 cur.execute(f"SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM {SCHEMA}.users")
-                next_id = cur.fetchone()['next_id']
+                next_id_result = cur.fetchone()
+                log(f"[CREATE USER] Next ID query result: {next_id_result}")
+                next_id = next_id_result['next_id'] if next_id_result else 1
                 log(f"[CREATE USER] Next ID: {next_id}")
                 
-                # Вставляем БЕЗ RETURNING (может быть проблема с правами на это)
-                cur.execute(f"""
-                    INSERT INTO {SCHEMA}.users (id, username, password_hash, full_name, position, email, photo_url, is_active)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, true)
-                """, (next_id, req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
+                # Явно указываем все поля, включая те, у которых есть DEFAULT
+                insert_query = f"""
+                    INSERT INTO {SCHEMA}.users 
+                    (id, username, password_hash, full_name, position, email, photo_url, is_active, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """
+                log(f"[CREATE USER] About to execute INSERT with values: id={next_id}, username={req.username}")
                 
-                log(f"[CREATE USER] Insert executed, rowcount: {cur.rowcount}")
+                cur.execute(insert_query, (
+                    next_id, 
+                    req.username, 
+                    password_hash, 
+                    req.full_name, 
+                    req.position if req.position else '', 
+                    req.email if req.email else '', 
+                    req.photo_url if req.photo_url else '', 
+                    True
+                ))
+                
+                log(f"[CREATE USER] Insert executed successfully, rowcount: {cur.rowcount}")
                 
                 new_user_id = next_id
                 log(f"[CREATE USER] User created with ID: {new_user_id}")
