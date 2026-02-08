@@ -93,6 +93,12 @@ const FieldRegistry = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const requiredPermission = editingField ? 'update' : 'create';
+    if (!hasPermission('field_registry', requiredPermission)) {
+      alert('У вас нет прав для этой операции');
+      return;
+    }
+    
     let updatedFields: Field[];
     if (editingField) {
       updatedFields = fields.map(f => 
@@ -130,10 +136,18 @@ const FieldRegistry = () => {
   };
 
   const handleEdit = (field: Field) => {
+    if (!hasPermission('field_registry', 'update')) {
+      alert('У вас нет прав для редактирования полей');
+      return;
+    }
     openDialog(field);
   };
 
   const handleDelete = (id: number) => {
+    if (!hasPermission('field_registry', 'remove')) {
+      alert('У вас нет прав для удаления полей');
+      return;
+    }
     if (!confirm('Вы уверены, что хотите удалить это поле?')) return;
     const updatedFields = fields.filter(f => f.id !== id);
     setFields(updatedFields);

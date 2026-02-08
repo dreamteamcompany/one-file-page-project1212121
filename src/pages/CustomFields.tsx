@@ -105,6 +105,12 @@ const CustomFields = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const requiredPermission = editingField ? 'update' : 'create';
+    if (!hasPermission('custom_fields', requiredPermission)) {
+      alert('У вас нет прав для этой операции');
+      return;
+    }
+    
     try {
       const url = `${API_URL}?endpoint=custom-fields`;
       const method = editingField ? 'PUT' : 'POST';
@@ -132,6 +138,11 @@ const CustomFields = () => {
   };
 
   const handleEdit = (field: CustomField) => {
+    if (!hasPermission('custom_fields', 'update')) {
+      alert('У вас нет прав для редактирования полей');
+      return;
+    }
+    
     setEditingField(field);
     setFormData({ 
       name: field.name, 
@@ -143,6 +154,11 @@ const CustomFields = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!hasPermission('custom_fields', 'remove')) {
+      alert('У вас нет прав для удаления полей');
+      return;
+    }
+    
     if (!confirm('Вы уверены, что хотите удалить это дополнительное поле?')) return;
 
     try {

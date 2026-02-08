@@ -8,7 +8,7 @@ export const useTicketActions = (
   loadComments: () => Promise<void>,
   loadHistory: () => Promise<void>
 ) => {
-  const { token } = useAuth();
+  const { token, hasPermission } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -46,6 +46,11 @@ export const useTicketActions = (
   };
 
   const handleUpdateStatus = async (statusId: number) => {
+    if (!hasPermission('tickets', 'update')) {
+      console.error('Нет прав для изменения статуса заявки');
+      return;
+    }
+    
     try {
       setUpdating(true);
       const response = await apiFetch(`${API_URL}?endpoint=tickets`, {

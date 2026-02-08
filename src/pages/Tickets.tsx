@@ -122,6 +122,7 @@ const Tickets = () => {
             ticketServices={ticketServices}
             handleSubmit={handleSubmit}
             onDialogOpen={handleFormOpen}
+            canCreate={hasPermission('tickets', 'create')}
           />
 
           {viewMode === 'list' ? (

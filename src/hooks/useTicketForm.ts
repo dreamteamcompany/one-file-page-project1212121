@@ -11,7 +11,7 @@ interface CustomField {
 }
 
 export const useTicketForm = (customFields: CustomField[], loadTickets: () => void) => {
-  const { token } = useAuth();
+  const { token, hasPermission } = useAuth();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -35,6 +35,15 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
 
   const handleSubmit = async (e: React.FormEvent, overrideData?: typeof formData): Promise<void> => {
     e.preventDefault();
+
+    if (!hasPermission('tickets', 'create')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для создания заявок',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (!token) {
       toast({

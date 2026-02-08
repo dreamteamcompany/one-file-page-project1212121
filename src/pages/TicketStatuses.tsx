@@ -106,6 +106,12 @@ const TicketStatuses = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const requiredPermission = editingStatus ? 'update' : 'create';
+    if (!hasPermission('ticket_statuses', requiredPermission)) {
+      alert('У вас нет прав для этой операции');
+      return;
+    }
+    
     try {
       const url = `${API_URL}?endpoint=ticket-statuses`;
       const method = editingStatus ? 'PUT' : 'POST';
@@ -133,6 +139,11 @@ const TicketStatuses = () => {
   };
 
   const handleEdit = (status: TicketStatus) => {
+    if (!hasPermission('ticket_statuses', 'update')) {
+      alert('У вас нет прав для редактирования статусов');
+      return;
+    }
+    
     setEditingStatus(status);
     setFormData({ 
       name: status.name, 
@@ -148,6 +159,11 @@ const TicketStatuses = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!hasPermission('ticket_statuses', 'remove')) {
+      alert('У вас нет прав для удаления статусов');
+      return;
+    }
+    
     if (!confirm('Вы уверены, что хотите удалить этот статус?')) return;
 
     try {

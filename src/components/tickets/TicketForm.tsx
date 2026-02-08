@@ -77,6 +77,7 @@ interface TicketFormProps {
   ticketServices?: Service[];
   handleSubmit: (e: React.FormEvent, overrideData?: any) => Promise<void>;
   onDialogOpen?: () => void;
+  canCreate?: boolean;
 }
 
 const TicketForm = ({
@@ -93,6 +94,7 @@ const TicketForm = ({
   ticketServices = [],
   handleSubmit,
   onDialogOpen,
+  canCreate = true,
 }: TicketFormProps) => {
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<number[]>([]);
@@ -181,12 +183,14 @@ const TicketForm = ({
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="gap-2 shadow-lg">
-          <Icon name="Plus" size={20} />
-          Создать заявку
-        </Button>
-      </DialogTrigger>
+      {canCreate && (
+        <DialogTrigger asChild>
+          <Button size="lg" className="gap-2 shadow-lg">
+            <Icon name="Plus" size={20} />
+            Создать заявку
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

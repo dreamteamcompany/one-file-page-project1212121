@@ -111,6 +111,16 @@ const Roles = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const requiredPermission = editingRole ? 'update' : 'create';
+    if (!hasPermission('roles', requiredPermission)) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для этой операции',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const url = `${API_URL}?endpoint=roles`;
       const method = editingRole ? 'PUT' : 'POST';
@@ -142,6 +152,15 @@ const Roles = () => {
   };
 
   const handleEdit = (role: Role) => {
+    if (!hasPermission('roles', 'update')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для редактирования ролей',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setEditingRole(role);
     setFormData({
       name: role.name,
@@ -152,6 +171,15 @@ const Roles = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!hasPermission('roles', 'remove')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для удаления ролей',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!confirm('Вы уверены, что хотите удалить эту роль?')) return;
     
     try {
@@ -297,12 +325,14 @@ const Roles = () => {
               });
             }
           }}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 gap-2 w-full sm:w-auto">
-                <Icon name="Plus" size={18} />
-                <span>Добавить роль</span>
-              </Button>
-            </DialogTrigger>
+            {hasPermission('roles', 'create') && (
+              <DialogTrigger asChild>
+                <Button className="bg-primary hover:bg-primary/90 gap-2 w-full sm:w-auto">
+                  <Icon name="Plus" size={18} />
+                  <span>Добавить роль</span>
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingRole ? 'Редактировать роль' : 'Новая роль'}</DialogTitle>
@@ -415,23 +445,27 @@ const Roles = () => {
                   </div>
 
                   <div className="flex gap-2 pt-4 border-t border-white/10">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(role)}
-                      className="flex-1 gap-2"
-                    >
-                      <Icon name="Pencil" size={16} />
-                      Редактировать
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(role.id)}
-                      className="gap-2 text-red-500 hover:text-red-600"
-                    >
-                      <Icon name="Trash2" size={16} />
-                    </Button>
+                    {hasPermission('roles', 'update') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(role)}
+                        className="flex-1 gap-2"
+                      >
+                        <Icon name="Pencil" size={16} />
+                        Редактировать
+                      </Button>
+                    )}
+                    {hasPermission('roles', 'remove') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(role.id)}
+                        className="gap-2 text-red-500 hover:text-red-600"
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

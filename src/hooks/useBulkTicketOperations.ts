@@ -11,10 +11,19 @@ export const useBulkTicketOperations = (
   onSuccess: () => void,
   onClearSelection: () => void
 ) => {
-  const { token } = useAuth();
+  const { token, hasPermission } = useAuth();
   const { toast } = useToast();
 
   const handleChangeStatus = async (statusId: number) => {
+    if (!hasPermission('tickets', 'update')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для изменения заявок',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const result = await bulkTicketsService.changeStatus(selectedTicketIds, statusId, token);
       
@@ -35,6 +44,15 @@ export const useBulkTicketOperations = (
   };
 
   const handleChangePriority = async (priorityId: number) => {
+    if (!hasPermission('tickets', 'update')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для изменения заявок',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const result = await bulkTicketsService.changePriority(selectedTicketIds, priorityId, token);
       
@@ -55,6 +73,15 @@ export const useBulkTicketOperations = (
   };
 
   const handleAssign = async (userId: number) => {
+    if (!hasPermission('tickets', 'update')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для изменения заявок',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const result = await bulkTicketsService.assignTickets(selectedTicketIds, userId, token);
       
@@ -75,6 +102,15 @@ export const useBulkTicketOperations = (
   };
 
   const handleDelete = async () => {
+    if (!hasPermission('tickets', 'remove')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для удаления заявок',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const result = await bulkTicketsService.deleteTickets(selectedTicketIds, token);
       
