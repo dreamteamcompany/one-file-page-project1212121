@@ -78,22 +78,21 @@ def handle_users(method, event, conn, payload):
                 next_id = next_id_result['next_id'] if next_id_result else 1
                 log(f"[CREATE USER] Generated next ID: {next_id}")
                 
+                # Используем простейший INSERT без подзапросов
                 insert_query = f"""
                     INSERT INTO {SCHEMA}.users 
-                    (id, username, password_hash, full_name, position, email, photo_url, is_active)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    (id, username, password_hash, full_name, position, email, photo_url, is_active, created_at, updated_at)
+                    VALUES ({next_id}, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
                 """
                 log(f"[CREATE USER] About to execute INSERT with id={next_id}, username={req.username}")
                 
                 cur.execute(insert_query, (
-                    next_id,
                     req.username, 
                     password_hash, 
                     req.full_name, 
                     req.position if req.position else '', 
                     req.email if req.email else '', 
-                    req.photo_url if req.photo_url else '',
-                    True
+                    req.photo_url if req.photo_url else ''
                 ))
                 
                 log(f"[CREATE USER] Insert executed successfully, rowcount: {cur.rowcount}")
