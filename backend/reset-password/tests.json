@@ -1,0 +1,15 @@
+{
+  "tests": [
+    {
+      "name": "Reset admin password",
+      "method": "POST",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "message": "string",
+        "password_verified": "boolean"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
