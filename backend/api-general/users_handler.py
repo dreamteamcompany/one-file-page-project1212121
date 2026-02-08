@@ -72,10 +72,15 @@ def handle_users(method, event, conn, payload):
                 password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 log(f"[CREATE USER] Password hashed successfully")
                 
+                # Получаем следующий ID вручную
+                cur.execute(f"SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM {SCHEMA}.users")
+                next_id = cur.fetchone()['next_id']
+                log(f"[CREATE USER] Next ID: {next_id}")
+                
                 cur.execute(f"""
-                    INSERT INTO {SCHEMA}.users (username, password_hash, full_name, position, email, photo_url)
-                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-                """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
+                    INSERT INTO {SCHEMA}.users (id, username, password_hash, full_name, position, email, photo_url, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, true) RETURNING id
+                """, (next_id, req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
                 
                 result = cur.fetchone()
                 log(f"[CREATE USER] Insert result: {result}")
