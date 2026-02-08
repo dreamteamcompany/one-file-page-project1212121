@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +27,8 @@ interface Role {
 }
 
 const Users = () => {
+  const { hasPermission, token } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +39,6 @@ const Users = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  const { token } = useAuth();
-
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -46,20 +47,6 @@ const Users = () => {
     role_ids: [] as number[],
     photo_url: '',
   });
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStart - touchEnd > 75) {
-      setMenuOpen(false);
-    }
-  };
 
   const loadUsers = async () => {
     try {
@@ -104,11 +91,35 @@ const Users = () => {
   };
 
   useEffect(() => {
+    if (!hasPermission('users', 'read')) {
+      navigate('/tickets');
+    }
+  }, [hasPermission, navigate]);
+
+  useEffect(() => {
     if (token) {
       loadUsers();
       loadRoles();
     }
   }, [token]);
+
+  if (!hasPermission('users', 'read')) {
+    return null;
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd > 75) {
+      setMenuOpen(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

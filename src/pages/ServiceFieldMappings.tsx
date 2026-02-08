@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch, API_URL } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -14,6 +16,8 @@ import {
 } from '@/components/service-field-mappings/types';
 
 const ServiceFieldMappings = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [mappings, setMappings] = useState<ServiceFieldMapping[]>([]);
   const [ticketServices, setTicketServices] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -32,8 +36,16 @@ const ServiceFieldMappings = () => {
   const [touchEnd, setTouchEnd] = useState(0);
 
   useEffect(() => {
+    if (!hasPermission('service_field_mappings', 'read')) {
+      navigate('/tickets');
+      return;
+    }
     loadData();
-  }, []);
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('service_field_mappings', 'read')) {
+    return null;
+  }
 
   const loadData = async () => {
     // Load ticket-services (Услуга: Заблокировать доступ, Предоставить доступ)

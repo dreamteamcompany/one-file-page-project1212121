@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import LogAnalyzerHeader from '@/components/log-analyzer/LogAnalyzerHeader';
 import LogFilesList from '@/components/log-analyzer/LogFilesList';
 import LogFilters from '@/components/log-analyzer/LogFilters';
@@ -32,6 +34,8 @@ const API_URL = 'https://functions.poehali.dev/dd221a88-cc33-4a30-a59f-830b0a418
 const COLLECT_API_URL = 'https://functions.poehali.dev/acbb6915-96bf-4e7f-ab66-c34c3fa4b26c';
 
 const LogAnalyzer = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [files, setFiles] = useState<LogFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<LogFile | null>(null);
   const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -63,16 +67,6 @@ const LogAnalyzer = () => {
       setMenuOpen(false);
     }
   };
-
-  useEffect(() => {
-    loadFiles();
-  }, []);
-
-  useEffect(() => {
-    if (selectedFile) {
-      loadEntries();
-    }
-  }, [selectedFile, levelFilter, searchQuery, offset]);
 
   const loadFiles = async () => {
     setLoading(true);
@@ -125,6 +119,24 @@ const LogAnalyzer = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!hasPermission('log_analyzer', 'read')) {
+      navigate('/tickets');
+      return;
+    }
+    loadFiles();
+  }, [hasPermission, navigate]);
+
+  useEffect(() => {
+    if (selectedFile) {
+      loadEntries();
+    }
+  }, [selectedFile, levelFilter, searchQuery, offset]);
+
+  if (!hasPermission('log_analyzer', 'read')) {
+    return null;
+  }
 
   const collectAllLogs = async () => {
     setCollecting(true);

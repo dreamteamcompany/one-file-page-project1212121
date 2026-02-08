@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import FieldFormDialog from '@/components/field-registry/FieldFormDialog';
 import FieldsTable from '@/components/field-registry/FieldsTable';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Field {
   id: number;
@@ -30,6 +32,8 @@ const fieldTypes = [
 ];
 
 const FieldRegistry = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [fields, setFields] = useState<Field[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingField, setEditingField] = useState<Field | null>(null);
@@ -64,6 +68,10 @@ const FieldRegistry = () => {
   };
 
   useEffect(() => {
+    if (!hasPermission('field_registry', 'read')) {
+      navigate('/tickets');
+      return;
+    }
     const savedFields = localStorage.getItem('fieldRegistry');
     if (savedFields) {
       setFields(JSON.parse(savedFields));
@@ -76,7 +84,11 @@ const FieldRegistry = () => {
       setFields(mockFields);
       localStorage.setItem('fieldRegistry', JSON.stringify(mockFields));
     }
-  }, []);
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('field_registry', 'read')) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

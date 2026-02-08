@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
@@ -12,7 +13,7 @@ const TicketDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   const {
     ticket,
@@ -43,6 +44,16 @@ const TicketDetails = () => {
     handleAssignUser,
     handleUpdateDueDate,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
+
+  useEffect(() => {
+    if (!hasPermission('tickets', 'read')) {
+      navigate('/tickets');
+    }
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('tickets', 'read')) {
+    return null;
+  }
 
   if (loading) {
     return (

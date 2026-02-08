@@ -6,7 +6,7 @@
  * - Bulk операции в useBulkTicketOperations
  * - UI переключения в TicketsViewToggle
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTicketsData } from '@/hooks/useTicketsData';
@@ -26,7 +26,7 @@ import BulkActionsBar from '@/components/tickets/BulkActionsBar';
 import type { Ticket, CustomField } from '@/types';
 
 const Tickets = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,7 +47,6 @@ const Tickets = () => {
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
-  
   const filteredTickets = useTicketsSearch(tickets, searchQuery);
 
   const {
@@ -57,11 +56,6 @@ const Tickets = () => {
     toggleAllTickets,
     clearSelection,
   } = useBulkTicketActions();
-
-  const handleFormOpen = () => {
-    loadDictionaries();
-    loadServices();
-  };
 
   const {
     dialogOpen,
@@ -77,6 +71,21 @@ const Tickets = () => {
     handleAssign,
     handleDelete,
   } = useBulkTicketOperations(selectedTicketIds, loadTickets, clearSelection);
+  
+  useEffect(() => {
+    if (!hasPermission('tickets', 'read')) {
+      navigate('/login');
+    }
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('tickets', 'read')) {
+    return null;
+  }
+
+  const handleFormOpen = () => {
+    loadDictionaries();
+    loadServices();
+  };
 
   const handleBulkModeToggle = () => {
     toggleBulkMode();

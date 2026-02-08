@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import ScheduledPaymentsSettings from '@/components/settings/ScheduledPaymentsSettings';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +23,8 @@ import { Input } from '@/components/ui/input';
 const CLEAR_DATA_API = 'https://functions.poehali.dev/69d0e8e7-3feb-4d34-9a63-64521e899118';
 
 const Settings = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
@@ -29,6 +33,16 @@ const Settings = () => {
   const [clearing, setClearing] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!hasPermission('settings', 'read')) {
+      navigate('/tickets');
+    }
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('settings', 'read')) {
+    return null;
+  }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch, API_URL } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
@@ -40,6 +42,8 @@ const predefinedColors = [
 ];
 
 const TicketStatuses = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [statuses, setStatuses] = useState<TicketStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,6 +62,18 @@ const TicketStatuses = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+
+  useEffect(() => {
+    if (!hasPermission('ticket_statuses', 'read')) {
+      navigate('/tickets');
+      return;
+    }
+    loadStatuses();
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('ticket_statuses', 'read')) {
+    return null;
+  }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
@@ -86,10 +102,6 @@ const TicketStatuses = () => {
         setLoading(false);
       });
   };
-
-  useEffect(() => {
-    loadStatuses();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

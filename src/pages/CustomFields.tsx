@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
@@ -40,6 +41,8 @@ const fieldTypes = [
 ];
 
 const CustomFields = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [fields, setFields] = useState<CustomField[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -54,6 +57,18 @@ const CustomFields = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+
+  useEffect(() => {
+    if (!hasPermission('custom_fields', 'read')) {
+      navigate('/tickets');
+      return;
+    }
+    loadFields();
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('custom_fields', 'read')) {
+    return null;
+  }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
@@ -86,10 +101,6 @@ const CustomFields = () => {
         setLoading(false);
       });
   };
-
-  useEffect(() => {
-    loadFields();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

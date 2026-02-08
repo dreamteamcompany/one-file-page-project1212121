@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
@@ -58,6 +60,8 @@ const fieldTypes = [
 ];
 
 const CustomFieldGroups = () => {
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [fieldGroups, setFieldGroups] = useState<FieldGroup[]>([]);
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,6 +94,10 @@ const CustomFieldGroups = () => {
   };
 
   useEffect(() => {
+    if (!hasPermission('custom_field_groups', 'read')) {
+      navigate('/tickets');
+      return;
+    }
     const savedFields = localStorage.getItem('fieldRegistry');
     if (savedFields) {
       setAvailableFields(JSON.parse(savedFields));
@@ -118,7 +126,11 @@ const CustomFieldGroups = () => {
       setFieldGroups(mockGroups);
       localStorage.setItem('customFieldGroups', JSON.stringify(mockGroups));
     }
-  }, []);
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('custom_field_groups', 'read')) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

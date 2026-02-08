@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch, API_URL } from '@/utils/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Permission {
   id: number;
@@ -35,6 +37,8 @@ interface Role {
 
 const Roles = () => {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
+  const navigate = useNavigate();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,9 +96,17 @@ const Roles = () => {
   };
 
   useEffect(() => {
+    if (!hasPermission('roles', 'read')) {
+      navigate('/tickets');
+      return;
+    }
     loadRoles();
     loadPermissions();
-  }, []);
+  }, [hasPermission, navigate]);
+
+  if (!hasPermission('roles', 'read')) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
