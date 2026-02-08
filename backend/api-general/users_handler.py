@@ -63,19 +63,35 @@ def handle_users(method, event, conn, payload):
             if not req.password:
                 return response(400, {'error': 'Password required'})
             
-            password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.users (username, password_hash, full_name, position, email, photo_url)
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-            """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
-            user_id = cur.fetchone()['id']
-            
-            for role_id in req.role_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, role_id))
-            
-            conn.commit()
-            return response(201, {'id': user_id, 'message': 'User created'})
+            try:
+                password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                log(f"[CREATE USER] Password hashed successfully")
+                
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.users (username, password_hash, full_name, position, email, photo_url)
+                    VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+                """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url))
+                
+                result = cur.fetchone()
+                log(f"[CREATE USER] Insert result: {result}")
+                
+                if not result:
+                    raise Exception("Failed to insert user - no result returned")
+                
+                new_user_id = result['id']
+                log(f"[CREATE USER] User created with ID: {new_user_id}")
+                
+                for role_id in req.role_ids:
+                    log(f"[CREATE USER] Assigning role {role_id} to user {new_user_id}")
+                    cur.execute(f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id) VALUES (%s, %s)", (new_user_id, role_id))
+                
+                conn.commit()
+                log(f"[CREATE USER] Transaction committed successfully")
+                return response(201, {'id': new_user_id, 'message': 'User created'})
+            except Exception as insert_error:
+                conn.rollback()
+                log(f"[CREATE USER] Insert error: {type(insert_error).__name__}: {str(insert_error)}")
+                return response(500, {'error': 'Failed to create user', 'details': str(insert_error)})
         
         elif method == 'PUT':
             # Проверка права на редактирование пользователей
