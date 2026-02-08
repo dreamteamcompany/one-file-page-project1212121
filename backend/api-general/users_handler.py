@@ -51,7 +51,14 @@ def handle_users(method, event, conn, payload):
                 return response(403, {'error': 'Access denied', 'message': 'No permission to create users'})
             
             body = json.loads(event.get('body', '{}'))
-            req = UserRequest(**body)
+            log(f"[CREATE USER] Received body: {json.dumps(body)}")
+            
+            try:
+                req = UserRequest(**body)
+                log(f"[CREATE USER] Validated request: username={req.username}, full_name={req.full_name}")
+            except Exception as validation_error:
+                log(f"[CREATE USER] Validation error: {str(validation_error)}")
+                return response(400, {'error': 'Validation error', 'details': str(validation_error)})
             
             if not req.password:
                 return response(400, {'error': 'Password required'})
