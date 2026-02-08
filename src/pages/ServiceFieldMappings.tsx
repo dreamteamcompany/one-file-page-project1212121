@@ -285,6 +285,8 @@ const ServiceFieldMappings = () => {
             getCategoryName={getTicketServiceName}
             getServiceName={getServiceName}
             getFieldGroupNames={getFieldGroupNames}
+            canUpdate={hasPermission('service_field_mappings', 'update')}
+            canDelete={hasPermission('service_field_mappings', 'remove')}
           />
         </div>
       </div>

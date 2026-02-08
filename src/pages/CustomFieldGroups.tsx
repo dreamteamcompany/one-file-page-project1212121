@@ -475,6 +475,7 @@ const CustomFieldGroups = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            {hasPermission('custom_field_groups', 'update') && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -484,6 +485,8 @@ const CustomFieldGroups = () => {
                               <Icon name="Pencil" size={16} />
                               <span className="hidden sm:inline">Изменить</span>
                             </Button>
+                            )}
+                            {hasPermission('custom_field_groups', 'remove') && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -493,6 +496,7 @@ const CustomFieldGroups = () => {
                               <Icon name="Trash2" size={16} />
                               <span className="hidden sm:inline">Удалить</span>
                             </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

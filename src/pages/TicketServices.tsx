@@ -342,6 +342,7 @@ const TicketServices = () => {
                         <TableCell className="max-w-md">{service.description || '—'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
+                            {hasPermission('settings', 'update') && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -349,6 +350,8 @@ const TicketServices = () => {
                             >
                               <Icon name="Pencil" size={16} />
                             </Button>
+                            )}
+                            {hasPermission('settings', 'remove') && (
                             <Button
                               size="sm"
                               variant="destructive"
@@ -356,6 +359,7 @@ const TicketServices = () => {
                             >
                               <Icon name="Trash2" size={16} />
                             </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

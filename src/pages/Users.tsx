@@ -308,6 +308,8 @@ const Users = () => {
                 onEdit={handleEditUser}
                 onToggleStatus={toggleUserStatus}
                 onDelete={handleDeleteUser}
+                canUpdate={hasPermission('users', 'update')}
+                canDelete={hasPermission('users', 'remove')}
               />
             )}
           </CardContent>

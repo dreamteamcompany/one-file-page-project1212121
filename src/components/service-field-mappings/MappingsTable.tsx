@@ -19,6 +19,8 @@ interface MappingsTableProps {
   getCategoryName: (id: number) => string;
   getServiceName: (id: number) => string;
   getFieldGroupNames: (ids: number[]) => string[];
+  canUpdate?: boolean;
+  canDelete?: boolean;
 }
 
 const MappingsTable = ({
@@ -28,6 +30,8 @@ const MappingsTable = ({
   getCategoryName,
   getServiceName,
   getFieldGroupNames,
+  canUpdate = true,
+  canDelete = true,
 }: MappingsTableProps) => {
   return (
     <Card>
@@ -90,6 +94,7 @@ const MappingsTable = ({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {canUpdate && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -99,6 +104,8 @@ const MappingsTable = ({
                           <Icon name="Pencil" size={16} />
                           Изменить
                         </Button>
+                        )}
+                        {canDelete && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -108,6 +115,7 @@ const MappingsTable = ({
                           <Icon name="Trash2" size={16} />
                           Удалить
                         </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
