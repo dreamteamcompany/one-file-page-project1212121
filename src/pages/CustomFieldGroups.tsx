@@ -135,6 +135,12 @@ const CustomFieldGroups = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const requiredPermission = editingGroup ? 'update' : 'create';
+    if (!hasPermission('custom_field_groups', requiredPermission)) {
+      alert('У вас нет прав для этой операции');
+      return;
+    }
+    
     let updatedGroups: FieldGroup[];
     if (editingGroup) {
       updatedGroups = fieldGroups.map(g => 
@@ -159,10 +165,18 @@ const CustomFieldGroups = () => {
   };
 
   const handleEdit = (group: FieldGroup) => {
+    if (!hasPermission('custom_field_groups', 'update')) {
+      alert('У вас нет прав для редактирования групп полей');
+      return;
+    }
     openDialog(group);
   };
 
   const handleDelete = (id: number) => {
+    if (!hasPermission('custom_field_groups', 'remove')) {
+      alert('У вас нет прав для удаления групп полей');
+      return;
+    }
     if (!confirm('Вы уверены, что хотите удалить эту сущность?')) return;
     const updatedGroups = fieldGroups.filter(g => g.id !== id);
     setFieldGroups(updatedGroups);
@@ -276,6 +290,7 @@ const CustomFieldGroups = () => {
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Дополнительные поля</h1>
             <p className="text-sm md:text-base text-muted-foreground">Создание сущностей с полями из реестра</p>
           </div>
+          {hasPermission('custom_field_groups', 'create') && (
           <Dialog open={dialogOpen} onOpenChange={(open) => open ? setDialogOpen(true) : closeDialog()}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90 gap-2 w-full sm:w-auto">
@@ -400,6 +415,7 @@ const CustomFieldGroups = () => {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         <Card>

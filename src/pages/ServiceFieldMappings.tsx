@@ -86,6 +86,12 @@ const ServiceFieldMappings = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const requiredPermission = editingMapping ? 'update' : 'create';
+    if (!hasPermission('service_field_mappings', requiredPermission)) {
+      alert('У вас нет прав для этой операции');
+      return;
+    }
+
     if (!formData.service_category_id || !formData.service_id) {
       alert('Выберите услугу и сервис');
       return;
@@ -127,6 +133,10 @@ const ServiceFieldMappings = () => {
   };
 
   const handleEdit = (mapping: ServiceFieldMapping) => {
+    if (!hasPermission('service_field_mappings', 'update')) {
+      alert('У вас нет прав для редактирования связей');
+      return;
+    }
     setEditingMapping(mapping);
     setFormData({
       service_category_id: mapping.service_category_id,
@@ -137,6 +147,10 @@ const ServiceFieldMappings = () => {
   };
 
   const handleDelete = (id: number) => {
+    if (!hasPermission('service_field_mappings', 'remove')) {
+      alert('У вас нет прав для удаления связей');
+      return;
+    }
     if (confirm('Удалить связь?')) {
       const updatedMappings = mappings.filter((m) => m.id !== id);
       setMappings(updatedMappings);
@@ -258,6 +272,7 @@ const ServiceFieldMappings = () => {
               serviceCategories={ticketServices}
               services={services}
               fieldGroups={fieldGroups}
+              canCreate={hasPermission('service_field_mappings', 'create')}
               filteredServices={filteredServices}
               toggleFieldGroup={toggleFieldGroup}
             />

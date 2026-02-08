@@ -37,6 +37,7 @@ interface MappingFormDialogProps {
   fieldGroups: FieldGroup[];
   filteredServices: Service[];
   toggleFieldGroup: (groupId: number) => void;
+  canCreate?: boolean;
 }
 
 const MappingFormDialog = ({
@@ -51,15 +52,18 @@ const MappingFormDialog = ({
   fieldGroups,
   filteredServices,
   toggleFieldGroup,
+  canCreate = true,
 }: MappingFormDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {canCreate && (
       <DialogTrigger asChild>
         <Button onClick={onReset} className="gap-2">
           <Icon name="Plus" size={18} />
           Добавить связь
         </Button>
       </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>

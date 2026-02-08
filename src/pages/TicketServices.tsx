@@ -102,6 +102,16 @@ const TicketServices = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const requiredPermission = editingService ? 'update' : 'create';
+    if (!hasPermission('settings', requiredPermission)) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для этой операции',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formData.name) {
       toast({
         title: 'Ошибка',
@@ -150,6 +160,14 @@ const TicketServices = () => {
   };
 
   const handleEdit = (service: Service) => {
+    if (!hasPermission('settings', 'update')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для редактирования сервисов',
+        variant: 'destructive',
+      });
+      return;
+    }
     setEditingService(service);
     setFormData({
       name: service.name,
@@ -159,6 +177,14 @@ const TicketServices = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!hasPermission('settings', 'remove')) {
+      toast({
+        title: 'Ошибка',
+        description: 'У вас нет прав для удаления сервисов',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!confirm('Удалить этот сервис?')) return;
 
     try {
@@ -237,6 +263,7 @@ const TicketServices = () => {
               </button>
               <h1 className="text-2xl font-bold">Сервисы услуг</h1>
             </div>
+            {hasPermission('settings', 'create') && (
             <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button>
@@ -283,6 +310,7 @@ const TicketServices = () => {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </header>
 
