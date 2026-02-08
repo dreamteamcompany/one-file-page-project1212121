@@ -72,27 +72,33 @@ def handle_users(method, event, conn, payload):
                 password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 log(f"[CREATE USER] Password hashed successfully")
                 
+                # Генерируем ID вручную, чтобы обойти битый DEFAULT
+                cur.execute(f"SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM {SCHEMA}.users")
+                next_id_result = cur.fetchone()
+                next_id = next_id_result['next_id'] if next_id_result else 1
+                log(f"[CREATE USER] Generated next ID: {next_id}")
+                
                 insert_query = f"""
                     INSERT INTO {SCHEMA}.users 
-                    (username, password_hash, full_name, position, email, photo_url)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    RETURNING id
+                    (id, username, password_hash, full_name, position, email, photo_url, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """
-                log(f"[CREATE USER] About to execute INSERT with username={req.username}")
+                log(f"[CREATE USER] About to execute INSERT with id={next_id}, username={req.username}")
                 
                 cur.execute(insert_query, (
+                    next_id,
                     req.username, 
                     password_hash, 
                     req.full_name, 
                     req.position if req.position else '', 
                     req.email if req.email else '', 
-                    req.photo_url if req.photo_url else ''
+                    req.photo_url if req.photo_url else '',
+                    True
                 ))
                 
                 log(f"[CREATE USER] Insert executed successfully, rowcount: {cur.rowcount}")
                 
-                result = cur.fetchone()
-                new_user_id = result['id'] if result else None
+                new_user_id = next_id
                 log(f"[CREATE USER] User created with ID: {new_user_id}")
                 
                 for role_id in req.role_ids:
