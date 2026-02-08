@@ -60,8 +60,13 @@ def handle_users(method, event, conn, payload):
                 log(f"[CREATE USER] Validation error: {str(validation_error)}")
                 return response(400, {'error': 'Validation error', 'details': str(validation_error)})
             
+            log(f"[CREATE USER] Checking password: {req.password is not None}")
+            
             if not req.password:
+                log("[CREATE USER] Password is missing")
                 return response(400, {'error': 'Password required'})
+            
+            log("[CREATE USER] About to hash password")
             
             try:
                 password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
