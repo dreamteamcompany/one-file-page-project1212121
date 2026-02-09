@@ -64,7 +64,14 @@ def handle_roles(method, event, conn, payload):
                 return response(400, {'error': 'Role ID required'})
             
             body = json.loads(event.get('body', '{}'))
-            req = RoleRequest(**body)
+            log(f"[ROLES PUT] Received body: {body}")
+            log(f"[ROLES PUT] Role ID: {role_id}")
+            
+            try:
+                req = RoleRequest(**body)
+            except Exception as validation_error:
+                log(f"[ROLES PUT] Validation error: {str(validation_error)}")
+                return response(400, {'error': f'Validation error: {str(validation_error)}'})
             
             cur.execute(f"UPDATE {SCHEMA}.roles SET name=%s, description=%s WHERE id=%s",
                        (req.name, req.description, role_id))
