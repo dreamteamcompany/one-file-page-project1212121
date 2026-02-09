@@ -101,6 +101,17 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             for p in user_permissions
         )
         
+        # Если нет НИКАКИХ прав на просмотр заявок - возвращаем пустой список
+        if not view_all_tickets and not view_own_only:
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'tickets': [], 'total': 0})
+            }
+        
         query = f"""
             SELECT DISTINCT t.*, 
                    s.name as status_name, s.color as status_color,
