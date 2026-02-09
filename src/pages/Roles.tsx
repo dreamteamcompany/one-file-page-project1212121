@@ -122,11 +122,12 @@ const Roles = () => {
     }
     
     try {
-      const url = `${API_URL}?endpoint=roles`;
       const method = editingRole ? 'PUT' : 'POST';
-      const body = editingRole 
-        ? { ...formData, id: editingRole.id }
-        : formData;
+      const url = editingRole 
+        ? `${API_URL}?endpoint=roles&id=${editingRole.id}`
+        : `${API_URL}?endpoint=roles`;
+      
+      const body = formData;
 
       console.log('[ROLES] Submitting role:', { method, body, url });
       console.log('[ROLES] Token exists:', localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') ? 'YES' : 'NO');
