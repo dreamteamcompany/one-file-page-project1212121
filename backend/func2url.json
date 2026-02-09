@@ -1,4 +1,5 @@
 {
+  "remove-deprecated-permission": "https://functions.poehali.dev/7ef85b68-68d8-40c6-9c8c-7a542e325a71",
   "reset-password": "https://functions.poehali.dev/fc22a32d-3e75-4889-8953-f3c9d9fcb1b9",
   "api-ticket-history": "https://functions.poehali.dev/429bf640-f15c-4a4f-b791-a7437061ba87",
   "api-ticket-comments": "https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3",
