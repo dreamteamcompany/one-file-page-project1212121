@@ -79,19 +79,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur = conn.cursor()
         
-        # Проверяем права пользователя
+        # Проверяем права пользователя через роли
         cur.execute(f"""
             SELECT p.resource, p.action
             FROM {SCHEMA}.permissions p
             JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id
             JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id
             WHERE ur.user_id = %s
-            UNION
-            SELECT p.resource, p.action
-            FROM {SCHEMA}.permissions p
-            JOIN {SCHEMA}.user_permissions up ON p.id = up.permission_id
-            WHERE up.user_id = %s
-        """, (user_id, user_id))
+        """, (user_id,))
         user_permissions = [dict(row) for row in cur.fetchall()]
         
         # Проверяем право "view_all" - видит все заявки
