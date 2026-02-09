@@ -128,6 +128,9 @@ const Roles = () => {
         ? { ...formData, id: editingRole.id }
         : formData;
 
+      console.log('[ROLES] Submitting role:', { method, body, url });
+      console.log('[ROLES] Token exists:', localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') ? 'YES' : 'NO');
+
       const response = await apiFetch(url, {
         method,
         headers: {
@@ -136,7 +139,13 @@ const Roles = () => {
         body: JSON.stringify(body),
       });
 
+      console.log('[ROLES] Response:', response.status, response.statusText);
+
       if (response.ok) {
+        toast({
+          title: 'Успешно',
+          description: editingRole ? 'Роль обновлена' : 'Роль создана',
+        });
         setDialogOpen(false);
         setEditingRole(null);
         setFormData({
@@ -145,9 +154,22 @@ const Roles = () => {
           permission_ids: [],
         });
         loadRoles();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[ROLES] Error response:', errorData);
+        toast({
+          title: 'Ошибка',
+          description: errorData.message || errorData.error || 'Не удалось сохранить роль',
+          variant: 'destructive',
+        });
       }
     } catch (err) {
-      console.error('Failed to save role:', err);
+      console.error('[ROLES] Failed to save role:', err);
+      toast({
+        title: 'Ошибка',
+        description: 'Ошибка сети или сервера',
+        variant: 'destructive',
+      });
     }
   };
 
