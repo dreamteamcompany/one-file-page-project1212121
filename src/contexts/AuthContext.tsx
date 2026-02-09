@@ -178,7 +178,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, [user, token]);
 
   const login = async (username: string, password: string, rememberMe: boolean = false) => {
-    console.log('[Login] Starting login request...', { username, url: `${API_URL}?endpoint=login` });
+    console.log('[Login v2] Starting login request...', { username, url: `${API_URL}?endpoint=login` });
     
     try {
       const response = await apiFetch(`${API_URL}?endpoint=login`, {
@@ -190,7 +190,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         body: JSON.stringify({ username, password }),
       });
 
-      console.log('[Login] Response status:', response.status);
+      console.log('[Login v2] Response status:', response.status);
 
       if (!response.ok) {
         const error = await response.json();
