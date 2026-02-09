@@ -130,7 +130,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     WHERE tw.ticket_id = t.id AND tw.user_id = %s
                 )
                 OR EXISTS (
-                    SELECT 1 FROM {SCHEMA}.ticket_approvers ta 
+                    SELECT 1 FROM {SCHEMA}.ticket_approvals ta 
                     WHERE ta.ticket_id = t.id AND ta.approver_id = %s
                 )
             )"""
