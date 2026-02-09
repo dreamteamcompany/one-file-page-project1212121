@@ -46,12 +46,16 @@ const TicketDetails = () => {
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
 
   useEffect(() => {
-    if (!hasPermission('tickets', 'read')) {
+    // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
+    const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
+    if (!canViewTickets) {
       navigate('/tickets');
     }
   }, [hasPermission, navigate]);
 
-  if (!hasPermission('tickets', 'read')) {
+  // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
+  const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
+  if (!canViewTickets) {
     return null;
   }
 

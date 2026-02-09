@@ -103,7 +103,7 @@ const PaymentsSidebar = ({
             </button>
             {ticketsOpen && (
               <ul className={`${collapsed ? 'hidden' : 'ml-3 mt-1 space-y-1'}`}>
-                {hasPermission('tickets', 'read') && (
+                {(hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only')) && (
                   <li>
                     <Link to="/tickets" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
                       <Icon name="List" size={18} />
