@@ -127,7 +127,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         # Если есть право "view_own_only" - показываем только свои заявки
         # Приоритет у "view_all"
         if not view_all_tickets and view_own_only:
-            query += """ AND (
+            query += f""" AND (
                 t.created_by = %s 
                 OR t.assigned_to = %s
                 OR EXISTS (
@@ -138,7 +138,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     SELECT 1 FROM {SCHEMA}.ticket_approvers ta 
                     WHERE ta.ticket_id = t.id AND ta.approver_id = %s
                 )
-            )""".format(SCHEMA=SCHEMA)
+            )"""
             params.extend([user_id, user_id, user_id, user_id])
         
         if status_id:
