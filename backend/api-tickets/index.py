@@ -94,6 +94,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         """, (user_id, user_id))
         user_permissions = [dict(row) for row in cur.fetchall()]
         
+        # Проверяем право "view_all" - видит все заявки
+        view_all_tickets = any(
+            p['resource'] == 'tickets' and p['action'] == 'view_all' 
+            for p in user_permissions
+        )
+        
         # Проверяем, есть ли право "tickets.view_own_only"
         view_own_only = any(
             p['resource'] == 'tickets' and p['action'] == 'view_own_only' 
@@ -117,8 +123,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         params = []
         
-        # Если у пользователя право "view_own_only", показываем только его заявки
-        if view_own_only:
+        # Если есть право "view_all" - показываем ВСЕ заявки (без ограничений)
+        # Если есть право "view_own_only" - показываем только свои заявки
+        # Приоритет у "view_all"
+        if not view_all_tickets and view_own_only:
             query += """ AND (
                 t.created_by = %s 
                 OR t.assigned_to = %s
