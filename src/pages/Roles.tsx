@@ -234,6 +234,8 @@ const Roles = () => {
         return 'Shield';
       case 'categories':
         return 'Tag';
+      case 'tickets':
+        return 'Ticket';
       default:
         return 'Circle';
     }
@@ -249,8 +251,27 @@ const Roles = () => {
         return 'text-purple-500 bg-purple-500/10';
       case 'categories':
         return 'text-yellow-500 bg-yellow-500/10';
+      case 'tickets':
+        return 'text-orange-500 bg-orange-500/10';
       default:
         return 'text-gray-500 bg-gray-500/10';
+    }
+  };
+
+  const getResourceDisplayName = (resource: string) => {
+    switch (resource) {
+      case 'tickets':
+        return 'Модификаторы доступа к заявкам';
+      case 'payments':
+        return 'Платежи';
+      case 'users':
+        return 'Пользователи';
+      case 'roles':
+        return 'Роли';
+      case 'categories':
+        return 'Категории';
+      default:
+        return resource;
     }
   };
 
@@ -370,7 +391,7 @@ const Roles = () => {
                         <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${getResourceColor(resource)}`}>
                           <Icon name={getResourceIcon(resource)} size={14} />
                         </div>
-                        <h5 className="text-sm font-medium capitalize">{resource}</h5>
+                        <h5 className="text-sm font-medium">{getResourceDisplayName(resource)}</h5>
                       </div>
                       <div className="ml-8 space-y-2">
                         {perms.map((perm) => (

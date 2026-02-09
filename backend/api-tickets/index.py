@@ -64,6 +64,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     if not payload:
         return response(401, {'error': 'Требуется авторизация'})
     
+    user_id = payload.get('user_id')
 
     if method == 'GET':
         query_params = event.get('queryStringParameters', {})
@@ -77,6 +78,27 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         to_date = query_params.get('to_date')
         
         cur = conn.cursor()
+        
+        # Проверяем права пользователя
+        cur.execute(f"""
+            SELECT p.resource, p.action
+            FROM {SCHEMA}.permissions p
+            JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id
+            JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id
+            WHERE ur.user_id = %s
+            UNION
+            SELECT p.resource, p.action
+            FROM {SCHEMA}.permissions p
+            JOIN {SCHEMA}.user_permissions up ON p.id = up.permission_id
+            WHERE up.user_id = %s
+        """, (user_id, user_id))
+        user_permissions = [dict(row) for row in cur.fetchall()]
+        
+        # Проверяем, есть ли право "tickets.view_own_only"
+        view_own_only = any(
+            p['resource'] == 'tickets' and p['action'] == 'view_own_only' 
+            for p in user_permissions
+        )
         
         query = f"""
             SELECT DISTINCT t.*, 
@@ -94,6 +116,22 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         """
         
         params = []
+        
+        # Если у пользователя право "view_own_only", показываем только его заявки
+        if view_own_only:
+            query += """ AND (
+                t.created_by = %s 
+                OR t.assigned_to = %s
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_watchers tw 
+                    WHERE tw.ticket_id = t.id AND tw.user_id = %s
+                )
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_approvers ta 
+                    WHERE ta.ticket_id = t.id AND ta.approver_id = %s
+                )
+            )""".format(SCHEMA=SCHEMA)
+            params.extend([user_id, user_id, user_id, user_id])
         
         if status_id:
             query += " AND t.status_id = %s"
