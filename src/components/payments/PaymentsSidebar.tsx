@@ -88,7 +88,7 @@ const PaymentsSidebar = ({
             </Link>
           </li>
         )}
-        {hasPermission('tickets', 'read') && (
+        {(hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only')) && (
           <li>
             <button
               onClick={() => setTicketsOpen(!ticketsOpen)}
