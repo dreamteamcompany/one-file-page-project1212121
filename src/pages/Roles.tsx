@@ -259,6 +259,10 @@ const Roles = () => {
         return 'Tag';
       case 'tickets':
         return 'Ticket';
+      case 'ticket_priorities':
+        return 'AlertCircle';
+      case 'ticket_statuses':
+        return 'CircleDot';
       default:
         return 'Circle';
     }
@@ -276,6 +280,10 @@ const Roles = () => {
         return 'text-yellow-500 bg-yellow-500/10';
       case 'tickets':
         return 'text-orange-500 bg-orange-500/10';
+      case 'ticket_priorities':
+        return 'text-red-500 bg-red-500/10';
+      case 'ticket_statuses':
+        return 'text-cyan-500 bg-cyan-500/10';
       default:
         return 'text-gray-500 bg-gray-500/10';
     }
@@ -293,6 +301,10 @@ const Roles = () => {
         return 'Роли';
       case 'categories':
         return 'Категории';
+      case 'ticket_priorities':
+        return 'Приоритеты заявок';
+      case 'ticket_statuses':
+        return 'Статусы заявок';
       default:
         return resource;
     }
