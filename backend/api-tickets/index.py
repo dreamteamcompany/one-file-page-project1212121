@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
 from priorities_handler import handle_ticket_priorities
+from sla_handler import handle_sla
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -52,6 +53,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_statuses(method, event, conn)
         elif endpoint == 'ticket-priorities':
             return handle_ticket_priorities(method, event, conn)
+        elif endpoint == 'sla':
+            return handle_sla(method, event, conn)
         elif endpoint == 'ticket-approvals':
             return handle_ticket_approvals(method, event, conn)
         else:

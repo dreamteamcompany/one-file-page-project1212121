@@ -151,6 +151,14 @@ const PaymentsSidebar = ({
                     </Link>
                   </li>
                 )}
+                {hasPermission('sla', 'read') && (
+                  <li>
+                    <Link to="/sla" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/sla') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
+                      <Icon name="Clock" size={18} />
+                      <span>SLA</span>
+                    </Link>
+                  </li>
+                )}
               </ul>
             )}
           </li>
