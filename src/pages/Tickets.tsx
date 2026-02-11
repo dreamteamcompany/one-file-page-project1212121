@@ -30,14 +30,6 @@ const Tickets = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [templates, setTemplates] = useState([]);
-
-  useEffect(() => {
-    const savedTemplates = localStorage.getItem('ticketTemplates');
-    if (savedTemplates) {
-      setTemplates(JSON.parse(savedTemplates));
-    }
-  }, []);
 
   const {
     tickets,
@@ -135,7 +127,6 @@ const Tickets = () => {
             handleSubmit={handleSubmit}
             onDialogOpen={handleFormOpen}
             canCreate={hasPermission('tickets', 'create')}
-            templates={templates}
           />
 
           {viewMode === 'list' ? (

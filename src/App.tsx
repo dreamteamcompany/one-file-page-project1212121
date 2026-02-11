@@ -28,7 +28,6 @@ import FieldRegistry from "./pages/FieldRegistry";
 import Services from "./pages/Services";
 import CustomFieldGroups from "./pages/CustomFieldGroups";
 import ServiceFieldMappings from "./pages/ServiceFieldMappings";
-import TicketTemplates from "./pages/TicketTemplates";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -63,7 +62,6 @@ const App = () => {
             <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
             <Route path="/custom-field-groups" element={<ProtectedRoute><CustomFieldGroups /></ProtectedRoute>} />
             <Route path="/service-field-mappings" element={<ProtectedRoute><ServiceFieldMappings /></ProtectedRoute>} />
-            <Route path="/ticket-templates" element={<ProtectedRoute><TicketTemplates /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
