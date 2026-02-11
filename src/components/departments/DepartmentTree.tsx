@@ -41,9 +41,9 @@ const TreeNode = ({
   const hasChildren = children.length > 0;
 
   return (
-    <div>
+    <div className="mb-1">
       <div
-        className="flex items-center gap-2 py-2 px-3 hover:bg-muted/50 rounded-md group"
+        className="flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-border/40"
         style={{ paddingLeft: `${level * 24 + 12}px` }}
       >
         <button
@@ -110,7 +110,7 @@ const TreeNode = ({
       </div>
 
       {expanded && hasChildren && (
-        <div>
+        <div className="mt-1">
           {children.map((child) => (
             <DepartmentTreeNode
               key={child.id}
@@ -180,7 +180,7 @@ export const DepartmentTree = ({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {rootDepartments.map((department) => (
         <DepartmentTreeNode
           key={department.id}
