@@ -22,49 +22,40 @@ def fetch_bitrix_departments(batch_number: int = 0, batch_size: int = 500) -> tu
     
     all_departments = []
     start_offset = batch_number * batch_size
-    max_items = batch_size
-    request_count = 0
-    max_requests = 10  # Максимум 10 запросов по 50 = 500 подразделений
     
     print(f"Starting Bitrix24 fetch from {webhook_url}, batch={batch_number}, offset={start_offset}")
     
-    while request_count < max_requests and len(all_departments) < max_items:
+    while len(all_departments) < batch_size:
         url = f"{webhook_url}department.get"
         params = {
             'start': start_offset + len(all_departments),
             'order': {'SORT': 'ASC'}
         }
         
-        print(f"Fetching request {request_count + 1}, start={params['start']}")
+        print(f"Fetching from start={params['start']}")
         
         response = requests.get(url, params={'params': json.dumps(params)}, timeout=10)
         response.raise_for_status()
         
         data = response.json()
         
-        if 'result' not in data:
-            print(f"No result in response, stopping")
+        if 'result' not in data or not data['result']:
+            print(f"No more data from Bitrix, stopping")
             break
         
         departments = data['result']
-        if not departments:
-            print(f"Empty departments list, stopping")
-            break
-        
         all_departments.extend(departments)
-        print(f"Fetched {len(departments)} departments, total in batch: {len(all_departments)}")
+        print(f"Fetched {len(departments)} departments, total: {len(all_departments)}")
         
         if len(departments) < 50:
-            print(f"Last batch from Bitrix (< 50 items), no more data")
+            print(f"Last page from Bitrix (< 50 items), no more data")
             return all_departments, False
         
-        request_count += 1
-        
-        if len(all_departments) >= max_items:
+        if len(all_departments) >= batch_size:
             break
     
-    has_more = len(all_departments) == max_items
-    print(f"Total departments fetched: {len(all_departments)}, has_more: {has_more}")
+    has_more = len(all_departments) == batch_size
+    print(f"Batch completed: {len(all_departments)} departments, has_more: {has_more}")
     return all_departments, has_more
 
 
