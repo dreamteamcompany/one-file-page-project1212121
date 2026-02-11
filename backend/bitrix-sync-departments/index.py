@@ -14,33 +14,45 @@ def fetch_bitrix_departments() -> List[Dict[str, Any]]:
     
     all_departments = []
     start = 0
+    max_requests = 20
+    request_count = 0
     
-    while True:
-        url = f"{webhook_url}/department.get"
+    print(f"Starting Bitrix24 fetch from {webhook_url}")
+    
+    while request_count < max_requests:
+        url = f"{webhook_url}department.get"
         params = {
             'start': start,
             'order': {'SORT': 'ASC'}
         }
         
-        response = requests.get(url, params={'params': json.dumps(params)}, timeout=30)
+        print(f"Fetching batch {request_count + 1}, start={start}")
+        
+        response = requests.get(url, params={'params': json.dumps(params)}, timeout=10)
         response.raise_for_status()
         
         data = response.json()
         
         if 'result' not in data:
+            print(f"No result in response, stopping")
             break
         
         departments = data['result']
         if not departments:
+            print(f"Empty departments list, stopping")
             break
         
         all_departments.extend(departments)
+        print(f"Fetched {len(departments)} departments, total: {len(all_departments)}")
         
         if len(departments) < 50:
+            print(f"Last batch (< 50 items), stopping")
             break
         
         start += 50
+        request_count += 1
     
+    print(f"Total departments fetched: {len(all_departments)}")
     return all_departments
 
 
