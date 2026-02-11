@@ -26,12 +26,12 @@ import {
 interface SLA {
   id: number;
   name: string;
-  response_time_hours: number;
-  response_notification_hours: number;
-  no_response_hours?: number;
+  response_time_minutes: number;
+  response_notification_minutes: number;
+  no_response_minutes?: number;
   no_response_status_id?: number;
-  resolution_time_hours: number;
-  resolution_notification_hours: number;
+  resolution_time_minutes: number;
+  resolution_notification_minutes: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -41,6 +41,69 @@ interface TicketStatus {
   name: string;
   color: string;
 }
+
+const formatTime = (minutes: number) => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  
+  if (hours === 0) return `${mins} мин`;
+  if (mins === 0) return `${hours} ч`;
+  return `${hours} ч ${mins} мин`;
+};
+
+const TimeInput = ({ label, value, onChange, description }: { 
+  label: string; 
+  value: number; 
+  onChange: (minutes: number) => void;
+  description?: string;
+}) => {
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+
+  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const h = parseInt(e.target.value) || 0;
+    onChange(h * 60 + minutes);
+  };
+
+  const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const m = parseInt(e.target.value) || 0;
+    onChange(hours * 60 + m);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="flex gap-2 items-center">
+        <div className="flex-1">
+          <Label htmlFor={`${label}-hours`} className="text-xs text-muted-foreground">Часы</Label>
+          <Input
+            id={`${label}-hours`}
+            type="number"
+            min="0"
+            value={hours}
+            onChange={handleHoursChange}
+            className="mt-1"
+          />
+        </div>
+        <div className="flex-1">
+          <Label htmlFor={`${label}-minutes`} className="text-xs text-muted-foreground">Минуты</Label>
+          <Input
+            id={`${label}-minutes`}
+            type="number"
+            min="0"
+            max="59"
+            value={minutes}
+            onChange={handleMinutesChange}
+            className="mt-1"
+          />
+        </div>
+      </div>
+      {description && (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      )}
+    </div>
+  );
+};
 
 const SLA = () => {
   const { hasPermission } = useAuth();
@@ -52,12 +115,12 @@ const SLA = () => {
   const [editingSla, setEditingSla] = useState<SLA | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    response_time_hours: 4,
-    response_notification_hours: 3,
-    no_response_hours: 24,
+    response_time_minutes: 240,
+    response_notification_minutes: 180,
+    no_response_minutes: 1440,
     no_response_status_id: undefined as number | undefined,
-    resolution_time_hours: 24,
-    resolution_notification_hours: 20,
+    resolution_time_minutes: 1440,
+    resolution_notification_minutes: 1200,
   });
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -146,12 +209,12 @@ const SLA = () => {
         setEditingSla(null);
         setFormData({
           name: '',
-          response_time_hours: 4,
-          response_notification_hours: 3,
-          no_response_hours: 24,
+          response_time_minutes: 240,
+          response_notification_minutes: 180,
+          no_response_minutes: 1440,
           no_response_status_id: undefined,
-          resolution_time_hours: 24,
-          resolution_notification_hours: 20,
+          resolution_time_minutes: 1440,
+          resolution_notification_minutes: 1200,
         });
         loadSlas();
       }
@@ -169,12 +232,12 @@ const SLA = () => {
     setEditingSla(sla);
     setFormData({
       name: sla.name,
-      response_time_hours: sla.response_time_hours,
-      response_notification_hours: sla.response_notification_hours,
-      no_response_hours: sla.no_response_hours || 24,
+      response_time_minutes: sla.response_time_minutes,
+      response_notification_minutes: sla.response_notification_minutes,
+      no_response_minutes: sla.no_response_minutes || 1440,
       no_response_status_id: sla.no_response_status_id,
-      resolution_time_hours: sla.resolution_time_hours,
-      resolution_notification_hours: sla.resolution_notification_hours,
+      resolution_time_minutes: sla.resolution_time_minutes,
+      resolution_notification_minutes: sla.resolution_notification_minutes,
     });
     setDialogOpen(true);
   };
@@ -216,12 +279,12 @@ const SLA = () => {
       setEditingSla(null);
       setFormData({
         name: '',
-        response_time_hours: 4,
-        response_notification_hours: 3,
-        no_response_hours: 24,
+        response_time_minutes: 240,
+        response_notification_minutes: 180,
+        no_response_minutes: 1440,
         no_response_status_id: undefined,
-        resolution_time_hours: 24,
-        resolution_notification_hours: 20,
+        resolution_time_minutes: 1440,
+        resolution_notification_minutes: 1200,
       });
     }
   };
@@ -269,13 +332,10 @@ const SLA = () => {
             />
           </div>
           <div className="flex items-center gap-2 md:gap-3 px-3 md:px-[15px] py-2 md:py-[10px] rounded-[12px] bg-white/5 border border-white/10">
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-[10px] bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-bold text-white text-sm md:text-base">
-              А
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-[10px] bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm md:text-base">
+              A
             </div>
-            <div className="hidden sm:block">
-              <div className="text-sm font-medium">Администратор</div>
-              <div className="text-xs text-muted-foreground">Администратор</div>
-            </div>
+            <div className="text-sm md:text-base font-medium">Admin</div>
           </div>
         </header>
 
@@ -329,7 +389,7 @@ const SLA = () => {
                             <Icon name="Timer" size={18} className="text-primary mt-0.5" />
                             <div>
                               <div className="text-sm font-medium">Время реакции</div>
-                              <div className="text-xs text-muted-foreground">{sla.response_time_hours} ч</div>
+                              <div className="text-xs text-muted-foreground">{formatTime(sla.response_time_minutes)}</div>
                             </div>
                           </div>
                           
@@ -337,17 +397,17 @@ const SLA = () => {
                             <Icon name="Bell" size={18} className="text-yellow-500 mt-0.5" />
                             <div>
                               <div className="text-sm font-medium">Уведомление о сроке реакции</div>
-                              <div className="text-xs text-muted-foreground">Через {sla.response_notification_hours} ч</div>
+                              <div className="text-xs text-muted-foreground">Через {formatTime(sla.response_notification_minutes)}</div>
                             </div>
                           </div>
 
-                          {sla.no_response_hours && (
+                          {sla.no_response_minutes && (
                             <div className="flex items-start gap-2">
                               <Icon name="AlertTriangle" size={18} className="text-orange-500 mt-0.5" />
                               <div>
                                 <div className="text-sm font-medium">При отсутствии ответа</div>
                                 <div className="text-xs text-muted-foreground">
-                                  Через {sla.no_response_hours} ч → {getStatusName(sla.no_response_status_id)}
+                                  Через {formatTime(sla.no_response_minutes)} → {getStatusName(sla.no_response_status_id)}
                                 </div>
                               </div>
                             </div>
@@ -359,7 +419,7 @@ const SLA = () => {
                             <Icon name="CheckCircle2" size={18} className="text-green-500 mt-0.5" />
                             <div>
                               <div className="text-sm font-medium">Время решения</div>
-                              <div className="text-xs text-muted-foreground">{sla.resolution_time_hours} ч</div>
+                              <div className="text-xs text-muted-foreground">{formatTime(sla.resolution_time_minutes)}</div>
                             </div>
                           </div>
                           
@@ -367,7 +427,7 @@ const SLA = () => {
                             <Icon name="Bell" size={18} className="text-yellow-500 mt-0.5" />
                             <div>
                               <div className="text-sm font-medium">Уведомление о сроке решения</div>
-                              <div className="text-xs text-muted-foreground">Через {sla.resolution_notification_hours} ч</div>
+                              <div className="text-xs text-muted-foreground">Через {formatTime(sla.resolution_notification_minutes)}</div>
                             </div>
                           </div>
                         </div>
@@ -429,35 +489,19 @@ const SLA = () => {
                   Время реакции
                 </h3>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="response_time">Время реакции (часы)</Label>
-                    <Input
-                      id="response_time"
-                      type="number"
-                      min="1"
-                      value={formData.response_time_hours}
-                      onChange={(e) => setFormData({ ...formData, response_time_hours: parseInt(e.target.value) })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Максимальное время для первого ответа на заявку
-                    </p>
-                  </div>
+                  <TimeInput
+                    label="Время реакции"
+                    value={formData.response_time_minutes}
+                    onChange={(minutes) => setFormData({ ...formData, response_time_minutes: minutes })}
+                    description="Максимальное время для первого ответа на заявку"
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="response_notification">Уведомление о сроке реакции (часы)</Label>
-                    <Input
-                      id="response_notification"
-                      type="number"
-                      min="1"
-                      value={formData.response_notification_hours}
-                      onChange={(e) => setFormData({ ...formData, response_notification_hours: parseInt(e.target.value) })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      За сколько часов до окончания времени реакции отправить уведомление
-                    </p>
-                  </div>
+                  <TimeInput
+                    label="Уведомление о сроке реакции"
+                    value={formData.response_notification_minutes}
+                    onChange={(minutes) => setFormData({ ...formData, response_notification_minutes: minutes })}
+                    description="За сколько до окончания времени реакции отправить уведомление"
+                  />
                 </div>
               </div>
 
@@ -467,19 +511,12 @@ const SLA = () => {
                   При отсутствии ответа
                 </h3>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="no_response_hours">Часов без ответа</Label>
-                    <Input
-                      id="no_response_hours"
-                      type="number"
-                      min="1"
-                      value={formData.no_response_hours}
-                      onChange={(e) => setFormData({ ...formData, no_response_hours: parseInt(e.target.value) })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Если клиент не отвечает указанное время
-                    </p>
-                  </div>
+                  <TimeInput
+                    label="Время без ответа"
+                    value={formData.no_response_minutes}
+                    onChange={(minutes) => setFormData({ ...formData, no_response_minutes: minutes })}
+                    description="Если клиент не отвечает указанное время"
+                  />
 
                   <div className="space-y-2">
                     <Label htmlFor="no_response_status">Перевести в статус</Label>
@@ -509,48 +546,32 @@ const SLA = () => {
                   Время решения
                 </h3>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="resolution_time">Время решения (часы)</Label>
-                    <Input
-                      id="resolution_time"
-                      type="number"
-                      min="1"
-                      value={formData.resolution_time_hours}
-                      onChange={(e) => setFormData({ ...formData, resolution_time_hours: parseInt(e.target.value) })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Максимальное время для полного решения заявки
-                    </p>
-                  </div>
+                  <TimeInput
+                    label="Время решения"
+                    value={formData.resolution_time_minutes}
+                    onChange={(minutes) => setFormData({ ...formData, resolution_time_minutes: minutes })}
+                    description="Максимальное время для полного решения заявки"
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="resolution_notification">Уведомление о сроке решения (часы)</Label>
-                    <Input
-                      id="resolution_notification"
-                      type="number"
-                      min="1"
-                      value={formData.resolution_notification_hours}
-                      onChange={(e) => setFormData({ ...formData, resolution_notification_hours: parseInt(e.target.value) })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      За сколько часов до окончания времени решения отправить уведомление
-                    </p>
-                  </div>
+                  <TimeInput
+                    label="Уведомление о сроке решения"
+                    value={formData.resolution_notification_minutes}
+                    onChange={(minutes) => setFormData({ ...formData, resolution_notification_minutes: minutes })}
+                    description="За сколько до окончания времени решения отправить уведомление"
+                  />
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingSla ? 'Сохранить' : 'Создать'}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => handleDialogClose(false)}
                 >
                   Отмена
+                </Button>
+                <Button type="submit">
+                  {editingSla ? 'Сохранить' : 'Создать'}
                 </Button>
               </div>
             </form>
