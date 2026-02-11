@@ -163,7 +163,7 @@ const Departments = () => {
   const filteredDepartments = departments.filter((dept) => {
     const matchesSearch = dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       dept.code?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCompany = !selectedCompany || dept.company_id.toString() === selectedCompany;
+    const matchesCompany = !selectedCompany || (dept.company_id && dept.company_id.toString() === selectedCompany);
     return matchesSearch && matchesCompany;
   });
 
@@ -174,9 +174,10 @@ const Departments = () => {
   const availableParents = editingDepartment
     ? departments.filter((d) =>
         d.id !== editingDepartment.id &&
+        d.company_id &&
         d.company_id.toString() === formData.company_id
       )
-    : departments.filter((d) => d.company_id.toString() === formData.company_id);
+    : departments.filter((d) => d.company_id && d.company_id.toString() === formData.company_id);
 
   const togglePosition = (positionId: number) => {
     setFormData((prev) => ({
