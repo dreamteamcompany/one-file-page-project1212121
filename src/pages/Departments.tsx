@@ -190,9 +190,19 @@ const Departments = () => {
   };
 
   const handleSyncFromBitrix = async () => {
-    if (!selectedCompany) {
-      alert('Выберите компанию для синхронизации');
-      return;
+    let companyId = selectedCompany;
+    
+    if (!companyId) {
+      if (companies.length === 0) {
+        alert('Сначала создайте компанию');
+        return;
+      }
+      if (companies.length === 1) {
+        companyId = companies[0].id.toString();
+      } else {
+        alert('Выберите компанию из списка выше для синхронизации');
+        return;
+      }
     }
 
     if (!confirm('Синхронизировать подразделения из Bitrix24? Это может занять некоторое время.')) {
@@ -203,7 +213,7 @@ const Departments = () => {
     try {
       const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
         method: 'POST',
-        body: JSON.stringify({ company_id: parseInt(selectedCompany) }),
+        body: JSON.stringify({ company_id: parseInt(companyId) }),
       });
 
       if (response.ok) {
@@ -247,7 +257,7 @@ const Departments = () => {
             <Button
               variant="outline"
               onClick={handleSyncFromBitrix}
-              disabled={!selectedCompany || syncing}
+              disabled={syncing}
             >
               <Icon name="RefreshCw" className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
               {syncing ? 'Синхронизация...' : 'Синхронизировать из Bitrix24'}
