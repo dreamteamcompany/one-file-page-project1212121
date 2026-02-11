@@ -484,14 +484,14 @@ const SLA = () => {
                   <div className="space-y-2">
                     <Label htmlFor="no_response_status">Перевести в статус</Label>
                     <Select
-                      value={formData.no_response_status_id?.toString()}
-                      onValueChange={(value) => setFormData({ ...formData, no_response_status_id: parseInt(value) })}
+                      value={formData.no_response_status_id?.toString() || 'none'}
+                      onValueChange={(value) => setFormData({ ...formData, no_response_status_id: value === 'none' ? undefined : parseInt(value) })}
                     >
                       <SelectTrigger id="no_response_status">
                         <SelectValue placeholder="Выберите статус" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Не переводить</SelectItem>
+                        <SelectItem value="none">Не переводить</SelectItem>
                         {statuses.map((status) => (
                           <SelectItem key={status.id} value={status.id.toString()}>
                             {status.name}
