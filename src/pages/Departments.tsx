@@ -48,6 +48,7 @@ const Departments = () => {
     description: '',
     position_ids: [] as number[],
   });
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -188,6 +189,39 @@ const Departments = () => {
     }));
   };
 
+  const handleSyncFromBitrix = async () => {
+    if (!selectedCompany) {
+      alert('Выберите компанию для синхронизации');
+      return;
+    }
+
+    if (!confirm('Синхронизировать подразделения из Bitrix24? Это может занять некоторое время.')) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
+        method: 'POST',
+        body: JSON.stringify({ company_id: parseInt(selectedCompany) }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Синхронизировано ${result.synced_count} подразделений из Bitrix24`);
+        loadData();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка синхронизации: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      alert('Ошибка при синхронизации с Bitrix24');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
@@ -209,24 +243,33 @@ const Departments = () => {
           <p className="text-muted-foreground mt-1">Древовидная структура подразделений компании</p>
         </div>
         {canCreate && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => {
-                setEditingDepartment(null);
-                setParentIdForNew(null);
-                setFormData({
-                  company_id: '',
-                  parent_id: '',
-                  name: '',
-                  code: '',
-                  description: '',
-                  position_ids: [],
-                });
-              }}>
-                <Icon name="Plus" className="mr-2 h-4 w-4" />
-                Добавить подразделение
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSyncFromBitrix}
+              disabled={!selectedCompany || syncing}
+            >
+              <Icon name="RefreshCw" className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Синхронизация...' : 'Синхронизировать из Bitrix24'}
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => {
+                  setEditingDepartment(null);
+                  setParentIdForNew(null);
+                  setFormData({
+                    company_id: '',
+                    parent_id: '',
+                    name: '',
+                    code: '',
+                    description: '',
+                    position_ids: [],
+                  });
+                }}>
+                  <Icon name="Plus" className="mr-2 h-4 w-4" />
+                  Добавить подразделение
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
@@ -345,6 +388,7 @@ const Departments = () => {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
 
