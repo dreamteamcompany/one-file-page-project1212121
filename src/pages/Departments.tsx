@@ -262,14 +262,14 @@ const Departments = () => {
                   <div className="space-y-2">
                     <Label htmlFor="parent_id">Родительское подразделение</Label>
                     <Select
-                      value={formData.parent_id}
-                      onValueChange={(value) => setFormData({ ...formData, parent_id: value })}
+                      value={formData.parent_id || 'root'}
+                      onValueChange={(value) => setFormData({ ...formData, parent_id: value === 'root' ? '' : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Корневое подразделение" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Корневое подразделение</SelectItem>
+                        <SelectItem value="root">Корневое подразделение</SelectItem>
                         {availableParents.map((dept) => (
                           <SelectItem key={dept.id} value={dept.id.toString()}>
                             {dept.name}
@@ -358,12 +358,12 @@ const Departments = () => {
             className="pl-10"
           />
         </div>
-        <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+        <Select value={selectedCompany || 'all'} onValueChange={(value) => setSelectedCompany(value === 'all' ? '' : value)}>
           <SelectTrigger className="w-64">
             <SelectValue placeholder="Все компании" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Все компании</SelectItem>
+            <SelectItem value="all">Все компании</SelectItem>
             {companies.map((company) => (
               <SelectItem key={company.id} value={company.id.toString()}>
                 {company.name}
