@@ -14,7 +14,7 @@ def fetch_bitrix_departments() -> List[Dict[str, Any]]:
     
     all_departments = []
     start = 0
-    max_requests = 20
+    max_requests = 4
     request_count = 0
     
     print(f"Starting Bitrix24 fetch from {webhook_url}")
@@ -58,6 +58,8 @@ def fetch_bitrix_departments() -> List[Dict[str, Any]]:
 
 def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -> Dict[str, int]:
     """Синхронизирует подразделения из Bitrix24 в базу данных"""
+    print(f"Starting DB sync for {len(departments)} departments")
+    
     dsn = os.environ.get('DATABASE_URL')
     schema = os.environ.get('MAIN_DB_SCHEMA', 'public')
     
@@ -66,51 +68,70 @@ def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
-        bitrix_id_map = {}
+        # Загружаем все существующие подразделения одним запросом
+        print("Loading existing departments from DB")
+        cursor.execute(f'''
+            SELECT id, bitrix_id FROM {schema}.departments 
+            WHERE company_id = %s AND bitrix_id IS NOT NULL
+        ''', (company_id,))
         
-        for dept in departments:
+        existing_map = {row['bitrix_id']: row['id'] for row in cursor.fetchall()}
+        print(f"Found {len(existing_map)} existing departments in DB")
+        
+        # Сортируем подразделения: сначала корневые, потом по SORT
+        departments_sorted = sorted(departments, key=lambda d: (d.get('PARENT') is not None, d.get('SORT', 500)))
+        
+        bitrix_id_map = {}
+        updates = []
+        inserts = []
+        
+        # Подготавливаем данные для batch операций
+        print("Preparing batch operations")
+        for dept in departments_sorted:
             bitrix_id = dept.get('ID')
             name = dept.get('NAME', '')
-            sort_order = dept.get('SORT', 500)
             parent_bitrix_id = dept.get('PARENT')
-            
-            cursor.execute(f'''
-                SELECT id FROM {schema}.departments 
-                WHERE bitrix_id = %s AND company_id = %s
-            ''', (bitrix_id, company_id))
-            
-            existing = cursor.fetchone()
             
             parent_id = None
             if parent_bitrix_id and parent_bitrix_id in bitrix_id_map:
                 parent_id = bitrix_id_map[parent_bitrix_id]
             
-            if existing:
+            if bitrix_id in existing_map:
+                dept_id = existing_map[bitrix_id]
+                bitrix_id_map[bitrix_id] = dept_id
+                updates.append((name, parent_id, dept_id))
+            else:
+                inserts.append((company_id, name, parent_id, f'BITRIX_{bitrix_id}', bitrix_id))
+        
+        # Batch UPDATE
+        if updates:
+            print(f"Updating {len(updates)} departments")
+            for name, parent_id, dept_id in updates:
                 cursor.execute(f'''
                     UPDATE {schema}.departments 
-                    SET name = %s, 
-                        parent_id = %s,
-                        updated_at = CURRENT_TIMESTAMP
+                    SET name = %s, parent_id = %s, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
-                    RETURNING id
-                ''', (name, parent_id, existing['id']))
-                dept_id = existing['id']
-            else:
+                ''', (name, parent_id, dept_id))
+        
+        # Batch INSERT
+        if inserts:
+            print(f"Inserting {len(inserts)} departments")
+            for company_id, name, parent_id, code, bitrix_id in inserts:
                 cursor.execute(f'''
                     INSERT INTO {schema}.departments 
                     (company_id, name, parent_id, code, bitrix_id, created_at, updated_at)
                     VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    RETURNING id
-                ''', (company_id, name, parent_id, f'BITRIX_{bitrix_id}', bitrix_id))
+                    RETURNING id, bitrix_id
+                ''', (company_id, name, parent_id, code, bitrix_id))
                 result = cursor.fetchone()
-                dept_id = result['id']
-            
-            bitrix_id_map[bitrix_id] = dept_id
+                bitrix_id_map[result['bitrix_id']] = result['id']
         
         conn.commit()
+        print(f"DB sync completed, {len(bitrix_id_map)} departments synced")
         return bitrix_id_map
         
     except Exception as e:
+        print(f"DB sync error: {e}")
         conn.rollback()
         raise e
     finally:
