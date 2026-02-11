@@ -24,9 +24,12 @@ import { Department, Company, Position, DepartmentPosition } from '@/types';
 import DepartmentTree from '@/components/departments/DepartmentTree';
 import Icon from '@/components/ui/icon';
 import { Checkbox } from '@/components/ui/checkbox';
+import PageLayout from '@/components/layout/PageLayout';
+import AppHeader from '@/components/layout/AppHeader';
 
 const Departments = () => {
   const { hasPermission } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -186,14 +189,19 @@ const Departments = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+        <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+      <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Подразделения</h1>
@@ -376,6 +384,7 @@ const Departments = () => {
         />
       </div>
     </div>
+    </PageLayout>
   );
 };
 

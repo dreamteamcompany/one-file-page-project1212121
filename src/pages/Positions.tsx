@@ -15,9 +15,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/utils/api';
 import { Position } from '@/types';
 import Icon from '@/components/ui/icon';
+import PageLayout from '@/components/layout/PageLayout';
+import AppHeader from '@/components/layout/AppHeader';
 
 const Positions = () => {
   const { hasPermission } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,14 +104,19 @@ const Positions = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+        <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+      <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Должности</h1>
@@ -254,6 +262,7 @@ const Positions = () => {
         </div>
       </div>
     </div>
+    </PageLayout>
   );
 };
 
