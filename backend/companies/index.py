@@ -13,6 +13,7 @@ DSN = os.environ.get('DATABASE_URL')
 
 def handler(event: dict, context) -> dict:
     method = event.get('httpMethod', 'GET')
+    print(f"[DEBUG] method={method}, url={event.get('url')}, pathParams={event.get('pathParams')}")
     
     if method == 'OPTIONS':
         return {
