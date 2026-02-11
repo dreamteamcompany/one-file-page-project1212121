@@ -31,8 +31,14 @@ def handler(event: dict, context) -> dict:
         conn = psycopg2.connect(DSN)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
+        url = event.get('url', '')
+        pos_id = None
+        if '/' in url and url.strip('/'):
+            parts = url.strip('/').split('/')
+            if parts and parts[0].isdigit():
+                pos_id = parts[0]
+        
         if method == 'GET':
-            pos_id = event.get('pathParams', {}).get('id')
             if pos_id:
                 cur.execute('SELECT * FROM positions WHERE id = %s', (pos_id,))
                 position = cur.fetchone()
@@ -81,7 +87,13 @@ def handler(event: dict, context) -> dict:
             }
         
         elif method == 'PUT':
-            pos_id = event.get('pathParams', {}).get('id')
+            if not pos_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Position ID required'}),
+                    'isBase64Encoded': False
+                }
             data = json.loads(event.get('body', '{}'))
             cur.execute(
                 """
@@ -109,7 +121,13 @@ def handler(event: dict, context) -> dict:
             }
         
         elif method == 'DELETE':
-            pos_id = event.get('pathParams', {}).get('id')
+            if not pos_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Position ID required'}),
+                    'isBase64Encoded': False
+                }
             cur.execute('UPDATE positions SET is_active = false WHERE id = %s RETURNING id', (pos_id,))
             result = cur.fetchone()
             if not result:

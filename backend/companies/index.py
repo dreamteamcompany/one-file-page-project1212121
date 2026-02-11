@@ -31,8 +31,14 @@ def handler(event: dict, context) -> dict:
         conn = psycopg2.connect(DSN)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
+        url = event.get('url', '')
+        company_id = None
+        if '/' in url and url.strip('/'):
+            parts = url.strip('/').split('/')
+            if parts and parts[0].isdigit():
+                company_id = parts[0]
+        
         if method == 'GET':
-            company_id = event.get('pathParams', {}).get('id')
             if company_id:
                 cur.execute(
                     'SELECT * FROM companies WHERE id = %s',
@@ -84,7 +90,13 @@ def handler(event: dict, context) -> dict:
             }
         
         elif method == 'PUT':
-            company_id = event.get('pathParams', {}).get('id')
+            if not company_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Company ID required'}),
+                    'isBase64Encoded': False
+                }
             data = json.loads(event.get('body', '{}'))
             cur.execute(
                 """
@@ -112,7 +124,13 @@ def handler(event: dict, context) -> dict:
             }
         
         elif method == 'DELETE':
-            company_id = event.get('pathParams', {}).get('id')
+            if not company_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Company ID required'}),
+                    'isBase64Encoded': False
+                }
             cur.execute('UPDATE companies SET is_active = false WHERE id = %s RETURNING id', (company_id,))
             result = cur.fetchone()
             if not result:
