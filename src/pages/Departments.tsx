@@ -205,30 +205,52 @@ const Departments = () => {
       }
     }
 
-    if (!confirm('Синхронизировать подразделения из Bitrix24? Это может занять некоторое время.')) {
+    if (!confirm('Синхронизировать подразделения из Bitrix24? Это может занять несколько минут для больших баз.')) {
       return;
     }
 
     setSyncing(true);
+    let totalSynced = 0;
+    let batchNumber = 0;
+    
     try {
       console.log('Starting Bitrix24 sync for company:', companyId);
-      const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
-        method: 'POST',
-        body: JSON.stringify({ company_id: parseInt(companyId) }),
-      });
-
-      console.log('Sync response status:', response.status);
       
-      if (response.ok) {
+      while (true) {
+        console.log(`Syncing batch ${batchNumber}...`);
+        
+        const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            company_id: parseInt(companyId),
+            batch_number: batchNumber,
+            batch_size: 500
+          }),
+        });
+
+        console.log(`Batch ${batchNumber} response status:`, response.status);
+        
+        if (!response.ok) {
+          const error = await response.json();
+          console.error('Sync error response:', error);
+          throw new Error(error.error || 'Ошибка синхронизации');
+        }
+        
         const result = await response.json();
-        console.log('Sync result:', result);
-        alert(`Синхронизировано ${result.synced_count} подразделений из Bitrix24`);
-        loadData();
-      } else {
-        const error = await response.json();
-        console.error('Sync error response:', error);
-        alert(`Ошибка синхронизации: ${error.error || 'Неизвестная ошибка'}`);
+        console.log(`Batch ${batchNumber} result:`, result);
+        
+        totalSynced += result.synced_count;
+        
+        if (!result.has_more) {
+          break;
+        }
+        
+        batchNumber++;
       }
+      
+      alert(`Синхронизация завершена! Обработано ${totalSynced} подразделений из Bitrix24`);
+      loadData();
+      
     } catch (error) {
       console.error('Sync error:', error);
       alert(`Ошибка при синхронизации с Bitrix24: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);

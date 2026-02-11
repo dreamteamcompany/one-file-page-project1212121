@@ -6,27 +6,36 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-def fetch_bitrix_departments() -> List[Dict[str, Any]]:
-    """Получает все подразделения из Bitrix24"""
+def fetch_bitrix_departments(batch_number: int = 0, batch_size: int = 500) -> tuple[List[Dict[str, Any]], bool]:
+    """Получает подразделения из Bitrix24 порциями
+    
+    Args:
+        batch_number: Номер порции (0, 1, 2...)
+        batch_size: Размер порции (по умолчанию 500)
+    
+    Returns:
+        Tuple из (список подразделений, есть_ли_еще_данные)
+    """
     webhook_url = os.environ.get('BITRIX24_WEBHOOK_URL')
     if not webhook_url:
         raise ValueError('BITRIX24_WEBHOOK_URL не настроен')
     
     all_departments = []
-    start = 0
-    max_requests = 40
+    start_offset = batch_number * batch_size
+    max_items = batch_size
     request_count = 0
+    max_requests = 10  # Максимум 10 запросов по 50 = 500 подразделений
     
-    print(f"Starting Bitrix24 fetch from {webhook_url}")
+    print(f"Starting Bitrix24 fetch from {webhook_url}, batch={batch_number}, offset={start_offset}")
     
-    while request_count < max_requests:
+    while request_count < max_requests and len(all_departments) < max_items:
         url = f"{webhook_url}department.get"
         params = {
-            'start': start,
+            'start': start_offset + len(all_departments),
             'order': {'SORT': 'ASC'}
         }
         
-        print(f"Fetching batch {request_count + 1}, start={start}")
+        print(f"Fetching request {request_count + 1}, start={params['start']}")
         
         response = requests.get(url, params={'params': json.dumps(params)}, timeout=10)
         response.raise_for_status()
@@ -43,17 +52,20 @@ def fetch_bitrix_departments() -> List[Dict[str, Any]]:
             break
         
         all_departments.extend(departments)
-        print(f"Fetched {len(departments)} departments, total: {len(all_departments)}")
+        print(f"Fetched {len(departments)} departments, total in batch: {len(all_departments)}")
         
         if len(departments) < 50:
-            print(f"Last batch (< 50 items), stopping")
-            break
+            print(f"Last batch from Bitrix (< 50 items), no more data")
+            return all_departments, False
         
-        start += 50
         request_count += 1
+        
+        if len(all_departments) >= max_items:
+            break
     
-    print(f"Total departments fetched: {len(all_departments)}")
-    return all_departments
+    has_more = len(all_departments) == max_items
+    print(f"Total departments fetched: {len(all_departments)}, has_more: {has_more}")
+    return all_departments, has_more
 
 
 def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -> Dict[str, int]:
@@ -215,6 +227,8 @@ def handler(event: dict, context) -> dict:
         else:
             body = body_str
         company_id = body.get('company_id')
+        batch_number = body.get('batch_number', 0)
+        batch_size = body.get('batch_size', 500)
         
         if not company_id:
             return {
@@ -239,7 +253,24 @@ def handler(event: dict, context) -> dict:
                 'isBase64Encoded': False
             }
         
-        departments = fetch_bitrix_departments()
+        departments, has_more = fetch_bitrix_departments(batch_number, batch_size)
+        
+        if not departments:
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'success': True,
+                    'synced_count': 0,
+                    'has_more': False,
+                    'batch_number': batch_number,
+                    'message': 'Нет подразделений для синхронизации'
+                }),
+                'isBase64Encoded': False
+            }
         
         bitrix_id_map = sync_departments_to_db(departments, company_id)
         
@@ -252,6 +283,9 @@ def handler(event: dict, context) -> dict:
             'body': json.dumps({
                 'success': True,
                 'synced_count': len(bitrix_id_map),
+                'has_more': has_more,
+                'batch_number': batch_number,
+                'next_batch': batch_number + 1 if has_more else None,
                 'departments': list(bitrix_id_map.values())
             }),
             'isBase64Encoded': False
