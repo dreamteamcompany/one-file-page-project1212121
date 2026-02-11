@@ -219,6 +219,9 @@ const Departments = () => {
       while (true) {
         console.log(`Syncing batch ${batchNumber}...`);
         
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        
         const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
           method: 'POST',
           body: JSON.stringify({ 
@@ -226,7 +229,10 @@ const Departments = () => {
             batch_number: batchNumber,
             batch_size: 500
           }),
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         console.log(`Batch ${batchNumber} response status:`, response.status);
         
