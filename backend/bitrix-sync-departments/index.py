@@ -99,23 +99,35 @@ def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -
             else:
                 inserts.append((company_id, name, f'BITRIX_{bitrix_id}', bitrix_id))
         
-        # Batch UPDATE через executemany (быстрее чем по одному)
+        # Batch UPDATE через executemany по чанкам (избегаем таймаутов)
         if updates:
-            print(f"Updating {len(updates)} departments")
-            cursor.executemany(f'''
-                UPDATE {schema}.departments 
-                SET name = %s, parent_id = %s, updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-            ''', updates)
+            chunk_size = 500
+            total_chunks = (len(updates) + chunk_size - 1) // chunk_size
+            print(f"Updating {len(updates)} departments in {total_chunks} chunks")
+            
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i:i+chunk_size]
+                cursor.executemany(f'''
+                    UPDATE {schema}.departments 
+                    SET name = %s, parent_id = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                ''', chunk)
+                print(f"Updated chunk {i//chunk_size + 1}/{total_chunks}")
         
-        # Batch INSERT через executemany
+        # Batch INSERT через executemany по чанкам
         if inserts:
-            print(f"Inserting {len(inserts)} departments (first pass)")
-            cursor.executemany(f'''
-                INSERT INTO {schema}.departments 
-                (company_id, name, code, bitrix_id, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ''', inserts)
+            chunk_size = 500
+            total_chunks = (len(inserts) + chunk_size - 1) // chunk_size
+            print(f"Inserting {len(inserts)} departments in {total_chunks} chunks")
+            
+            for i in range(0, len(inserts), chunk_size):
+                chunk = inserts[i:i+chunk_size]
+                cursor.executemany(f'''
+                    INSERT INTO {schema}.departments 
+                    (company_id, name, code, bitrix_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ''', chunk)
+                print(f"Inserted chunk {i//chunk_size + 1}/{total_chunks}")
             
             # Загружаем созданные ID
             cursor.execute(f'''
@@ -124,7 +136,7 @@ def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -
             ''', (company_id,))
             bitrix_id_map = {row['bitrix_id']: row['id'] for row in cursor.fetchall()}
         
-        # Второй проход - устанавливаем parent_id
+        # Второй проход - устанавливаем parent_id по чанкам
         print("Setting parent relationships (second pass)")
         parent_updates = []
         for dept in departments_sorted:
@@ -139,12 +151,18 @@ def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -
                     parent_updates.append((parent_id, dept_id))
         
         if parent_updates:
-            print(f"Updating {len(parent_updates)} parent relationships")
-            cursor.executemany(f'''
-                UPDATE {schema}.departments 
-                SET parent_id = %s
-                WHERE id = %s
-            ''', parent_updates)
+            chunk_size = 500
+            total_chunks = (len(parent_updates) + chunk_size - 1) // chunk_size
+            print(f"Updating {len(parent_updates)} parent relationships in {total_chunks} chunks")
+            
+            for i in range(0, len(parent_updates), chunk_size):
+                chunk = parent_updates[i:i+chunk_size]
+                cursor.executemany(f'''
+                    UPDATE {schema}.departments 
+                    SET parent_id = %s
+                    WHERE id = %s
+                ''', chunk)
+                print(f"Updated parents chunk {i//chunk_size + 1}/{total_chunks}")
         
         conn.commit()
         print(f"DB sync completed, {len(bitrix_id_map)} departments synced")
