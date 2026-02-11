@@ -21,6 +21,7 @@ import TicketServices from "./pages/TicketServices";
 import TicketServicesManagement from "./pages/TicketServicesManagement";
 import TicketServiceCategories from "./pages/TicketServiceCategories";
 import TicketStatuses from "./pages/TicketStatuses";
+import TicketPriorities from "./pages/TicketPriorities";
 import ServiceProviders from "./pages/ServiceProviders";
 import FieldRegistry from "./pages/FieldRegistry";
 import Services from "./pages/Services";
@@ -53,6 +54,7 @@ const App = () => {
             <Route path="/ticket-services-management" element={<ProtectedRoute><TicketServicesManagement /></ProtectedRoute>} />
             <Route path="/ticket-service-categories" element={<ProtectedRoute><TicketServiceCategories /></ProtectedRoute>} />
             <Route path="/ticket-statuses" element={<ProtectedRoute><TicketStatuses /></ProtectedRoute>} />
+            <Route path="/ticket-priorities" element={<ProtectedRoute><TicketPriorities /></ProtectedRoute>} />
             <Route path="/service-providers" element={<ProtectedRoute><ServiceProviders /></ProtectedRoute>} />
             <Route path="/field-registry" element={<ProtectedRoute><FieldRegistry /></ProtectedRoute>} />
             <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
