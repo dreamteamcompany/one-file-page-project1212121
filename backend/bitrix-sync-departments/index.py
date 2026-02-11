@@ -14,7 +14,7 @@ def fetch_bitrix_departments() -> List[Dict[str, Any]]:
     
     all_departments = []
     start = 0
-    max_requests = 4
+    max_requests = 40
     request_count = 0
     
     print(f"Starting Bitrix24 fetch from {webhook_url}")
@@ -81,50 +81,70 @@ def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -
         # Сортируем подразделения: сначала корневые, потом по SORT
         departments_sorted = sorted(departments, key=lambda d: (d.get('PARENT') is not None, d.get('SORT', 500)))
         
-        bitrix_id_map = {}
+        # Инициализируем bitrix_id_map существующими записями
+        bitrix_id_map = existing_map.copy()
         updates = []
         inserts = []
         
         # Подготавливаем данные для batch операций
         print("Preparing batch operations")
         for dept in departments_sorted:
-            bitrix_id = dept.get('ID')
+            bitrix_id = str(dept.get('ID'))
             name = dept.get('NAME', '')
-            parent_bitrix_id = dept.get('PARENT')
-            
-            parent_id = None
-            if parent_bitrix_id and parent_bitrix_id in bitrix_id_map:
-                parent_id = bitrix_id_map[parent_bitrix_id]
+            parent_bitrix_id = str(dept.get('PARENT')) if dept.get('PARENT') else None
             
             if bitrix_id in existing_map:
                 dept_id = existing_map[bitrix_id]
-                bitrix_id_map[bitrix_id] = dept_id
-                updates.append((name, parent_id, dept_id))
+                updates.append((name, None, dept_id))  # parent_id установим во втором проходе
             else:
-                inserts.append((company_id, name, parent_id, f'BITRIX_{bitrix_id}', bitrix_id))
+                inserts.append((company_id, name, f'BITRIX_{bitrix_id}', bitrix_id))
         
-        # Batch UPDATE
+        # Batch UPDATE через executemany (быстрее чем по одному)
         if updates:
             print(f"Updating {len(updates)} departments")
-            for name, parent_id, dept_id in updates:
-                cursor.execute(f'''
-                    UPDATE {schema}.departments 
-                    SET name = %s, parent_id = %s, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                ''', (name, parent_id, dept_id))
+            cursor.executemany(f'''
+                UPDATE {schema}.departments 
+                SET name = %s, parent_id = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            ''', updates)
         
-        # Batch INSERT
+        # Batch INSERT через executemany
         if inserts:
-            print(f"Inserting {len(inserts)} departments")
-            for company_id, name, parent_id, code, bitrix_id in inserts:
-                cursor.execute(f'''
-                    INSERT INTO {schema}.departments 
-                    (company_id, name, parent_id, code, bitrix_id, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                    RETURNING id, bitrix_id
-                ''', (company_id, name, parent_id, code, bitrix_id))
-                result = cursor.fetchone()
-                bitrix_id_map[result['bitrix_id']] = result['id']
+            print(f"Inserting {len(inserts)} departments (first pass)")
+            cursor.executemany(f'''
+                INSERT INTO {schema}.departments 
+                (company_id, name, code, bitrix_id, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ''', inserts)
+            
+            # Загружаем созданные ID
+            cursor.execute(f'''
+                SELECT id, bitrix_id FROM {schema}.departments
+                WHERE company_id = %s AND bitrix_id IS NOT NULL
+            ''', (company_id,))
+            bitrix_id_map = {row['bitrix_id']: row['id'] for row in cursor.fetchall()}
+        
+        # Второй проход - устанавливаем parent_id
+        print("Setting parent relationships (second pass)")
+        parent_updates = []
+        for dept in departments_sorted:
+            bitrix_id = str(dept.get('ID'))
+            parent_bitrix_id = str(dept.get('PARENT')) if dept.get('PARENT') else None
+            
+            if parent_bitrix_id and parent_bitrix_id in bitrix_id_map:
+                parent_id = bitrix_id_map[parent_bitrix_id]
+                dept_id = bitrix_id_map.get(bitrix_id)
+                
+                if dept_id:
+                    parent_updates.append((parent_id, dept_id))
+        
+        if parent_updates:
+            print(f"Updating {len(parent_updates)} parent relationships")
+            cursor.executemany(f'''
+                UPDATE {schema}.departments 
+                SET parent_id = %s
+                WHERE id = %s
+            ''', parent_updates)
         
         conn.commit()
         print(f"DB sync completed, {len(bitrix_id_map)} departments synced")
