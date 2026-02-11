@@ -34,8 +34,11 @@ const Positions = () => {
 
   const loadPositions = async () => {
     try {
-      const data = await apiFetch<Position[]>('/positions');
-      setPositions(data);
+      const response = await apiFetch('/positions');
+      if (response.ok) {
+        const data = await response.json();
+        setPositions(data);
+      }
     } catch (error) {
       console.error('Failed to load positions:', error);
     } finally {
@@ -78,8 +81,10 @@ const Positions = () => {
   const handleDelete = async (id: number) => {
     if (!confirm('Вы уверены, что хотите удалить эту должность?')) return;
     try {
-      await apiFetch(`/positions/${id}`, { method: 'DELETE' });
-      loadPositions();
+      const response = await apiFetch(`/positions/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        loadPositions();
+      }
     } catch (error) {
       console.error('Failed to delete position:', error);
     }

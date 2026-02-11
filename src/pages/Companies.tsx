@@ -36,8 +36,11 @@ const Companies = () => {
 
   const loadCompanies = async () => {
     try {
-      const data = await apiFetch<Company[]>('/companies');
-      setCompanies(data);
+      const response = await apiFetch('/companies');
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data);
+      }
     } catch (error) {
       console.error('Failed to load companies:', error);
     } finally {
@@ -82,8 +85,10 @@ const Companies = () => {
   const handleDelete = async (id: number) => {
     if (!confirm('Вы уверены, что хотите удалить эту компанию?')) return;
     try {
-      await apiFetch(`/companies/${id}`, { method: 'DELETE' });
-      loadCompanies();
+      const response = await apiFetch(`/companies/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        loadCompanies();
+      }
     } catch (error) {
       console.error('Failed to delete company:', error);
     }

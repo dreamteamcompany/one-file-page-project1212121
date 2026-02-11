@@ -52,11 +52,17 @@ const Departments = () => {
 
   const loadData = async () => {
     try {
+      const [depsRes, compsRes, posRes, depPosRes] = await Promise.all([
+        apiFetch('/departments'),
+        apiFetch('/companies'),
+        apiFetch('/positions'),
+        apiFetch('/department-positions'),
+      ]);
       const [depsData, compsData, posData, depPosData] = await Promise.all([
-        apiFetch<Department[]>('/departments'),
-        apiFetch<Company[]>('/companies'),
-        apiFetch<Position[]>('/positions'),
-        apiFetch<DepartmentPosition[]>('/department-positions'),
+        depsRes.json(),
+        compsRes.json(),
+        posRes.json(),
+        depPosRes.json(),
       ]);
       setDepartments(depsData);
       setCompanies(compsData);
@@ -142,8 +148,10 @@ const Departments = () => {
   const handleDelete = async (id: number) => {
     if (!confirm('Вы уверены, что хотите удалить это подразделение?')) return;
     try {
-      await apiFetch(`/departments/${id}`, { method: 'DELETE' });
-      loadData();
+      const response = await apiFetch(`/departments/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        loadData();
+      }
     } catch (error) {
       console.error('Failed to delete department:', error);
     }

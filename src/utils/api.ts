@@ -51,7 +51,7 @@ const getAuthToken = (): string | null => {
     : sessionStorage.getItem('auth_token');
 };
 
-export const apiFetch = async <T = unknown>(url: string, options: RequestInit = {}): Promise<T> => {
+export const apiFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
   const token = getAuthToken();
   
   const headers: HeadersInit = {
@@ -87,18 +87,8 @@ export const apiFetch = async <T = unknown>(url: string, options: RequestInit = 
     }
   }
   
-  const response = await fetch(finalUrl, {
+  return fetch(finalUrl, {
     ...options,
     headers,
   });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return response.json();
 };
