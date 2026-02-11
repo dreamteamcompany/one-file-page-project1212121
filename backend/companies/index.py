@@ -32,12 +32,8 @@ def handler(event: dict, context) -> dict:
         conn = psycopg2.connect(DSN)
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        url = event.get('url', '')
-        company_id = None
-        if '/' in url and url.strip('/'):
-            parts = url.strip('/').split('/')
-            if parts and parts[0].isdigit():
-                company_id = parts[0]
+        query_params = event.get('queryStringParameters') or {}
+        company_id = query_params.get('id')
         
         if method == 'GET':
             if company_id:

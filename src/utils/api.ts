@@ -69,9 +69,22 @@ export const apiFetch = async (url: string, options: RequestInit = {}): Promise<
   let finalUrl = url;
   
   if (url.startsWith('/')) {
-    const endpoint = url.split('/')[1].split('?')[0];
+    const parts = url.split('?');
+    const pathParts = parts[0].split('/').filter(Boolean);
+    const endpoint = pathParts[0];
+    const queryString = parts[1] || '';
+    
     if (ENDPOINT_MAP[endpoint]) {
-      finalUrl = ENDPOINT_MAP[endpoint] + url.substring(endpoint.length + 1);
+      const baseUrl = ENDPOINT_MAP[endpoint];
+      
+      if (pathParts.length > 1) {
+        const id = pathParts[1];
+        finalUrl = queryString 
+          ? `${baseUrl}?id=${id}&${queryString}`
+          : `${baseUrl}?id=${id}`;
+      } else {
+        finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+      }
     }
   } else {
     try {
