@@ -1,4 +1,8 @@
 {
+  "department-positions": "https://functions.poehali.dev/7c79f9e7-a51d-454b-b470-599ff9ed8527",
+  "departments": "https://functions.poehali.dev/b5550e9f-c621-44b8-b4e5-3128ed44acff",
+  "positions": "https://functions.poehali.dev/176c438b-4080-43b6-b98d-21b4d7f54109",
+  "companies": "https://functions.poehali.dev/9ce1d908-bb39-4250-a1e3-8930ac0307de",
   "reset-password": "https://functions.poehali.dev/fc22a32d-3e75-4889-8953-f3c9d9fcb1b9",
   "api-ticket-history": "https://functions.poehali.dev/429bf640-f15c-4a4f-b791-a7437061ba87",
   "api-ticket-comments": "https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3",

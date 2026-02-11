@@ -1,0 +1,374 @@
+import { useState, useEffect } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/utils/api';
+import { Department, Company, Position, DepartmentPosition } from '@/types';
+import DepartmentTree from '@/components/departments/DepartmentTree';
+import Icon from '@/components/ui/icon';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const Departments = () => {
+  const { hasPermission } = useAuth();
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [departmentPositions, setDepartmentPositions] = useState<DepartmentPosition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState<string>('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+  const [parentIdForNew, setParentIdForNew] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    company_id: '',
+    parent_id: '',
+    name: '',
+    code: '',
+    description: '',
+    position_ids: [] as number[],
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [depsData, compsData, posData, depPosData] = await Promise.all([
+        apiFetch<Department[]>('/departments'),
+        apiFetch<Company[]>('/companies'),
+        apiFetch<Position[]>('/positions'),
+        apiFetch<DepartmentPosition[]>('/department-positions'),
+      ]);
+      setDepartments(depsData);
+      setCompanies(compsData);
+      setPositions(posData);
+      setDepartmentPositions(depPosData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        company_id: parseInt(formData.company_id),
+        parent_id: formData.parent_id ? parseInt(formData.parent_id) : null,
+        name: formData.name,
+        code: formData.code || null,
+        description: formData.description || null,
+        position_ids: formData.position_ids,
+      };
+
+      if (editingDepartment) {
+        await apiFetch(`/departments/${editingDepartment.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiFetch('/departments', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
+      setDialogOpen(false);
+      setEditingDepartment(null);
+      setParentIdForNew(null);
+      setFormData({
+        company_id: '',
+        parent_id: '',
+        name: '',
+        code: '',
+        description: '',
+        position_ids: [],
+      });
+      loadData();
+    } catch (error) {
+      console.error('Failed to save department:', error);
+    }
+  };
+
+  const handleEdit = (department: Department) => {
+    setEditingDepartment(department);
+    const depPos = departmentPositions
+      .filter((dp) => dp.department_id === department.id)
+      .map((dp) => dp.position_id);
+    setFormData({
+      company_id: department.company_id.toString(),
+      parent_id: department.parent_id?.toString() || '',
+      name: department.name,
+      code: department.code || '',
+      description: department.description || '',
+      position_ids: depPos,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleAddChild = (parentId: number) => {
+    const parent = departments.find((d) => d.id === parentId);
+    setParentIdForNew(parentId);
+    setFormData({
+      company_id: parent?.company_id.toString() || '',
+      parent_id: parentId.toString(),
+      name: '',
+      code: '',
+      description: '',
+      position_ids: [],
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите удалить это подразделение?')) return;
+    try {
+      await apiFetch(`/departments/${id}`, { method: 'DELETE' });
+      loadData();
+    } catch (error) {
+      console.error('Failed to delete department:', error);
+    }
+  };
+
+  const filteredDepartments = departments.filter((dept) => {
+    const matchesSearch = dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      dept.code?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCompany = !selectedCompany || dept.company_id.toString() === selectedCompany;
+    return matchesSearch && matchesCompany;
+  });
+
+  const canCreate = hasPermission('departments', 'create');
+  const canEdit = hasPermission('departments', 'update');
+  const canDelete = hasPermission('departments', 'delete');
+
+  const availableParents = editingDepartment
+    ? departments.filter((d) =>
+        d.id !== editingDepartment.id &&
+        d.company_id.toString() === formData.company_id
+      )
+    : departments.filter((d) => d.company_id.toString() === formData.company_id);
+
+  const togglePosition = (positionId: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      position_ids: prev.position_ids.includes(positionId)
+        ? prev.position_ids.filter((id) => id !== positionId)
+        : [...prev.position_ids, positionId],
+    }));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Подразделения</h1>
+          <p className="text-muted-foreground mt-1">Древовидная структура подразделений компании</p>
+        </div>
+        {canCreate && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setEditingDepartment(null);
+                setParentIdForNew(null);
+                setFormData({
+                  company_id: '',
+                  parent_id: '',
+                  name: '',
+                  code: '',
+                  description: '',
+                  position_ids: [],
+                });
+              }}>
+                <Icon name="Plus" className="mr-2 h-4 w-4" />
+                Добавить подразделение
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingDepartment
+                    ? 'Редактирование подразделения'
+                    : parentIdForNew
+                    ? 'Новое дочернее подразделение'
+                    : 'Новое подразделение'}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company_id">Компания *</Label>
+                  <Select
+                    value={formData.company_id}
+                    onValueChange={(value) => setFormData({ ...formData, company_id: value, parent_id: '' })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите компанию" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id.toString()}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.company_id && (
+                  <div className="space-y-2">
+                    <Label htmlFor="parent_id">Родительское подразделение</Label>
+                    <Select
+                      value={formData.parent_id}
+                      onValueChange={(value) => setFormData({ ...formData, parent_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Корневое подразделение" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Корневое подразделение</SelectItem>
+                        {availableParents.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Название подразделения *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="code">Код подразделения</Label>
+                  <Input
+                    id="code"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Описание</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Должности в подразделении</Label>
+                  <div className="border rounded-md p-4 max-h-48 overflow-y-auto space-y-2">
+                    {positions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Должности не найдены</p>
+                    ) : (
+                      positions.map((position) => (
+                        <div key={position.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`position-${position.id}`}
+                            checked={formData.position_ids.includes(position.id)}
+                            onCheckedChange={() => togglePosition(position.id)}
+                          />
+                          <label
+                            htmlFor={`position-${position.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {position.name}
+                          </label>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Отмена
+                  </Button>
+                  <Button type="submit">
+                    {editingDepartment ? 'Сохранить' : 'Создать'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию или коду..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Все компании" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Все компании</SelectItem>
+            {companies.map((company) => (
+              <SelectItem key={company.id} value={company.id.toString()}>
+                {company.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-lg border bg-card p-4">
+        <DepartmentTree
+          departments={filteredDepartments}
+          onEdit={canEdit ? handleEdit : undefined}
+          onDelete={canDelete ? handleDelete : undefined}
+          onAddChild={canCreate ? handleAddChild : undefined}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          canCreate={canCreate}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Departments;

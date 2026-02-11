@@ -187,6 +187,30 @@ const PaymentsSidebar = ({
             </Link>
           </li>
         )}
+        {hasPermission('companies', 'read') && (
+          <li>
+            <Link to="/companies" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/companies') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Компании">
+              <Icon name="Building2" size={22} />
+              {!collapsed && <span>Компании</span>}
+            </Link>
+          </li>
+        )}
+        {hasPermission('departments', 'read') && (
+          <li>
+            <Link to="/departments" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/departments') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Подразделения">
+              <Icon name="Network" size={22} />
+              {!collapsed && <span>Подразделения</span>}
+            </Link>
+          </li>
+        )}
+        {hasPermission('positions', 'read') && (
+          <li>
+            <Link to="/positions" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/positions') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Должности">
+              <Icon name="Briefcase" size={22} />
+              {!collapsed && <span>Должности</span>}
+            </Link>
+          </li>
+        )}
         {hasPermission('users', 'read') && (
           <li>
             <Link to="/users" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/users') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Пользователи">

@@ -28,6 +28,9 @@ import FieldRegistry from "./pages/FieldRegistry";
 import Services from "./pages/Services";
 import CustomFieldGroups from "./pages/CustomFieldGroups";
 import ServiceFieldMappings from "./pages/ServiceFieldMappings";
+import Companies from "./pages/Companies";
+import Departments from "./pages/Departments";
+import Positions from "./pages/Positions";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -62,6 +65,9 @@ const App = () => {
             <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
             <Route path="/custom-field-groups" element={<ProtectedRoute><CustomFieldGroups /></ProtectedRoute>} />
             <Route path="/service-field-mappings" element={<ProtectedRoute><ServiceFieldMappings /></ProtectedRoute>} />
+            <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
+            <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
+            <Route path="/positions" element={<ProtectedRoute><Positions /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

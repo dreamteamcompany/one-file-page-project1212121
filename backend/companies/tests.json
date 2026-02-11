@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "Get all companies",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create company",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Test Company",
+        "inn": "1234567890",
+        "kpp": "123456789",
+        "legal_address": "Test Address"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "name": "Test Company"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

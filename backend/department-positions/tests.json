@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Get all department-position links",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
