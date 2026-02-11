@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import {
@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import TicketFormStep0 from './TicketFormStep0';
 import TicketFormStep1 from './TicketFormStep1';
 import TicketFormStep2 from './TicketFormStep2';
 import TicketFormStep3 from './TicketFormStep3';
@@ -53,6 +54,21 @@ interface Service {
   service_ids?: number[];
 }
 
+interface TicketTemplate {
+  id: number;
+  name: string;
+  description: string;
+  service_id: number;
+  service_name?: string;
+  ticket_service_ids: number[];
+  ticket_service_names?: string[];
+  sla_hours: number;
+  priority_id?: number;
+  priority_name?: string;
+  category_id?: number;
+  category_name?: string;
+}
+
 interface TicketFormProps {
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
@@ -67,7 +83,17 @@ interface TicketFormProps {
     due_date: string;
     custom_fields: Record<string, string>;
   };
-  setFormData: (data: any) => void;
+  setFormData: (data: React.SetStateAction<{
+    title: string;
+    description: string;
+    category_id: string;
+    priority_id: string;
+    status_id: string;
+    service_id: string;
+    service_ids: number[];
+    due_date: string;
+    custom_fields: Record<string, string>;
+  }>) => void;
   categories: Category[];
   priorities: Priority[];
   statuses: Status[];
@@ -75,9 +101,20 @@ interface TicketFormProps {
   customFields: CustomField[];
   services: Service[];
   ticketServices?: Service[];
-  handleSubmit: (e: React.FormEvent, overrideData?: any) => Promise<void>;
+  handleSubmit: (e: React.FormEvent, overrideData?: {
+    title: string;
+    description: string;
+    category_id: string;
+    priority_id: string;
+    status_id: string;
+    service_id: string;
+    service_ids: number[];
+    due_date: string;
+    custom_fields: Record<string, string>;
+  }) => Promise<void>;
   onDialogOpen?: () => void;
   canCreate?: boolean;
+  templates?: TicketTemplate[];
 }
 
 const TicketForm = ({
@@ -95,9 +132,24 @@ const TicketForm = ({
   handleSubmit,
   onDialogOpen,
   canCreate = true,
+  templates = [],
 }: TicketFormProps) => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [selectedServices, setSelectedServices] = useState<number[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<TicketTemplate | null>(null);
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      setFormData((prev: typeof formData) => ({
+        ...prev,
+        service_id: selectedTemplate.service_id.toString(),
+        priority_id: selectedTemplate.priority_id?.toString() || '',
+        category_id: selectedTemplate.category_id?.toString() || '',
+      }));
+      setSelectedServices(selectedTemplate.ticket_service_ids);
+      setStep(3);
+    }
+  }, [selectedTemplate, setFormData]);
 
 
   
@@ -116,9 +168,16 @@ const TicketForm = ({
 
   const handleBack = () => {
     if (step === 3) {
-      setStep(2);
-    } else {
+      if (selectedTemplate) {
+        setStep(0);
+        setSelectedTemplate(null);
+      } else {
+        setStep(2);
+      }
+    } else if (step === 2) {
       setStep(1);
+    } else if (step === 1) {
+      setStep(templates.length > 0 ? 0 : 1);
     }
   };
 
@@ -128,14 +187,22 @@ const TicketForm = ({
 
   const handleDialogChange = (open: boolean) => {
     if (open) {
-      // При открытии диалога всегда сбрасываем на шаг 1
-      setStep(1);
+      setStep(templates.length > 0 ? 0 : 1);
       setSelectedServices([]);
+      setSelectedTemplate(null);
       if (onDialogOpen) {
         onDialogOpen();
       }
     }
     setDialogOpen(open);
+  };
+
+  const handleSelectTemplate = (template: TicketTemplate) => {
+    setSelectedTemplate(template);
+  };
+
+  const handleSkipTemplate = () => {
+    setStep(1);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -197,10 +264,11 @@ const TicketForm = ({
             <Icon name="TicketPlus" size={24} />
             Новая заявка
             <Badge variant="secondary" className="ml-auto text-xs">
-              Шаг {step} из 3
+              Шаг {step === 0 ? '1' : step} из {templates.length > 0 ? '4' : '3'}
             </Badge>
           </DialogTitle>
           <DialogDescription className="text-sm">
+            {step === 0 && '✨ Выберите готовый шаблон или создайте заявку вручную'}
             {step === 1 && '🎯 Выберите услугу для вашей заявки'}
             {step === 2 && '🔧 Выберите сервисы для услуги'}
             {step === 3 && '📝 Заполните основную информацию о заявке'}
@@ -209,7 +277,14 @@ const TicketForm = ({
 
 
 
-        {step === 1 ? (
+        {step === 0 ? (
+          <TicketFormStep0
+            templates={templates}
+            onSelectTemplate={handleSelectTemplate}
+            onSkip={handleSkipTemplate}
+            onBack={() => handleDialogChange(false)}
+          />
+        ) : step === 1 ? (
           <TicketFormStep2
             formData={formData}
             availableTicketServices={availableTicketServices}

@@ -159,6 +159,14 @@ const PaymentsSidebar = ({
                     </Link>
                   </li>
                 )}
+                {hasPermission('ticket_templates', 'read') && (
+                  <li>
+                    <Link to="/ticket-templates" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-templates') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
+                      <Icon name="FileText" size={18} />
+                      <span>Шаблоны заявок</span>
+                    </Link>
+                  </li>
+                )}
               </ul>
             )}
           </li>
