@@ -180,16 +180,16 @@ const TicketServiceDialog = ({
           <div className="space-y-2">
             <Label htmlFor="category">Категория заявки</Label>
             <Select
-              value={formData.category_id}
+              value={formData.category_id || 'none'}
               onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, category_id: value }))
+                setFormData((prev) => ({ ...prev, category_id: value === 'none' ? '' : value }))
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите категорию" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Без категории</SelectItem>
+                <SelectItem value="none">Без категории</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id.toString()}>
                     <div className="flex items-center gap-2">
