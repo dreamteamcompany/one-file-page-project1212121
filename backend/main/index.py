@@ -941,6 +941,33 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
     finally:
         cur.close()
 
+def handle_ticket_service_mappings(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    cur = conn.cursor()
+    
+    try:
+        if method == 'GET':
+            cur.execute(f'''
+                SELECT tsm.id, tsm.ticket_service_id, tsm.service_id, tsm.created_at
+                FROM {SCHEMA}.ticket_service_mappings tsm
+                ORDER BY tsm.ticket_service_id, tsm.service_id
+            ''')
+            rows = cur.fetchall()
+            mappings = [
+                {
+                    'id': row[0],
+                    'ticket_service_id': row[1],
+                    'service_id': row[2],
+                    'created_at': row[3].isoformat() if row[3] else None
+                }
+                for row in rows
+            ]
+            return response(200, mappings)
+        
+        return response(405, {'error': 'Method not allowed'})
+    
+    finally:
+        cur.close()
+
 def handle_saving_reasons(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     cur = conn.cursor()
     
@@ -2860,8 +2887,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             result = handle_saving_reasons(method, event, conn)
         elif endpoint == 'ticket-service-categories':
             result = handle_ticket_service_categories(method, event, conn)
-        elif endpoint == 'ticket-services':
+        elif endpoint == 'ticket-services' or endpoint == 'ticket_services':
             result = handle_ticket_services(method, event, conn)
+        elif endpoint == 'ticket-service-mappings' or endpoint == 'ticket_service_mappings':
+            result = handle_ticket_service_mappings(method, event, conn)
         elif endpoint == 'users':
             result = handle_users(method, event, conn)
         elif endpoint == 'roles':

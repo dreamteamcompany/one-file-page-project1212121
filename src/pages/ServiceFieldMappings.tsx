@@ -22,6 +22,7 @@ const ServiceFieldMappings = () => {
   const [ticketServices, setTicketServices] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [fieldGroups, setFieldGroups] = useState<FieldGroup[]>([]);
+  const [ticketServiceMappings, setTicketServiceMappings] = useState<{ ticket_service_id: number; service_id: number }[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMapping, setEditingMapping] = useState<ServiceFieldMapping | null>(null);
   const [formData, setFormData] = useState({
@@ -68,6 +69,17 @@ const ServiceFieldMappings = () => {
     } catch (error) {
       console.error('Failed to load services:', error);
       setServices([]);
+    }
+
+    // Load ticket-service mappings (связь услуг и сервисов)
+    try {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket_service_mappings`);
+      const data = await response.json();
+      console.log('Loaded ticket-service mappings:', data);
+      setTicketServiceMappings(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load ticket-service mappings:', error);
+      setTicketServiceMappings([]);
     }
 
     // Load field groups from localStorage
@@ -168,7 +180,7 @@ const ServiceFieldMappings = () => {
     setDialogOpen(false);
   };
 
-  const handleFormDataChange = (field: string, value: any) => {
+  const handleFormDataChange = (field: string, value: number | { service_category_id: number; service_id: number } | number[]) => {
     if (field === 'service_category_id') {
       setFormData((prev) => ({ ...prev, ...value }));
     } else {
@@ -197,8 +209,14 @@ const ServiceFieldMappings = () => {
     return ids.map((id) => fieldGroups.find((g) => g.id === id)?.name || 'Неизвестно');
   };
 
-  // Показываем все сервисы (services table), без фильтрации по ticket_service_id
-  const filteredServices = services;
+  // Фильтруем сервисы по выбранной услуге через ticket_service_mappings
+  const filteredServices = formData.service_category_id
+    ? services.filter((s) =>
+        ticketServiceMappings.some(
+          (m) => m.ticket_service_id === formData.service_category_id && m.service_id === s.id
+        )
+      )
+    : [];
 
   const filteredMappings = mappings.filter((mapping) => {
     const ticketServiceName = getTicketServiceName(mapping.service_category_id).toLowerCase();
