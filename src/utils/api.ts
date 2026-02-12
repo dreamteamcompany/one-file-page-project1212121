@@ -23,6 +23,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'service_categories': TICKETS_API,
   'ticket-dictionaries-api': TICKETS_API,
   'ticket_services': TICKETS_API,
+  'ticket_service_mappings': TICKETS_API,
   'ticket-statuses': TICKETS_API,
   'ticket-priorities': TICKETS_API,
   'sla': TICKETS_API,

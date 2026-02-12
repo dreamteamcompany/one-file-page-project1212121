@@ -57,6 +57,8 @@ def handler(event: dict, context) -> dict:
             return handle_sla(method, event, conn)
         elif endpoint == 'ticket-approvals':
             return handle_ticket_approvals(method, event, conn)
+        elif endpoint == 'ticket_service_mappings':
+            return handle_ticket_service_mappings(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -830,6 +832,31 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
         
         return response(405, {'error': 'Method not allowed'})
     
+    finally:
+        cur.close()
+
+def handle_ticket_service_mappings(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Обработчик для получения связей услуг и сервисов (ticket_service_mappings)"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+    
+    cur = conn.cursor()
+    
+    try:
+        cur.execute(f'''
+            SELECT ticket_service_id, service_id 
+            FROM {SCHEMA}.ticket_service_mappings
+            ORDER BY ticket_service_id, service_id
+        ''')
+        mappings = [dict(row) for row in cur.fetchall()]
+        return response(200, mappings)
+    
+    except Exception as e:
+        return response(500, {'error': str(e)})
     finally:
         cur.close()
 
