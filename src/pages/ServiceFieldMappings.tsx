@@ -211,12 +211,24 @@ const ServiceFieldMappings = () => {
 
   // Фильтруем сервисы по выбранной услуге через ticket_service_mappings
   const filteredServices = formData.service_category_id
-    ? services.filter((s) =>
-        ticketServiceMappings.some(
+    ? services.filter((s) => {
+        const hasMapping = ticketServiceMappings.some(
           (m) => m.ticket_service_id === formData.service_category_id && m.service_id === s.id
-        )
-      )
+        );
+        console.log(`Service ${s.id} (${s.name}): hasMapping=${hasMapping}`, {
+          ticketServiceId: formData.service_category_id,
+          serviceId: s.id,
+          mappings: ticketServiceMappings.filter(m => m.ticket_service_id === formData.service_category_id)
+        });
+        return hasMapping;
+      })
     : [];
+  
+  console.log('filteredServices:', filteredServices, {
+    selectedTicketServiceId: formData.service_category_id,
+    totalServices: services.length,
+    totalMappings: ticketServiceMappings.length
+  });
 
   const filteredMappings = mappings.filter((mapping) => {
     const ticketServiceName = getTicketServiceName(mapping.service_category_id).toLowerCase();
