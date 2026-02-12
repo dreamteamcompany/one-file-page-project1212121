@@ -848,14 +848,16 @@ def handle_ticket_service_mappings(method: str, event: Dict[str, Any], conn) -> 
     
     try:
         cur.execute(f'''
-            SELECT ticket_service_id, service_id 
+            SELECT id, ticket_service_id, service_id, created_at
             FROM {SCHEMA}.ticket_service_mappings
             ORDER BY ticket_service_id, service_id
         ''')
         mappings = [dict(row) for row in cur.fetchall()]
+        print(f'[ticket_service_mappings] Found {len(mappings)} mappings')
         return response(200, mappings)
     
     except Exception as e:
+        print(f'[ticket_service_mappings] Error: {str(e)}')
         return response(500, {'error': str(e)})
     finally:
         cur.close()
