@@ -84,7 +84,7 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
   };
 
   const filteredDepartments = selectedCompanyId
-    ? departments.filter((d) => d.company_id.toString() === selectedCompanyId)
+    ? departments.filter((d) => d.company_id && d.company_id.toString() === selectedCompanyId)
     : [];
 
   const handleCompanyChange = (companyId: string) => {
