@@ -53,26 +53,23 @@ const FieldGroupsTable = ({
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
-                    {group.field_ids.length === 0 ? (
+                    {(!group.fields || group.fields.length === 0) ? (
                       <span className="text-muted-foreground text-sm">Нет полей</span>
                     ) : (
-                      group.field_ids.slice(0, 3).map((fieldId) => {
-                        const field = getFieldById(fieldId);
-                        return field ? (
-                          <Badge key={fieldId} variant="secondary" className="text-xs">
-                            <Icon 
-                              name={getFieldTypeIcon(field.field_type)} 
-                              size={12} 
-                              className="mr-1"
-                            />
-                            {field.name}
-                          </Badge>
-                        ) : null;
-                      })
+                      group.fields.slice(0, 3).map((field) => (
+                        <Badge key={field.id} variant="secondary" className="text-xs">
+                          <Icon 
+                            name={getFieldTypeIcon(field.field_type)} 
+                            size={12} 
+                            className="mr-1"
+                          />
+                          {field.name}
+                        </Badge>
+                      ))
                     )}
-                    {group.field_ids.length > 3 && (
+                    {group.fields && group.fields.length > 3 && (
                       <Badge variant="outline" className="text-xs">
-                        +{group.field_ids.length - 3}
+                        +{group.fields.length - 3}
                       </Badge>
                     )}
                   </div>

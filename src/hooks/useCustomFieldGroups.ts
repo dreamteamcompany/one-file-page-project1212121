@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL, apiFetch } from '@/utils/api';
 
 export interface Field {
   id: number;
@@ -12,14 +13,16 @@ export interface Field {
   description?: string;
   required?: boolean;
   created_at?: string;
+  is_required?: boolean;
 }
 
 export interface FieldGroup {
   id: number;
   name: string;
   description?: string;
-  field_ids: number[];
+  fields?: Field[];
   created_at?: string;
+  updated_at?: string;
 }
 
 export const fieldTypes = [
@@ -40,42 +43,40 @@ export const useCustomFieldGroups = () => {
   const [fieldGroups, setFieldGroups] = useState<FieldGroup[]>([]);
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
 
+  const loadFieldGroups = useCallback(async () => {
+    try {
+      const response = await apiFetch(`${API_URL}/api-field-groups`);
+      if (response.ok) {
+        const data = await response.json();
+        setFieldGroups(data);
+      }
+    } catch (error) {
+      console.error('Failed to load field groups:', error);
+    }
+  }, []);
+
+  const loadAvailableFields = useCallback(async () => {
+    try {
+      const response = await apiFetch(`${API_URL}?endpoint=custom-fields`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableFields(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Failed to load available fields:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (!hasPermission('custom_field_groups', 'read')) {
       navigate('/tickets');
       return;
     }
-    const savedFields = localStorage.getItem('fieldRegistry');
-    if (savedFields) {
-      setAvailableFields(JSON.parse(savedFields));
-    }
+    loadFieldGroups();
+    loadAvailableFields();
+  }, [hasPermission, navigate, loadFieldGroups, loadAvailableFields]);
 
-    const savedGroups = localStorage.getItem('customFieldGroups');
-    if (savedGroups) {
-      setFieldGroups(JSON.parse(savedGroups));
-    } else {
-      const mockGroups: FieldGroup[] = [
-        {
-          id: 1,
-          name: 'Данные организации',
-          description: 'Основные данные об организации',
-          field_ids: [1, 2],
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          name: 'Контактная информация',
-          description: 'Контакты для связи',
-          field_ids: [1, 2],
-          created_at: new Date().toISOString(),
-        },
-      ];
-      setFieldGroups(mockGroups);
-      localStorage.setItem('customFieldGroups', JSON.stringify(mockGroups));
-    }
-  }, [hasPermission, navigate]);
-
-  const saveFieldGroup = (
+  const saveFieldGroup = async (
     formData: { name: string; description: string; field_ids: number[] },
     editingGroup: FieldGroup | null
   ) => {
@@ -85,37 +86,54 @@ export const useCustomFieldGroups = () => {
       return;
     }
     
-    let updatedGroups: FieldGroup[];
-    if (editingGroup) {
-      updatedGroups = fieldGroups.map(g => 
-        g.id === editingGroup.id 
-          ? { ...g, name: formData.name, description: formData.description, field_ids: formData.field_ids }
-          : g
-      );
-    } else {
-      const newGroup: FieldGroup = {
-        id: Math.max(0, ...fieldGroups.map(g => g.id)) + 1,
-        name: formData.name,
-        description: formData.description,
-        field_ids: formData.field_ids,
-        created_at: new Date().toISOString(),
-      };
-      updatedGroups = [...fieldGroups, newGroup];
+    try {
+      const method = editingGroup ? 'PUT' : 'POST';
+      const body = editingGroup 
+        ? { id: editingGroup.id, ...formData }
+        : formData;
+
+      const response = await apiFetch(`${API_URL}/api-field-groups`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        await loadFieldGroups();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка: ${error.error || 'Не удалось сохранить группу'}`);
+      }
+    } catch (error) {
+      console.error('Failed to save field group:', error);
+      alert('Ошибка при сохранении группы полей');
     }
-    
-    setFieldGroups(updatedGroups);
-    localStorage.setItem('customFieldGroups', JSON.stringify(updatedGroups));
   };
 
-  const deleteFieldGroup = (id: number) => {
+  const deleteFieldGroup = async (id: number) => {
     if (!hasPermission('custom_field_groups', 'remove')) {
       alert('У вас нет прав для удаления групп полей');
       return;
     }
-    if (!confirm('Вы уверены, что хотите удалить эту сущность?')) return;
-    const updatedGroups = fieldGroups.filter(g => g.id !== id);
-    setFieldGroups(updatedGroups);
-    localStorage.setItem('customFieldGroups', JSON.stringify(updatedGroups));
+    if (!confirm('Вы уверены, что хотите удалить эту группу?')) return;
+    
+    try {
+      const response = await apiFetch(`${API_URL}/api-field-groups`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (response.ok) {
+        await loadFieldGroups();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка: ${error.error || 'Не удалось удалить группу'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete field group:', error);
+      alert('Ошибка при удалении группы полей');
+    }
   };
 
   const getFieldTypeLabel = (type: string) => {
@@ -138,5 +156,6 @@ export const useCustomFieldGroups = () => {
     getFieldTypeLabel,
     getFieldTypeIcon,
     getFieldById,
+    loadFieldGroups,
   };
 };

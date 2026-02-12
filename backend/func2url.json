@@ -1,4 +1,6 @@
 {
+  "api-service-field-mappings": "https://functions.poehali.dev/bc96bbe3-687c-4427-86c7-6c6bb2b3e61b",
+  "api-field-groups": "https://functions.poehali.dev/c481d806-6ef1-4d9e-bf34-8f6370a5554b",
   "bitrix-sync-departments": "https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae",
   "department-positions": "https://functions.poehali.dev/7c79f9e7-a51d-454b-b470-599ff9ed8527",
   "departments": "https://functions.poehali.dev/b5550e9f-c621-44b8-b4e5-3128ed44acff",

@@ -46,7 +46,7 @@ const FieldGroupDialog = ({
       setFormData({
         name: editingGroup.name,
         description: editingGroup.description || '',
-        field_ids: editingGroup.field_ids,
+        field_ids: editingGroup.fields ? editingGroup.fields.map(f => f.id) : [],
       });
     } else {
       setFormData({ name: '', description: '', field_ids: [] });

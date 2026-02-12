@@ -68,15 +68,19 @@ const MappingsTable = ({
                 {mappings.map((mapping) => (
                   <TableRow key={mapping.id}>
                     <TableCell className="font-medium">
-                      {getCategoryName(mapping.service_category_id)}
+                      {mapping.ticket_service_name || getCategoryName(mapping.service_category_id || mapping.ticket_service_id || 0)}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {getServiceName(mapping.service_id)}
+                        {mapping.service_name || getServiceName(mapping.service_id)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {mapping.field_group_ids.length === 0 ? (
+                      {mapping.field_group_name ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {mapping.field_group_name}
+                        </Badge>
+                      ) : mapping.field_group_ids && mapping.field_group_ids.length === 0 ? (
                         <span className="text-xs text-muted-foreground">
                           Нет групп
                         </span>

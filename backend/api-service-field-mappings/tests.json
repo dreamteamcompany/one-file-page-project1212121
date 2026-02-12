@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Get all service field mappings",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

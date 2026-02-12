@@ -107,20 +107,30 @@ const ServiceFieldMappings = () => {
       setTicketServiceMappings([]);
     }
 
-    // Load field groups from localStorage
-    const savedFieldGroups = localStorage.getItem('customFieldGroups');
-    if (savedFieldGroups) {
-      setFieldGroups(JSON.parse(savedFieldGroups));
+    // Load field groups from API
+    try {
+      const response = await apiFetch(`${API_URL}/api-field-groups`);
+      const data = await response.json();
+      console.log('Loaded field groups:', data);
+      setFieldGroups(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load field groups:', error);
+      setFieldGroups([]);
     }
 
-    // Load mappings from localStorage
-    const savedMappings = localStorage.getItem('serviceFieldMappings');
-    if (savedMappings) {
-      setMappings(JSON.parse(savedMappings));
+    // Load mappings from API
+    try {
+      const response = await apiFetch(`${API_URL}/api-service-field-mappings`);
+      const data = await response.json();
+      console.log('Loaded service field mappings:', data);
+      setMappings(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load service field mappings:', error);
+      setMappings([]);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const requiredPermission = editingMapping ? 'update' : 'create';
@@ -129,44 +139,51 @@ const ServiceFieldMappings = () => {
       return;
     }
 
-    if (!formData.service_category_id || !formData.service_id) {
-      alert('Выберите услугу и сервис');
+    if (!formData.service_category_id || !formData.service_id || formData.field_group_ids.length === 0) {
+      alert('Выберите услугу, сервис и хотя бы одну группу полей');
       return;
     }
 
-    if (editingMapping) {
-      const updatedMappings = mappings.map((m) =>
-        m.id === editingMapping.id
-          ? { ...m, ...formData, updated_at: new Date().toISOString() }
-          : m
-      );
-      setMappings(updatedMappings);
-      localStorage.setItem('serviceFieldMappings', JSON.stringify(updatedMappings));
-    } else {
-      // Check if mapping already exists
-      const exists = mappings.find(
-        (m) =>
-          m.service_category_id === formData.service_category_id &&
-          m.service_id === formData.service_id
-      );
+    try {
+      const method = editingMapping ? 'PUT' : 'POST';
+      
+      // Отправляем каждую группу как отдельную связь
+      for (const field_group_id of formData.field_group_ids) {
+        const body = editingMapping
+          ? {
+              id: editingMapping.id,
+              ticket_service_id: formData.service_category_id,
+              service_id: formData.service_id,
+              field_group_id,
+            }
+          : {
+              ticket_service_id: formData.service_category_id,
+              service_id: formData.service_id,
+              field_group_id,
+            };
 
-      if (exists) {
-        alert('Связь для этой комбинации услуги и сервиса уже существует');
-        return;
+        const response = await apiFetch(`${API_URL}/api-service-field-mappings`, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          if (!error.error?.includes('already exists')) {
+            alert(`Ошибка: ${error.error || 'Не удалось сохранить связь'}`);
+            return;
+          }
+        }
       }
 
-      const newMapping: ServiceFieldMapping = {
-        id: Date.now(),
-        ...formData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      const updatedMappings = [...mappings, newMapping];
-      setMappings(updatedMappings);
-      localStorage.setItem('serviceFieldMappings', JSON.stringify(updatedMappings));
+      // Перезагружаем список связей
+      await loadData();
+      resetForm();
+    } catch (error) {
+      console.error('Failed to save mapping:', error);
+      alert('Ошибка при сохранении связи');
     }
-
-    resetForm();
   };
 
   const handleEdit = (mapping: ServiceFieldMapping) => {
@@ -183,15 +200,29 @@ const ServiceFieldMappings = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!hasPermission('service_field_mappings', 'remove')) {
       alert('У вас нет прав для удаления связей');
       return;
     }
-    if (confirm('Удалить связь?')) {
-      const updatedMappings = mappings.filter((m) => m.id !== id);
-      setMappings(updatedMappings);
-      localStorage.setItem('serviceFieldMappings', JSON.stringify(updatedMappings));
+    if (!confirm('Удалить связь?')) return;
+    
+    try {
+      const response = await apiFetch(`${API_URL}/api-service-field-mappings`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (response.ok) {
+        await loadData();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка: ${error.error || 'Не удалось удалить связь'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete mapping:', error);
+      alert('Ошибка при удалении связи');
     }
   };
 
