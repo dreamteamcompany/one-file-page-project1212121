@@ -67,7 +67,7 @@ interface TicketFormProps {
     due_date: string;
     custom_fields: Record<string, string>;
   };
-  setFormData: (data: any) => void;
+  setFormData: (data: Record<string, string | number | number[] | Record<string, string>>) => void;
   categories: Category[];
   priorities: Priority[];
   statuses: Status[];
@@ -75,7 +75,7 @@ interface TicketFormProps {
   customFields: CustomField[];
   services: Service[];
   ticketServices?: Service[];
-  handleSubmit: (e: React.FormEvent, overrideData?: any) => Promise<void>;
+  handleSubmit: (e: React.FormEvent, overrideData?: Record<string, string | number | number[] | Record<string, string>>) => Promise<void>;
   onDialogOpen?: () => void;
   canCreate?: boolean;
 }
@@ -181,6 +181,68 @@ const TicketForm = ({
   
   const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
 
+  // Фильтруем дополнительные поля по связям услуга-сервисы-поля
+  const visibleCustomFields = useMemo(() => {
+    console.log('[TicketForm] Filtering custom fields:', {
+      service_id: formData.service_id,
+      selectedServices,
+      customFieldsCount: customFields.length,
+      step
+    });
+
+    if (!formData.service_id || selectedServices.length === 0) {
+      console.log('[TicketForm] No service_id or selectedServices, returning []');
+      return [];
+    }
+
+    try {
+      const savedMappings = localStorage.getItem('serviceFieldMappings');
+      const savedFieldGroups = localStorage.getItem('customFieldGroups');
+      
+      if (!savedMappings || !savedFieldGroups) {
+        console.log('[TicketForm] No mappings or field groups in localStorage');
+        return [];
+      }
+      
+      const mappings = JSON.parse(savedMappings);
+      const fieldGroups = JSON.parse(savedFieldGroups);
+      
+      console.log('[TicketForm] Loaded data:', { mappings, fieldGroups });
+      
+      const relevantGroupIds = new Set<number>();
+      
+      selectedServices.forEach(serviceId => {
+        const mapping = mappings.find(
+          (m: {service_category_id: number; service_id: number; field_group_ids: number[]}) => 
+            m.service_category_id === parseInt(formData.service_id) && m.service_id === serviceId
+        );
+        console.log(`[TicketForm] Mapping for service ${serviceId}:`, mapping);
+        if (mapping?.field_group_ids) {
+          mapping.field_group_ids.forEach((id: number) => relevantGroupIds.add(id));
+        }
+      });
+      
+      console.log('[TicketForm] Relevant group IDs:', Array.from(relevantGroupIds));
+      
+      const relevantFieldIds = new Set<number>();
+      fieldGroups.forEach((group: {id: number; field_ids: number[]}) => {
+        if (relevantGroupIds.has(group.id) && group.field_ids) {
+          console.log(`[TicketForm] Adding fields from group ${group.id}:`, group.field_ids);
+          group.field_ids.forEach((id: number) => relevantFieldIds.add(id));
+        }
+      });
+      
+      console.log('[TicketForm] Relevant field IDs:', Array.from(relevantFieldIds));
+      
+      const filtered = customFields.filter(f => relevantFieldIds.has(f.id));
+      console.log('[TicketForm] Visible custom fields:', filtered);
+      return filtered;
+    } catch (error) {
+      console.error('[TicketForm] Error filtering custom fields:', error);
+      return [];
+    }
+  }, [formData.service_id, selectedServices, customFields, step]);
+
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
       {canCreate && (
@@ -230,7 +292,7 @@ const TicketForm = ({
             formData={formData}
             setFormData={setFormData}
             priorities={priorities}
-            customFields={customFields}
+            customFields={visibleCustomFields}
             selectedTicketService={selectedTicketService}
             onSubmit={onSubmit}
             onBack={handleBack}
