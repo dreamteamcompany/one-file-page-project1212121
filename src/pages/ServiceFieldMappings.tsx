@@ -90,7 +90,7 @@ const ServiceFieldMappings = () => {
       const response = await apiFetch(`${API_URL}?endpoint=services`);
       const data = await response.json();
       console.log('Loaded services (сервисы):', data);
-      setServices(Array.isArray(data.services) ? data.services : []);
+      setServices(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load services:', error);
       setServices([]);
