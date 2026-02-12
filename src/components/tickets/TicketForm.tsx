@@ -198,16 +198,18 @@ const TicketForm = ({
     try {
       const savedMappings = localStorage.getItem('serviceFieldMappings');
       const savedFieldGroups = localStorage.getItem('customFieldGroups');
+      const savedFieldRegistry = localStorage.getItem('fieldRegistry');
       
-      if (!savedMappings || !savedFieldGroups) {
-        console.log('[TicketForm] No mappings or field groups in localStorage');
+      if (!savedMappings || !savedFieldGroups || !savedFieldRegistry) {
+        console.log('[TicketForm] No mappings, field groups or field registry in localStorage');
         return [];
       }
       
       const mappings = JSON.parse(savedMappings);
       const fieldGroups = JSON.parse(savedFieldGroups);
+      const fieldRegistry = JSON.parse(savedFieldRegistry);
       
-      console.log('[TicketForm] Loaded data:', { mappings, fieldGroups });
+      console.log('[TicketForm] Loaded data:', { mappings, fieldGroups, fieldRegistry });
       
       const relevantGroupIds = new Set<number>();
       
@@ -234,7 +236,8 @@ const TicketForm = ({
       
       console.log('[TicketForm] Relevant field IDs:', Array.from(relevantFieldIds));
       
-      const filtered = customFields.filter(f => relevantFieldIds.has(f.id));
+      // Берем поля из fieldRegistry вместо customFields (из БД)
+      const filtered = fieldRegistry.filter((f: CustomField) => relevantFieldIds.has(f.id));
       console.log('[TicketForm] Visible custom fields:', filtered);
       return filtered;
     } catch (error) {
