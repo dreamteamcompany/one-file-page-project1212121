@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, API_URL } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
@@ -35,6 +35,31 @@ const ServiceFieldMappings = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+
+  // Фильтруем сервисы по выбранной услуге через ticket_service_mappings
+  const filteredServices = useMemo(() => {
+    if (!formData.service_category_id) return [];
+    
+    const filtered = services.filter((s) => {
+      const hasMapping = ticketServiceMappings.some(
+        (m) => m.ticket_service_id === formData.service_category_id && m.service_id === s.id
+      );
+      console.log(`Service ${s.id} (${s.name}): hasMapping=${hasMapping}`, {
+        ticketServiceId: formData.service_category_id,
+        serviceId: s.id,
+        mappings: ticketServiceMappings.filter(m => m.ticket_service_id === formData.service_category_id)
+      });
+      return hasMapping;
+    });
+    
+    console.log('filteredServices:', filtered, {
+      selectedTicketServiceId: formData.service_category_id,
+      totalServices: services.length,
+      totalMappings: ticketServiceMappings.length
+    });
+    
+    return filtered;
+  }, [formData.service_category_id, services, ticketServiceMappings]);
 
   useEffect(() => {
     if (!hasPermission('service_field_mappings', 'read')) {
@@ -208,27 +233,6 @@ const ServiceFieldMappings = () => {
   const getFieldGroupNames = (ids: number[]) => {
     return ids.map((id) => fieldGroups.find((g) => g.id === id)?.name || 'Неизвестно');
   };
-
-  // Фильтруем сервисы по выбранной услуге через ticket_service_mappings
-  const filteredServices = formData.service_category_id
-    ? services.filter((s) => {
-        const hasMapping = ticketServiceMappings.some(
-          (m) => m.ticket_service_id === formData.service_category_id && m.service_id === s.id
-        );
-        console.log(`Service ${s.id} (${s.name}): hasMapping=${hasMapping}`, {
-          ticketServiceId: formData.service_category_id,
-          serviceId: s.id,
-          mappings: ticketServiceMappings.filter(m => m.ticket_service_id === formData.service_category_id)
-        });
-        return hasMapping;
-      })
-    : [];
-  
-  console.log('filteredServices:', filteredServices, {
-    selectedTicketServiceId: formData.service_category_id,
-    totalServices: services.length,
-    totalMappings: ticketServiceMappings.length
-  });
 
   const filteredMappings = mappings.filter((mapping) => {
     const ticketServiceName = getTicketServiceName(mapping.service_category_id).toLowerCase();
