@@ -17,6 +17,11 @@ interface Field {
   description?: string;
   required?: boolean;
   created_at?: string;
+  company_structure?: {
+    company_id?: number;
+    department_id?: number;
+    position_id?: number;
+  };
 }
 
 const fieldTypes = [
@@ -29,6 +34,7 @@ const fieldTypes = [
   { value: 'email', label: 'Email', icon: 'Mail' },
   { value: 'phone', label: 'Телефон', icon: 'Phone' },
   { value: 'file', label: 'Файл', icon: 'FileText' },
+  { value: 'company_structure', label: 'Структура компании', icon: 'Building2' },
 ];
 
 const FieldRegistry = () => {
@@ -45,6 +51,7 @@ const FieldRegistry = () => {
     label: '',
     description: '',
     required: false,
+    company_structure: undefined as { company_id?: number; department_id?: number; position_id?: number } | undefined,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
@@ -112,6 +119,7 @@ const FieldRegistry = () => {
               label: formData.label,
               description: formData.description,
               required: formData.required,
+              company_structure: formData.company_structure,
             }
           : f
       );
@@ -125,6 +133,7 @@ const FieldRegistry = () => {
         label: formData.label,
         description: formData.description,
         required: formData.required,
+        company_structure: formData.company_structure,
         created_at: new Date().toISOString(),
       };
       updatedFields = [...fields, newField];
@@ -165,6 +174,7 @@ const FieldRegistry = () => {
         label: field.label || '',
         description: field.description || '',
         required: field.required || false,
+        company_structure: field.company_structure,
       });
     }
     setDialogOpen(true);
@@ -181,7 +191,8 @@ const FieldRegistry = () => {
         placeholder: '', 
         label: '', 
         description: '', 
-        required: false 
+        required: false,
+        company_structure: undefined,
       });
     }, 150);
   };
@@ -199,7 +210,7 @@ const FieldRegistry = () => {
     });
   };
 
-  const handleFormDataChange = (field: string, value: any) => {
+  const handleFormDataChange = (field: string, value: string | string[] | boolean | object) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

@@ -32,6 +32,11 @@ interface Field {
   description?: string;
   required?: boolean;
   created_at?: string;
+  company_structure?: {
+    company_id?: number;
+    department_id?: number;
+    position_id?: number;
+  };
 }
 
 interface FieldFormDialogProps {
@@ -47,7 +52,7 @@ interface FieldFormDialogProps {
     description: string;
     required: boolean;
   };
-  onFormDataChange: (field: string, value: any) => void;
+  onFormDataChange: (field: string, value: string | string[] | boolean | object) => void;
   onSubmit: (e: React.FormEvent) => void;
   onReset: () => void;
   fieldTypes: Array<{ value: string; label: string; icon: string }>;
@@ -135,7 +140,7 @@ const FieldFormDialog = ({
                 {fieldTypes.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     <div className="flex items-center gap-2">
-                      <Icon name={type.icon as any} size={16} />
+                      <Icon name={type.icon} size={16} />
                       {type.label}
                     </div>
                   </SelectItem>

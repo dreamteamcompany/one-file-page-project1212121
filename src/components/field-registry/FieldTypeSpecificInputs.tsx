@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Badge } from '@/components/ui/badge';
+import CompanyStructureInput from './CompanyStructureInput';
 
 interface FieldTypeSpecificInputsProps {
   fieldType: string;
@@ -15,7 +16,7 @@ interface FieldTypeSpecificInputsProps {
   setNewOption: (value: string) => void;
   onAddOption: () => void;
   onRemoveOption: (index: number) => void;
-  onFormDataChange: (field: string, value: any) => void;
+  onFormDataChange: (field: string, value: string | string[] | boolean | object) => void;
 }
 
 const FieldTypeSpecificInputs = ({
@@ -30,9 +31,22 @@ const FieldTypeSpecificInputs = ({
   const showOptionsField = fieldType === 'select';
   const showPlaceholderField = ['text', 'email', 'phone', 'textarea'].includes(fieldType);
   const showLabelField = fieldType === 'checkbox';
+  const showCompanyStructure = fieldType === 'company_structure';
 
   return (
     <>
+      {showCompanyStructure && (
+        <div className="space-y-2">
+          <Label>Предпросмотр выбора структуры компании</Label>
+          <div className="p-4 border rounded-lg bg-muted/30">
+            <CompanyStructureInput />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Пользователь сможет выбрать компанию, подразделение и должность
+          </p>
+        </div>
+      )}
+
       {showOptionsField && (
         <div className="space-y-2">
           <Label>Варианты выбора</Label>
