@@ -106,6 +106,7 @@ def handler(event: dict, context) -> dict:
                     'isBase64Encoded': False
                 }
             data = json.loads(event.get('body', '{}'))
+            print(f"[PUT] Updating department {dept_id} with data: {data}")
             cur.execute(
                 """
                 UPDATE departments
@@ -122,6 +123,7 @@ def handler(event: dict, context) -> dict:
                     dept_id
                 )
             )
+            print(f"[PUT] Update executed successfully")
             dept = cur.fetchone()
             if not dept:
                 return {
@@ -181,6 +183,9 @@ def handler(event: dict, context) -> dict:
             }
     
     except Exception as e:
+        print(f"[ERROR] Exception occurred: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
