@@ -73,10 +73,10 @@ const Departments = () => {
       console.log('[loadData] Companies received:', compsData?.length || 0, compsData);
       console.log('[loadData] Positions received:', posData?.length || 0);
       console.log('[loadData] Dept-Positions received:', depPosData?.length || 0);
-      setDepartments(depsData);
-      setCompanies(compsData);
-      setPositions(posData);
-      setDepartmentPositions(depPosData);
+      setDepartments(Array.isArray(depsData) ? depsData : []);
+      setCompanies(Array.isArray(compsData) ? compsData : []);
+      setPositions(Array.isArray(posData) ? posData : []);
+      setDepartmentPositions(Array.isArray(depPosData) ? depPosData : []);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -126,9 +126,11 @@ const Departments = () => {
 
   const handleEdit = (department: Department) => {
     setEditingDepartment(department);
-    const depPos = departmentPositions
-      .filter((dp) => dp.department_id === department.id)
-      .map((dp) => dp.position_id);
+    const depPos = Array.isArray(departmentPositions)
+      ? departmentPositions
+          .filter((dp) => dp.department_id === department.id)
+          .map((dp) => dp.position_id)
+      : [];
     setFormData({
       company_id: department.company_id.toString(),
       parent_id: department.parent_id?.toString() || '',
