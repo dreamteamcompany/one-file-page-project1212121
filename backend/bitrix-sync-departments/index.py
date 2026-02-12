@@ -124,7 +124,7 @@ def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -
                 chunk = updates[i:i+chunk_size]
                 cursor.executemany(f'''
                     UPDATE {schema}.departments 
-                    SET name = %s, parent_id = %s, updated_at = CURRENT_TIMESTAMP
+                    SET name = %s, parent_id = %s, is_active = true, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 ''', chunk)
                 print(f"Updated chunk {i//chunk_size + 1}/{total_chunks}")
