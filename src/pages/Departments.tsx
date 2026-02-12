@@ -56,6 +56,7 @@ const Departments = () => {
 
   const loadData = async () => {
     try {
+      console.log('[loadData] Starting data fetch...');
       const [depsRes, compsRes, posRes, depPosRes] = await Promise.all([
         apiFetch('/departments'),
         apiFetch('/companies'),
@@ -68,6 +69,10 @@ const Departments = () => {
         posRes.json(),
         depPosRes.json(),
       ]);
+      console.log('[loadData] Departments received:', depsData?.length || 0, depsData);
+      console.log('[loadData] Companies received:', compsData?.length || 0, compsData);
+      console.log('[loadData] Positions received:', posData?.length || 0);
+      console.log('[loadData] Dept-Positions received:', depPosData?.length || 0);
       setDepartments(depsData);
       setCompanies(compsData);
       setPositions(posData);
@@ -165,7 +170,11 @@ const Departments = () => {
     const matchesSearch = dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       dept.code?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCompany = !selectedCompany || (dept.company_id && dept.company_id.toString() === selectedCompany);
-    return matchesSearch && matchesCompany;
+    const passes = matchesSearch && matchesCompany;
+    if (!passes && dept.id <= 10) {
+      console.log('[filter]', dept.id, dept.name, 'search:', matchesSearch, 'company:', matchesCompany, 'selectedCompany:', selectedCompany, 'dept.company_id:', dept.company_id);
+    }
+    return passes;
   });
 
   const canCreate = hasPermission('departments', 'create');
