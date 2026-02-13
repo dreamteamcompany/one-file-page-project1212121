@@ -38,6 +38,15 @@ interface TicketDetailsInfoProps {
   ticket: Ticket;
 }
 
+const SHORT_VALUE_THRESHOLD = 25;
+const SHORT_NAME_THRESHOLD = 20;
+
+const isShortField = (field: CustomField): boolean => {
+  const valueLength = (field.value || '').length;
+  const nameLength = field.name.length;
+  return valueLength <= SHORT_VALUE_THRESHOLD && nameLength <= SHORT_NAME_THRESHOLD;
+};
+
 const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
   return (
     <div className="space-y-6">
@@ -57,11 +66,14 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
             <Icon name="Settings" size={16} />
             Дополнительные поля
           </h3>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             {ticket.custom_fields.map((field) => (
-              <div key={field.id} className="p-3 rounded-lg bg-muted/50">
+              <div
+                key={field.id}
+                className={`p-3 rounded-lg bg-muted/50 ${isShortField(field) ? '' : 'col-span-2'}`}
+              >
                 <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
-                <p className="text-sm">{field.value || '—'}</p>
+                <p className="text-sm break-words">{field.value || '—'}</p>
               </div>
             ))}
           </div>
