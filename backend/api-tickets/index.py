@@ -81,10 +81,17 @@ def resolve_company_structure(value_json: str, cur) -> dict:
         if row:
             result['company'] = row['name']
     if data.get('department_id'):
-        cur.execute(f"SELECT name FROM {SCHEMA}.departments WHERE id = %s", (data['department_id'],))
-        row = cur.fetchone()
-        if row:
-            result['department'] = row['name']
+        dept_chain = []
+        dept_id = data['department_id']
+        while dept_id:
+            cur.execute(f"SELECT name, parent_id FROM {SCHEMA}.departments WHERE id = %s", (dept_id,))
+            row = cur.fetchone()
+            if not row:
+                break
+            dept_chain.append(row['name'])
+            dept_id = row['parent_id']
+        dept_chain.reverse()
+        result['department'] = ' → '.join(dept_chain) if dept_chain else None
     if data.get('position_id'):
         cur.execute(f"SELECT name FROM {SCHEMA}.positions WHERE id = %s", (data['position_id'],))
         row = cur.fetchone()
