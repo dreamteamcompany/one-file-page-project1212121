@@ -68,38 +68,54 @@ def handler(event: dict, context) -> dict:
         except:
             pass
 
-def resolve_company_structure(value_json: str, cur) -> str:
+def resolve_company_structure(value_json: str, cur) -> dict:
     try:
         data = json.loads(value_json)
     except (json.JSONDecodeError, TypeError):
-        return value_json
+        return {'display_value': value_json}
 
-    parts = []
+    result = {}
     if data.get('company_id'):
         cur.execute(f"SELECT name FROM {SCHEMA}.companies WHERE id = %s", (data['company_id'],))
         row = cur.fetchone()
         if row:
-            parts.append(row['name'])
+            result['company'] = row['name']
     if data.get('department_id'):
         cur.execute(f"SELECT name FROM {SCHEMA}.departments WHERE id = %s", (data['department_id'],))
         row = cur.fetchone()
         if row:
-            parts.append(row['name'])
+            result['department'] = row['name']
     if data.get('position_id'):
         cur.execute(f"SELECT name FROM {SCHEMA}.positions WHERE id = %s", (data['position_id'],))
         row = cur.fetchone()
         if row:
-            parts.append(row['name'])
-    return ' → '.join(parts) if parts else value_json
+            result['position'] = row['name']
+
+    parts = [v for v in [result.get('company'), result.get('department')] if v]
+    result['display_value'] = ' → '.join(parts) if parts else value_json
+    return result
 
 
 def resolve_custom_field_values(fields: list, cur) -> list:
+    resolved = []
     for field in fields:
         if field.get('field_type') == 'company_structure' and field.get('value'):
-            field['display_value'] = resolve_company_structure(field['value'], cur)
+            struct = resolve_company_structure(field['value'], cur)
+            field['display_value'] = struct['display_value']
+            if struct.get('position'):
+                resolved.append(dict(field))
+                resolved.append({
+                    'id': f"{field['id']}_position",
+                    'name': 'Должность',
+                    'field_type': 'text',
+                    'value': struct['position'],
+                    'display_value': struct['position'],
+                })
+                continue
         else:
             field['display_value'] = field.get('value', '')
-    return fields
+        resolved.append(field)
+    return resolved
 
 
 def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
