@@ -162,7 +162,7 @@ const TicketDetailsContent = ({
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
 
   return (
-    <div className="flex-1 p-4 lg:p-6">
+    <div className="flex-1 p-4 lg:p-6 lg:pr-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-6 bg-card">
         <div className="flex flex-col lg:flex-row gap-6">
