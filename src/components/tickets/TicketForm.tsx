@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { API_URL } from '@/utils/api';
+import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, apiFetch } from '@/utils/api';
 import {
   Dialog,
   DialogContent,
@@ -202,7 +202,7 @@ const TicketForm = ({
 
       try {
         // Загружаем связи из БД
-        const mappingsResponse = await fetch(`${API_URL}/api-service-field-mappings`);
+        const mappingsResponse = await apiFetch(SERVICE_FIELD_MAPPINGS_URL);
         if (!mappingsResponse.ok) {
           console.error('[TicketForm] Failed to load mappings');
           setVisibleCustomFields([]);
@@ -232,7 +232,7 @@ const TicketForm = ({
         }
         
         // Загружаем группы полей с полями из БД
-        const groupsResponse = await fetch(`${API_URL}/api-field-groups`);
+        const groupsResponse = await apiFetch(FIELD_GROUPS_URL);
         if (!groupsResponse.ok) {
           console.error('[TicketForm] Failed to load field groups');
           setVisibleCustomFields([]);

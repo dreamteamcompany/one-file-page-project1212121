@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch, API_URL } from '@/utils/api';
+import { apiFetch, API_URL, FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL } from '@/utils/api';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -109,7 +109,7 @@ const ServiceFieldMappings = () => {
 
     // Load field groups from API
     try {
-      const response = await apiFetch(`${API_URL}/api-field-groups`);
+      const response = await apiFetch(FIELD_GROUPS_URL);
       const data = await response.json();
       console.log('Loaded field groups:', data);
       setFieldGroups(Array.isArray(data) ? data : []);
@@ -120,7 +120,7 @@ const ServiceFieldMappings = () => {
 
     // Load mappings from API
     try {
-      const response = await apiFetch(`${API_URL}/api-service-field-mappings`);
+      const response = await apiFetch(SERVICE_FIELD_MAPPINGS_URL);
       const data = await response.json();
       console.log('Loaded service field mappings:', data);
       setMappings(Array.isArray(data) ? data : []);
@@ -162,7 +162,7 @@ const ServiceFieldMappings = () => {
               field_group_id,
             };
 
-        const response = await apiFetch(`${API_URL}/api-service-field-mappings`, {
+        const response = await apiFetch(SERVICE_FIELD_MAPPINGS_URL, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -208,7 +208,7 @@ const ServiceFieldMappings = () => {
     if (!confirm('Удалить связь?')) return;
     
     try {
-      const response = await apiFetch(`${API_URL}/api-service-field-mappings`, {
+      const response = await apiFetch(SERVICE_FIELD_MAPPINGS_URL, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),

@@ -5,6 +5,8 @@ const COMPANIES_API = 'https://functions.poehali.dev/9ce1d908-bb39-4250-a1e3-893
 const DEPARTMENTS_API = 'https://functions.poehali.dev/b5550e9f-c621-44b8-b4e5-3128ed44acff';
 const POSITIONS_API = 'https://functions.poehali.dev/176c438b-4080-43b6-b98d-21b4d7f54109';
 const DEPT_POSITIONS_API = 'https://functions.poehali.dev/7c79f9e7-a51d-454b-b470-599ff9ed8527';
+const FIELD_GROUPS_API = 'https://functions.poehali.dev/c481d806-6ef1-4d9e-bf34-8f6370a5554b';
+const SERVICE_FIELD_MAPPINGS_API = 'https://functions.poehali.dev/bc96bbe3-687c-4427-86c7-6c6bb2b3e61b';
 
 const ENDPOINT_MAP: Record<string, string> = {
   'login': AUTH_API,
@@ -34,9 +36,13 @@ const ENDPOINT_MAP: Record<string, string> = {
   'departments': DEPARTMENTS_API,
   'positions': POSITIONS_API,
   'department-positions': DEPT_POSITIONS_API,
+  'field-groups': FIELD_GROUPS_API,
+  'service-field-mappings': SERVICE_FIELD_MAPPINGS_API,
 };
 
 export const API_URL = AUTH_API;
+export const FIELD_GROUPS_URL = FIELD_GROUPS_API;
+export const SERVICE_FIELD_MAPPINGS_URL = SERVICE_FIELD_MAPPINGS_API;
 
 export const getApiUrl = (endpoint?: string): string => {
   if (endpoint && ENDPOINT_MAP[endpoint]) {

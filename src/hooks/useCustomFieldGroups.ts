@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL, apiFetch } from '@/utils/api';
+import { API_URL, FIELD_GROUPS_URL, apiFetch } from '@/utils/api';
 
 export interface Field {
   id: number;
@@ -45,7 +45,7 @@ export const useCustomFieldGroups = () => {
 
   const loadFieldGroups = useCallback(async () => {
     try {
-      const response = await apiFetch(`${API_URL}/api-field-groups`);
+      const response = await apiFetch(FIELD_GROUPS_URL);
       if (response.ok) {
         const data = await response.json();
         setFieldGroups(data);
@@ -57,10 +57,10 @@ export const useCustomFieldGroups = () => {
 
   const loadAvailableFields = useCallback(async () => {
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=custom-fields`);
+      const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`);
       if (response.ok) {
         const data = await response.json();
-        setAvailableFields(Array.isArray(data) ? data : []);
+        setAvailableFields(data.custom_fields || []);
       }
     } catch (error) {
       console.error('Failed to load available fields:', error);
@@ -92,7 +92,7 @@ export const useCustomFieldGroups = () => {
         ? { id: editingGroup.id, ...formData }
         : formData;
 
-      const response = await apiFetch(`${API_URL}/api-field-groups`, {
+      const response = await apiFetch(FIELD_GROUPS_URL, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -118,7 +118,7 @@ export const useCustomFieldGroups = () => {
     if (!confirm('Вы уверены, что хотите удалить эту группу?')) return;
     
     try {
-      const response = await apiFetch(`${API_URL}/api-field-groups`, {
+      const response = await apiFetch(FIELD_GROUPS_URL, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
