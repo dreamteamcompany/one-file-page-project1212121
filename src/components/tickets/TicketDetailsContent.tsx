@@ -164,7 +164,7 @@ const TicketDetailsContent = ({
   return (
     <div className="flex-1 p-4 lg:p-6 lg:pr-0">
       {/* Суть заявки */}
-      <div className="mb-6 border rounded-lg p-6 bg-card">
+      <div className="mb-6 border rounded-lg p-6 lg:pl-[18px] lg:pr-2 bg-card">
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold text-foreground mb-6">{ticket.title}</h1>
