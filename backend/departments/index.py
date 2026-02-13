@@ -157,7 +157,7 @@ def handler(event: dict, context) -> dict:
                     'body': json.dumps({'error': 'Department ID required'}),
                     'isBase64Encoded': False
                 }
-            cur.execute('UPDATE departments SET is_active = false WHERE id = %s RETURNING id', (dept_id,))
+            cur.execute('SELECT id FROM departments WHERE id = %s AND is_active = true', (dept_id,))
             result = cur.fetchone()
             if not result:
                 return {
@@ -166,6 +166,20 @@ def handler(event: dict, context) -> dict:
                     'body': json.dumps({'error': 'Department not found'}),
                     'isBase64Encoded': False
                 }
+            cur.execute(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT id FROM departments WHERE id = %s
+                    UNION ALL
+                    SELECT d.id FROM departments d
+                    JOIN descendants ds ON d.parent_id = ds.id
+                    WHERE d.is_active = true
+                )
+                UPDATE departments SET is_active = false, updated_at = CURRENT_TIMESTAMP
+                WHERE id IN (SELECT id FROM descendants)
+                """,
+                (dept_id,)
+            )
             conn.commit()
             return {
                 'statusCode': 204,
