@@ -251,9 +251,7 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
             .filter((dp) => dp.department_id === deepestDepartmentId)
             .map((dp) => dp.position_id)
         );
-        const filteredPositions = linkedPositionIds.size > 0
-          ? positions.filter((p) => linkedPositionIds.has(p.id))
-          : positions;
+        const filteredPositions = positions.filter((p) => linkedPositionIds.has(p.id));
 
         return filteredPositions.length > 0 ? (
           <div className="space-y-2">
