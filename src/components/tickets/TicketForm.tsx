@@ -42,6 +42,9 @@ interface CustomField {
   name: string;
   field_type: string;
   is_required: boolean;
+  options?: string[];
+  placeholder?: string;
+  label?: string;
 }
 
 interface Service {

@@ -3,6 +3,7 @@ import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import CompanyStructureInput from '@/components/field-registry/CompanyStructureInput';
 
 interface TicketService {
   id: number;
@@ -32,6 +34,9 @@ interface CustomField {
   name: string;
   field_type: string;
   is_required: boolean;
+  options?: string[];
+  placeholder?: string;
+  label?: string;
 }
 
 interface TicketFormStep1Props {
@@ -43,13 +48,156 @@ interface TicketFormStep1Props {
     due_date: string;
     custom_fields: Record<string, string>;
   };
-  setFormData: (data: any) => void;
+  setFormData: (data: Record<string, string | number | number[] | Record<string, string>>) => void;
   priorities: Priority[];
   customFields: CustomField[];
   selectedTicketService?: TicketService;
   onSubmit: (e: React.FormEvent) => Promise<void>;
   onBack: () => void;
 }
+
+type FormData = {
+  title: string;
+  description: string;
+  category_id: string;
+  priority_id: string;
+  due_date: string;
+  custom_fields: Record<string, string>;
+};
+
+const updateCustomField = (
+  formData: FormData,
+  setFormData: (data: Record<string, string | number | number[] | Record<string, string>>) => void,
+  fieldId: number,
+  value: string
+) => {
+  setFormData({
+    ...formData,
+    custom_fields: {
+      ...formData.custom_fields,
+      [fieldId]: value,
+    },
+  });
+};
+
+const renderCustomField = (
+  field: CustomField,
+  formData: FormData,
+  setFormData: (data: Record<string, string | number | number[] | Record<string, string>>) => void
+) => {
+  const value = formData.custom_fields[field.id] || '';
+
+  switch (field.field_type) {
+    case 'company_structure':
+      return (
+        <CompanyStructureInput
+          value={value ? JSON.parse(value) : undefined}
+          onChange={(structValue) =>
+            updateCustomField(formData, setFormData, field.id, JSON.stringify(structValue))
+          }
+        />
+      );
+
+    case 'select':
+      return (
+        <Select
+          value={value}
+          onValueChange={(v) => updateCustomField(formData, setFormData, field.id, v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={field.placeholder || 'Выберите значение'} />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options || []).map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+
+    case 'checkbox':
+      return (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`cf-${field.id}`}
+            checked={value === 'true'}
+            onCheckedChange={(checked) =>
+              updateCustomField(formData, setFormData, field.id, String(checked))
+            }
+          />
+          <label htmlFor={`cf-${field.id}`} className="text-sm cursor-pointer">
+            {field.label || field.name}
+          </label>
+        </div>
+      );
+
+    case 'textarea':
+      return (
+        <Textarea
+          value={value}
+          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          placeholder={field.placeholder}
+          rows={3}
+          required={field.is_required}
+        />
+      );
+
+    case 'date':
+      return (
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          required={field.is_required}
+        />
+      );
+
+    case 'number':
+      return (
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          placeholder={field.placeholder}
+          required={field.is_required}
+        />
+      );
+
+    case 'email':
+      return (
+        <Input
+          type="email"
+          value={value}
+          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          placeholder={field.placeholder || 'example@mail.com'}
+          required={field.is_required}
+        />
+      );
+
+    case 'phone':
+      return (
+        <Input
+          type="tel"
+          value={value}
+          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          placeholder={field.placeholder || '+7 (___) ___-__-__'}
+          required={field.is_required}
+        />
+      );
+
+    default:
+      return (
+        <Input
+          value={value}
+          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          placeholder={field.placeholder}
+          required={field.is_required}
+        />
+      );
+  }
+};
 
 const TicketFormStep1 = ({
   formData,
@@ -125,19 +273,7 @@ const TicketFormStep1 = ({
                 {field.name}
                 {field.is_required && <span className="text-destructive ml-1">*</span>}
               </Label>
-              <Input
-                value={formData.custom_fields[field.id] || ''}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    custom_fields: {
-                      ...formData.custom_fields,
-                      [field.id]: e.target.value,
-                    },
-                  })
-                }
-                required={field.is_required}
-              />
+              {renderCustomField(field, formData, setFormData)}
             </div>
           ))}
         </div>
