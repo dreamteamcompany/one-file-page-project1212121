@@ -16,7 +16,7 @@ interface DepartmentTreeProps {
 
 interface TreeNodeProps {
   department: Department;
-  children: Department[];
+  allDepartments: Department[];
   level: number;
   onEdit?: (department: Department) => void;
   onDelete?: (id: number) => void;
@@ -29,7 +29,7 @@ interface TreeNodeProps {
 
 const TreeNode = ({
   department,
-  children,
+  allDepartments,
   level,
   onEdit,
   onDelete,
@@ -40,6 +40,7 @@ const TreeNode = ({
   canCreate,
 }: TreeNodeProps) => {
   const [expanded, setExpanded] = useState(true);
+  const children = allDepartments.filter((d) => d.parent_id === department.id);
   const hasChildren = children.length > 0;
 
   return (
@@ -124,10 +125,10 @@ const TreeNode = ({
       {expanded && hasChildren && (
         <div>
           {children.map((child) => (
-            <DepartmentTreeNode
+            <TreeNode
               key={child.id}
               department={child}
-              allDepartments={children}
+              allDepartments={allDepartments}
               level={level + 1}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -141,36 +142,6 @@ const TreeNode = ({
         </div>
       )}
     </div>
-  );
-};
-
-const DepartmentTreeNode = ({
-  department,
-  allDepartments,
-  level,
-  onEdit,
-  onDelete,
-  onDeactivate,
-  onAddChild,
-  canEdit,
-  canDelete,
-  canCreate,
-}: TreeNodeProps & { allDepartments: Department[] }) => {
-  const children = allDepartments.filter((d) => d.parent_id === department.id);
-
-  return (
-    <TreeNode
-      department={department}
-      children={children}
-      level={level}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      onDeactivate={onDeactivate}
-      onAddChild={onAddChild}
-      canEdit={canEdit}
-      canDelete={canDelete}
-      canCreate={canCreate}
-    />
   );
 };
 
@@ -198,7 +169,7 @@ export const DepartmentTree = ({
   return (
     <div className="space-y-1">
       {rootDepartments.map((department) => (
-        <DepartmentTreeNode
+        <TreeNode
           key={department.id}
           department={department}
           allDepartments={departments}
