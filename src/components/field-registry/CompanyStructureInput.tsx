@@ -247,12 +247,15 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
 
       {selectedPath.length > 0 && (() => {
         const pathSet = new Set(selectedPath);
-        const linkedPositionIds = new Set(
-          departmentPositions
-            .filter((dp) => pathSet.has(dp.department_id))
-            .map((dp) => dp.position_id)
-        );
+        console.log('[CompanyStructure] selectedPath:', selectedPath);
+        console.log('[CompanyStructure] departmentPositions:', departmentPositions);
+        console.log('[CompanyStructure] pathSet values:', [...pathSet]);
+        const matchingDps = departmentPositions.filter((dp) => pathSet.has(dp.department_id));
+        console.log('[CompanyStructure] matching dept-positions:', matchingDps);
+        const linkedPositionIds = new Set(matchingDps.map((dp) => dp.position_id));
+        console.log('[CompanyStructure] linkedPositionIds:', [...linkedPositionIds]);
         const filteredPositions = positions.filter((p) => linkedPositionIds.has(p.id));
+        console.log('[CompanyStructure] filteredPositions:', filteredPositions);
 
         return filteredPositions.length > 0 ? (
           <div className="space-y-2">
