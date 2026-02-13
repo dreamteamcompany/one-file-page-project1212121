@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -39,30 +39,37 @@ interface CompanyStructureInputProps {
   }) => void;
 }
 
-interface HierarchicalDepartment extends Department {
-  level: number;
-}
-
-function buildHierarchicalList(departments: Department[]): HierarchicalDepartment[] {
-  const result: HierarchicalDepartment[] = [];
-  const childrenMap = new Map<number | null, Department[]>();
-
+function getChildrenByParent(departments: Department[]): Map<number | null, Department[]> {
+  const map = new Map<number | null, Department[]>();
   for (const dept of departments) {
     const key = dept.parent_id;
-    if (!childrenMap.has(key)) childrenMap.set(key, []);
-    childrenMap.get(key)!.push(dept);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(dept);
+  }
+  return map;
+}
+
+function buildPathFromValue(
+  departments: Department[],
+  departmentId: number | undefined
+): number[] {
+  if (!departmentId) return [];
+
+  const byId = new Map(departments.map((d) => [d.id, d]));
+  const path: number[] = [];
+  let current = byId.get(departmentId);
+
+  while (current) {
+    path.unshift(current.id);
+    current = current.parent_id ? byId.get(current.parent_id) : undefined;
   }
 
-  function traverse(parentId: number | null, level: number) {
-    const children = childrenMap.get(parentId) || [];
-    for (const child of children) {
-      result.push({ ...child, level });
-      traverse(child.id, level + 1);
-    }
-  }
+  return path;
+}
 
-  traverse(null, 0);
-  return result;
+function getLevelLabel(level: number): string {
+  if (level === 0) return 'Подразделение';
+  return 'Подразделение (уровень ' + (level + 1) + ')';
 }
 
 const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) => {
@@ -74,9 +81,7 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(
     value?.company_id?.toString() || ''
   );
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>(
-    value?.department_id?.toString() || ''
-  );
+  const [selectedPath, setSelectedPath] = useState<number[]>([]);
   const [selectedPositionId, setSelectedPositionId] = useState<string>(
     value?.position_id?.toString() || ''
   );
@@ -84,6 +89,13 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (value?.department_id && departments.length > 0) {
+      const path = buildPathFromValue(departments, value.department_id);
+      setSelectedPath(path);
+    }
+  }, [value?.department_id, departments]);
 
   const loadData = async () => {
     try {
@@ -109,37 +121,76 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
     }
   };
 
-  const filteredDepartments = selectedCompanyId
-    ? buildHierarchicalList(
-        departments.filter((d) => d.company_id && d.company_id.toString() === selectedCompanyId)
-      )
-    : [];
+  const companyDepartments = useMemo(
+    () =>
+      selectedCompanyId
+        ? departments.filter((d) => d.company_id?.toString() === selectedCompanyId)
+        : [],
+    [departments, selectedCompanyId]
+  );
 
-  const handleCompanyChange = (companyId: string) => {
-    setSelectedCompanyId(companyId);
-    setSelectedDepartmentId('');
-    setSelectedPositionId('');
+  const childrenMap = useMemo(
+    () => getChildrenByParent(companyDepartments),
+    [companyDepartments]
+  );
+
+  const levelSelects = useMemo(() => {
+    const levels: { parentId: number | null; options: Department[]; selectedId: number | null }[] = [];
+
+    const rootOptions = childrenMap.get(null) || [];
+    if (rootOptions.length === 0) return levels;
+
+    levels.push({
+      parentId: null,
+      options: rootOptions,
+      selectedId: selectedPath[0] ?? null,
+    });
+
+    for (let i = 0; i < selectedPath.length; i++) {
+      const children = childrenMap.get(selectedPath[i]) || [];
+      if (children.length === 0) break;
+
+      levels.push({
+        parentId: selectedPath[i],
+        options: children,
+        selectedId: selectedPath[i + 1] ?? null,
+      });
+    }
+
+    return levels;
+  }, [childrenMap, selectedPath]);
+
+  const deepestDepartmentId = selectedPath.length > 0
+    ? selectedPath[selectedPath.length - 1]
+    : undefined;
+
+  const emitChange = (companyId: string, deptId: number | undefined, posId: string) => {
     onChange?.({
-      company_id: parseInt(companyId),
+      company_id: companyId ? parseInt(companyId) : undefined,
+      department_id: deptId,
+      position_id: posId ? parseInt(posId) : undefined,
     });
   };
 
-  const handleDepartmentChange = (departmentId: string) => {
-    setSelectedDepartmentId(departmentId);
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    setSelectedPath([]);
     setSelectedPositionId('');
-    onChange?.({
-      company_id: selectedCompanyId ? parseInt(selectedCompanyId) : undefined,
-      department_id: parseInt(departmentId),
-    });
+    emitChange(companyId, undefined, '');
+  };
+
+  const handleLevelChange = (level: number, departmentId: string) => {
+    const newPath = [...selectedPath.slice(0, level), parseInt(departmentId)];
+    setSelectedPath(newPath);
+    setSelectedPositionId('');
+
+    const newDeepest = parseInt(departmentId);
+    emitChange(selectedCompanyId, newDeepest, '');
   };
 
   const handlePositionChange = (positionId: string) => {
     setSelectedPositionId(positionId);
-    onChange?.({
-      company_id: selectedCompanyId ? parseInt(selectedCompanyId) : undefined,
-      department_id: selectedDepartmentId ? parseInt(selectedDepartmentId) : undefined,
-      position_id: parseInt(positionId),
-    });
+    emitChange(selectedCompanyId, deepestDepartmentId, positionId);
   };
 
   if (loading) {
@@ -164,27 +215,28 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
         </Select>
       </div>
 
-      {selectedCompanyId && filteredDepartments.length > 0 && (
-        <div className="space-y-2">
-          <Label>Подразделение</Label>
-          <Select value={selectedDepartmentId} onValueChange={handleDepartmentChange}>
+      {levelSelects.map((level, index) => (
+        <div key={`level-${index}-${level.parentId}`} className="space-y-2">
+          <Label>{getLevelLabel(index)}</Label>
+          <Select
+            value={level.selectedId?.toString() || ''}
+            onValueChange={(val) => handleLevelChange(index, val)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Выберите подразделение" />
             </SelectTrigger>
             <SelectContent>
-              {filteredDepartments.map((dept) => (
+              {level.options.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id.toString()}>
-                  <span style={{ paddingLeft: `${dept.level * 16}px` }}>
-                    {dept.level > 0 ? '└ ' : ''}{dept.name}
-                  </span>
+                  {dept.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-      )}
+      ))}
 
-      {selectedDepartmentId && positions.length > 0 && (
+      {deepestDepartmentId && positions.length > 0 && (
         <div className="space-y-2">
           <Label>Должность</Label>
           <Select value={selectedPositionId} onValueChange={handlePositionChange}>
