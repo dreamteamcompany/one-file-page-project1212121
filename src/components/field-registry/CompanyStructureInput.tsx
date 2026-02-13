@@ -39,6 +39,32 @@ interface CompanyStructureInputProps {
   }) => void;
 }
 
+interface HierarchicalDepartment extends Department {
+  level: number;
+}
+
+function buildHierarchicalList(departments: Department[]): HierarchicalDepartment[] {
+  const result: HierarchicalDepartment[] = [];
+  const childrenMap = new Map<number | null, Department[]>();
+
+  for (const dept of departments) {
+    const key = dept.parent_id;
+    if (!childrenMap.has(key)) childrenMap.set(key, []);
+    childrenMap.get(key)!.push(dept);
+  }
+
+  function traverse(parentId: number | null, level: number) {
+    const children = childrenMap.get(parentId) || [];
+    for (const child of children) {
+      result.push({ ...child, level });
+      traverse(child.id, level + 1);
+    }
+  }
+
+  traverse(null, 0);
+  return result;
+}
+
 const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -84,7 +110,9 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
   };
 
   const filteredDepartments = selectedCompanyId
-    ? departments.filter((d) => d.company_id && d.company_id.toString() === selectedCompanyId)
+    ? buildHierarchicalList(
+        departments.filter((d) => d.company_id && d.company_id.toString() === selectedCompanyId)
+      )
     : [];
 
   const handleCompanyChange = (companyId: string) => {
@@ -146,7 +174,9 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
             <SelectContent>
               {filteredDepartments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id.toString()}>
-                  {dept.name}
+                  <span style={{ paddingLeft: `${dept.level * 16}px` }}>
+                    {dept.level > 0 ? '└ ' : ''}{dept.name}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
