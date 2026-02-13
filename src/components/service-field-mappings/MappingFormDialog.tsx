@@ -177,7 +177,7 @@ const MappingFormDialog = ({
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          Полей: {group.field_ids.length}
+                          Полей: {group.field_ids?.length ?? group.fields?.length ?? 0}
                         </p>
                       </div>
                     </div>

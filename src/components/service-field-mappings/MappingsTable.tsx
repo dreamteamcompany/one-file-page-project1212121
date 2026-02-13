@@ -80,7 +80,7 @@ const MappingsTable = ({
                         <Badge variant="secondary" className="text-xs">
                           {mapping.field_group_name}
                         </Badge>
-                      ) : mapping.field_group_ids && mapping.field_group_ids.length === 0 ? (
+                      ) : !mapping.field_group_ids || mapping.field_group_ids.length === 0 ? (
                         <span className="text-xs text-muted-foreground">
                           Нет групп
                         </span>
