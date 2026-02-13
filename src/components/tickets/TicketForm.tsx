@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, apiFetch } from '@/utils/api';
@@ -185,90 +185,68 @@ const TicketForm = ({
   
   const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
 
-  // Фильтруем дополнительные поля по связям услуга-сервисы-поля (загружаем из БД)
   const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
-  
-  useMemo(() => {
-    const loadVisibleFields = async () => {
-      console.log('[TicketForm] Filtering custom fields:', {
-        service_id: formData.service_id,
-        selectedServices,
-        customFieldsCount: customFields.length,
-        step
-      });
 
-      if (!formData.service_id || selectedServices.length === 0) {
-        console.log('[TicketForm] No service_id or selectedServices, returning []');
+  const loadVisibleFields = useCallback(async () => {
+    if (!formData.service_id || selectedServices.length === 0) {
+      setVisibleCustomFields([]);
+      return;
+    }
+
+    try {
+      const [mappingsResponse, groupsResponse] = await Promise.all([
+        apiFetch(SERVICE_FIELD_MAPPINGS_URL),
+        apiFetch(FIELD_GROUPS_URL),
+      ]);
+
+      if (!mappingsResponse.ok || !groupsResponse.ok) {
         setVisibleCustomFields([]);
         return;
       }
 
-      try {
-        // Загружаем связи из БД
-        const mappingsResponse = await apiFetch(SERVICE_FIELD_MAPPINGS_URL);
-        if (!mappingsResponse.ok) {
-          console.error('[TicketForm] Failed to load mappings');
-          setVisibleCustomFields([]);
-          return;
-        }
-        
-        const mappings = await mappingsResponse.json();
-        console.log('[TicketForm] Loaded mappings:', mappings);
-        
-        // Находим релевантные group_id для выбранных услуг и сервисов
-        const relevantGroupIds = new Set<number>();
-        
-        selectedServices.forEach(serviceId => {
-          const relevantMappings = mappings.filter(
-            (m: {ticket_service_id: number; service_id: number; field_group_id: number}) => 
-              m.ticket_service_id === parseInt(formData.service_id) && m.service_id === serviceId
-          );
-          console.log(`[TicketForm] Mappings for service ${serviceId}:`, relevantMappings);
-          relevantMappings.forEach((m: {field_group_id: number}) => relevantGroupIds.add(m.field_group_id));
-        });
-        
-        console.log('[TicketForm] Relevant group IDs:', Array.from(relevantGroupIds));
-        
-        if (relevantGroupIds.size === 0) {
-          setVisibleCustomFields([]);
-          return;
-        }
-        
-        // Загружаем группы полей с полями из БД
-        const groupsResponse = await apiFetch(FIELD_GROUPS_URL);
-        if (!groupsResponse.ok) {
-          console.error('[TicketForm] Failed to load field groups');
-          setVisibleCustomFields([]);
-          return;
-        }
-        
-        const fieldGroups = await groupsResponse.json();
-        console.log('[TicketForm] Loaded field groups:', fieldGroups);
-        
-        // Собираем все поля из релевантных групп
-        const allFields: CustomField[] = [];
-        fieldGroups.forEach((group: {id: number; fields: CustomField[]}) => {
-          if (relevantGroupIds.has(group.id) && group.fields) {
-            console.log(`[TicketForm] Adding fields from group ${group.id}:`, group.fields);
-            group.fields.forEach((field: CustomField) => {
-              // Избегаем дубликатов
-              if (!allFields.find(f => f.id === field.id)) {
-                allFields.push(field);
-              }
-            });
-          }
-        });
-        
-        console.log('[TicketForm] Visible custom fields:', allFields);
-        setVisibleCustomFields(allFields);
-      } catch (error) {
-        console.error('[TicketForm] Error filtering custom fields:', error);
+      const [mappings, fieldGroups] = await Promise.all([
+        mappingsResponse.json(),
+        groupsResponse.json(),
+      ]);
+
+      const relevantGroupIds = new Set<number>();
+      const ticketServiceId = parseInt(formData.service_id);
+
+      selectedServices.forEach(serviceId => {
+        mappings
+          .filter(
+            (m: { ticket_service_id: number; service_id: number }) =>
+              m.ticket_service_id === ticketServiceId && m.service_id === serviceId
+          )
+          .forEach((m: { field_group_id: number }) => relevantGroupIds.add(m.field_group_id));
+      });
+
+      if (relevantGroupIds.size === 0) {
         setVisibleCustomFields([]);
+        return;
       }
-    };
-    
+
+      const allFields: CustomField[] = [];
+      fieldGroups.forEach((group: { id: number; fields: CustomField[] }) => {
+        if (relevantGroupIds.has(group.id) && group.fields) {
+          group.fields.forEach((field: CustomField) => {
+            if (!allFields.find(f => f.id === field.id)) {
+              allFields.push(field);
+            }
+          });
+        }
+      });
+
+      setVisibleCustomFields(allFields);
+    } catch (error) {
+      console.error('[TicketForm] Error loading custom fields:', error);
+      setVisibleCustomFields([]);
+    }
+  }, [formData.service_id, selectedServices]);
+
+  useEffect(() => {
     loadVisibleFields();
-  }, [formData.service_id, selectedServices, step]);
+  }, [loadVisibleFields]);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
