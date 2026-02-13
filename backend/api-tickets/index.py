@@ -16,6 +16,7 @@ class TicketRequest(BaseModel):
     assigned_to: Optional[int] = None
     service_ids: list[int] = Field(default=[])
     custom_fields: dict = Field(default={})
+    ticket_service_id: Optional[int] = None
 
 class ServiceCategoryRequest(BaseModel):
     name: str = Field(..., min_length=1)
@@ -256,24 +257,26 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         # Привязываем сервисы (из таблицы services)
         if data.service_ids:
+            explicit_ts_id = data.ticket_service_id
             for service_id in data.service_ids:
                 try:
-                    # Получаем ticket_service_id для этого сервиса через маппинг
-                    cur.execute(f"""
-                        SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
-                        WHERE service_id = %s
-                        LIMIT 1
-                    """, (service_id,))
-                    mapping = cur.fetchone()
-                    ticket_service_id = mapping['ticket_service_id'] if mapping else None
+                    if explicit_ts_id:
+                        ts_id = explicit_ts_id
+                    else:
+                        cur.execute(f"""
+                            SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
+                            WHERE service_id = %s
+                            LIMIT 1
+                        """, (service_id,))
+                        mapping = cur.fetchone()
+                        ts_id = mapping['ticket_service_id'] if mapping else None
                     
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id, ticket_service_id)
                         VALUES (%s, %s, %s)
-                    """, (ticket['id'], service_id, ticket_service_id))
+                    """, (ticket['id'], service_id, ts_id))
                 except Exception as e:
                     print(f"[TICKETS] Error linking service {service_id}: {e}")
-                    # Откатываем транзакцию и возвращаем ошибку
                     conn.rollback()
                     cur.close()
                     return response(400, {'error': f'Сервис с ID {service_id} не найден'})

@@ -70,8 +70,10 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
           priority_id: dataToSubmit.priority_id ? parseInt(dataToSubmit.priority_id) : null,
           status_id: 1,
           service_id: dataToSubmit.service_id ? parseInt(dataToSubmit.service_id) : null,
+          ticket_service_id: dataToSubmit.service_id ? parseInt(dataToSubmit.service_id) : null,
           service_ids: dataToSubmit.service_ids || [],
           due_date: dataToSubmit.due_date || null,
+          custom_fields: dataToSubmit.custom_fields || {},
         }),
       });
 
