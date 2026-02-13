@@ -26,6 +26,11 @@ interface Position {
   name: string;
 }
 
+interface DepartmentPosition {
+  department_id: number;
+  position_id: number;
+}
+
 interface CompanyStructureInputProps {
   value?: {
     company_id?: number;
@@ -76,6 +81,7 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [departmentPositions, setDepartmentPositions] = useState<DepartmentPosition[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(
@@ -99,21 +105,24 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
 
   const loadData = async () => {
     try {
-      const [compsRes, depsRes, posRes] = await Promise.all([
+      const [compsRes, depsRes, posRes, depPosRes] = await Promise.all([
         apiFetch('/companies'),
         apiFetch('/departments'),
         apiFetch('/positions'),
+        apiFetch('/department-positions'),
       ]);
 
-      const [compsData, depsData, posData] = await Promise.all([
+      const [compsData, depsData, posData, depPosData] = await Promise.all([
         compsRes.json(),
         depsRes.json(),
         posRes.json(),
+        depPosRes.json(),
       ]);
 
       setCompanies(Array.isArray(compsData) ? compsData : []);
       setDepartments(Array.isArray(depsData) ? depsData : []);
       setPositions(Array.isArray(posData) ? posData : []);
+      setDepartmentPositions(Array.isArray(depPosData) ? depPosData : []);
     } catch (error) {
       console.error('Failed to load company structure data:', error);
     } finally {
@@ -236,23 +245,34 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
         </div>
       ))}
 
-      {deepestDepartmentId && positions.length > 0 && (
-        <div className="space-y-2">
-          <Label>Должность</Label>
-          <Select value={selectedPositionId} onValueChange={handlePositionChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите должность" />
-            </SelectTrigger>
-            <SelectContent>
-              {positions.map((position) => (
-                <SelectItem key={position.id} value={position.id.toString()}>
-                  {position.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {deepestDepartmentId && (() => {
+        const linkedPositionIds = new Set(
+          departmentPositions
+            .filter((dp) => dp.department_id === deepestDepartmentId)
+            .map((dp) => dp.position_id)
+        );
+        const filteredPositions = linkedPositionIds.size > 0
+          ? positions.filter((p) => linkedPositionIds.has(p.id))
+          : positions;
+
+        return filteredPositions.length > 0 ? (
+          <div className="space-y-2">
+            <Label>Должность</Label>
+            <Select value={selectedPositionId} onValueChange={handlePositionChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите должность" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredPositions.map((position) => (
+                  <SelectItem key={position.id} value={position.id.toString()}>
+                    {position.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 };
