@@ -31,6 +31,7 @@ import ServiceFieldMappings from "./pages/ServiceFieldMappings";
 import Companies from "./pages/Companies";
 import Departments from "./pages/Departments";
 import Positions from "./pages/Positions";
+import ExecutorGroups from "./pages/ExecutorGroups";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -68,6 +69,7 @@ const App = () => {
             <Route path="/companies" element={<ProtectedRoute><Companies /></ProtectedRoute>} />
             <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
             <Route path="/positions" element={<ProtectedRoute><Positions /></ProtectedRoute>} />
+            <Route path="/executor-groups" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><ExecutorGroups /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

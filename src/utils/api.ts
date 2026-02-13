@@ -7,6 +7,7 @@ const POSITIONS_API = 'https://functions.poehali.dev/176c438b-4080-43b6-b98d-21b
 const DEPT_POSITIONS_API = 'https://functions.poehali.dev/7c79f9e7-a51d-454b-b470-599ff9ed8527';
 const FIELD_GROUPS_API = 'https://functions.poehali.dev/c481d806-6ef1-4d9e-bf34-8f6370a5554b';
 const SERVICE_FIELD_MAPPINGS_API = 'https://functions.poehali.dev/bc96bbe3-687c-4427-86c7-6c6bb2b3e61b';
+const EXECUTOR_GROUPS_API = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
 
 const ENDPOINT_MAP: Record<string, string> = {
   'login': AUTH_API,
@@ -38,6 +39,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'department-positions': DEPT_POSITIONS_API,
   'field-groups': FIELD_GROUPS_API,
   'service-field-mappings': SERVICE_FIELD_MAPPINGS_API,
+  'executor-groups': EXECUTOR_GROUPS_API,
 };
 
 export const API_URL = AUTH_API;
