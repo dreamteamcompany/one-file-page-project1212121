@@ -10,6 +10,7 @@ interface CustomField {
   name: string;
   field_type: string;
   value: string;
+  display_value?: string;
 }
 
 interface Ticket {
@@ -247,6 +248,25 @@ const TicketDetailsContent = ({
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
             <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{ticket.description}</p>
+          </div>
+        )}
+
+        {ticket.custom_fields && ticket.custom_fields.length > 0 && (
+          <div className="mt-6 pt-6 border-t">
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Icon name="Settings" size={16} className="text-muted-foreground" />
+              Дополнительные поля
+            </h3>
+            <div className="grid gap-3">
+              {ticket.custom_fields.map((field) => (
+                <div key={field.id} className="p-3 rounded-lg bg-muted/30 border">
+                  <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {field.display_value || field.value || '—'}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

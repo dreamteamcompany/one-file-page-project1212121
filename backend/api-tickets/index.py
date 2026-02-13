@@ -68,6 +68,40 @@ def handler(event: dict, context) -> dict:
         except:
             pass
 
+def resolve_company_structure(value_json: str, cur) -> str:
+    try:
+        data = json.loads(value_json)
+    except (json.JSONDecodeError, TypeError):
+        return value_json
+
+    parts = []
+    if data.get('company_id'):
+        cur.execute(f"SELECT name FROM {SCHEMA}.companies WHERE id = %s", (data['company_id'],))
+        row = cur.fetchone()
+        if row:
+            parts.append(row['name'])
+    if data.get('department_id'):
+        cur.execute(f"SELECT name FROM {SCHEMA}.departments WHERE id = %s", (data['department_id'],))
+        row = cur.fetchone()
+        if row:
+            parts.append(row['name'])
+    if data.get('position_id'):
+        cur.execute(f"SELECT name FROM {SCHEMA}.positions WHERE id = %s", (data['position_id'],))
+        row = cur.fetchone()
+        if row:
+            parts.append(row['name'])
+    return ' → '.join(parts) if parts else value_json
+
+
+def resolve_custom_field_values(fields: list, cur) -> list:
+    for field in fields:
+        if field.get('field_type') == 'company_structure' and field.get('value'):
+            field['display_value'] = resolve_company_structure(field['value'], cur)
+        else:
+            field['display_value'] = field.get('value', '')
+    return fields
+
+
 def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     payload = verify_token(event)
     if not payload:
@@ -216,7 +250,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 JOIN {SCHEMA}.ticket_custom_fields cf ON tcfv.field_id = cf.id
                 WHERE tcfv.ticket_id = %s
             """, (ticket['id'],))
-            ticket['custom_fields'] = [dict(row) for row in cur.fetchall()]
+            raw_fields = [dict(row) for row in cur.fetchall()]
+            ticket['custom_fields'] = resolve_custom_field_values(raw_fields, cur)
         
         cur.close()
         return response(200, {'tickets': tickets})
