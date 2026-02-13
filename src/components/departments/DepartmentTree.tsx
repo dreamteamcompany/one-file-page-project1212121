@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronDown, Building2, Edit, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Department } from '@/types';
 import Icon from '@/components/ui/icon';
@@ -8,6 +7,7 @@ interface DepartmentTreeProps {
   departments: Department[];
   onEdit?: (department: Department) => void;
   onDelete?: (id: number) => void;
+  onDeactivate?: (id: number) => void;
   onAddChild?: (parentId: number) => void;
   canEdit?: boolean;
   canDelete?: boolean;
@@ -20,6 +20,7 @@ interface TreeNodeProps {
   level: number;
   onEdit?: (department: Department) => void;
   onDelete?: (id: number) => void;
+  onDeactivate?: (id: number) => void;
   onAddChild?: (parentId: number) => void;
   canEdit?: boolean;
   canDelete?: boolean;
@@ -32,6 +33,7 @@ const TreeNode = ({
   level,
   onEdit,
   onDelete,
+  onDeactivate,
   onAddChild,
   canEdit,
   canDelete,
@@ -95,6 +97,16 @@ const TreeNode = ({
                 <Icon name="Edit" className="h-4 w-4" />
               </Button>
             )}
+            {canEdit && onDeactivate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDeactivate(department.id)}
+                title="Деактивировать"
+              >
+                <Icon name="EyeOff" className="h-4 w-4 text-yellow-500" />
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
@@ -119,6 +131,7 @@ const TreeNode = ({
               level={level + 1}
               onEdit={onEdit}
               onDelete={onDelete}
+              onDeactivate={onDeactivate}
               onAddChild={onAddChild}
               canEdit={canEdit}
               canDelete={canDelete}
@@ -137,6 +150,7 @@ const DepartmentTreeNode = ({
   level,
   onEdit,
   onDelete,
+  onDeactivate,
   onAddChild,
   canEdit,
   canDelete,
@@ -151,6 +165,7 @@ const DepartmentTreeNode = ({
       level={level}
       onEdit={onEdit}
       onDelete={onDelete}
+      onDeactivate={onDeactivate}
       onAddChild={onAddChild}
       canEdit={canEdit}
       canDelete={canDelete}
@@ -163,6 +178,7 @@ export const DepartmentTree = ({
   departments,
   onEdit,
   onDelete,
+  onDeactivate,
   onAddChild,
   canEdit,
   canDelete,
@@ -189,6 +205,7 @@ export const DepartmentTree = ({
           level={0}
           onEdit={onEdit}
           onDelete={onDelete}
+          onDeactivate={onDeactivate}
           onAddChild={onAddChild}
           canEdit={canEdit}
           canDelete={canDelete}

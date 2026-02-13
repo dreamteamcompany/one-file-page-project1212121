@@ -157,7 +157,7 @@ const Departments = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить это подразделение?')) return;
+    if (!confirm('Удалить подразделение и все дочерние? Это действие необратимо.')) return;
     try {
       const response = await apiFetch(`/departments/${id}`, { method: 'DELETE' });
       if (response.ok) {
@@ -165,6 +165,21 @@ const Departments = () => {
       }
     } catch (error) {
       console.error('Failed to delete department:', error);
+    }
+  };
+
+  const handleDeactivate = async (id: number) => {
+    if (!confirm('Деактивировать подразделение и все дочерние?')) return;
+    try {
+      const response = await apiFetch(`/departments/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_active: false }),
+      });
+      if (response.ok) {
+        loadData();
+      }
+    } catch (error) {
+      console.error('Failed to deactivate department:', error);
     }
   };
 
@@ -493,6 +508,7 @@ const Departments = () => {
           departments={filteredDepartments}
           onEdit={canEdit ? handleEdit : undefined}
           onDelete={canDelete ? handleDelete : undefined}
+          onDeactivate={canEdit ? handleDeactivate : undefined}
           onAddChild={canCreate ? handleAddChild : undefined}
           canEdit={canEdit}
           canDelete={canDelete}
