@@ -74,7 +74,7 @@ function buildPathFromValue(
 
 function getLevelLabel(level: number): string {
   if (level === 0) return 'Подразделение';
-  return 'Подразделение (уровень ' + (level + 1) + ')';
+  return '';
 }
 
 const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) => {
@@ -226,7 +226,7 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
 
       {levelSelects.map((level, index) => (
         <div key={`level-${index}-${level.parentId}`} className="space-y-2">
-          <Label>{getLevelLabel(index)}</Label>
+          {index === 0 && <Label>{getLevelLabel(index)}</Label>}
           <Select
             value={level.selectedId?.toString() || ''}
             onValueChange={(val) => handleLevelChange(index, val)}
