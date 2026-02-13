@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL, FIELD_GROUPS_URL, apiFetch } from '@/utils/api';
+import { FIELD_GROUPS_URL, apiFetch } from '@/utils/api';
 
 export interface Field {
   id: number;
@@ -57,10 +57,10 @@ export const useCustomFieldGroups = () => {
 
   const loadAvailableFields = useCallback(async () => {
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`);
+      const response = await apiFetch(`${FIELD_GROUPS_URL}?entity=fields`);
       if (response.ok) {
         const data = await response.json();
-        setAvailableFields(data.custom_fields || []);
+        setAvailableFields(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Failed to load available fields:', error);

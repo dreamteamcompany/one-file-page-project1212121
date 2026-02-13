@@ -6,6 +6,13 @@
       "path": "/",
       "expectedStatus": 200,
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get all fields from registry",
+      "method": "GET",
+      "path": "/?entity=fields",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
     }
   ]
 }

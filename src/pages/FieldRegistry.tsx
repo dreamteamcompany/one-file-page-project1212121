@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import Icon from '@/components/ui/icon';
 import FieldFormDialog from '@/components/field-registry/FieldFormDialog';
 import FieldsTable from '@/components/field-registry/FieldsTable';
 import { useAuth } from '@/contexts/AuthContext';
+import { FIELD_GROUPS_URL, apiFetch } from '@/utils/api';
 
 interface Field {
   id: number;
@@ -74,24 +75,25 @@ const FieldRegistry = () => {
     }
   };
 
+  const loadFields = useCallback(async () => {
+    try {
+      const response = await apiFetch(`${FIELD_GROUPS_URL}?entity=fields`);
+      if (response.ok) {
+        const data = await response.json();
+        setFields(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Failed to load fields:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (!hasPermission('field_registry', 'read')) {
       navigate('/tickets');
       return;
     }
-    const savedFields = localStorage.getItem('fieldRegistry');
-    if (savedFields) {
-      setFields(JSON.parse(savedFields));
-    } else {
-      const mockFields: Field[] = [
-        { id: 1, name: 'ИНН организации', field_type: 'text', created_at: new Date().toISOString() },
-        { id: 2, name: 'Дата регистрации', field_type: 'date', created_at: new Date().toISOString() },
-        { id: 3, name: 'Сумма договора', field_type: 'number', created_at: new Date().toISOString() },
-      ];
-      setFields(mockFields);
-      localStorage.setItem('fieldRegistry', JSON.stringify(mockFields));
-    }
-  }, [hasPermission, navigate]);
+    loadFields();
+  }, [hasPermission, navigate, loadFields]);
 
   if (!hasPermission('field_registry', 'read')) {
     return null;
@@ -106,42 +108,29 @@ const FieldRegistry = () => {
       return;
     }
     
-    let updatedFields: Field[];
-    if (editingField) {
-      updatedFields = fields.map(f => 
-        f.id === editingField.id 
-          ? { 
-              ...f, 
-              name: formData.name, 
-              field_type: formData.field_type,
-              options: formData.options,
-              placeholder: formData.placeholder,
-              label: formData.label,
-              description: formData.description,
-              required: formData.required,
-              company_structure: formData.company_structure,
-            }
-          : f
-      );
-    } else {
-      const newField: Field = {
-        id: Math.max(0, ...fields.map(f => f.id)) + 1,
-        name: formData.name,
-        field_type: formData.field_type,
-        options: formData.options,
-        placeholder: formData.placeholder,
-        label: formData.label,
-        description: formData.description,
-        required: formData.required,
-        company_structure: formData.company_structure,
-        created_at: new Date().toISOString(),
-      };
-      updatedFields = [...fields, newField];
+    try {
+      const method = editingField ? 'PUT' : 'POST';
+      const body = editingField
+        ? { id: editingField.id, name: formData.name, field_type: formData.field_type, options: formData.options.length > 0 ? formData.options : null, is_required: formData.required }
+        : { name: formData.name, field_type: formData.field_type, options: formData.options.length > 0 ? formData.options : null, is_required: formData.required };
+
+      const response = await apiFetch(`${FIELD_GROUPS_URL}?entity=fields`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        await loadFields();
+        closeDialog();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка: ${error.error || 'Не удалось сохранить поле'}`);
+      }
+    } catch (error) {
+      console.error('Failed to save field:', error);
+      alert('Ошибка при сохранении поля');
     }
-    
-    setFields(updatedFields);
-    localStorage.setItem('fieldRegistry', JSON.stringify(updatedFields));
-    closeDialog();
   };
 
   const handleEdit = (field: Field) => {
@@ -152,15 +141,30 @@ const FieldRegistry = () => {
     openDialog(field);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!hasPermission('field_registry', 'remove')) {
       alert('У вас нет прав для удаления полей');
       return;
     }
     if (!confirm('Вы уверены, что хотите удалить это поле?')) return;
-    const updatedFields = fields.filter(f => f.id !== id);
-    setFields(updatedFields);
-    localStorage.setItem('fieldRegistry', JSON.stringify(updatedFields));
+    
+    try {
+      const response = await apiFetch(`${FIELD_GROUPS_URL}?entity=fields`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (response.ok) {
+        await loadFields();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка: ${error.error || 'Не удалось удалить поле'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete field:', error);
+      alert('Ошибка при удалении поля');
+    }
   };
 
   const openDialog = (field?: Field) => {

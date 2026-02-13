@@ -1,15 +1,15 @@
 """
-API для управления группами дополнительных полей заявок
-Поддерживает CRUD операции для групп полей и их связей
+API для управления группами и реестром дополнительных полей заявок.
+Параметр ?entity=fields переключает на работу с реестром полей.
 """
 import json
 from shared_utils import get_db_connection, cors_headers
 
 
 def handler(event: dict, context) -> dict:
-    """Обработчик API для групп полей"""
+    """Обработчик API для групп полей и реестра полей"""
     method = event.get('httpMethod', 'GET')
-    
+
     if method == 'OPTIONS':
         return {
             'statusCode': 200,
@@ -20,40 +20,35 @@ def handler(event: dict, context) -> dict:
             'body': '',
             'isBase64Encoded': False
         }
-    
+
+    params = event.get('queryStringParameters') or {}
+    entity = params.get('entity', 'groups')
+
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
-        if method == 'GET':
-            result = handle_get(cur)
-        elif method == 'POST':
+
+        body = {}
+        if method in ('POST', 'PUT', 'DELETE'):
             body = json.loads(event.get('body', '{}'))
-            result = handle_post(cur, conn, body)
-        elif method == 'PUT':
-            body = json.loads(event.get('body', '{}'))
-            result = handle_put(cur, conn, body)
-        elif method == 'DELETE':
-            body = json.loads(event.get('body', '{}'))
-            result = handle_delete(cur, conn, body)
+
+        if entity == 'fields':
+            result = route_fields(method, cur, conn, body)
         else:
-            result = {'error': 'Method not allowed'}, 405
-        
+            result = route_groups(method, cur, conn, body)
+
         cur.close()
         conn.close()
-        
-        if isinstance(result, tuple):
-            data, status = result
-        else:
-            data, status = result, 200
-        
+
+        data, status = result if isinstance(result, tuple) else (result, 200)
+
         return {
             'statusCode': status,
             'headers': {**cors_headers, 'Content-Type': 'application/json'},
             'body': json.dumps(data, ensure_ascii=False, default=str),
             'isBase64Encoded': False
         }
-    
+
     except Exception as e:
         return {
             'statusCode': 500,
@@ -63,10 +58,33 @@ def handler(event: dict, context) -> dict:
         }
 
 
-def handle_get(cur):
-    """Получить все группы полей с их полями"""
+def route_groups(method, cur, conn, body):
+    if method == 'GET':
+        return get_groups(cur)
+    if method == 'POST':
+        return create_group(cur, conn, body)
+    if method == 'PUT':
+        return update_group(cur, conn, body)
+    if method == 'DELETE':
+        return delete_group(cur, conn, body)
+    return {'error': 'Method not allowed'}, 405
+
+
+def route_fields(method, cur, conn, body):
+    if method == 'GET':
+        return get_fields(cur)
+    if method == 'POST':
+        return create_field(cur, conn, body)
+    if method == 'PUT':
+        return update_field(cur, conn, body)
+    if method == 'DELETE':
+        return delete_field(cur, conn, body)
+    return {'error': 'Method not allowed'}, 405
+
+
+def get_groups(cur):
     cur.execute("""
-        SELECT 
+        SELECT
             g.id, g.name, g.description, g.created_at, g.updated_at,
             COALESCE(
                 json_agg(
@@ -86,87 +104,139 @@ def handle_get(cur):
         GROUP BY g.id, g.name, g.description, g.created_at, g.updated_at
         ORDER BY g.id DESC
     """)
-    
-    groups = []
-    for row in cur.fetchall():
-        groups.append({
-            'id': row[0],
-            'name': row[1],
-            'description': row[2],
-            'created_at': row[3],
-            'updated_at': row[4],
-            'fields': row[5]
-        })
-    
-    return groups
+
+    return [
+        {
+            'id': r[0], 'name': r[1], 'description': r[2],
+            'created_at': r[3], 'updated_at': r[4], 'fields': r[5]
+        }
+        for r in cur.fetchall()
+    ]
 
 
-def handle_post(cur, conn, body):
-    """Создать новую группу полей"""
+def create_group(cur, conn, body):
     name = body.get('name')
-    description = body.get('description', '')
-    field_ids = body.get('field_ids', [])
-    
     if not name:
         return {'error': 'Name is required'}, 400
-    
-    # Создаем группу
+
     cur.execute(
         "INSERT INTO ticket_custom_field_groups (name, description) VALUES (%s, %s) RETURNING id",
-        (name, description)
+        (name, body.get('description', ''))
     )
     group_id = cur.fetchone()[0]
-    
-    # Добавляем поля в группу
-    for field_id in field_ids:
+
+    for field_id in body.get('field_ids', []):
         cur.execute(
             "INSERT INTO ticket_custom_field_group_fields (group_id, field_id) VALUES (%s, %s)",
             (group_id, field_id)
         )
-    
+
     conn.commit()
     return {'id': group_id, 'message': 'Group created successfully'}
 
 
-def handle_put(cur, conn, body):
-    """Обновить группу полей"""
+def update_group(cur, conn, body):
     group_id = body.get('id')
     name = body.get('name')
-    description = body.get('description', '')
-    field_ids = body.get('field_ids', [])
-    
     if not group_id or not name:
         return {'error': 'ID and name are required'}, 400
-    
-    # Обновляем группу
+
     cur.execute(
         "UPDATE ticket_custom_field_groups SET name = %s, description = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-        (name, description, group_id)
+        (name, body.get('description', ''), group_id)
     )
-    
-    # Удаляем старые связи
     cur.execute("DELETE FROM ticket_custom_field_group_fields WHERE group_id = %s", (group_id,))
-    
-    # Добавляем новые связи
-    for field_id in field_ids:
+
+    for field_id in body.get('field_ids', []):
         cur.execute(
             "INSERT INTO ticket_custom_field_group_fields (group_id, field_id) VALUES (%s, %s)",
             (group_id, field_id)
         )
-    
+
     conn.commit()
     return {'message': 'Group updated successfully'}
 
 
-def handle_delete(cur, conn, body):
-    """Удалить группу полей"""
+def delete_group(cur, conn, body):
     group_id = body.get('id')
-    
     if not group_id:
         return {'error': 'ID is required'}, 400
-    
-    # Удаляем группу (связи удалятся автоматически через CASCADE)
+
     cur.execute("DELETE FROM ticket_custom_field_groups WHERE id = %s", (group_id,))
     conn.commit()
-    
     return {'message': 'Group deleted successfully'}
+
+
+def get_fields(cur):
+    cur.execute(
+        "SELECT id, name, field_type, options, is_required, created_at "
+        "FROM ticket_custom_fields ORDER BY id DESC"
+    )
+    return [
+        {
+            'id': r[0], 'name': r[1], 'field_type': r[2],
+            'options': json.loads(r[3]) if r[3] else [],
+            'is_required': r[4], 'created_at': r[5]
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def create_field(cur, conn, body):
+    name = body.get('name')
+    field_type = body.get('field_type', 'text')
+    if not name:
+        return {'error': 'Name is required'}, 400
+
+    options = body.get('options')
+    options_json = json.dumps(options, ensure_ascii=False) if options else None
+
+    cur.execute(
+        "INSERT INTO ticket_custom_fields (name, field_type, options, is_required) "
+        "VALUES (%s, %s, %s, %s) RETURNING id, name, field_type, options, is_required, created_at",
+        (name, field_type, options_json, body.get('is_required', False))
+    )
+    r = cur.fetchone()
+    conn.commit()
+
+    return {
+        'id': r[0], 'name': r[1], 'field_type': r[2],
+        'options': json.loads(r[3]) if r[3] else [],
+        'is_required': r[4], 'created_at': r[5]
+    }
+
+
+def update_field(cur, conn, body):
+    field_id = body.get('id')
+    name = body.get('name')
+    if not field_id or not name:
+        return {'error': 'ID and name are required'}, 400
+
+    options = body.get('options')
+    options_json = json.dumps(options, ensure_ascii=False) if options else None
+
+    cur.execute(
+        "UPDATE ticket_custom_fields SET name = %s, field_type = %s, options = %s, is_required = %s "
+        "WHERE id = %s RETURNING id, name, field_type, options, is_required, created_at",
+        (name, body.get('field_type', 'text'), options_json, body.get('is_required', False), field_id)
+    )
+    r = cur.fetchone()
+    if not r:
+        return {'error': 'Field not found'}, 404
+
+    conn.commit()
+    return {
+        'id': r[0], 'name': r[1], 'field_type': r[2],
+        'options': json.loads(r[3]) if r[3] else [],
+        'is_required': r[4], 'created_at': r[5]
+    }
+
+
+def delete_field(cur, conn, body):
+    field_id = body.get('id')
+    if not field_id:
+        return {'error': 'ID is required'}, 400
+
+    cur.execute("DELETE FROM ticket_custom_fields WHERE id = %s", (field_id,))
+    conn.commit()
+    return {'message': 'Field deleted successfully'}
