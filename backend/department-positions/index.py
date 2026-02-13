@@ -1,10 +1,16 @@
-"""
-API для получения связей подразделений с должностями
-"""
+"""API для получения связей подразделений с должностями."""
 import json
 import os
+from datetime import datetime, date
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 DSN = os.environ.get('DATABASE_URL')
@@ -36,7 +42,7 @@ def handler(event: dict, context) -> dict:
             return {
                 'statusCode': 200,
                 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                'body': json.dumps(links),
+                'body': json.dumps(links, cls=DateTimeEncoder),
                 'isBase64Encoded': False
             }
         
@@ -49,6 +55,9 @@ def handler(event: dict, context) -> dict:
             }
     
     except Exception as e:
+        import traceback
+        print(f"[ERROR] {type(e).__name__}: {e}")
+        print(traceback.format_exc())
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
