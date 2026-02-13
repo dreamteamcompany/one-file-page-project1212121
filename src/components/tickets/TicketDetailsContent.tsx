@@ -165,110 +165,98 @@ const TicketDetailsContent = ({
     <div className="flex-1 p-4 lg:p-6">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-6 bg-card">
-        {/* Тема */}
-        <h1 className="text-2xl font-bold text-foreground mb-6">{ticket.title}</h1>
-        
-        {/* Заказчик, Дата создания, Дедлайн */}
-        <div className="flex flex-wrap items-center gap-6 mb-6 text-sm">
-          {ticket.creator_name && (
-            <div className="flex items-center gap-2">
-              <Icon name="User" size={16} className="text-muted-foreground" />
-              <span className="font-medium text-foreground">{ticket.creator_name}</span>
-            </div>
-          )}
-          
-          {ticket.created_at && (
-            <div className="flex items-center gap-2">
-              <Icon name="Calendar" size={16} className="text-muted-foreground" />
-              <span className="text-muted-foreground">{formatDate(ticket.created_at)}</span>
-            </div>
-          )}
-          
-          {ticket.due_date && deadlineInfo && (
-            <div className="flex items-center gap-2">
-              <Icon name="Clock" size={16} style={{ color: deadlineInfo.color }} />
-              <span style={{ color: deadlineInfo.color }} className="font-medium">{deadlineInfo.label}</span>
-            </div>
-          )}
-        </div>
-        
-        {/* Статус и Приоритет */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          {ticket.status_name && (
-            <Badge
-              style={{ 
-                backgroundColor: `${ticket.status_color}20`,
-                color: ticket.status_color,
-                borderColor: ticket.status_color
-              }}
-              className="border font-medium"
-            >
-              {ticket.status_name}
-            </Badge>
-          )}
-          
-          {ticket.priority_name && (
-            <Badge
-              style={{ 
-                backgroundColor: `${ticket.priority_color}20`,
-                color: ticket.priority_color,
-                borderColor: ticket.priority_color
-              }}
-              className="border font-medium"
-            >
-              {ticket.priority_name}
-            </Badge>
-          )}
-        </div>
-        
-        {/* Кнопки действий */}
-        <div className="flex flex-wrap items-center gap-2 mb-6 pb-6 border-b">
-          <Button variant="ghost" size="sm" title="Список заявок">
-            <Icon name="List" size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" title="Редактировать заявку">
-            <Icon name="Edit" size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" title="Добавить комментарий">
-            <Icon name="MessageSquare" size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" title="Копировать заявку">
-            <Icon name="Copy" size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" title="Наблюдатели">
-            <Icon name="Eye" size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" title="Поиск по базе знаний">
-            <Icon name="Search" size={18} />
-          </Button>
-        </div>
-        
-        {/* Содержание заявки */}
-        {ticket.description && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
-            <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{ticket.description}</p>
-          </div>
-        )}
-
-        {ticket.custom_fields && ticket.custom_fields.length > 0 && (
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Icon name="Settings" size={16} className="text-muted-foreground" />
-              Дополнительные поля
-            </h3>
-            <div className="grid gap-3">
-              {ticket.custom_fields.map((field) => (
-                <div key={field.id} className="p-3 rounded-lg bg-muted/30 border">
-                  <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {field.display_value || field.value || '—'}
-                  </p>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-foreground mb-6">{ticket.title}</h1>
+            
+            <div className="flex flex-wrap items-center gap-6 mb-6 text-sm">
+              {ticket.creator_name && (
+                <div className="flex items-center gap-2">
+                  <Icon name="User" size={16} className="text-muted-foreground" />
+                  <span className="font-medium text-foreground">{ticket.creator_name}</span>
                 </div>
-              ))}
+              )}
+              {ticket.created_at && (
+                <div className="flex items-center gap-2">
+                  <Icon name="Calendar" size={16} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">{formatDate(ticket.created_at)}</span>
+                </div>
+              )}
+              {ticket.due_date && deadlineInfo && (
+                <div className="flex items-center gap-2">
+                  <Icon name="Clock" size={16} style={{ color: deadlineInfo.color }} />
+                  <span style={{ color: deadlineInfo.color }} className="font-medium">{deadlineInfo.label}</span>
+                </div>
+              )}
             </div>
+            
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              {ticket.status_name && (
+                <Badge
+                  style={{ backgroundColor: `${ticket.status_color}20`, color: ticket.status_color, borderColor: ticket.status_color }}
+                  className="border font-medium"
+                >
+                  {ticket.status_name}
+                </Badge>
+              )}
+              {ticket.priority_name && (
+                <Badge
+                  style={{ backgroundColor: `${ticket.priority_color}20`, color: ticket.priority_color, borderColor: ticket.priority_color }}
+                  className="border font-medium"
+                >
+                  {ticket.priority_name}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2 mb-6 pb-6 border-b">
+              <Button variant="ghost" size="sm" title="Список заявок">
+                <Icon name="List" size={18} />
+              </Button>
+              <Button variant="ghost" size="sm" title="Редактировать заявку">
+                <Icon name="Edit" size={18} />
+              </Button>
+              <Button variant="ghost" size="sm" title="Добавить комментарий">
+                <Icon name="MessageSquare" size={18} />
+              </Button>
+              <Button variant="ghost" size="sm" title="Копировать заявку">
+                <Icon name="Copy" size={18} />
+              </Button>
+              <Button variant="ghost" size="sm" title="Наблюдатели">
+                <Icon name="Eye" size={18} />
+              </Button>
+              <Button variant="ghost" size="sm" title="Поиск по базе знаний">
+                <Icon name="Search" size={18} />
+              </Button>
+            </div>
+            
+            {ticket.description && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{ticket.description}</p>
+              </div>
+            )}
           </div>
-        )}
+
+          {ticket.custom_fields && ticket.custom_fields.length > 0 && (
+            <div className="w-full lg:w-[320px] flex-shrink-0">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Icon name="Settings" size={16} className="text-muted-foreground" />
+                Дополнительные поля
+              </h3>
+              <div className="grid gap-2">
+                {ticket.custom_fields.map((field) => (
+                  <div key={field.id} className="p-3 rounded-lg bg-muted/30 border">
+                    <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {field.display_value || field.value || '—'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
