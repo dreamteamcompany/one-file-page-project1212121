@@ -17,6 +17,7 @@ interface Field {
   label?: string;
   description?: string;
   required?: boolean;
+  hide_label?: boolean;
   created_at?: string;
   company_structure?: {
     company_id?: number;
@@ -52,6 +53,7 @@ const FieldRegistry = () => {
     label: '',
     description: '',
     required: false,
+    hide_label: false,
     company_structure: undefined as { company_id?: number; department_id?: number; position_id?: number } | undefined,
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,8 +113,8 @@ const FieldRegistry = () => {
     try {
       const method = editingField ? 'PUT' : 'POST';
       const body = editingField
-        ? { id: editingField.id, name: formData.name, field_type: formData.field_type, options: formData.options.length > 0 ? formData.options : null, is_required: formData.required }
-        : { name: formData.name, field_type: formData.field_type, options: formData.options.length > 0 ? formData.options : null, is_required: formData.required };
+        ? { id: editingField.id, name: formData.name, field_type: formData.field_type, options: formData.options.length > 0 ? formData.options : null, is_required: formData.required, hide_label: formData.hide_label }
+        : { name: formData.name, field_type: formData.field_type, options: formData.options.length > 0 ? formData.options : null, is_required: formData.required, hide_label: formData.hide_label };
 
       const response = await apiFetch(`${FIELD_GROUPS_URL}?entity=fields`, {
         method,
@@ -178,6 +180,7 @@ const FieldRegistry = () => {
         label: field.label || '',
         description: field.description || '',
         required: field.required || false,
+        hide_label: field.hide_label || false,
         company_structure: field.company_structure,
       });
     }
@@ -196,6 +199,7 @@ const FieldRegistry = () => {
         label: '', 
         description: '', 
         required: false,
+        hide_label: false,
         company_structure: undefined,
       });
     }, 150);
@@ -210,7 +214,8 @@ const FieldRegistry = () => {
       placeholder: '', 
       label: '', 
       description: '', 
-      required: false 
+      required: false,
+      hide_label: false,
     });
   };
 

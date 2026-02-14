@@ -8,6 +8,7 @@ interface CustomField {
   name: string;
   field_type: string;
   value: string;
+  hide_label?: boolean;
 }
 
 interface Ticket {
@@ -74,7 +75,7 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
                 key={field.id}
                 className={`p-3 rounded-lg bg-muted/50 ${isShortField(field) ? '' : 'col-span-2'}`}
               >
-                <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
+                {!field.hide_label && <p className="text-xs text-muted-foreground mb-1">{field.name}</p>}
                 <p className="text-sm break-words">
                   {field.field_type === 'date' && field.value
                     ? (isoToDisplay(field.value) || field.value)

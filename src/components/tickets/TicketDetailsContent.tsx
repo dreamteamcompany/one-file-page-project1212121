@@ -13,6 +13,7 @@ interface CustomField {
   field_type: string;
   value: string;
   display_value?: string;
+  hide_label?: boolean;
 }
 
 interface Ticket {
@@ -262,7 +263,7 @@ const TicketDetailsContent = ({
                   const isChain = field.field_type === 'company_structure' && displayText.includes('→');
                   return (
                     <div key={field.id} className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2 md:col-span-1' : ''}`}>
-                      <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>
+                      {!field.hide_label && <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>}
                       {isChain ? (
                         <p className="text-sm text-foreground break-words">
                           {displayText.split('→').slice(0, -1).map((part, i) => (

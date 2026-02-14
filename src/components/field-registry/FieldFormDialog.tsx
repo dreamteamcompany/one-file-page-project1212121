@@ -51,6 +51,7 @@ interface FieldFormDialogProps {
     label: string;
     description: string;
     required: boolean;
+    hide_label: boolean;
   };
   onFormDataChange: (field: string, value: string | string[] | boolean | object) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -172,6 +173,22 @@ const FieldFormDialog = ({
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               Обязательное поле
+            </label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="hide_label"
+              checked={formData.hide_label}
+              onCheckedChange={(checked) =>
+                onFormDataChange('hide_label', checked === true)
+              }
+            />
+            <label
+              htmlFor="hide_label"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Скрыть название в заявке
             </label>
           </div>
 

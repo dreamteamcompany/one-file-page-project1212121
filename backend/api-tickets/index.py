@@ -270,7 +270,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             ticket['ticket_service'] = dict(ticket_service) if ticket_service else None
             
             cur.execute(f"""
-                SELECT cf.id, cf.name, cf.field_type, tcfv.value
+                SELECT cf.id, cf.name, cf.field_type, tcfv.value, cf.hide_label
                 FROM {SCHEMA}.ticket_custom_field_values tcfv
                 JOIN {SCHEMA}.ticket_custom_fields cf ON tcfv.field_id = cf.id
                 WHERE tcfv.ticket_id = %s

@@ -93,7 +93,8 @@ def get_groups(cur):
                         'name', f.name,
                         'field_type', f.field_type,
                         'is_required', f.is_required,
-                        'options', f.options
+                        'options', f.options,
+                        'hide_label', f.hide_label
                     ) ORDER BY gf.id
                 ) FILTER (WHERE f.id IS NOT NULL),
                 '[]'
@@ -169,14 +170,14 @@ def delete_group(cur, conn, body):
 
 def get_fields(cur):
     cur.execute(
-        "SELECT id, name, field_type, options, is_required, created_at "
+        "SELECT id, name, field_type, options, is_required, hide_label, created_at "
         "FROM ticket_custom_fields ORDER BY id DESC"
     )
     return [
         {
             'id': r[0], 'name': r[1], 'field_type': r[2],
             'options': json.loads(r[3]) if r[3] else [],
-            'is_required': r[4], 'created_at': r[5]
+            'is_required': r[4], 'hide_label': r[5], 'created_at': r[6]
         }
         for r in cur.fetchall()
     ]
@@ -192,9 +193,9 @@ def create_field(cur, conn, body):
     options_json = json.dumps(options, ensure_ascii=False) if options else None
 
     cur.execute(
-        "INSERT INTO ticket_custom_fields (name, field_type, options, is_required) "
-        "VALUES (%s, %s, %s, %s) RETURNING id, name, field_type, options, is_required, created_at",
-        (name, field_type, options_json, body.get('is_required', False))
+        "INSERT INTO ticket_custom_fields (name, field_type, options, is_required, hide_label) "
+        "VALUES (%s, %s, %s, %s, %s) RETURNING id, name, field_type, options, is_required, hide_label, created_at",
+        (name, field_type, options_json, body.get('is_required', False), body.get('hide_label', False))
     )
     r = cur.fetchone()
     conn.commit()
@@ -202,7 +203,7 @@ def create_field(cur, conn, body):
     return {
         'id': r[0], 'name': r[1], 'field_type': r[2],
         'options': json.loads(r[3]) if r[3] else [],
-        'is_required': r[4], 'created_at': r[5]
+        'is_required': r[4], 'hide_label': r[5], 'created_at': r[6]
     }
 
 
@@ -216,9 +217,9 @@ def update_field(cur, conn, body):
     options_json = json.dumps(options, ensure_ascii=False) if options else None
 
     cur.execute(
-        "UPDATE ticket_custom_fields SET name = %s, field_type = %s, options = %s, is_required = %s "
-        "WHERE id = %s RETURNING id, name, field_type, options, is_required, created_at",
-        (name, body.get('field_type', 'text'), options_json, body.get('is_required', False), field_id)
+        "UPDATE ticket_custom_fields SET name = %s, field_type = %s, options = %s, is_required = %s, hide_label = %s "
+        "WHERE id = %s RETURNING id, name, field_type, options, is_required, hide_label, created_at",
+        (name, body.get('field_type', 'text'), options_json, body.get('is_required', False), body.get('hide_label', False), field_id)
     )
     r = cur.fetchone()
     if not r:
@@ -228,7 +229,7 @@ def update_field(cur, conn, body):
     return {
         'id': r[0], 'name': r[1], 'field_type': r[2],
         'options': json.loads(r[3]) if r[3] else [],
-        'is_required': r[4], 'created_at': r[5]
+        'is_required': r[4], 'hide_label': r[5], 'created_at': r[6]
     }
 
 

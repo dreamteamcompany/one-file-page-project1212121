@@ -39,6 +39,7 @@ interface CustomField {
   options?: string[];
   placeholder?: string;
   label?: string;
+  hide_label?: boolean;
 }
 
 interface TicketFormStep1Props {
@@ -271,10 +272,12 @@ const TicketFormStep1 = ({
               const isWide = ['textarea', 'company_structure'].includes(field.field_type);
               return (
                 <div key={field.id} className={`space-y-2 ${isWide ? 'col-span-2' : ''}`}>
-                  <Label>
-                    {field.name}
-                    {field.is_required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
+                  {!field.hide_label && (
+                    <Label>
+                      {field.name}
+                      {field.is_required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                  )}
                   {renderCustomField(field, formData, setFormData)}
                 </div>
               );
