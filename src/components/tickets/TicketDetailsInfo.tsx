@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
+import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 
 interface CustomField {
   id: number;
@@ -77,7 +78,9 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
                 <p className="text-sm break-words">
                   {field.field_type === 'date' && field.value
                     ? (isoToDisplay(field.value) || field.value)
-                    : (field.value || '—')}
+                    : field.field_type === 'phone' && field.value
+                      ? phoneDisplay(field.value)
+                      : (field.value || '—')}
                 </p>
               </div>
             ))}

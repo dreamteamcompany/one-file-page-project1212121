@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
+import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 
 interface CustomField {
   id: number;
@@ -254,7 +255,9 @@ const TicketDetailsContent = ({
                     ? (rawValue === 'true' || rawValue === 'True' ? 'Да' : rawValue === 'false' || rawValue === 'False' ? 'Нет' : rawValue)
                     : field.field_type === 'date' && rawValue !== '—'
                       ? (isoToDisplay(rawValue) || rawValue)
-                      : rawValue;
+                      : field.field_type === 'phone' && rawValue !== '—'
+                        ? phoneDisplay(rawValue)
+                        : rawValue;
                   const isLongValue = displayText.length > 25 || field.name.length > 20;
                   const isChain = field.field_type === 'company_structure' && displayText.includes('→');
                   return (

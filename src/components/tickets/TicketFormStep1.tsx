@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import CompanyStructureInput from '@/components/field-registry/CompanyStructureInput';
 import DateMaskedInput from '@/components/ui/date-masked-input';
+import PhoneMaskedInput from '@/components/ui/phone-masked-input';
 
 interface TicketService {
   id: number;
@@ -178,11 +179,9 @@ const renderCustomField = (
 
     case 'phone':
       return (
-        <Input
-          type="tel"
+        <PhoneMaskedInput
           value={value}
-          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
-          placeholder={field.placeholder || '+7 (___) ___-__-__'}
+          onChange={(phone) => updateCustomField(formData, setFormData, field.id, phone)}
           required={field.is_required}
         />
       );
