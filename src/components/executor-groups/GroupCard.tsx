@@ -23,10 +23,24 @@ const GroupCard = ({ group, isSelected, onSelect, onEdit, onRemove }: GroupCardP
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h3 className="font-semibold text-sm truncate">{group.name}</h3>
             {!group.is_active && (
               <Badge variant="secondary" className="text-xs">Неактивна</Badge>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1 mb-1">
+            {group.auto_assign && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                <Icon name="Zap" size={10} />
+                Авто
+              </Badge>
+            )}
+            {group.assign_group_only && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                <Icon name="UsersRound" size={10} />
+                Только группа
+              </Badge>
             )}
           </div>
           {group.description && (

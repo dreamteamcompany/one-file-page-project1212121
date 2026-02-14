@@ -38,11 +38,24 @@ const ExecutorGroups = () => {
   const membersHook = useGroupMembers(selectedGroup?.id ?? null);
   const mappingsHook = useGroupMappings(selectedGroup?.id ?? null);
 
-  const handleSave = async (name: string, description: string, isActive: boolean): Promise<boolean> => {
+  const handleSave = async (data: {
+    name: string;
+    description: string;
+    isActive: boolean;
+    autoAssign: boolean;
+    assignGroupOnly: boolean;
+  }): Promise<boolean> => {
     if (editingGroup) {
-      return updateGroup(editingGroup.id, name, description, isActive);
+      return updateGroup(
+        editingGroup.id,
+        data.name,
+        data.description,
+        data.isActive,
+        data.autoAssign,
+        data.assignGroupOnly,
+      );
     }
-    const result = await createGroup(name, description);
+    const result = await createGroup(data.name, data.description, data.autoAssign, data.assignGroupOnly);
     return !!result;
   };
 

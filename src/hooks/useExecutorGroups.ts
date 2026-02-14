@@ -7,6 +7,8 @@ export interface ExecutorGroup {
   name: string;
   description: string;
   is_active: boolean;
+  auto_assign: boolean;
+  assign_group_only: boolean;
   member_count: number;
   mapping_count: number;
   created_at: string;
@@ -77,11 +79,16 @@ export const useExecutorGroups = () => {
 
   useEffect(() => { loadGroups(); }, [loadGroups]);
 
-  const createGroup = async (name: string, description: string): Promise<ExecutorGroup | null> => {
+  const createGroup = async (
+    name: string,
+    description: string,
+    auto_assign = false,
+    assign_group_only = false,
+  ): Promise<ExecutorGroup | null> => {
     try {
       const res = await apiFetch(API_BASE, {
         method: 'POST',
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, auto_assign, assign_group_only }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -96,11 +103,18 @@ export const useExecutorGroups = () => {
     return null;
   };
 
-  const updateGroup = async (id: number, name: string, description: string, is_active: boolean): Promise<boolean> => {
+  const updateGroup = async (
+    id: number,
+    name: string,
+    description: string,
+    is_active: boolean,
+    auto_assign = false,
+    assign_group_only = false,
+  ): Promise<boolean> => {
     try {
       const res = await apiFetch(API_BASE, {
         method: 'PUT',
-        body: JSON.stringify({ id, name, description, is_active }),
+        body: JSON.stringify({ id, name, description, is_active, auto_assign, assign_group_only }),
       });
       if (res.ok) {
         toast({ title: 'Группа обновлена' });

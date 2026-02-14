@@ -86,6 +86,7 @@ def get_all_groups(conn):
     cur.execute(f"""
         SELECT 
             g.id, g.name, g.description, g.is_active,
+            g.auto_assign, g.assign_group_only,
             g.created_at, g.updated_at,
             COALESCE(mc.member_count, 0) as member_count,
             COALESCE(sc.mapping_count, 0) as mapping_count
@@ -110,7 +111,7 @@ def get_all_groups(conn):
 def get_group_by_id(conn, group_id):
     cur = conn.cursor()
     cur.execute(f"""
-        SELECT id, name, description, is_active, created_at, updated_at
+        SELECT id, name, description, is_active, auto_assign, assign_group_only, created_at, updated_at
         FROM {SCHEMA}.executor_groups WHERE id = %s
     """, (group_id,))
     group = cur.fetchone()
@@ -188,12 +189,14 @@ def create_group(conn, body):
         return response(400, {'error': 'Название группы обязательно'})
 
     description = body.get('description', '')
+    auto_assign = body.get('auto_assign', False)
+    assign_group_only = body.get('assign_group_only', False)
     cur = conn.cursor()
     cur.execute(f"""
-        INSERT INTO {SCHEMA}.executor_groups (name, description)
-        VALUES (%s, %s)
-        RETURNING id, name, description, is_active, created_at, updated_at
-    """, (name, description))
+        INSERT INTO {SCHEMA}.executor_groups (name, description, auto_assign, assign_group_only)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, name, description, is_active, auto_assign, assign_group_only, created_at, updated_at
+    """, (name, description, auto_assign, assign_group_only))
     group = dict(cur.fetchone())
     conn.commit()
     cur.close()
@@ -211,14 +214,17 @@ def update_group(conn, body):
 
     description = body.get('description', '')
     is_active = body.get('is_active', True)
+    auto_assign = body.get('auto_assign', False)
+    assign_group_only = body.get('assign_group_only', False)
 
     cur = conn.cursor()
     cur.execute(f"""
         UPDATE {SCHEMA}.executor_groups
-        SET name = %s, description = %s, is_active = %s, updated_at = NOW()
+        SET name = %s, description = %s, is_active = %s,
+            auto_assign = %s, assign_group_only = %s, updated_at = NOW()
         WHERE id = %s
-        RETURNING id, name, description, is_active, created_at, updated_at
-    """, (name, description, is_active, group_id))
+        RETURNING id, name, description, is_active, auto_assign, assign_group_only, created_at, updated_at
+    """, (name, description, is_active, auto_assign, assign_group_only, group_id))
     group = cur.fetchone()
     if not group:
         cur.close()
