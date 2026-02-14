@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
@@ -14,6 +14,8 @@ const TicketDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const { user, hasPermission } = useAuth();
 
   const {
@@ -135,22 +137,48 @@ const TicketDetails = () => {
             />
           </div>
 
-          {/* Mobile: Sidebar сверху */}
-          <div className="lg:hidden">
-            <TicketDetailsSidebar 
-              ticket={ticket}
-              statuses={statuses}
-              users={users}
-              updating={updating}
-              sendingPing={sendingPing}
-              isCustomer={ticket.created_by === user?.id}
-              hasAssignee={!!ticket.assigned_to}
-              onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
-              onAssignUser={handleAssignUser}
-              onSendPing={handleSendPing}
-              onApprovalChange={loadTicket}
-              onUpdateDueDate={handleUpdateDueDate}
-            />
+          {/* Mobile: Sidebar сверху, свёрнут по умолчанию */}
+          <div className="lg:hidden w-full">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(prev => !prev)}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[#1b254b]/50 border border-white/10 text-white text-sm font-medium"
+            >
+              <span className="flex items-center gap-2">
+                <Icon name="Info" size={16} />
+                Информация о заявке
+              </span>
+              <Icon
+                name="ChevronDown"
+                size={16}
+                className={`transition-transform duration-200 ${sidebarOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            <div
+              ref={sidebarRef}
+              className="overflow-hidden transition-all duration-300 ease-in-out"
+              style={{
+                maxHeight: sidebarOpen ? sidebarRef.current?.scrollHeight + 'px' : '0px',
+                opacity: sidebarOpen ? 1 : 0,
+              }}
+            >
+              <div className="pt-3">
+                <TicketDetailsSidebar 
+                  ticket={ticket}
+                  statuses={statuses}
+                  users={users}
+                  updating={updating}
+                  sendingPing={sendingPing}
+                  isCustomer={ticket.created_by === user?.id}
+                  hasAssignee={!!ticket.assigned_to}
+                  onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
+                  onAssignUser={handleAssignUser}
+                  onSendPing={handleSendPing}
+                  onApprovalChange={loadTicket}
+                  onUpdateDueDate={handleUpdateDueDate}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Content: на десктопе в центре, на мобилке под сайдбаром */}
