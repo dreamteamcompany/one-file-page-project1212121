@@ -244,7 +244,7 @@ const TicketDetailsContent = ({
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
               </h3>
-              <div className="grid grid-cols-3 md:grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {ticket.custom_fields.map((field) => {
                   const isLongValue = (field.display_value || field.value || '').length > 25 || field.name.length > 20;
                   return (
