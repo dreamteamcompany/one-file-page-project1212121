@@ -291,27 +291,26 @@ const ServiceFieldMappings = () => {
           }
         }}
       >
-        <div className="p-6 space-y-6 w-full">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                onClick={() => setMenuOpen(true)}
-              >
-                <Icon name="Menu" size={24} />
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold">Связь Услуги-Сервисы-Поля</h1>
-                <p className="text-muted-foreground mt-1">
-                  Настройте какие поля показывать для каждой комбинации услуги и сервиса
-                </p>
-              </div>
-            </div>
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6 w-full">
+          <div className="flex lg:hidden items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Icon name="Menu" size={24} />
+            </Button>
+            <h1 className="text-lg font-bold">Привязка полей</h1>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="hidden lg:block">
+            <h1 className="text-3xl font-bold">Связь Услуги-Сервисы-Поля</h1>
+            <p className="text-muted-foreground mt-1">
+              Настройте какие поля показывать для каждой комбинации услуги и сервиса
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Icon
                 name="Search"
@@ -342,6 +341,15 @@ const ServiceFieldMappings = () => {
               toggleFieldGroup={toggleFieldGroup}
             />
           </div>
+
+          {hasPermission('service_field_mappings', 'create') && (
+            <div className="lg:hidden">
+              <Button onClick={() => { resetForm(); setDialogOpen(true); }} className="w-full gap-2">
+                <Icon name="Plus" size={18} />
+                Добавить связь
+              </Button>
+            </div>
+          )}
 
           <MappingsTable
             mappings={filteredMappings}

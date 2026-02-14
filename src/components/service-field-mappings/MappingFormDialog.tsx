@@ -58,13 +58,13 @@ const MappingFormDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {canCreate && (
       <DialogTrigger asChild>
-        <Button onClick={onReset} className="gap-2">
+        <Button onClick={onReset} className="gap-2 hidden lg:inline-flex">
           <Icon name="Plus" size={18} />
           Добавить связь
         </Button>
       </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] w-[calc(100%-2rem)] sm:w-full overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingMapping ? 'Редактировать связь' : 'Создать связь'}
@@ -190,15 +190,16 @@ const MappingFormDialog = ({
             </p>
           </div>
 
-          <div className="flex gap-2 justify-end pt-4">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
             >
               Отмена
             </Button>
-            <Button type="submit">
+            <Button type="submit" className="w-full sm:w-auto">
               {editingMapping ? 'Сохранить' : 'Создать'}
             </Button>
           </div>
