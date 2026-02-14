@@ -67,6 +67,7 @@ interface TicketDetailsSidebarProps {
   onSendPing?: () => void;
   onApprovalChange?: () => void;
   onUpdateDueDate?: (dueDate: string | null) => void;
+  hidePing?: boolean;
 }
 
 const TicketDetailsSidebar = ({
@@ -82,6 +83,7 @@ const TicketDetailsSidebar = ({
   onSendPing,
   onApprovalChange,
   onUpdateDueDate,
+  hidePing = false,
 }: TicketDetailsSidebarProps) => {
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
@@ -147,7 +149,7 @@ const TicketDetailsSidebar = ({
       <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
           <TicketTimerCard dueDate={ticket.due_date} />
-          <TicketPingCard onSendPing={onSendPing} sendingPing={sendingPing} />
+          {!hidePing && <TicketPingCard onSendPing={onSendPing} sendingPing={sendingPing} />}
         </div>
         
         <TicketInfoFields

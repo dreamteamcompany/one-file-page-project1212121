@@ -218,7 +218,7 @@ const TicketComments = ({
             disabled={sendingPing}
             variant="outline"
             size="sm"
-            className="w-full"
+            className="w-full hidden lg:flex"
           >
             {sendingPing ? (
               <>

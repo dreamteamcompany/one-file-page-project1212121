@@ -176,9 +176,29 @@ const TicketDetails = () => {
                   onSendPing={handleSendPing}
                   onApprovalChange={loadTicket}
                   onUpdateDueDate={handleUpdateDueDate}
+                  hidePing
                 />
               </div>
             </div>
+            {ticket.created_by === user?.id && !!ticket.assigned_to && (
+              <Button
+                onClick={handleSendPing}
+                disabled={sendingPing}
+                className="w-full mt-3 font-semibold bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                {sendingPing ? (
+                  <>
+                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                    Отправка запроса...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Bell" size={16} className="mr-2" />
+                    Запросить статус
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Content: на десктопе в центре, на мобилке под сайдбаром */}
