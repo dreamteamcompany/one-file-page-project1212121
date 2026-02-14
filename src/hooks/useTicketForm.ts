@@ -78,9 +78,14 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const assigneeName = result.assignee_name || result.assignee_email;
+        const autoMsg = result.auto_assigned && assigneeName
+          ? ` Исполнитель: ${assigneeName}`
+          : '';
         toast({
           title: 'Успешно',
-          description: 'Заявка создана',
+          description: `Заявка создана.${autoMsg}`,
         });
         setDialogOpen(false);
         setFormData(initialFormData);

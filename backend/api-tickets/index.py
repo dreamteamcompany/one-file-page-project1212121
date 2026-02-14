@@ -18,6 +18,8 @@ class TicketRequest(BaseModel):
     custom_fields: dict = Field(default={})
     ticket_service_id: Optional[int] = None
 
+from executor_assignment_resolver import resolve_executor
+
 class ServiceCategoryRequest(BaseModel):
     name: str = Field(..., min_length=1)
     description: str = Field(default='')
@@ -297,6 +299,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             if open_status:
                 status_id = open_status['id']
         
+        assigned_to = data.assigned_to
+        if not assigned_to and data.service_ids:
+            resolved_ts_id = data.ticket_service_id
+            if not resolved_ts_id and data.service_ids:
+                cur.execute(f"""
+                    SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
+                    WHERE service_id = %s LIMIT 1
+                """, (data.service_ids[0],))
+                ts_row = cur.fetchone()
+                resolved_ts_id = ts_row['ticket_service_id'] if ts_row else None
+
+            assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
+        
         cur.execute(f"""
             INSERT INTO {SCHEMA}.tickets 
             (title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at)
@@ -307,11 +322,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             data.description,
             status_id,
             data.priority_id,
-            data.assigned_to,
+            assigned_to,
             payload['user_id']
         ))
         
         ticket = dict(cur.fetchone())
+        ticket['auto_assigned'] = (assigned_to is not None and data.assigned_to is None)
         
         # Привязываем сервисы (из таблицы services)
         if data.service_ids:
@@ -373,6 +389,16 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         """, (ticket['id'],))
         ticket_service = cur.fetchone()
         ticket['ticket_service'] = dict(ticket_service) if ticket_service else None
+        
+        if ticket.get('assigned_to'):
+            cur.execute(f"""
+                SELECT full_name, username as email
+                FROM {SCHEMA}.users WHERE id = %s
+            """, (ticket['assigned_to'],))
+            assignee = cur.fetchone()
+            if assignee:
+                ticket['assignee_name'] = assignee['full_name']
+                ticket['assignee_email'] = assignee['email']
         
         cur.close()
         
