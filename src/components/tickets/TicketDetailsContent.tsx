@@ -164,12 +164,12 @@ const TicketDetailsContent = ({
   return (
     <div className="flex-1 p-4 lg:p-6 lg:pr-0">
       {/* Суть заявки */}
-      <div className="mb-6 border rounded-lg p-6 lg:pl-[18px] lg:pr-2 bg-card">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card">
+        <div className="flex flex-col md:flex-row gap-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-foreground mb-6">{ticket.title}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">{ticket.title}</h1>
             
-            <div className="flex flex-wrap items-center gap-6 mb-6 text-sm">
+            <div className="flex flex-wrap items-center gap-3 md:gap-6 mb-4 md:mb-6 text-sm">
               {ticket.creator_name && (
                 <div className="flex items-center gap-2">
                   <Icon name="User" size={16} className="text-muted-foreground" />
@@ -190,7 +190,7 @@ const TicketDetailsContent = ({
               )}
             </div>
             
-            <div className="flex flex-wrap items-center gap-3 mb-6">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-4 md:mb-6">
               {ticket.status_name && (
                 <Badge
                   style={{ backgroundColor: `${ticket.status_color}20`, color: ticket.status_color, borderColor: ticket.status_color }}
@@ -209,7 +209,7 @@ const TicketDetailsContent = ({
               )}
             </div>
             
-            <div className="flex flex-wrap items-center gap-2 mb-6 pb-6 border-b">
+            <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-4 md:mb-6 pb-4 md:pb-6 border-b">
               <Button variant="ghost" size="sm" title="Список заявок">
                 <Icon name="List" size={18} />
               </Button>
@@ -239,20 +239,23 @@ const TicketDetailsContent = ({
           </div>
 
           {ticket.custom_fields && ticket.custom_fields.length > 0 && (
-            <div className="w-full lg:w-[320px] flex-shrink-0">
+            <div className="w-full md:w-[320px] flex-shrink-0">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
               </h3>
-              <div className="grid gap-2">
-                {ticket.custom_fields.map((field) => (
-                  <div key={field.id} className="p-3 rounded-lg bg-muted/30 border">
-                    <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {field.display_value || field.value || '—'}
-                    </p>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                {ticket.custom_fields.map((field) => {
+                  const isLongValue = (field.display_value || field.value || '').length > 25 || field.name.length > 20;
+                  return (
+                    <div key={field.id} className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2 md:col-span-1' : ''}`}>
+                      <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>
+                      <p className="text-sm font-medium text-foreground break-words">
+                        {field.display_value || field.value || '—'}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
