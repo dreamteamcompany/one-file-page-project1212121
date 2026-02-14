@@ -32,6 +32,7 @@ import Companies from "./pages/Companies";
 import Departments from "./pages/Departments";
 import Positions from "./pages/Positions";
 import ExecutorGroups from "./pages/ExecutorGroups";
+import ExecutorAssignments from "./pages/ExecutorAssignments";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -70,6 +71,7 @@ const App = () => {
             <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
             <Route path="/positions" element={<ProtectedRoute><Positions /></ProtectedRoute>} />
             <Route path="/executor-groups" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><ExecutorGroups /></ProtectedRoute>} />
+            <Route path="/executor-assignments" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><ExecutorAssignments /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
