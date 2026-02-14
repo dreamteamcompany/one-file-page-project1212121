@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import DateMaskedInput from '@/components/ui/date-masked-input';
 
 interface User {
   id: number;
@@ -260,11 +261,9 @@ const TicketInfoFields = ({
             <div className="space-y-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Дата</label>
-                <input
-                  type="date"
+                <DateMaskedInput
                   value={dueDateValue}
-                  onChange={(e) => setDueDateValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground"
+                  onChange={(isoDate) => setDueDateValue(isoDate)}
                 />
               </div>
               <div>

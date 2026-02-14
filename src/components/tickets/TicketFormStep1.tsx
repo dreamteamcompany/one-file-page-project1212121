@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import CompanyStructureInput from '@/components/field-registry/CompanyStructureInput';
+import DateMaskedInput from '@/components/ui/date-masked-input';
 
 interface TicketService {
   id: number;
@@ -146,10 +147,9 @@ const renderCustomField = (
 
     case 'date':
       return (
-        <Input
-          type="date"
+        <DateMaskedInput
           value={value}
-          onChange={(e) => updateCustomField(formData, setFormData, field.id, e.target.value)}
+          onChange={(isoDate) => updateCustomField(formData, setFormData, field.id, isoDate)}
           required={field.is_required}
         />
       );

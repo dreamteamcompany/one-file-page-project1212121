@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
+import { isoToDisplay } from '@/components/ui/date-masked-input';
 
 interface CustomField {
   id: number;
@@ -73,7 +74,11 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
                 className={`p-3 rounded-lg bg-muted/50 ${isShortField(field) ? '' : 'col-span-2'}`}
               >
                 <p className="text-xs text-muted-foreground mb-1">{field.name}</p>
-                <p className="text-sm break-words">{field.value || '—'}</p>
+                <p className="text-sm break-words">
+                  {field.field_type === 'date' && field.value
+                    ? (isoToDisplay(field.value) || field.value)
+                    : (field.value || '—')}
+                </p>
               </div>
             ))}
           </div>
