@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
@@ -13,6 +13,7 @@ const TicketDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { user, hasPermission } = useAuth();
 
   const {
@@ -78,9 +79,17 @@ const TicketDetails = () => {
   }
 
   return (
-    <PageLayout>
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 px-4 md:px-[25px] py-4 md:py-[18px] bg-[#1b254b]/50 backdrop-blur-[20px] rounded-[15px] border border-white/10">
         <div className="flex items-center gap-3 flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <Icon name="Menu" size={24} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

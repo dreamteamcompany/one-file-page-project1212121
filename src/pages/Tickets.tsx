@@ -99,7 +99,7 @@ const Tickets = () => {
   };
 
   return (
-    <PageLayout>
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full">

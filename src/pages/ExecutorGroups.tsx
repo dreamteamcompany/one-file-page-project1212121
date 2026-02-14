@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/layout/PageLayout';
+import AppHeader from '@/components/layout/AppHeader';
 import GroupDialog from '@/components/executor-groups/GroupDialog';
 import GroupCard from '@/components/executor-groups/GroupCard';
 import MembersPanel from '@/components/executor-groups/MembersPanel';
@@ -26,6 +28,7 @@ import {
 const ExecutorGroups = () => {
   const { groups, loading, createGroup, updateGroup, removeGroup } = useExecutorGroups();
   const ref = useReferenceData();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [selectedGroup, setSelectedGroup] = useState<ExecutorGroup | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,7 +61,8 @@ const ExecutorGroups = () => {
   };
 
   return (
-    <PageLayout>
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
+      <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold">Группы исполнителей</h1>
