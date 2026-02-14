@@ -264,17 +264,22 @@ const TicketFormStep1 = ({
       </div>
 
       {customFields.length > 0 && (
-        <div className="space-y-3 pt-4 border-t">
-          <h3 className="font-medium text-sm">Дополнительные поля</h3>
-          {customFields.map((field) => (
-            <div key={field.id} className="space-y-2">
-              <Label>
-                {field.name}
-                {field.is_required && <span className="text-destructive ml-1">*</span>}
-              </Label>
-              {renderCustomField(field, formData, setFormData)}
-            </div>
-          ))}
+        <div className="pt-4 border-t">
+          <h3 className="font-medium text-sm mb-3">Дополнительные поля</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {customFields.map((field) => {
+              const isWide = ['textarea', 'company_structure'].includes(field.field_type);
+              return (
+                <div key={field.id} className={`space-y-2 ${isWide ? 'col-span-2' : ''}`}>
+                  <Label>
+                    {field.name}
+                    {field.is_required && <span className="text-destructive ml-1">*</span>}
+                  </Label>
+                  {renderCustomField(field, formData, setFormData)}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
