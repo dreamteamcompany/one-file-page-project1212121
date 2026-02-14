@@ -248,7 +248,10 @@ const TicketDetailsContent = ({
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {ticket.custom_fields.map((field) => {
-                  const displayText = field.display_value || field.value || '—';
+                  const rawValue = field.display_value || field.value || '—';
+                  const displayText = (field.field_type === 'checkbox' || field.field_type === 'toggle')
+                    ? (rawValue === 'true' || rawValue === 'True' ? 'Да' : rawValue === 'false' || rawValue === 'False' ? 'Нет' : rawValue)
+                    : rawValue;
                   const isLongValue = displayText.length > 25 || field.name.length > 20;
                   const isChain = field.field_type === 'company_structure' && displayText.includes('→');
                   return (
