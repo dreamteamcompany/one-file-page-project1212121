@@ -35,7 +35,6 @@ const PaymentsSidebar = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [ticketsOpen, setTicketsOpen] = useState(true);
   const { pendingCount } = usePendingApprovals();
 
   useEffect(() => {
@@ -90,143 +89,14 @@ const PaymentsSidebar = ({
         )}
         {(hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only')) && (
           <li>
-            <button
-              onClick={() => setTicketsOpen(!ticketsOpen)}
-              className={`w-full flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'justify-between px-[15px] py-3'} rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors`}
-              title="Заявки"
-            >
-              <div className="flex items-center gap-3">
-                <Icon name="Ticket" size={22} />
-                {!collapsed && <span>Заявки</span>}
-              </div>
-              {!collapsed && <Icon name={ticketsOpen ? 'ChevronDown' : 'ChevronRight'} size={16} />}
-            </button>
-            {ticketsOpen && (
-              <ul className={`${collapsed ? 'hidden' : 'ml-3 mt-1 space-y-1'}`}>
-                {(hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only')) && (
-                  <li>
-                    <Link to="/tickets" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="List" size={18} />
-                      <span>Все заявки</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('ticket_services', 'read') && (
-                  <li>
-                    <Link to="/ticket-services-management" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-services-management') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="Wrench" size={18} />
-                      <span>Услуги заявок</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('ticket_service_categories', 'read') && (
-                  <li>
-                    <Link to="/ticket-service-categories" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-service-categories') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="FolderTree" size={18} />
-                      <span>Категории услуг</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('ticket_services', 'read') && (
-                  <li>
-                    <Link to="/ticket-services" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-services') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="Building2" size={18} />
-                      <span>Сервисы услуг</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('ticket_statuses', 'read') && (
-                  <li>
-                    <Link to="/ticket-statuses" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-statuses') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="CircleDot" size={18} />
-                      <span>Статусы заявок</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('ticket_priorities', 'read') && (
-                  <li>
-                    <Link to="/ticket-priorities" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/ticket-priorities') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="AlertCircle" size={18} />
-                      <span>Приоритеты заявок</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('sla', 'read') && (
-                  <li>
-                    <Link to="/sla" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/sla') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="Clock" size={18} />
-                      <span>SLA</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('executor_groups', 'read') && (
-                  <li>
-                    <Link to="/executor-groups" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/executor-groups') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="UsersRound" size={18} />
-                      <span>Группы исполнителей</span>
-                    </Link>
-                  </li>
-                )}
-                {hasPermission('executor_groups', 'read') && (
-                  <li>
-                    <Link to="/executor-assignments" className={`flex items-center gap-3 px-[15px] py-2 rounded-lg text-sm ${isActive('/executor-assignments') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
-                      <Icon name="UserCheck" size={18} />
-                      <span>Привязка исполнителей</span>
-                    </Link>
-                  </li>
-                )}
-              </ul>
-            )}
-          </li>
-        )}
-        {hasPermission('field_registry', 'read') && (
-          <li>
-            <Link to="/field-registry" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/field-registry') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Реестр полей">
-              <Icon name="Database" size={22} />
-              {!collapsed && <span>Реестр полей</span>}
+            <Link to="/tickets" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Заявки">
+              <Icon name="Ticket" size={22} />
+              {!collapsed && <span>Заявки</span>}
             </Link>
           </li>
         )}
-        {hasPermission('custom_field_groups', 'read') && (
-          <li>
-            <Link to="/custom-field-groups" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/custom-field-groups') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Группы полей">
-              <Icon name="Layers" size={22} />
-              {!collapsed && <span>Группы полей</span>}
-            </Link>
-          </li>
-        )}
-        {hasPermission('service_field_mappings', 'read') && (
-          <li>
-            <Link to="/service-field-mappings" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/service-field-mappings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Связь услуг с полями">
-              <Icon name="Link" size={22} />
-              {!collapsed && <span>Связь услуг с полями</span>}
-            </Link>
-          </li>
-        )}
-        {hasPermission('companies', 'read') && (
-          <li>
-            <Link to="/companies" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/companies') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Компании">
-              <Icon name="Building2" size={22} />
-              {!collapsed && <span>Компании</span>}
-            </Link>
-          </li>
-        )}
-        {hasPermission('departments', 'read') && (
-          <li>
-            <Link to="/departments" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/departments') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Подразделения">
-              <Icon name="Network" size={22} />
-              {!collapsed && <span>Подразделения</span>}
-            </Link>
-          </li>
-        )}
-        {hasPermission('positions', 'read') && (
-          <li>
-            <Link to="/positions" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/positions') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Должности">
-              <Icon name="Briefcase" size={22} />
-              {!collapsed && <span>Должности</span>}
-            </Link>
-          </li>
-        )}
+
+
         {hasPermission('users', 'read') && (
           <li>
             <Link to="/users" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/users') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Пользователи">
