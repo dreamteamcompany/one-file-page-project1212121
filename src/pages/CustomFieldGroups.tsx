@@ -95,30 +95,39 @@ const CustomFieldGroups = () => {
       )}
 
       <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] pb-20 min-h-screen flex-1 overflow-y-auto overflow-x-hidden max-w-full">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-[30px] px-4 md:px-[25px] py-4 md:py-[18px] bg-[#1b2735] rounded-[8px]">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button 
-              onClick={() => setMenuOpen(true)}
-              className="lg:hidden p-2 hover:bg-white/10 rounded-md transition-colors"
-            >
-              <Icon name="Menu" size={24} className="text-white" />
-            </button>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-white">Группы полей</h1>
-              <p className="text-sm text-white/60">Управление группами пользовательских полей</p>
-            </div>
+        <div className="flex lg:hidden items-center gap-2 mb-4">
+          <button 
+            onClick={() => setMenuOpen(true)}
+            className="p-2 hover:bg-white/10 rounded-md transition-colors"
+          >
+            <Icon name="Menu" size={24} className="text-white" />
+          </button>
+          <h1 className="text-lg font-bold text-white">Группы полей</h1>
+        </div>
+
+        <header className="hidden lg:flex flex-row justify-between items-center gap-4 mb-6 md:mb-[30px] px-[25px] py-[18px] bg-[#1b2735] rounded-[8px]">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Группы полей</h1>
+            <p className="text-sm text-white/60">Управление группами пользовательских полей</p>
           </div>
-          <Button onClick={openDialog} className="w-full sm:w-auto">
+          <Button onClick={openDialog}>
             <Icon name="Plus" size={18} className="mr-2" />
             Создать группу
           </Button>
         </header>
 
-        <div className="px-4 md:px-[25px]">
+        <div className="px-0 md:px-[25px]">
+          <div className="flex items-center gap-2 mb-4 lg:hidden">
+            <Button onClick={openDialog} className="w-full">
+              <Icon name="Plus" size={18} className="mr-2" />
+              Создать группу
+            </Button>
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Все группы полей</CardTitle>
-              <div className="mt-4">
+              <CardTitle className="text-lg hidden md:block">Все группы полей</CardTitle>
+              <div className="mt-0 md:mt-4">
                 <div className="relative">
                   <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input

@@ -75,7 +75,7 @@ const FieldGroupDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] w-[calc(100%-2rem)] sm:w-full overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {editingGroup ? 'Редактировать группу полей' : 'Создать группу полей'}
@@ -161,16 +161,17 @@ const FieldGroupDialog = ({
             </ScrollArea>
           </div>
 
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1">
-              {editingGroup ? 'Сохранить' : 'Создать'}
-            </Button>
+          <div className="flex flex-col-reverse sm:flex-row gap-2">
             <Button 
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
             >
               Отмена
+            </Button>
+            <Button type="submit" className="w-full sm:flex-1">
+              {editingGroup ? 'Сохранить' : 'Создать'}
             </Button>
           </div>
         </form>
