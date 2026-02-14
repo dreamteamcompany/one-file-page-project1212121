@@ -81,17 +81,17 @@ const PaymentsSidebar = ({
         <ul className={`${collapsed ? 'px-1' : 'px-[15px]'} py-5 space-y-1 pb-4`}>
         {hasPermission('dashboard', 'read') && (
           <li>
-            <Link to="/" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Дашборд">
-              <Icon name="Home" size={22} />
-              {!collapsed && <span>Дашборд</span>}
+            <Link to="/" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Аналитика">
+              <Icon name="BarChart3" size={22} />
+              {!collapsed && <span>Аналитика</span>}
             </Link>
           </li>
         )}
         {(hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only')) && (
           <li>
-            <Link to="/tickets" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Заявки">
+            <Link to="/tickets" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/tickets') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Мои заявки">
               <Icon name="Ticket" size={22} />
-              {!collapsed && <span>Заявки</span>}
+              {!collapsed && <span>Мои заявки</span>}
             </Link>
           </li>
         )}
