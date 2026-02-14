@@ -38,13 +38,14 @@ const FieldGroupBadges = ({
     );
   }
 
-  if (!mapping.field_group_ids || mapping.field_group_ids.length === 0) {
+  const groupIds = mapping.field_group_ids || (mapping.field_group_id ? [mapping.field_group_id] : []);
+  if (groupIds.length === 0) {
     return <span className="text-xs text-muted-foreground">Нет групп</span>;
   }
 
   return (
     <div className="flex flex-wrap gap-1">
-      {getFieldGroupNames(mapping.field_group_ids).map((name, idx) => (
+      {getFieldGroupNames(groupIds).map((name, idx) => (
         <Badge key={idx} variant="secondary" className="text-xs">
           {name}
         </Badge>

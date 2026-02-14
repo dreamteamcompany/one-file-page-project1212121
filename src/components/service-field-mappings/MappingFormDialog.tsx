@@ -161,7 +161,7 @@ const MappingFormDialog = ({
                     >
                       <Checkbox
                         id={`group-${group.id}`}
-                        checked={formData.field_group_ids.includes(group.id)}
+                        checked={(formData.field_group_ids || []).includes(group.id)}
                         onCheckedChange={() => toggleFieldGroup(group.id)}
                       />
                       <div className="flex-1">
@@ -186,7 +186,7 @@ const MappingFormDialog = ({
               )}
             </ScrollArea>
             <p className="text-xs text-muted-foreground">
-              Выбрано групп: {formData.field_group_ids.length}
+              Выбрано групп: {(formData.field_group_ids || []).length}
             </p>
           </div>
 

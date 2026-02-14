@@ -195,7 +195,7 @@ const ServiceFieldMappings = () => {
     setFormData({
       service_category_id: mapping.service_category_id,
       service_id: mapping.service_id,
-      field_group_ids: mapping.field_group_ids,
+      field_group_ids: mapping.field_group_ids || (mapping.field_group_id ? [mapping.field_group_id] : []),
     });
     setDialogOpen(true);
   };
