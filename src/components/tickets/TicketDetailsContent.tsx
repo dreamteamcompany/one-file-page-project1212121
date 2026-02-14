@@ -248,13 +248,22 @@ const TicketDetailsContent = ({
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {ticket.custom_fields.map((field) => {
-                  const isLongValue = (field.display_value || field.value || '').length > 25 || field.name.length > 20;
+                  const displayText = field.display_value || field.value || '—';
+                  const isLongValue = displayText.length > 25 || field.name.length > 20;
+                  const isChain = field.field_type === 'company_structure' && displayText.includes('→');
                   return (
                     <div key={field.id} className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2 md:col-span-1' : ''}`}>
                       <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>
-                      <p className="text-sm font-medium text-foreground break-words">
-                        {field.display_value || field.value || '—'}
-                      </p>
+                      {isChain ? (
+                        <p className="text-sm text-foreground break-words">
+                          {displayText.split('→').slice(0, -1).map((part, i) => (
+                            <span key={i} className="text-muted-foreground">{part.trim()}{' → '}</span>
+                          ))}
+                          <span className="font-bold text-primary">{displayText.split('→').pop()?.trim()}</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm font-medium text-foreground break-words">{displayText}</p>
+                      )}
                     </div>
                   );
                 })}
