@@ -84,6 +84,30 @@ const Settings = () => {
         { name: 'Связь услуг с полями', path: '/service-field-mappings', icon: 'Link', permission: { resource: 'service_field_mappings', action: 'read' } },
       ],
     },
+    {
+      title: 'Пользователи',
+      description: 'Управление пользователями системы',
+      icon: 'Users',
+      color: 'hsl(var(--primary))',
+      path: '/users',
+      permission: { resource: 'users', action: 'read' },
+    },
+    {
+      title: 'Права доступа',
+      description: 'Роли и разрешения пользователей',
+      icon: 'Shield',
+      color: 'hsl(var(--secondary))',
+      path: '/roles',
+      permission: { resource: 'roles', action: 'read' },
+    },
+    {
+      title: 'Анализатор логов',
+      description: 'Просмотр и анализ системных логов',
+      icon: 'FileText',
+      color: 'hsl(var(--accent))',
+      path: '/log-analyzer',
+      permission: { resource: 'log_analyzer', action: 'read' },
+    },
   ];
 
   return (
