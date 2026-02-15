@@ -221,8 +221,8 @@ const TicketDetailsContent = ({
               <Button variant="ghost" size="sm" title="Редактировать заявку">
                 <Icon name="Edit" size={18} />
               </Button>
-              <Button variant="ghost" size="sm" title="Добавить комментарий">
-                <Icon name="MessageSquare" size={18} />
+              <Button variant="ghost" size="sm" title="Открыть чат">
+                <Icon name="MessageCircle" size={18} />
               </Button>
               <Button variant="ghost" size="sm" title="Копировать заявку">
                 <Icon name="Copy" size={18} />
@@ -294,7 +294,7 @@ const TicketDetailsContent = ({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Комментарии ({comments.length})
+            Чат ({comments.length})
           </button>
           <button 
             onClick={() => setActiveTab('files')}
