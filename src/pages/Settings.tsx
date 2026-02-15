@@ -28,6 +28,7 @@ const Settings = () => {
       items: [
         { name: 'Соглашения SLA', path: '/sla', icon: 'Clock', permission: { resource: 'sla', action: 'read' } },
         { name: 'Связь SLA с услугами', path: '/sla-service-mappings', icon: 'Link', permission: { resource: 'sla', action: 'read' } },
+        { name: 'Аналитика SLA', path: '/sla-analytics', icon: 'BarChart3', permission: { resource: 'sla', action: 'read' } },
       ],
     },
     {
