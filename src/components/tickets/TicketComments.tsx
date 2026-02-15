@@ -386,10 +386,10 @@ const TicketComments = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-1 py-2 min-h-[200px] max-h-[500px]"
+        className="px-1 py-2"
       >
         {loadingComments ? (
           <div className="flex items-center justify-center py-12">
