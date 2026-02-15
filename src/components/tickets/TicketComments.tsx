@@ -411,7 +411,7 @@ const TicketComments = ({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t pt-3 mt-2">
+      <div className="sticky bottom-0 bg-background border-t pt-3 mt-2 z-10 pb-2">
         {isCustomer && hasAssignee && (
           <Button
             onClick={onSendPing}
