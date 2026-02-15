@@ -1,18 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
-import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Settings = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [dictionariesOpen, setDictionariesOpen] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(true);
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
 
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
@@ -23,20 +18,6 @@ const Settings = () => {
   if (!hasPermission('settings', 'read')) {
     return null;
   }
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStart - touchEnd > 75) {
-      setMenuOpen(false);
-    }
-  };
 
   const settingsSections = [
     {
@@ -113,108 +94,78 @@ const Settings = () => {
   ];
 
   return (
-    <div className="flex min-h-screen">
-      <PaymentsSidebar
-        menuOpen={menuOpen}
-        dictionariesOpen={dictionariesOpen}
-        setDictionariesOpen={setDictionariesOpen}
-        settingsOpen={settingsOpen}
-        setSettingsOpen={setSettingsOpen}
-        handleTouchStart={handleTouchStart}
-        handleTouchMove={handleTouchMove}
-        handleTouchEnd={handleTouchEnd}
-      />
-
-      {menuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
-
-      <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 text-white"
-            >
-              <Icon name="Menu" size={24} />
-            </button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">Основные настройки</h1>
-              <p className="text-sm md:text-base text-muted-foreground mt-1">
-                Управление данными проекта
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {settingsSections.map((section) => {
-            const hasAnyPermission = section.permission
-              ? hasPermission(section.permission.resource, section.permission.action)
-              : section.items?.some(item => hasPermission(item.permission.resource, item.permission.action));
-
-            if (!hasAnyPermission) return null;
-
-            return (
-              <Card
-                key={section.title}
-                className="hover:border-primary/30 transition-colors cursor-pointer group"
-                onClick={() => {
-                  if (section.path) {
-                    navigate(section.path);
-                  }
-                }}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${section.color}20` }}
-                    >
-                      <Icon name={section.icon} size={20} style={{ color: section.color }} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base group-hover:text-primary transition-colors">
-                        {section.title}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        {section.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                {section.items && (
-                  <CardContent className="pt-0">
-                    <div className="flex flex-wrap gap-2">
-                      {section.items
-                        .filter(item => hasPermission(item.permission.resource, item.permission.action))
-                        .map((item) => (
-                          <button
-                            key={item.path}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(item.path);
-                            }}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/50 hover:bg-primary/10 hover:text-primary text-xs text-muted-foreground transition-colors"
-                          >
-                            <Icon name={item.icon} size={14} />
-                            {item.name}
-                          </button>
-                        ))}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
+    <PageLayout>
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Основные настройки</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
+            Управление данными проекта
+          </p>
         </div>
+      </header>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {settingsSections.map((section) => {
+          const hasAnyPermission = section.permission
+            ? hasPermission(section.permission.resource, section.permission.action)
+            : section.items?.some(item => hasPermission(item.permission.resource, item.permission.action));
 
-      </main>
-    </div>
+          if (!hasAnyPermission) return null;
+
+          return (
+            <Card
+              key={section.title}
+              className="hover:border-primary/30 transition-colors cursor-pointer group"
+              onClick={() => {
+                if (section.path) {
+                  navigate(section.path);
+                }
+              }}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${section.color}20` }}
+                  >
+                    <Icon name={section.icon} size={20} style={{ color: section.color }} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base group-hover:text-primary transition-colors">
+                      {section.title}
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      {section.description}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              {section.items && (
+                <CardContent className="pt-0">
+                  <div className="flex flex-wrap gap-2">
+                    {section.items
+                      .filter(item => hasPermission(item.permission.resource, item.permission.action))
+                      .map((item) => (
+                        <button
+                          key={item.path}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(item.path);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/50 hover:bg-primary/10 hover:text-primary text-xs text-muted-foreground transition-colors"
+                        >
+                          <Icon name={item.icon} size={14} />
+                          {item.name}
+                        </button>
+                      ))}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </PageLayout>
   );
 };
 

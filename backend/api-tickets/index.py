@@ -315,18 +315,20 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
             assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
         
-        due_date = None
         sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
-        if sla and sla.get('resolution_time_minutes'):
-            due_date_sql = f"NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
-        else:
-            due_date_sql = 'NULL'
+        due_date_sql = 'NULL'
+        response_due_date_sql = 'NULL'
+        if sla:
+            if sla.get('resolution_time_minutes'):
+                due_date_sql = f"NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
+            if sla.get('response_time_minutes'):
+                response_due_date_sql = f"NOW() + INTERVAL '{int(sla['response_time_minutes'])} minutes'"
         
         cur.execute(f"""
             INSERT INTO {SCHEMA}.tickets 
-            (title, description, status_id, priority_id, assigned_to, created_by, due_date, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, {due_date_sql}, NOW(), NOW())
-            RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, due_date, created_at, updated_at
+            (title, description, status_id, priority_id, assigned_to, created_by, due_date, response_due_date, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, {due_date_sql}, {response_due_date_sql}, NOW(), NOW())
+            RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, due_date, response_due_date, created_at, updated_at
         """, (
             data.title,
             data.description,
@@ -424,7 +426,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         # Получаем текущее состояние заявки для логирования изменений
         cur.execute(f"""
-            SELECT title, description, status_id, priority_id, assigned_to, due_date
+            SELECT title, description, status_id, priority_id, assigned_to, due_date, response_due_date, has_response
             FROM {SCHEMA}.tickets 
             WHERE id = %s
         """, (ticket_id,))
@@ -487,7 +489,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             UPDATE {SCHEMA}.tickets 
             SET {', '.join(update_fields)}
             WHERE id = %s
-            RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, created_by, created_at, updated_at
+            RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, response_due_date, has_response, created_by, created_at, updated_at
         """, params)
         
         ticket = dict(cur.fetchone())

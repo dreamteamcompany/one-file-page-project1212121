@@ -46,6 +46,8 @@ interface Ticket {
   assignee_name?: string;
   assignee_email?: string;
   due_date?: string;
+  response_due_date?: string;
+  has_response?: boolean;
   created_at?: string;
   updated_at?: string;
   closed_at?: string;
@@ -121,6 +123,7 @@ const TicketInfoFields = ({
   };
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
+  const responseDeadlineInfo = getDeadlineInfo(ticket.response_due_date);
 
   return (
     <div className="rounded-lg bg-card border divide-y">
@@ -221,6 +224,57 @@ const TicketInfoFields = ({
           </SelectContent>
         </Select>
       </div>
+
+      {ticket.response_due_date && (
+        <div className="p-4" style={responseDeadlineInfo ? { 
+          backgroundColor: ticket.has_response ? '#22c55e08' : `${responseDeadlineInfo.color}08`
+        } : {}}>
+          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="Timer" size={14} />
+            Время реакции
+          </h3>
+          {ticket.has_response ? (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-green-500/20">
+                <Icon name="CheckCircle2" size={16} className="text-green-500" />
+              </div>
+              <p className="font-medium text-sm text-green-500">Ответ получен</p>
+            </div>
+          ) : responseDeadlineInfo ? (
+            <div className="flex items-start gap-2">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{
+                backgroundColor: `${responseDeadlineInfo.color}20`
+              }}>
+                <Icon name={responseDeadlineInfo.urgent ? 'AlertCircle' : 'Timer'} size={16} style={{ color: responseDeadlineInfo.color }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm mb-0.5" style={{ color: responseDeadlineInfo.color }}>
+                  {responseDeadlineInfo.label}
+                </p>
+                <p className="text-xs" style={{ color: responseDeadlineInfo.color, opacity: 0.75 }}>
+                  {new Date(ticket.response_due_date).toLocaleDateString('ru-RU', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                  })}
+                  {' в '}
+                  {new Date(ticket.response_due_date).toLocaleTimeString('ru-RU', {
+                    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow'
+                  })}
+                  {' МСК'}
+                </p>
+              </div>
+              {responseDeadlineInfo.urgent && (
+                <Badge 
+                  variant="secondary"
+                  className="flex-shrink-0"
+                  style={{ backgroundColor: responseDeadlineInfo.color, color: 'white', fontSize: '10px', padding: '2px 6px' }}
+                >
+                  Срочно
+                </Badge>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {(ticket.due_date || isCustomer) && (
         <div className="p-4" style={deadlineInfo ? { 

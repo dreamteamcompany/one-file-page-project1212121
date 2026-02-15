@@ -110,10 +110,10 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         VALUES (%s, %s, 'comment', NULL, %s, NOW())
     """, (data.ticket_id, user_id, f'Добавлен комментарий: {data.comment[:50]}...'))
     
-    # Обновляем updated_at заявки
     cur.execute(f"""
         UPDATE {SCHEMA}.tickets 
-        SET updated_at = NOW()
+        SET updated_at = NOW(),
+            has_response = CASE WHEN has_response = false THEN true ELSE has_response END
         WHERE id = %s
     """, (data.ticket_id,))
     
