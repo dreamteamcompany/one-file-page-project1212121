@@ -49,14 +49,12 @@ const TicketDetails = () => {
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
 
   useEffect(() => {
-    // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
     const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
     if (!canViewTickets) {
       navigate('/tickets');
     }
   }, [hasPermission, navigate]);
 
-  // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
   const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
   if (!canViewTickets) {
     return null;
@@ -81,13 +79,13 @@ const TicketDetails = () => {
   }
 
   return (
-    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
-      {/* Mobile: компактная шапка — только гамбургер и назад */}
-      <div className="flex lg:hidden items-center gap-2 mb-4">
+    <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen} forceCollapsed>
+      <div className="flex items-center gap-2 mb-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setMenuOpen(!menuOpen)}
+          className="lg:hidden"
         >
           <Icon name="Menu" size={24} />
         </Button>
@@ -95,43 +93,14 @@ const TicketDetails = () => {
           variant="ghost"
           size="icon"
           onClick={() => navigate('/tickets')}
-          className="text-white hover:bg-white/10"
         >
           <Icon name="ArrowLeft" size={20} />
         </Button>
       </div>
 
-      {/* Desktop: полная шапка */}
-      <header className="hidden lg:flex flex-row justify-between items-center gap-4 mb-6 px-[25px] py-[18px] bg-[#1b254b]/50 backdrop-blur-[20px] rounded-[15px] border border-white/10">
-        <div className="flex items-center gap-3 flex-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/tickets')}
-            className="text-white hover:bg-white/10"
-          >
-            <Icon name="ArrowLeft" size={20} />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Заявка #{ticket.id}</h1>
-            <p className="text-sm text-white/60">{ticket.title}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 px-[15px] py-[10px] rounded-[12px] bg-white/5 border border-white/10">
-          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-bold text-white text-base">
-            {user?.full_name?.charAt(0) || 'U'}
-          </div>
-          <div>
-            <div className="text-sm font-medium text-white">{user?.full_name}</div>
-            <div className="text-xs text-white/60">{user?.email}</div>
-          </div>
-        </div>
-      </header>
-
       <div className="flex-1 overflow-auto -mx-4 md:-mx-6 lg:-mx-[30px] px-4 md:px-6 lg:px-[30px] -mb-4 md:-mb-6 lg:-mb-[30px] pb-4 md:pb-6 lg:pb-[30px]">
-        <div className="w-full py-6">
+        <div className="w-full py-2">
           <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
-          {/* Desktop: Sidebar слева */}
           <div className="hidden lg:block">
             <TicketDetailsSidebar 
               ticket={ticket}
@@ -149,7 +118,6 @@ const TicketDetails = () => {
             />
           </div>
 
-          {/* Mobile: Sidebar сверху, свёрнут по умолчанию */}
           <div className="lg:hidden w-full">
             <button
               type="button"
@@ -192,28 +160,8 @@ const TicketDetails = () => {
                 />
               </div>
             </div>
-            {ticket.created_by === user?.id && !!ticket.assigned_to && (
-              <Button
-                onClick={handleSendPing}
-                disabled={sendingPing}
-                className="w-full mt-3 font-semibold bg-orange-500 hover:bg-orange-600 text-white"
-              >
-                {sendingPing ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Отправка запроса...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Bell" size={16} className="mr-2" />
-                    Запросить статус
-                  </>
-                )}
-              </Button>
-            )}
           </div>
 
-          {/* Content: на десктопе в центре, на мобилке под сайдбаром */}
           <TicketDetailsContent
             ticket={ticket}
             comments={comments}
@@ -227,10 +175,10 @@ const TicketDetails = () => {
             onSendPing={handleSendPing}
             onReaction={handleReaction}
             availableUsers={users}
-            auditLogs={auditLogs}
-            loadingHistory={loadingHistory}
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}
+            auditLogs={auditLogs}
+            loadingHistory={loadingHistory}
           />
           </div>
         </div>

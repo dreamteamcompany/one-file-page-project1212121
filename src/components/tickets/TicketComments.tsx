@@ -227,28 +227,6 @@ const TicketComments = ({
       </div>
 
       <div className="space-y-3 mb-6 pb-4 border-b">
-        {isCustomer && hasAssignee && (
-          <Button
-            onClick={onSendPing}
-            disabled={sendingPing}
-            variant="outline"
-            size="sm"
-            className="w-full hidden lg:flex"
-          >
-            {sendingPing ? (
-              <>
-                <Icon name="Loader2" size={14} className="mr-2 animate-spin" />
-                Отправка запроса...
-              </>
-            ) : (
-              <>
-                <Icon name="Bell" size={14} className="mr-2" />
-                Запросить статус
-              </>
-            )}
-          </Button>
-        )}
-
         {replyToComment && (
           <div className="p-3 bg-primary/5 rounded-lg border border-primary">
             <div className="flex items-start justify-between gap-2">

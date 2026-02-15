@@ -171,26 +171,35 @@ const TicketDetailsContent = ({
         <div className="flex flex-col md:flex-row gap-6">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
-              <span className="text-muted-foreground lg:hidden">#{ticket.id} </span>{ticket.title}
+              <span className="text-muted-foreground">#{ticket.id}</span> {ticket.title}
             </h1>
             
-            <div className="flex flex-wrap items-center gap-3 md:gap-6 mb-4 md:mb-6 text-sm">
-              {ticket.creator_name && (
-                <div className="flex items-center gap-2">
-                  <Icon name="User" size={16} className="text-muted-foreground" />
-                  <span className="font-medium text-foreground">{ticket.creator_name}</span>
+            <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-4 md:mb-6 text-sm">
+              {ticket.due_date && deadlineInfo && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Дедлайн</span>
+                  <div className="flex items-center gap-2">
+                    <Icon name="Clock" size={16} style={{ color: deadlineInfo.color }} />
+                    <span style={{ color: deadlineInfo.color }} className="font-medium">{deadlineInfo.label}</span>
+                  </div>
                 </div>
               )}
               {ticket.created_at && (
-                <div className="flex items-center gap-2">
-                  <Icon name="Calendar" size={16} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">{formatDate(ticket.created_at)}</span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Дата создания</span>
+                  <div className="flex items-center gap-2">
+                    <Icon name="Calendar" size={16} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">{formatDate(ticket.created_at)}</span>
+                  </div>
                 </div>
               )}
-              {ticket.due_date && deadlineInfo && (
-                <div className="flex items-center gap-2">
-                  <Icon name="Clock" size={16} style={{ color: deadlineInfo.color }} />
-                  <span style={{ color: deadlineInfo.color }} className="font-medium">{deadlineInfo.label}</span>
+              {ticket.creator_name && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Заказчик</span>
+                  <div className="flex items-center gap-2">
+                    <Icon name="User" size={16} className="text-muted-foreground" />
+                    <span className="font-medium text-foreground">{ticket.creator_name}</span>
+                  </div>
                 </div>
               )}
             </div>

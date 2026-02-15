@@ -5,14 +5,15 @@ interface PageLayoutProps {
   children: ReactNode;
   menuOpen?: boolean;
   setMenuOpen?: (open: boolean) => void;
+  forceCollapsed?: boolean;
 }
 
-const PageLayout = ({ children, menuOpen: externalMenuOpen, setMenuOpen: externalSetMenuOpen }: PageLayoutProps) => {
+const PageLayout = ({ children, menuOpen: externalMenuOpen, setMenuOpen: externalSetMenuOpen, forceCollapsed }: PageLayoutProps) => {
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   const menuOpen = externalMenuOpen !== undefined ? externalMenuOpen : internalMenuOpen;
   const setMenuOpen = externalSetMenuOpen || setInternalMenuOpen;
   
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(forceCollapsed ?? false);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const [dictionariesOpen, setDictionariesOpen] = useState(false);
