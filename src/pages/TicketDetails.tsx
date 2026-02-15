@@ -156,9 +156,31 @@ const TicketDetails = () => {
                   onSendPing={handleSendPing}
                   onApprovalChange={loadTicket}
                   onUpdateDueDate={handleUpdateDueDate}
+                  hidePing
                 />
               </div>
             </div>
+          </div>
+
+          <div className="lg:hidden w-full">
+            <Button
+              onClick={handleSendPing}
+              disabled={sendingPing}
+              size="lg"
+              className="w-full font-semibold bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {sendingPing ? (
+                <>
+                  <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
+                  Отправка запроса...
+                </>
+              ) : (
+                <>
+                  <Icon name="Bell" size={18} className="mr-2" />
+                  Запросить статус
+                </>
+              )}
+            </Button>
           </div>
 
           <TicketDetailsContent
