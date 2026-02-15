@@ -44,8 +44,10 @@ const Settings = () => {
       description: 'Настройка времени реакции и решения для заявок',
       icon: 'Clock',
       color: 'hsl(var(--primary))',
-      path: '/sla',
-      permission: { resource: 'sla', action: 'read' },
+      items: [
+        { name: 'Соглашения SLA', path: '/sla', icon: 'Clock', permission: { resource: 'sla', action: 'read' } },
+        { name: 'Связь SLA с услугами', path: '/sla-service-mappings', icon: 'Link', permission: { resource: 'sla', action: 'read' } },
+      ],
     },
     {
       title: 'Управление заявками',

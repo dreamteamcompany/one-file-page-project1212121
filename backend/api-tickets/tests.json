@@ -19,6 +19,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get SLA service mappings (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=sla-service-mappings",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

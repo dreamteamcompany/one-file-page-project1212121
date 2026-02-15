@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
 from priorities_handler import handle_ticket_priorities
 from sla_handler import handle_sla
+from sla_service_mappings_handler import handle_sla_service_mappings, resolve_sla_for_ticket
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -58,6 +59,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_priorities(method, event, conn)
         elif endpoint == 'sla':
             return handle_sla(method, event, conn)
+        elif endpoint == 'sla-service-mappings':
+            return handle_sla_service_mappings(method, event, conn)
         elif endpoint == 'ticket-approvals':
             return handle_ticket_approvals(method, event, conn)
         elif endpoint == 'ticket_service_mappings':
@@ -312,11 +315,18 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
             assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
         
+        due_date = None
+        sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
+        if sla and sla.get('resolution_time_minutes'):
+            due_date_sql = f"NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
+        else:
+            due_date_sql = 'NULL'
+        
         cur.execute(f"""
             INSERT INTO {SCHEMA}.tickets 
-            (title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-            RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, created_at, updated_at
+            (title, description, status_id, priority_id, assigned_to, created_by, due_date, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, {due_date_sql}, NOW(), NOW())
+            RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, due_date, created_at, updated_at
         """, (
             data.title,
             data.description,
