@@ -184,7 +184,24 @@ const TicketDetailsContent = ({
                   </div>
                 </div>
               )}
-
+              {ticket.created_at && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Дата создания</span>
+                  <div className="flex items-center gap-2">
+                    <Icon name="Calendar" size={16} className="text-muted-foreground" />
+                    <span className="text-muted-foreground">{formatDate(ticket.created_at)}</span>
+                  </div>
+                </div>
+              )}
+              {ticket.creator_name && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Заказчик</span>
+                  <div className="flex items-center gap-2">
+                    <Icon name="User" size={16} className="text-muted-foreground" />
+                    <span className="font-medium text-foreground">{ticket.creator_name}</span>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-4 md:mb-6">

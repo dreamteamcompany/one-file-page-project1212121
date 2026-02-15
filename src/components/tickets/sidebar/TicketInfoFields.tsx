@@ -127,23 +127,6 @@ const TicketInfoFields = ({
 
   return (
     <div className="rounded-lg bg-card border divide-y">
-      {ticket.created_at && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Calendar" size={14} />
-            Создана
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
-              day: 'numeric',
-              month: 'long',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </p>
-        </div>
-      )}
-
       <div className="p-4">
         <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
           <Icon name="CheckCircle" size={14} />
@@ -172,26 +155,6 @@ const TicketInfoFields = ({
           </SelectContent>
         </Select>
       </div>
-
-      {ticket.creator_name && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="User" size={14} />
-            Заказчик
-          </h3>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <Icon name="User" size={16} className="text-primary" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm truncate">{ticket.creator_name}</p>
-              {ticket.creator_email && (
-                <p className="text-xs text-muted-foreground truncate">{ticket.creator_email}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="p-4">
         <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
