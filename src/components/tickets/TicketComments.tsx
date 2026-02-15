@@ -309,10 +309,16 @@ const TicketComments = ({
     return <span dangerouslySetInnerHTML={{ __html: result }} />;
   };
 
+  const sortedComments = [...comments].sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateA - dateB;
+  });
+
   const renderMessage = (comment: Comment, index: number) => {
     const isOwn = comment.user_id === currentUserId;
     const parentComment = getParentComment(comment.parent_comment_id);
-    const prevComment = index > 0 ? comments[index - 1] : null;
+    const prevComment = index > 0 ? sortedComments[index - 1] : null;
     const isConsecutive = prevComment?.user_id === comment.user_id &&
       comment.created_at && prevComment?.created_at &&
       (new Date(comment.created_at).getTime() - new Date(prevComment.created_at).getTime()) < 300000;
@@ -399,7 +405,7 @@ const TicketComments = ({
           </div>
         ) : (
           <>
-            {comments.map((comment, index) => renderMessage(comment, index))}
+            {sortedComments.map((comment, index) => renderMessage(comment, index))}
           </>
         )}
         <div ref={messagesEndRef} />
