@@ -280,6 +280,13 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             """, (ticket['id'],))
             raw_fields = [dict(row) for row in cur.fetchall()]
             ticket['custom_fields'] = resolve_custom_field_values(raw_fields, cur)
+
+            cur.execute(f"""
+                SELECT COUNT(*) AS cnt
+                FROM {SCHEMA}.sla_violations
+                WHERE ticket_id = %s
+            """, (ticket['id'],))
+            ticket['sla_violation_count'] = cur.fetchone()['cnt']
         
         cur.close()
         return response(200, {'tickets': tickets})
