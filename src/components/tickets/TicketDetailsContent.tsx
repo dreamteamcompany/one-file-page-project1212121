@@ -249,7 +249,7 @@ const TicketDetailsContent = ({
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {ticket.custom_fields.map((field) => {
                   const rawValue = field.display_value || field.value || '—';
                   const displayText = (field.field_type === 'checkbox' || field.field_type === 'toggle')
@@ -262,7 +262,7 @@ const TicketDetailsContent = ({
                   const isLongValue = displayText.length > 25 || field.name.length > 20;
                   const isChain = field.field_type === 'company_structure' && displayText.includes('→');
                   return (
-                    <div key={field.id} className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2 md:col-span-1' : ''}`}>
+                    <div key={field.id} className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2' : ''}`}>
                       {!field.hide_label && <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>}
                       {isChain ? (
                         <p className="text-sm text-foreground break-words">
