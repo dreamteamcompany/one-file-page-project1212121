@@ -42,6 +42,15 @@ interface Ticket {
   updated_at?: string;
   closed_at?: string;
   custom_fields?: CustomField[];
+  ticket_service?: {
+    id: number;
+    name: string;
+  };
+  services?: Array<{
+    id: number;
+    name: string;
+    category_name?: string;
+  }>;
 }
 
 interface Comment {
@@ -252,14 +261,29 @@ const TicketDetailsContent = ({
             )}
           </div>
 
-          {ticket.custom_fields && ticket.custom_fields.length > 0 && (
+          {((ticket.custom_fields && ticket.custom_fields.length > 0) || ticket.ticket_service || (ticket.services && ticket.services.length > 0)) && (
             <div className="w-full md:w-[320px] flex-shrink-0">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
               </h3>
               <div className="grid grid-cols-2 gap-2">
-                {ticket.custom_fields.map((field) => {
+                {ticket.ticket_service && (
+                  <div className="p-3 rounded-lg bg-muted/30 border col-span-2">
+                    <p className="text-xs text-muted-foreground mb-1">Услуга</p>
+                    <p className="text-sm font-medium text-foreground">{ticket.ticket_service.name}</p>
+                  </div>
+                )}
+                {ticket.services && ticket.services.length > 0 && ticket.services.map((service) => (
+                  <div key={service.id} className="p-3 rounded-lg bg-muted/30 border col-span-2">
+                    <p className="text-xs text-muted-foreground mb-1">Сервис</p>
+                    <p className="text-sm font-medium text-foreground">{service.name}</p>
+                    {service.category_name && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{service.category_name}</p>
+                    )}
+                  </div>
+                ))}
+                {ticket.custom_fields?.map((field) => {
                   const rawValue = field.display_value || field.value || '—';
                   const displayText = (field.field_type === 'checkbox' || field.field_type === 'toggle')
                     ? (rawValue === 'true' || rawValue === 'True' ? 'Да' : rawValue === 'false' || rawValue === 'False' ? 'Нет' : rawValue)

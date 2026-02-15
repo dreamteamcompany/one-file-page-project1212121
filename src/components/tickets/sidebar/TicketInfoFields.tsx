@@ -371,43 +371,6 @@ const TicketInfoFields = ({
         </div>
       )}
 
-      {ticket.ticket_service && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Briefcase" size={14} />
-            Услуга
-          </h3>
-          <div className="flex items-start gap-2 p-2 rounded-md bg-primary/10">
-            <Icon name="Layers" size={14} className="text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">{ticket.ticket_service.name}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {ticket.services && ticket.services.length > 0 && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Package" size={14} />
-            Сервисы
-          </h3>
-          <div className="space-y-2">
-            {ticket.services.map((service) => (
-              <div key={service.id} className="flex items-start gap-2 p-2 rounded-md bg-primary/10">
-                <Icon name="CheckCircle2" size={14} className="text-primary mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{service.name}</p>
-                  {service.category_name && (
-                    <p className="text-xs text-muted-foreground">{service.category_name}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {ticket.category_name && (
         <div className="p-4">
           <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
