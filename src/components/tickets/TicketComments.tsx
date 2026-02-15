@@ -52,6 +52,22 @@ interface TicketCommentsProps {
   uploadingFile?: boolean;
 }
 
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500',
+  'bg-purple-500', 'bg-cyan-500', 'bg-pink-500', 'bg-indigo-500',
+];
+
+function getAvatarColor(userId: number): string {
+  return AVATAR_COLORS[userId % AVATAR_COLORS.length];
+}
+
+function getInitials(name?: string): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 const TicketComments = ({
   comments,
   loadingComments,
@@ -363,79 +379,85 @@ const TicketComments = ({
         ) : (
           comments.map((comment) => {
             const parentComment = getParentComment(comment.parent_comment_id);
+            const isOwn = comment.user_id === currentUserId;
             
             return (
               <div 
                 key={comment.id} 
-                className={`p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors ${
-                  comment.parent_comment_id ? 'ml-4 lg:ml-8 border-l-2 border-primary' : ''
+                className={`flex items-start gap-2.5 ${isOwn ? 'flex-row-reverse' : ''} ${
+                  comment.parent_comment_id ? 'ml-4 lg:ml-8' : ''
                 }`}
               >
-                {parentComment && (
-                  <div className="mb-3 p-2.5 bg-primary/5 rounded text-xs border-l-2 border-primary">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Icon name="CornerDownRight" size={12} className="text-primary" />
-                      <span className="font-medium">{parentComment.user_name}</span>
-                    </div>
-                    <p className="text-muted-foreground line-clamp-2">{parentComment.comment}</p>
+                <div className={`w-8 h-8 rounded-full ${getAvatarColor(comment.user_id)} flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-xs font-bold`}>
+                  {getInitials(comment.user_name)}
+                </div>
+                <div className={`max-w-[80%] min-w-[120px]`}>
+                  <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                    <p className="font-semibold text-xs">{comment.user_name || 'Пользователь'}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDate(comment.created_at)}
+                    </p>
                   </div>
-                )}
-                
-                <div className="flex items-start gap-2 lg:gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Icon name="User" size={14} className="text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <p className="font-semibold text-sm">{comment.user_name || 'Пользователь'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(comment.created_at)}
-                      </p>
-                    </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground">
+                  <div className={`rounded-2xl px-3.5 py-2.5 ${
+                    isOwn 
+                      ? 'bg-primary text-primary-foreground rounded-tr-md' 
+                      : 'bg-muted text-foreground rounded-tl-md'
+                  }`}>
+                    {parentComment && (
+                      <div className={`mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Icon name="CornerDownRight" size={12} className={isOwn ? 'text-primary-foreground/60' : 'text-primary'} />
+                          <span className={`font-medium ${isOwn ? 'text-primary-foreground/80' : 'text-primary'}`}>{parentComment.user_name}</span>
+                        </div>
+                        <p className={`text-xs line-clamp-2 mt-0.5 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{parentComment.comment}</p>
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                       {renderCommentText(comment.comment, comment.mentioned_user_ids)}
                     </p>
                     
                     {comment.attachments && comment.attachments.length > 0 && (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-2 space-y-1">
                         {comment.attachments.map((file) => (
                           <a
                             key={file.id}
                             href={file.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded bg-muted hover:bg-accent transition-colors group"
+                            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-colors ${
+                              isOwn ? 'bg-primary-foreground/10 hover:bg-primary-foreground/20' : 'bg-background/50 hover:bg-background'
+                            }`}
                           >
-                            <Icon name="Paperclip" size={14} className="text-muted-foreground" />
-                            <span className="text-xs flex-1 group-hover:text-primary transition-colors">{file.filename}</span>
+                            <Icon name="Paperclip" size={12} />
+                            <span>{file.filename}</span>
                           </a>
                         ))}
                       </div>
                     )}
-                    
-                    {comment.reactions && comment.reactions.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-3">
-                        {comment.reactions.map((reaction, idx) => (
-                          <button
-                            key={idx}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted hover:bg-accent transition-colors text-xs"
-                          >
-                            <span style={{ fontSize: '1.5em' }}>{reaction.emoji}</span>
-                            <span className="text-muted-foreground">{reaction.count}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        onClick={() => handleReply(comment)}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-                      >
-                        <Icon name="Reply" size={12} />
-                        Ответить
-                      </button>
+                  </div>
+                  
+                  {comment.reactions && comment.reactions.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {comment.reactions.map((reaction, idx) => (
+                        <button
+                          key={idx}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted hover:bg-accent transition-colors text-xs"
+                        >
+                          <span>{reaction.emoji}</span>
+                          <span className="text-muted-foreground">{reaction.count}</span>
+                        </button>
+                      ))}
                     </div>
+                  )}
+                  
+                  <div className={`flex items-center gap-2 mt-1 ${isOwn ? 'justify-end' : ''}`}>
+                    <button
+                      onClick={() => handleReply(comment)}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                    >
+                      <Icon name="Reply" size={12} />
+                      Ответить
+                    </button>
                   </div>
                 </div>
               </div>
