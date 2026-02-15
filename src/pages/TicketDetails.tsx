@@ -156,7 +156,6 @@ const TicketDetails = () => {
                   onSendPing={handleSendPing}
                   onApprovalChange={loadTicket}
                   onUpdateDueDate={handleUpdateDueDate}
-                  hidePing
                 />
               </div>
             </div>
