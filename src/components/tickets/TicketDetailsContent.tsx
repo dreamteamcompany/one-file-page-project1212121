@@ -262,7 +262,7 @@ const TicketDetailsContent = ({
           </div>
 
           {((ticket.custom_fields && ticket.custom_fields.length > 0) || ticket.ticket_service || (ticket.services && ticket.services.length > 0)) && (
-            <div className="w-full md:w-[320px] flex-shrink-0">
+            <div className="w-full md:w-[420px] flex-shrink-0">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
