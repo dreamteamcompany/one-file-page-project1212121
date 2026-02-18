@@ -37,7 +37,7 @@ const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
         >
           <Icon name="Menu" size={24} />
         </Button>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white">Мои заявки</h1>
       </div>
 
       <div className="flex items-center gap-3">
