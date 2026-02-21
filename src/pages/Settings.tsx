@@ -1,13 +1,34 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import func2url from '../../backend/func2url.json';
 
 const Settings = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleVsdeskSync = async () => {
+    setSyncLoading(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch(func2url['vsdesk-sync']);
+      const data = await res.json();
+      setSyncResult({
+        success: data.success,
+        message: data.message || 'Синхронизация завершена',
+      });
+    } catch {
+      setSyncResult({ success: false, message: 'Ошибка соединения с vsDesk' });
+    } finally {
+      setSyncLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
@@ -104,6 +125,54 @@ const Settings = () => {
           </p>
         </div>
       </header>
+
+      {hasPermission('settings', 'read') && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-500/10">
+                <Icon name="RefreshCw" size={20} className="text-orange-500" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Интеграции</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Синхронизация данных с внешними системами
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-md bg-blue-500/10 flex items-center justify-center">
+                  <Icon name="Server" size={16} className="text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">vsDesk</p>
+                  <p className="text-xs text-muted-foreground">Заявки и комментарии</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {syncResult && (
+                  <span className={`text-xs ${syncResult.success ? 'text-green-500' : 'text-red-500'}`}>
+                    {syncResult.message}
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleVsdeskSync}
+                  disabled={syncLoading}
+                  className="gap-2"
+                >
+                  <Icon name={syncLoading ? 'Loader2' : 'RefreshCw'} size={14} className={syncLoading ? 'animate-spin' : ''} />
+                  {syncLoading ? 'Синхронизация...' : 'Синхронизировать'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {settingsSections.map((section) => {
