@@ -56,6 +56,7 @@ def vsdesk_get_requests(since_dt: str = None) -> list:
         since_dt = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M')
 
     params = {
+        'StatusId': '1',
         'TimeAdd': f'>{since_dt}',
         'sort': 'TimeAdd',
         'order': 'asc',
