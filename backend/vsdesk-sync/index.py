@@ -57,16 +57,20 @@ def strip_html(text: str) -> str:
     return re.sub(r'<[^>]+>', '', text).strip()
 
 
-def vsdesk_get(path: str) -> list:
-    """GET-запрос к vsDesk API с Basic Auth"""
+def vsdesk_raw(path: str):
+    """GET-запрос к vsDesk API, возвращает сырой ответ"""
     url = f'{VSDESK_URL}{path}'
     req = urllib.request.Request(url, headers={
         'Authorization': basic_auth_header(),
         'Accept': 'application/json',
     })
     with urllib.request.urlopen(req, timeout=25) as resp:
-        data = json.loads(resp.read().decode('utf-8-sig'))
+        return json.loads(resp.read().decode('utf-8-sig'))
 
+
+def vsdesk_get(path: str) -> list:
+    """GET-запрос к vsDesk API с Basic Auth, возвращает список"""
+    data = vsdesk_raw(path)
     if isinstance(data, list):
         return data
     if isinstance(data, dict):
@@ -160,18 +164,17 @@ def sync_tickets(requests_list: list, conn, since_dt=None) -> dict:
 
 
 def sync_comments(ext_to_local: dict, conn) -> dict:
-    """Синхронизирует комментарии одним запросом /api/comments/ для всех vsDesk заявок"""
+    """Синхронизирует комментарии (subs) через детальный запрос /api/requests/{id}/ для последних 30 заявок"""
     inserted = 0
     skipped = 0
+    errors = 0
 
     if not ext_to_local:
-        return {'inserted': 0, 'skipped': 0}
+        return {'inserted': 0, 'skipped': 0, 'errors': 0}
 
-    # Один запрос на все комментарии сразу
-    try:
-        all_comments = vsdesk_get('/api/comments/')
-    except Exception:
-        return {'inserted': 0, 'skipped': 0}
+    # Берём последние 30 заявок по убыванию ID
+    sorted_ext_ids = sorted(ext_to_local.keys(), key=lambda x: int(x) if x.isdigit() else 0, reverse=True)
+    recent_ext_ids = sorted_ext_ids[:30]
 
     with conn.cursor() as cur:
         cur.execute(
@@ -179,39 +182,54 @@ def sync_comments(ext_to_local: dict, conn) -> dict:
         )
         existing_ext_ids = {row['external_id'] for row in cur.fetchall()}
 
-        for c in all_comments:
-            ext_comment_id = str(c.get('id') or '')
-            if not ext_comment_id:
-                continue
-
-            ext_ticket_id = str(c.get('zid') or c.get('request_id') or c.get('ticket_id') or '')
-            if ext_ticket_id not in ext_to_local:
-                continue
-
+        for ext_ticket_id in recent_ext_ids:
             local_ticket_id = ext_to_local[ext_ticket_id]
 
-            if ext_comment_id in existing_ext_ids:
-                skipped += 1
+            try:
+                detail = vsdesk_raw(f'/api/requests/{ext_ticket_id}/')
+            except Exception as e:
+                errors += 1
                 continue
 
-            text = strip_html(c.get('Content') or c.get('content') or c.get('text') or c.get('message') or '')
-            if not text:
-                continue
+            subs = detail.get('subs') or [] if isinstance(detail, dict) else []
 
-            created_at = c.get('timestamp') or c.get('created_at') or None
-            is_internal = bool(c.get('is_internal') or c.get('internal') or False)
+            for c in subs:
+                ext_comment_id = str(c.get('id') or '')
+                if not ext_comment_id:
+                    continue
 
-            cur.execute(
-                '''INSERT INTO ticket_comments
-                   (ticket_id, user_id, comment, is_internal, created_at, external_id, external_source)
-                   VALUES (%s, %s, %s, %s, %s, %s, 'vsdesk')''',
-                (local_ticket_id, 1, text, is_internal, created_at, ext_comment_id)
-            )
-            existing_ext_ids.add(ext_comment_id)
-            inserted += 1
+                if ext_comment_id in existing_ext_ids:
+                    skipped += 1
+                    continue
+
+                text = strip_html(c.get('comment') or '')
+                if not text:
+                    continue
+
+                # timestamp в vsDesk: "21.02.2026 15:50:05" — парсим
+                ts_raw = c.get('timestamp') or ''
+                created_at = None
+                if ts_raw:
+                    try:
+                        created_at = datetime.strptime(ts_raw, '%d.%m.%Y %H:%M:%S')
+                    except Exception:
+                        created_at = None
+
+                # show=0 публичный, show=1 внутренний
+                is_internal = bool(c.get('show') == 1)
+
+                cur.execute(
+                    '''INSERT INTO ticket_comments
+                       (ticket_id, user_id, comment, is_internal, created_at, external_id, external_source)
+                       VALUES (%s, %s, %s, %s, %s, %s, 'vsdesk')''',
+                    (local_ticket_id, 1, text, is_internal, created_at, ext_comment_id)
+                )
+                existing_ext_ids.add(ext_comment_id)
+                inserted += 1
 
     conn.commit()
-    return {'inserted': inserted, 'skipped': skipped}
+    print(f"[vsdesk-sync] comments: inserted={inserted}, skipped={skipped}, errors={errors}")
+    return {'inserted': inserted, 'skipped': skipped, 'errors': errors}
 
 
 def handler(event: dict, context) -> dict:
@@ -247,6 +265,7 @@ def handler(event: dict, context) -> dict:
         'comments': {
             'synced': comment_stats['inserted'],
             'skipped': comment_stats['skipped'],
+            'errors': comment_stats['errors'],
         },
         'since': since_dt,
         'message': f"Заявок: {ticket_stats['inserted']} новых. Комментариев: {comment_stats['inserted']} новых.",
