@@ -1,6 +1,6 @@
 """
-Синхронизация заявок из vsDesk со статусом «Открыта» в локальную базу данных.
-Фильтрация по статусу и дате выполняется на стороне клиента.
+Синхронизация заявок и комментариев из vsDesk в локальную базу данных.
+Заявки: только со статусом «Открыта». Комментарии: все к синхронизированным заявкам.
 """
 import json
 import os
@@ -9,8 +9,7 @@ import base64
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import urllib.request
-import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA')
@@ -58,9 +57,9 @@ def strip_html(text: str) -> str:
     return re.sub(r'<[^>]+>', '', text).strip()
 
 
-def vsdesk_fetch_all() -> list:
-    """Получает все заявки из vsDesk через Basic Auth"""
-    url = f'{VSDESK_URL}/api/requests/'
+def vsdesk_get(path: str) -> list:
+    """GET-запрос к vsDesk API с Basic Auth"""
+    url = f'{VSDESK_URL}{path}'
     req = urllib.request.Request(url, headers={
         'Authorization': basic_auth_header(),
         'Accept': 'application/json',
@@ -71,7 +70,7 @@ def vsdesk_fetch_all() -> list:
     if isinstance(data, list):
         return data
     if isinstance(data, dict):
-        return data.get('requests') or data.get('data') or data.get('items') or []
+        return data.get('comments') or data.get('requests') or data.get('data') or data.get('items') or []
     return []
 
 
@@ -99,14 +98,19 @@ def get_last_sync_time(conn):
 
 
 def sync_tickets(requests_list: list, conn, since_dt=None) -> dict:
-    """Фильтрует по статусу «Открыта» и дате, сохраняет новые заявки"""
+    """Фильтрует по статусу «Открыта» и дате, сохраняет новые заявки. Возвращает маппинг ext_id -> ticket_id."""
     inserted = 0
     skipped = 0
     filtered_out = 0
+    ext_to_local = {}
 
     with conn.cursor() as cur:
+        # Загружаем уже существующие маппинги vsdesk -> local
+        cur.execute("SELECT id, external_id FROM tickets WHERE external_source = 'vsdesk' AND external_id IS NOT NULL")
+        for row in cur.fetchall():
+            ext_to_local[row['external_id']] = row['id']
+
         for req in requests_list:
-            # Фильтр: только «Открыта» (closed=1 в vsDesk означает статус "Открыта")
             status_raw = (req.get('Status') or '').strip()
             closed_val = str(req.get('closed') or '').strip()
 
@@ -115,7 +119,6 @@ def sync_tickets(requests_list: list, conn, since_dt=None) -> dict:
                 filtered_out += 1
                 continue
 
-            # Фильтр по дате — только новее последней синхронизации
             ts = req.get('timestamp') or ''
             if since_dt and ts and ts <= since_dt:
                 filtered_out += 1
@@ -125,11 +128,7 @@ def sync_tickets(requests_list: list, conn, since_dt=None) -> dict:
             if not ext_id:
                 continue
 
-            cur.execute(
-                "SELECT id FROM tickets WHERE external_id = %s AND external_source = 'vsdesk'",
-                (ext_id,)
-            )
-            if cur.fetchone():
+            if ext_id in ext_to_local:
                 skipped += 1
                 continue
 
@@ -143,18 +142,80 @@ def sync_tickets(requests_list: list, conn, since_dt=None) -> dict:
                 '''INSERT INTO tickets
                    (title, description, status_id, priority_id, created_by,
                     due_date, created_at, external_id, external_source)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'vsdesk')''',
-                (title, description, 1, priority_id, 1,
-                 due_date, created_at, ext_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'vsdesk')
+                   RETURNING id''',
+                (title, description, 1, priority_id, 1, due_date, created_at, ext_id)
             )
+            local_id = cur.fetchone()['id']
+            ext_to_local[ext_id] = local_id
             inserted += 1
 
     conn.commit()
-    return {'inserted': inserted, 'skipped': skipped, 'filtered_out': filtered_out}
+    return {
+        'inserted': inserted,
+        'skipped': skipped,
+        'filtered_out': filtered_out,
+        'ext_to_local': ext_to_local,
+    }
+
+
+def sync_comments(ext_to_local: dict, conn) -> dict:
+    """Синхронизирует комментарии одним запросом /api/comments/ для всех vsDesk заявок"""
+    inserted = 0
+    skipped = 0
+
+    if not ext_to_local:
+        return {'inserted': 0, 'skipped': 0}
+
+    # Один запрос на все комментарии сразу
+    try:
+        all_comments = vsdesk_get('/api/comments/')
+    except Exception:
+        return {'inserted': 0, 'skipped': 0}
+
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM ticket_comments WHERE external_source = 'vsdesk' AND external_id IS NOT NULL"
+        )
+        existing_ext_ids = {row['external_id'] for row in cur.fetchall()}
+
+        for c in all_comments:
+            ext_comment_id = str(c.get('id') or '')
+            if not ext_comment_id:
+                continue
+
+            ext_ticket_id = str(c.get('zid') or c.get('request_id') or c.get('ticket_id') or '')
+            if ext_ticket_id not in ext_to_local:
+                continue
+
+            local_ticket_id = ext_to_local[ext_ticket_id]
+
+            if ext_comment_id in existing_ext_ids:
+                skipped += 1
+                continue
+
+            text = strip_html(c.get('Content') or c.get('content') or c.get('text') or c.get('message') or '')
+            if not text:
+                continue
+
+            created_at = c.get('timestamp') or c.get('created_at') or None
+            is_internal = bool(c.get('is_internal') or c.get('internal') or False)
+
+            cur.execute(
+                '''INSERT INTO ticket_comments
+                   (ticket_id, user_id, comment, is_internal, created_at, external_id, external_source)
+                   VALUES (%s, %s, %s, %s, %s, %s, 'vsdesk')''',
+                (local_ticket_id, 1, text, is_internal, created_at, ext_comment_id)
+            )
+            existing_ext_ids.add(ext_comment_id)
+            inserted += 1
+
+    conn.commit()
+    return {'inserted': inserted, 'skipped': skipped}
 
 
 def handler(event: dict, context) -> dict:
-    """Синхронизирует заявки со статусом «Открыта» из vsDesk в локальную базу"""
+    """Синхронизирует заявки и комментарии из vsDesk в локальную базу"""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
 
@@ -166,20 +227,27 @@ def handler(event: dict, context) -> dict:
         since_dt = get_last_sync_time(conn)
 
         try:
-            all_requests = vsdesk_fetch_all()
+            all_requests = vsdesk_get('/api/requests/')
         except Exception as e:
             return api_response(502, {'error': f'Ошибка запроса к vsDesk: {str(e)}'})
 
-        stats = sync_tickets(all_requests, conn, since_dt=since_dt)
+        ticket_stats = sync_tickets(all_requests, conn, since_dt=since_dt)
+        comment_stats = sync_comments(ticket_stats['ext_to_local'], conn)
     finally:
         conn.close()
 
     return api_response(200, {
         'success': True,
-        'synced': stats['inserted'],
-        'skipped': stats['skipped'],
-        'filtered_out': stats['filtered_out'],
-        'total_received': len(all_requests),
+        'tickets': {
+            'synced': ticket_stats['inserted'],
+            'skipped': ticket_stats['skipped'],
+            'filtered_out': ticket_stats['filtered_out'],
+            'total_received': len(all_requests),
+        },
+        'comments': {
+            'synced': comment_stats['inserted'],
+            'skipped': comment_stats['skipped'],
+        },
         'since': since_dt,
-        'message': f"Синхронизировано {stats['inserted']} новых заявок из vsDesk",
+        'message': f"Заявок: {ticket_stats['inserted']} новых. Комментариев: {comment_stats['inserted']} новых.",
     })
