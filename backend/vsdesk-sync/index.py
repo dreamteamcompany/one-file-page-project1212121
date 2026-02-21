@@ -1,6 +1,6 @@
 """
 Синхронизация новых заявок из vsDesk в локальную базу данных.
-Использует Basic Auth, получает заявки по дате создания (polling).
+Использует Basic Auth, получает заявки со статусом Открыта (StatusId=1).
 """
 import json
 import os
@@ -9,6 +9,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import urllib.request
 import urllib.parse
+from datetime import datetime, timedelta
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA')
@@ -48,40 +49,23 @@ def basic_auth_header() -> str:
     return f'Basic {encoded}'
 
 
-def vsdesk_get_requests(since_dt: str = None) -> list:
-    """Получает список заявок из vsDesk через Basic Auth с фильтром по дате"""
-    from datetime import datetime, timedelta
-
-    if not since_dt:
-        since_dt = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M')
-
-    params = {
-        'StatusId': '1',
-        'TimeAdd': f'>{since_dt}',
-        'sort': 'TimeAdd',
-        'order': 'asc',
-    }
-
-    url = f'{VSDESK_URL}/api/requests/'
-    url += '?' + urllib.parse.urlencode(params)
+def vsdesk_fetch(path: str, params: dict = None) -> object:
+    """Выполняет GET запрос к vsDesk API"""
+    url = f'{VSDESK_URL}{path}'
+    if params:
+        url += '?' + urllib.parse.urlencode(params)
 
     req = urllib.request.Request(url, headers={
         'Authorization': basic_auth_header(),
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
     })
 
     with urllib.request.urlopen(req, timeout=25) as resp:
-        data = json.loads(resp.read().decode('utf-8-sig'))
-
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict):
-        return data.get('requests') or data.get('data') or data.get('items') or []
-    return []
+        raw = resp.read()
+        return json.loads(raw.decode('utf-8-sig'))
 
 
 def map_priority(priority_val) -> int:
-    """Маппинг приоритета vsDesk -> local id"""
     mapping = {
         'low': 5, 'низкий': 5,
         'normal': 2, 'medium': 2, 'средний': 2,
@@ -94,9 +78,8 @@ def map_priority(priority_val) -> int:
 
 
 def map_status(status_val) -> int:
-    """Маппинг статуса vsDesk -> local id"""
     mapping = {
-        '1': 1, 'new': 1, 'новая': 1,
+        '1': 1, 'new': 1, 'новая': 1, 'открыта': 1, 'открытая': 1,
         '2': 7, 'in_progress': 7, 'в работе': 7,
         '3': 9, 'closed': 9, 'решена': 9, 'закрыта': 9,
         '9': 14, 'pending': 14, 'отложена': 14,
@@ -107,7 +90,6 @@ def map_status(status_val) -> int:
 
 
 def get_last_sync_time(conn) -> str:
-    """Возвращает дату последней синхронизированной заявки из vsDesk"""
     with conn.cursor() as cur:
         cur.execute(
             "SELECT MAX(created_at) FROM tickets WHERE external_source = 'vsdesk'"
@@ -121,7 +103,6 @@ def get_last_sync_time(conn) -> str:
 
 
 def sync_tickets(requests_list: list, conn) -> dict:
-    """Сохраняет заявки из vsDesk в БД, пропуская уже существующие"""
     inserted = 0
     skipped = 0
 
@@ -171,9 +152,20 @@ def sync_tickets(requests_list: list, conn) -> dict:
 
 
 def handler(event: dict, context) -> dict:
-    """Синхронизирует новые заявки из vsDesk в локальную базу (polling по дате)"""
+    """Синхронизирует заявки со статусом Открыта из vsDesk в локальную базу"""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
+
+    # Режим диагностики — смотрим структуру ответа vsDesk
+    query = event.get('queryStringParameters') or {}
+    if query.get('debug') == '1':
+        try:
+            data = vsdesk_fetch('/api/requests/', {'StatusId': '1'})
+            sample = data[:2] if isinstance(data, list) else data
+            total = len(data) if isinstance(data, list) else '?'
+            return api_response(200, {'total': total, 'sample': sample})
+        except Exception as e:
+            return api_response(502, {'error': str(e)})
 
     if not VSDESK_LOGIN or not VSDESK_PASSWORD:
         return api_response(500, {'error': 'VSDESK_LOGIN / VSDESK_PASSWORD не заданы'})
@@ -182,10 +174,19 @@ def handler(event: dict, context) -> dict:
     try:
         since_dt = get_last_sync_time(conn)
 
+        if not since_dt:
+            since_dt = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M')
+
+        params = {'StatusId': '1', 'TimeAdd': f'>{since_dt}'}
+
         try:
-            requests_list = vsdesk_get_requests(since_dt=since_dt)
+            data = vsdesk_fetch('/api/requests/', params)
         except Exception as e:
             return api_response(502, {'error': f'Ошибка запроса к vsDesk: {str(e)}'})
+
+        requests_list = data if isinstance(data, list) else (
+            data.get('requests') or data.get('data') or data.get('items') or []
+        )
 
         stats = sync_tickets(requests_list, conn)
     finally:
