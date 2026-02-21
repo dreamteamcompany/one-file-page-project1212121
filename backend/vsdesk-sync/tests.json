@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Sync vsDesk tickets",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
