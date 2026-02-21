@@ -102,7 +102,7 @@ const Tickets = () => {
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
-      <div className="w-full">
+      <div className="w-full overflow-hidden">
         <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
         <TicketsViewToggle

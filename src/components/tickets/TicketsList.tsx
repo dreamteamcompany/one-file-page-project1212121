@@ -162,7 +162,7 @@ const TicketsList = ({
         return (
         <Card
           key={ticket.id}
-          className={`p-4 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative ${
+          className={`p-4 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative w-full overflow-hidden ${
             isCritical ? 'border-red-500 border-2' : ''
           } ${
             selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
@@ -187,13 +187,13 @@ const TicketsList = ({
                   <Checkbox
                     checked={selectedTicketIds.includes(ticket.id)}
                     onCheckedChange={(e) => {
-                      e && onToggleTicket(ticket.id);
+                      if (e) onToggleTicket(ticket.id);
                     }}
                     onClick={(e) => e.stopPropagation()}
                     className="mt-1"
                   />
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {(ticket.status_name === 'На согласовании' || ticket.status_name === 'Одобрена' || ticket.status_name === 'Отклонена') && (
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                       ticket.status_name === 'На согласовании' ? 'bg-green-500' :
@@ -250,7 +250,7 @@ const TicketsList = ({
                   </h3>
                   {ticket.description && (
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {ticket.description}
+                      {ticket.description.replace(/<[^>]*>/g, '')}
                     </p>
                   )}
                 </div>
