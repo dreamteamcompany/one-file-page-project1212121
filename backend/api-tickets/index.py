@@ -246,7 +246,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             query += " AND t.created_at <= %s"
             params.append(to_date)
         
-        query += " ORDER BY t.created_at DESC"
+        query += " ORDER BY t.created_at DESC LIMIT 100"
         
         cur.execute(query, params)
         tickets = [dict(row) for row in cur.fetchall()]
