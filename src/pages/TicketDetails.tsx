@@ -204,6 +204,10 @@ const TicketDetails = () => {
           </div>
         </div>
       </div>
+
+      <footer className="mt-6 py-4 text-center text-xs text-muted-foreground border-t border-border/40">
+        © 2026 Команда Мечты
+      </footer>
     </PageLayout>
   );
 };
