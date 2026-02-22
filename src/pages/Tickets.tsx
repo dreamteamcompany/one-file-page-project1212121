@@ -181,6 +181,10 @@ const Tickets = () => {
             />
           )}
       </div>
+
+      <footer className="mt-8 py-4 text-center text-xs text-muted-foreground border-t border-border/40">
+        © 2026 Команда Мечты
+      </footer>
     </PageLayout>
   );
 };
