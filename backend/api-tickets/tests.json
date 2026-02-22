@@ -29,6 +29,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Ticket confirmation - requires auth",
+      "method": "POST",
+      "path": "/?endpoint=ticket-confirmation",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

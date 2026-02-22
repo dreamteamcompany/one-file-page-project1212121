@@ -65,6 +65,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_approvals(method, event, conn)
         elif endpoint == 'ticket_service_mappings':
             return handle_ticket_service_mappings(method, event, conn)
+        elif endpoint == 'ticket-confirmation':
+            return handle_ticket_confirmation(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -663,7 +665,7 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
         cur.execute(f'SELECT id, name, level, color FROM {SCHEMA}.ticket_priorities ORDER BY level DESC')
         priorities = [dict(row) for row in cur.fetchall()]
         
-        cur.execute(f'SELECT id, name, color, is_closed, is_approval, is_approval_revoked, is_approved, is_waiting_response FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         
         cur.execute(f'SELECT id, name, description FROM {SCHEMA}.departments ORDER BY name')
@@ -693,7 +695,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
     
     if method == 'GET':
         cur = conn.cursor()
-        cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         cur.close()
         return response(200, statuses)
@@ -1100,5 +1102,121 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
         
         return response(405, {'error': 'Method not allowed'})
     
+    finally:
+        cur.close()
+
+
+def handle_ticket_confirmation(method: str, event: dict, conn) -> dict:
+    """Обработчик подтверждения выполнения заявки заказчиком"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    user_id = payload.get('user_id')
+    cur = conn.cursor()
+
+    try:
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            ticket_id = body.get('ticket_id')
+            if not ticket_id:
+                return response(400, {'error': 'ticket_id is required'})
+
+            cur.execute(f"SELECT id, assigned_to, created_by, status_id FROM {SCHEMA}.tickets WHERE id = %s", (ticket_id,))
+            ticket = cur.fetchone()
+            if not ticket:
+                return response(404, {'error': 'Заявка не найдена'})
+            if ticket['assigned_to'] != user_id:
+                return response(403, {'error': 'Только исполнитель может отправить заявку на подтверждение'})
+
+            cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_pending_confirmation = TRUE LIMIT 1")
+            pending_status = cur.fetchone()
+            if not pending_status:
+                return response(500, {'error': 'Статус "Ожидает подтверждения" не настроен'})
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.tickets
+                SET status_id = %s, confirmation_sent_at = NOW(), updated_at = NOW()
+                WHERE id = %s
+            """, (pending_status['id'], ticket_id))
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
+                VALUES (%s, %s, 'status_id', %s, %s, NOW())
+            """, (ticket_id, user_id, str(ticket['status_id']), str(pending_status['id'])))
+
+            conn.commit()
+            return response(200, {'message': 'Заявка отправлена на подтверждение заказчику'})
+
+        elif method == 'PUT':
+            body = json.loads(event.get('body', '{}'))
+            ticket_id = body.get('ticket_id')
+            action = body.get('action')
+            rating = body.get('rating')
+            rejection_reason = body.get('rejection_reason', '')
+
+            if not ticket_id or action not in ('confirm', 'reject'):
+                return response(400, {'error': 'ticket_id и action (confirm/reject) обязательны'})
+
+            cur.execute(f"SELECT id, created_by, status_id FROM {SCHEMA}.tickets WHERE id = %s", (ticket_id,))
+            ticket = cur.fetchone()
+            if not ticket:
+                return response(404, {'error': 'Заявка не найдена'})
+            if ticket['created_by'] != user_id:
+                return response(403, {'error': 'Только заказчик может подтвердить или отклонить заявку'})
+
+            cur.execute(f"SELECT is_pending_confirmation FROM {SCHEMA}.ticket_statuses WHERE id = %s", (ticket['status_id'],))
+            current_status = cur.fetchone()
+            if not current_status or not current_status['is_pending_confirmation']:
+                return response(400, {'error': 'Заявка не находится в статусе ожидания подтверждения'})
+
+            if action == 'confirm':
+                if not rating or int(rating) not in range(1, 6):
+                    return response(400, {'error': 'Оценка от 1 до 5 обязательна при подтверждении'})
+
+                cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_closed = TRUE LIMIT 1")
+                closed_status = cur.fetchone()
+                if not closed_status:
+                    return response(500, {'error': 'Закрытый статус не найден'})
+
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET status_id = %s, rating = %s, rejection_reason = NULL, updated_at = NOW()
+                    WHERE id = %s
+                """, (closed_status['id'], int(rating), ticket_id))
+
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
+                    VALUES (%s, %s, 'status_id', %s, %s, NOW())
+                """, (ticket_id, user_id, str(ticket['status_id']), str(closed_status['id'])))
+
+                conn.commit()
+                return response(200, {'message': 'Заявка подтверждена и закрыта', 'rating': int(rating)})
+
+            else:
+                if not rejection_reason.strip():
+                    return response(400, {'error': 'Причина отклонения обязательна'})
+
+                cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_open = TRUE LIMIT 1")
+                open_status = cur.fetchone()
+                if not open_status:
+                    return response(500, {'error': 'Открытый статус не найден'})
+
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET status_id = %s, rejection_reason = %s, confirmation_sent_at = NULL, updated_at = NOW()
+                    WHERE id = %s
+                """, (open_status['id'], rejection_reason.strip(), ticket_id))
+
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
+                    VALUES (%s, %s, 'status_id', %s, %s, NOW())
+                """, (ticket_id, user_id, str(ticket['status_id']), str(open_status['id'])))
+
+                conn.commit()
+                return response(200, {'message': 'Заявка возвращена в работу'})
+
+        return response(405, {'error': 'Метод не поддерживается'})
+
     finally:
         cur.close()

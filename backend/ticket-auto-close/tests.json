@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Auto-close runs without errors",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "closed": 0
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

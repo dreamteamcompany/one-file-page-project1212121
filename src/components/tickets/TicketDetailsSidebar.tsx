@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import TicketApprovalBlock from './TicketApprovalBlock';
+import TicketConfirmationBlock from './TicketConfirmationBlock';
 import TicketTimerCard from './sidebar/TicketTimerCard';
 import TicketPingCard from './sidebar/TicketPingCard';
 import TicketInfoFields from './sidebar/TicketInfoFields';
@@ -18,6 +19,7 @@ interface Status {
   color: string;
   is_closed: boolean;
   is_approval?: boolean;
+  is_pending_confirmation?: boolean;
 }
 
 interface Ticket {
@@ -43,6 +45,9 @@ interface Ticket {
   created_at?: string;
   updated_at?: string;
   closed_at?: string;
+  confirmation_sent_at?: string;
+  rating?: number;
+  rejection_reason?: string;
   ticket_service?: {
     id: number;
     name: string;
@@ -168,6 +173,12 @@ const TicketDetailsSidebar = ({
           statusName={ticket.status_name || ''}
           onStatusChange={onApprovalChange || (() => {})}
           availableUsers={users}
+        />
+
+        <TicketConfirmationBlock
+          ticket={ticket}
+          isPendingConfirmation={!!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation}
+          onChanged={onApprovalChange || (() => {})}
         />
       </div>
       

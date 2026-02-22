@@ -42,6 +42,10 @@ export interface Ticket {
   };
   unread_comments?: number;
   has_response?: boolean;
+  response_due_date?: string;
+  confirmation_sent_at?: string;
+  rating?: number;
+  rejection_reason?: string;
 }
 
 export interface TicketServiceInfo {
@@ -100,6 +104,7 @@ export interface TicketStatus {
   color: string;
   order?: number;
   is_closed?: boolean;
+  is_pending_confirmation?: boolean;
 }
 
 export interface TicketPriority {
