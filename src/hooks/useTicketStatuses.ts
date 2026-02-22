@@ -13,6 +13,7 @@ export interface TicketStatus {
   is_approval_revoked: boolean;
   is_approved: boolean;
   is_waiting_response: boolean;
+  is_awaiting_confirmation: boolean;
 }
 
 export const useTicketStatuses = () => {
@@ -53,6 +54,7 @@ export const useTicketStatuses = () => {
       is_approval_revoked: boolean;
       is_approved: boolean;
       is_waiting_response: boolean;
+      is_awaiting_confirmation: boolean;
     },
     editingStatus: TicketStatus | null
   ) => {

@@ -39,6 +39,7 @@ interface StatusDialogProps {
       is_approval_revoked: boolean;
       is_approved: boolean;
       is_waiting_response: boolean;
+      is_awaiting_confirmation: boolean;
     },
     editingStatus: TicketStatus | null
   ) => Promise<boolean>;
@@ -61,6 +62,7 @@ const StatusDialog = ({
     is_approval_revoked: false,
     is_approved: false,
     is_waiting_response: false,
+    is_awaiting_confirmation: false,
   });
 
   useEffect(() => {
@@ -73,7 +75,8 @@ const StatusDialog = ({
         is_approval: editingStatus.is_approval || false,
         is_approval_revoked: editingStatus.is_approval_revoked || false,
         is_approved: editingStatus.is_approved || false,
-        is_waiting_response: editingStatus.is_waiting_response || false
+        is_waiting_response: editingStatus.is_waiting_response || false,
+        is_awaiting_confirmation: editingStatus.is_awaiting_confirmation || false,
       });
     } else {
       setFormData({
@@ -85,6 +88,7 @@ const StatusDialog = ({
         is_approval_revoked: false,
         is_approved: false,
         is_waiting_response: false,
+        is_awaiting_confirmation: false,
       });
     }
   }, [editingStatus]);
@@ -108,6 +112,7 @@ const StatusDialog = ({
       is_approval_revoked: false,
       is_approved: false,
       is_waiting_response: false,
+      is_awaiting_confirmation: false,
     });
     onReset();
   };
@@ -257,10 +262,25 @@ const StatusDialog = ({
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
+                id="is_awaiting_confirmation"
+                checked={formData.is_awaiting_confirmation}
+                onCheckedChange={(checked) => 
+                  setFormData({ ...formData, is_awaiting_confirmation: checked as boolean, is_closed: checked ? false : formData.is_closed, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response })
+                }
+              />
+              <Label
+                htmlFor="is_awaiting_confirmation"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Подтверждение выполнения (заявка ожидает подтверждения от заказчика)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
                 id="is_closed"
                 checked={formData.is_closed}
                 onCheckedChange={(checked) => 
-                  setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response })
+                  setFormData({ ...formData, is_closed: checked as boolean, is_open: checked ? false : formData.is_open, is_approval: checked ? false : formData.is_approval, is_approval_revoked: checked ? false : formData.is_approval_revoked, is_approved: checked ? false : formData.is_approved, is_waiting_response: checked ? false : formData.is_waiting_response, is_awaiting_confirmation: checked ? false : formData.is_awaiting_confirmation })
                 }
               />
               <Label

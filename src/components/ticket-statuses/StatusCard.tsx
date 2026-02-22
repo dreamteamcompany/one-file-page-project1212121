@@ -45,6 +45,12 @@ const StatusCard = ({ status, onEdit, onDelete }: StatusCardProps) => {
                   Согласование отозвано
                 </p>
               )}
+              {status.is_awaiting_confirmation && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                  <Icon name="ClipboardCheck" size={12} className="inline mr-1" />
+                  Подтверждение выполнения
+                </p>
+              )}
               {status.is_closed && (
                 <p className="text-xs text-muted-foreground mt-1">
                   <Icon name="Lock" size={12} className="inline mr-1" />
