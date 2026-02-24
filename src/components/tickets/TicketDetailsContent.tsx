@@ -317,8 +317,8 @@ const TicketDetailsContent = ({
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
-      <div className="border-b mb-6">
-        <div className="flex gap-6">
+      <div className="rounded-lg bg-card border mb-6">
+        <div className="flex gap-6 px-4 border-b">
           <button 
             onClick={() => setActiveTab('comments')}
             className={`pb-2 border-b-2 text-sm font-semibold transition-all ${
@@ -350,10 +350,9 @@ const TicketDetailsContent = ({
             История ({auditLogs.length})
           </button>
         </div>
-      </div>
 
       {/* Контент вкладок */}
-      <div className="mb-6">
+      <div className="p-4">
         {activeTab === 'comments' && (
           <TicketComments
             comments={comments}
@@ -387,6 +386,7 @@ const TicketDetailsContent = ({
             loading={loadingHistory}
           />
         )}
+      </div>
       </div>
     </div>
   );
