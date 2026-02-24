@@ -318,7 +318,7 @@ const TicketDetailsContent = ({
 
       {/* Комментарии, Файлы и История (вкладки) */}
       <div className="rounded-lg bg-card border mb-6">
-        <div className="flex gap-6 px-4 border-b">
+        <div className="flex gap-6 px-4 pt-3 border-b">
           <button 
             onClick={() => setActiveTab('comments')}
             className={`pb-2 border-b-2 text-sm font-semibold transition-all ${
