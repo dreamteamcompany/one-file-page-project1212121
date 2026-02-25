@@ -243,15 +243,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 t['custom_fields'] = []
                 t['sla_violation_count'] = 0
             
-            placeholders = ','.join(['%s'] * len(ticket_ids))
+            ids_str = ','.join(str(int(i)) for i in ticket_ids)
             
             cur.execute(f"""
                 SELECT tsm.ticket_id, s.id, s.name, sc.name as category_name
                 FROM {SCHEMA}.ticket_to_service_mappings tsm
                 JOIN {SCHEMA}.services s ON s.id = tsm.service_id
                 LEFT JOIN {SCHEMA}.service_categories sc ON s.category_id = sc.id
-                WHERE tsm.ticket_id IN ({placeholders}) AND tsm.service_id IS NOT NULL
-            """, ticket_ids)
+                WHERE tsm.ticket_id IN ({ids_str}) AND tsm.service_id IS NOT NULL
+            """)
             for row in cur.fetchall():
                 r = dict(row)
                 tid = r.pop('ticket_id')
@@ -259,26 +259,26 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     ticket_id_map[tid]['services'].append(r)
             
             cur.execute(f"""
-                SELECT DISTINCT ON (tsm.ticket_id) tsm.ticket_id, ts.id, ts.name
+                SELECT tsm.ticket_id, ts.id, ts.name
                 FROM {SCHEMA}.ticket_to_service_mappings tsm
                 JOIN {SCHEMA}.ticket_services ts ON ts.id = tsm.ticket_service_id
-                WHERE tsm.ticket_id IN ({placeholders}) AND tsm.ticket_service_id IS NOT NULL
-            """, ticket_ids)
+                WHERE tsm.ticket_id IN ({ids_str}) AND tsm.ticket_service_id IS NOT NULL
+                ORDER BY tsm.ticket_id, tsm.id
+            """)
             for row in cur.fetchall():
                 r = dict(row)
                 tid = r.pop('ticket_id')
-                if tid in ticket_id_map:
+                if tid in ticket_id_map and ticket_id_map[tid]['ticket_service'] is None:
                     ticket_id_map[tid]['ticket_service'] = r
             
             cur.execute(f"""
                 SELECT tcfv.ticket_id, cf.id, cf.name, cf.field_type, tcfv.value, cf.hide_label
                 FROM {SCHEMA}.ticket_custom_field_values tcfv
                 JOIN {SCHEMA}.ticket_custom_fields cf ON tcfv.field_id = cf.id
-                WHERE tcfv.ticket_id IN ({placeholders})
-            """, ticket_ids)
-            raw_cf_rows = cur.fetchall()
+                WHERE tcfv.ticket_id IN ({ids_str})
+            """)
             cf_by_ticket = {}
-            for row in raw_cf_rows:
+            for row in cur.fetchall():
                 r = dict(row)
                 tid = r.pop('ticket_id')
                 cf_by_ticket.setdefault(tid, []).append(r)
@@ -289,9 +289,9 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             cur.execute(f"""
                 SELECT ticket_id, COUNT(*) AS cnt
                 FROM {SCHEMA}.sla_violations
-                WHERE ticket_id IN ({placeholders})
+                WHERE ticket_id IN ({ids_str})
                 GROUP BY ticket_id
-            """, ticket_ids)
+            """)
             for row in cur.fetchall():
                 r = dict(row)
                 if r['ticket_id'] in ticket_id_map:
