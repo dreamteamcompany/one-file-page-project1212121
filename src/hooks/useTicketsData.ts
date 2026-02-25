@@ -26,6 +26,7 @@ export const useTicketsData = () => {
   const loadTickets = useCallback(async () => {
     if (!token) return;
 
+    setLoading(true);
     try {
       const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         headers: {
@@ -43,6 +44,8 @@ export const useTicketsData = () => {
     } catch (err) {
       console.error('Failed to load tickets:', err);
       setTickets([]);
+    } finally {
+      setLoading(false);
     }
   }, [token]);
 
