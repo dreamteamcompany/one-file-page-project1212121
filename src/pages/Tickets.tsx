@@ -41,6 +41,9 @@ const Tickets = () => {
     services,
     ticketServices,
     loading,
+    page,
+    totalPages,
+    totalTickets,
     loadTickets,
     loadDictionaries,
     loadServices,
@@ -70,7 +73,7 @@ const Tickets = () => {
     handleChangePriority,
     handleAssign,
     handleDelete,
-  } = useBulkTicketOperations(selectedTicketIds, loadTickets, clearSelection);
+  } = useBulkTicketOperations(selectedTicketIds, () => loadTickets(page), clearSelection);
   
   useEffect(() => {
     // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
@@ -140,6 +143,10 @@ const Tickets = () => {
                 onToggleAll={toggleAllTickets}
                 bulkMode={bulkMode}
                 currentUserId={user?.id}
+                page={page}
+                totalPages={totalPages}
+                totalTickets={totalTickets}
+                onPageChange={(p) => loadTickets(p)}
               />
               
               {bulkMode && selectedCount > 0 && (

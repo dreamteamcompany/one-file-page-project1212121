@@ -3,7 +3,7 @@
     {
       "name": "Get tickets list (requires auth)",
       "method": "GET",
-      "path": "/?endpoint=tickets",
+      "path": "/?endpoint=tickets&page=1&limit=50",
       "expectedStatus": 401,
       "expectedBody": {
         "error": "Требуется авторизация"

@@ -11,6 +11,8 @@ import type {
   TicketService,
 } from '@/types';
 
+const TICKETS_PER_PAGE = 50;
+
 export const useTicketsData = () => {
   const { token } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -22,21 +24,26 @@ export const useTicketsData = () => {
   const [services, setServices] = useState<TicketService[]>([]);
   const [ticketServices, setTicketServices] = useState<TicketService[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalTickets, setTotalTickets] = useState(0);
 
-  const loadTickets = useCallback(async () => {
+  const loadTickets = useCallback(async (targetPage = 1) => {
     if (!token) return;
 
     setLoading(true);
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
+      const response = await apiFetch(
+        `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`,
+        { headers: { 'X-Auth-Token': token } }
+      );
 
       if (response.ok) {
         const data = await response.json();
         setTickets(data.tickets || []);
+        setTotalPages(data.pages || 1);
+        setTotalTickets(data.total || 0);
+        setPage(targetPage);
       } else {
         console.error('Tickets response not OK:', response.status, await response.text());
         setTickets([]);
@@ -53,11 +60,8 @@ export const useTicketsData = () => {
     if (!token) return;
 
     try {
-      // Загружаем "Услуги заявок" для выбора на шаге 1
       const categoriesResponse = await apiFetch(`${API_URL}?endpoint=ticket_services`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
+        headers: { 'X-Auth-Token': token },
       });
 
       if (categoriesResponse.ok) {
@@ -65,11 +69,8 @@ export const useTicketsData = () => {
         setTicketServices(data || []);
       }
 
-      // Загружаем "Сервисы услуг" для выбора на шаге 3
       const servicesResponse = await apiFetch(`${API_URL}?endpoint=services`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
+        headers: { 'X-Auth-Token': token },
       });
 
       if (servicesResponse.ok) {
@@ -86,9 +87,7 @@ export const useTicketsData = () => {
 
     try {
       const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
+        headers: { 'X-Auth-Token': token },
       });
 
       if (response.ok) {
@@ -100,7 +99,6 @@ export const useTicketsData = () => {
         setCustomFields(data.custom_fields || []);
       } else {
         console.error('Dictionaries response not OK:', response.status, await response.text());
-        // Fallback данные
         setPriorities([
           { id: 1, name: 'Низкий', level: 1, color: '#6b7280' },
           { id: 2, name: 'Средний', level: 2, color: '#3b82f6' },
@@ -124,7 +122,7 @@ export const useTicketsData = () => {
     if (token) {
       setLoading(true);
       Promise.all([
-        loadTickets(),
+        loadTickets(1),
         loadDictionaries(),
         loadServices()
       ]).finally(() => setLoading(false));
@@ -141,6 +139,9 @@ export const useTicketsData = () => {
     services,
     ticketServices,
     loading,
+    page,
+    totalPages,
+    totalTickets,
     loadTickets,
     loadDictionaries,
     loadServices,

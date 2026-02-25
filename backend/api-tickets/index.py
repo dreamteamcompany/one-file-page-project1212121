@@ -140,7 +140,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     user_id = payload.get('user_id')
 
     if method == 'GET':
-        query_params = event.get('queryStringParameters', {})
+        query_params = event.get('queryStringParameters', {}) or {}
         
         status_id = query_params.get('status_id')
         priority_id = query_params.get('priority_id')
@@ -149,10 +149,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         service_id = query_params.get('service_id')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
+        page = max(1, int(query_params.get('page', 1)))
+        limit = min(100, max(1, int(query_params.get('limit', 50))))
+        offset = (page - 1) * limit
         
         cur = conn.cursor()
         
-        # Проверяем права пользователя через роли
         cur.execute(f"""
             SELECT p.resource, p.action
             FROM {SCHEMA}.permissions p
@@ -162,32 +164,61 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         """, (user_id,))
         user_permissions = [dict(row) for row in cur.fetchall()]
         
-        # Проверяем право "view_all" - видит все заявки
         view_all_tickets = any(
             p['resource'] == 'tickets' and p['action'] == 'view_all' 
             for p in user_permissions
         )
-        
-        # Проверяем, есть ли право "tickets.view_own_only"
         view_own_only = any(
             p['resource'] == 'tickets' and p['action'] == 'view_own_only' 
             for p in user_permissions
         )
         
-        # Если нет НИКАКИХ прав на просмотр заявок - возвращаем пустой список
         if not view_all_tickets and not view_own_only:
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'tickets': [], 'total': 0})
-            }
+            return response(200, {'tickets': [], 'total': 0, 'page': page, 'limit': limit, 'pages': 0})
         
-        query = f"""
-            SELECT DISTINCT t.*, 
-                   s.name as status_name, s.color as status_color,
+        where_clause = "WHERE 1=1"
+        params = []
+        
+        if not view_all_tickets and view_own_only:
+            where_clause += f""" AND (
+                t.created_by = %s 
+                OR t.assigned_to = %s
+                OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_watchers tw WHERE tw.ticket_id = t.id AND tw.user_id = %s)
+                OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_approvals ta WHERE ta.ticket_id = t.id AND ta.approver_id = %s)
+            )"""
+            params.extend([user_id, user_id, user_id, user_id])
+        
+        if status_id:
+            where_clause += " AND t.status_id = %s"
+            params.append(int(status_id))
+        if priority_id:
+            where_clause += " AND t.priority_id = %s"
+            params.append(int(priority_id))
+        if assigned_to:
+            where_clause += " AND t.assigned_to = %s"
+            params.append(int(assigned_to))
+        if created_by:
+            where_clause += " AND t.created_by = %s"
+            params.append(int(created_by))
+        if service_id:
+            where_clause += " AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsm2 WHERE tsm2.ticket_id = t.id AND tsm2.ticket_service_id = %s)".format(SCHEMA=SCHEMA)
+            params.append(int(service_id))
+        if from_date:
+            where_clause += " AND t.created_at >= %s"
+            params.append(from_date)
+        if to_date:
+            where_clause += " AND t.created_at <= %s"
+            params.append(to_date)
+        
+        count_query = f"SELECT COUNT(DISTINCT t.id) AS total FROM {SCHEMA}.tickets t {where_clause}"
+        cur.execute(count_query, params)
+        total = cur.fetchone()['total']
+        
+        main_query = f"""
+            SELECT DISTINCT t.id, t.title, t.description, t.status_id, t.priority_id,
+                   t.assigned_to, t.created_by, t.created_at, t.updated_at,
+                   t.department_id, t.due_date, t.resolution,
+                   s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name,
                    u2.username as creator_email, u2.full_name as creator_name
@@ -196,102 +227,79 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
             LEFT JOIN {SCHEMA}.users u1 ON t.assigned_to = u1.id
             LEFT JOIN {SCHEMA}.users u2 ON t.created_by = u2.id
-            LEFT JOIN {SCHEMA}.ticket_to_service_mappings tsm ON t.id = tsm.ticket_id
-            WHERE 1=1
+            {where_clause}
+            ORDER BY t.created_at DESC
+            LIMIT %s OFFSET %s
         """
-        
-        params = []
-        
-        # Если есть право "view_all" - показываем ВСЕ заявки (без ограничений)
-        # Если есть право "view_own_only" - показываем только свои заявки
-        # Приоритет у "view_all"
-        if not view_all_tickets and view_own_only:
-            query += f""" AND (
-                t.created_by = %s 
-                OR t.assigned_to = %s
-                OR EXISTS (
-                    SELECT 1 FROM {SCHEMA}.ticket_watchers tw 
-                    WHERE tw.ticket_id = t.id AND tw.user_id = %s
-                )
-                OR EXISTS (
-                    SELECT 1 FROM {SCHEMA}.ticket_approvals ta 
-                    WHERE ta.ticket_id = t.id AND ta.approver_id = %s
-                )
-            )"""
-            params.extend([user_id, user_id, user_id, user_id])
-        
-        if status_id:
-            query += " AND t.status_id = %s"
-            params.append(int(status_id))
-        
-        if priority_id:
-            query += " AND t.priority_id = %s"
-            params.append(int(priority_id))
-        
-        if assigned_to:
-            query += " AND t.assigned_to = %s"
-            params.append(int(assigned_to))
-        
-        if created_by:
-            query += " AND t.created_by = %s"
-            params.append(int(created_by))
-        
-        if service_id:
-            query += " AND tsm.ticket_service_id = %s"
-            params.append(int(service_id))
-        
-        if from_date:
-            query += " AND t.created_at >= %s"
-            params.append(from_date)
-        
-        if to_date:
-            query += " AND t.created_at <= %s"
-            params.append(to_date)
-        
-        query += " ORDER BY t.created_at DESC LIMIT 100"
-        
-        cur.execute(query, params)
+        cur.execute(main_query, params + [limit, offset])
         tickets = [dict(row) for row in cur.fetchall()]
         
-        for ticket in tickets:
+        if tickets:
+            ticket_ids = [t['id'] for t in tickets]
+            ticket_id_map = {t['id']: t for t in tickets}
+            for t in tickets:
+                t['services'] = []
+                t['ticket_service'] = None
+                t['custom_fields'] = []
+                t['sla_violation_count'] = 0
+            
+            placeholders = ','.join(['%s'] * len(ticket_ids))
+            
             cur.execute(f"""
-                SELECT s.id, s.name, sc.name as category_name
-                FROM {SCHEMA}.services s
-                JOIN {SCHEMA}.ticket_to_service_mappings tsm ON s.id = tsm.service_id
+                SELECT tsm.ticket_id, s.id, s.name, sc.name as category_name
+                FROM {SCHEMA}.ticket_to_service_mappings tsm
+                JOIN {SCHEMA}.services s ON s.id = tsm.service_id
                 LEFT JOIN {SCHEMA}.service_categories sc ON s.category_id = sc.id
-                WHERE tsm.ticket_id = %s AND tsm.service_id IS NOT NULL
-            """, (ticket['id'],))
-            ticket['services'] = [dict(row) for row in cur.fetchall()]
-            
-            # Получаем информацию об услуге (ticket_service)
-            cur.execute(f"""
-                SELECT DISTINCT ts.id, ts.name
-                FROM {SCHEMA}.ticket_services ts
-                JOIN {SCHEMA}.ticket_to_service_mappings tsm ON ts.id = tsm.ticket_service_id
-                WHERE tsm.ticket_id = %s AND tsm.ticket_service_id IS NOT NULL
-                LIMIT 1
-            """, (ticket['id'],))
-            ticket_service = cur.fetchone()
-            ticket['ticket_service'] = dict(ticket_service) if ticket_service else None
+                WHERE tsm.ticket_id IN ({placeholders}) AND tsm.service_id IS NOT NULL
+            """, ticket_ids)
+            for row in cur.fetchall():
+                r = dict(row)
+                tid = r.pop('ticket_id')
+                if tid in ticket_id_map:
+                    ticket_id_map[tid]['services'].append(r)
             
             cur.execute(f"""
-                SELECT cf.id, cf.name, cf.field_type, tcfv.value, cf.hide_label
+                SELECT DISTINCT ON (tsm.ticket_id) tsm.ticket_id, ts.id, ts.name
+                FROM {SCHEMA}.ticket_to_service_mappings tsm
+                JOIN {SCHEMA}.ticket_services ts ON ts.id = tsm.ticket_service_id
+                WHERE tsm.ticket_id IN ({placeholders}) AND tsm.ticket_service_id IS NOT NULL
+            """, ticket_ids)
+            for row in cur.fetchall():
+                r = dict(row)
+                tid = r.pop('ticket_id')
+                if tid in ticket_id_map:
+                    ticket_id_map[tid]['ticket_service'] = r
+            
+            cur.execute(f"""
+                SELECT tcfv.ticket_id, cf.id, cf.name, cf.field_type, tcfv.value, cf.hide_label
                 FROM {SCHEMA}.ticket_custom_field_values tcfv
                 JOIN {SCHEMA}.ticket_custom_fields cf ON tcfv.field_id = cf.id
-                WHERE tcfv.ticket_id = %s
-            """, (ticket['id'],))
-            raw_fields = [dict(row) for row in cur.fetchall()]
-            ticket['custom_fields'] = resolve_custom_field_values(raw_fields, cur)
-
+                WHERE tcfv.ticket_id IN ({placeholders})
+            """, ticket_ids)
+            raw_cf_rows = cur.fetchall()
+            cf_by_ticket = {}
+            for row in raw_cf_rows:
+                r = dict(row)
+                tid = r.pop('ticket_id')
+                cf_by_ticket.setdefault(tid, []).append(r)
+            for tid, fields in cf_by_ticket.items():
+                if tid in ticket_id_map:
+                    ticket_id_map[tid]['custom_fields'] = resolve_custom_field_values(fields, cur)
+            
             cur.execute(f"""
-                SELECT COUNT(*) AS cnt
+                SELECT ticket_id, COUNT(*) AS cnt
                 FROM {SCHEMA}.sla_violations
-                WHERE ticket_id = %s
-            """, (ticket['id'],))
-            ticket['sla_violation_count'] = cur.fetchone()['cnt']
+                WHERE ticket_id IN ({placeholders})
+                GROUP BY ticket_id
+            """, ticket_ids)
+            for row in cur.fetchall():
+                r = dict(row)
+                if r['ticket_id'] in ticket_id_map:
+                    ticket_id_map[r['ticket_id']]['sla_violation_count'] = r['cnt']
         
         cur.close()
-        return response(200, {'tickets': tickets})
+        pages = (total + limit - 1) // limit
+        return response(200, {'tickets': tickets, 'total': total, 'page': page, 'limit': limit, 'pages': pages})
     
     elif method == 'POST':
         body = json.loads(event.get('body', '{}'))
