@@ -217,7 +217,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         main_query = f"""
             SELECT DISTINCT t.id, t.title, t.description, t.status_id, t.priority_id,
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
-                   t.department_id, t.due_date, t.resolution,
+                   t.department_id, t.due_date,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name,
