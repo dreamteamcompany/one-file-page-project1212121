@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import TicketFormStep1 from './TicketFormStep1';
 import TicketFormStep2 from './TicketFormStep2';
 import TicketFormStep3 from './TicketFormStep3';
+import TicketFormStep4 from './TicketFormStep4';
 
 interface Category {
   id: number;
@@ -118,8 +119,14 @@ const TicketForm = ({
     setStep(3);
   };
 
+  const handleNextToCustomFields = () => {
+    setStep(4);
+  };
+
   const handleBack = () => {
-    if (step === 3) {
+    if (step === 4) {
+      setStep(3);
+    } else if (step === 3) {
       setStep(2);
     } else {
       setStep(1);
@@ -264,13 +271,14 @@ const TicketForm = ({
             <Icon name="TicketPlus" size={24} />
             Новая заявка
             <Badge variant="secondary" className="ml-auto text-xs">
-              Шаг {step} из 3
+              Шаг {step} из {visibleCustomFields.length > 0 ? 4 : 3}
             </Badge>
           </DialogTitle>
           <DialogDescription className="text-sm">
             {step === 1 && '🎯 Выберите услугу для вашей заявки'}
             {step === 2 && '🔧 Выберите сервисы для услуги'}
             {step === 3 && '📝 Заполните основную информацию о заявке'}
+            {step === 4 && '📋 Заполните дополнительные поля'}
           </DialogDescription>
         </DialogHeader>
 
@@ -292,13 +300,22 @@ const TicketForm = ({
             onNext={handleNextToServices}
             onBack={handleBack}
           />
-        ) : (
+        ) : step === 3 ? (
           <TicketFormStep1
             formData={formData}
             setFormData={setFormData}
             priorities={priorities}
-            customFields={visibleCustomFields}
             selectedTicketService={selectedTicketService}
+            hasCustomFields={visibleCustomFields.length > 0}
+            onNext={visibleCustomFields.length > 0 ? handleNextToCustomFields : undefined}
+            onSubmit={onSubmit}
+            onBack={handleBack}
+          />
+        ) : (
+          <TicketFormStep4
+            formData={formData}
+            setFormData={setFormData}
+            customFields={visibleCustomFields}
             onSubmit={onSubmit}
             onBack={handleBack}
           />
