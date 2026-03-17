@@ -270,9 +270,6 @@ const TicketForm = ({
           <DialogTitle className="flex items-center gap-2">
             <Icon name="TicketPlus" size={24} />
             Новая заявка
-            <Badge variant="secondary" className="ml-auto text-xs">
-              Шаг {step} из {visibleCustomFields.length > 0 ? 4 : 3}
-            </Badge>
           </DialogTitle>
           <DialogDescription className="text-sm">
             {step === 1 && '🎯 Выберите услугу для вашей заявки'}
@@ -281,6 +278,46 @@ const TicketForm = ({
             {step === 4 && '📋 Заполните дополнительные поля'}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Прогресс-бар */}
+        {(() => {
+          const totalSteps = visibleCustomFields.length > 0 ? 4 : 3;
+          const stepLabels = totalSteps === 4
+            ? ['Услуга', 'Сервисы', 'Описание', 'Доп. поля']
+            : ['Услуга', 'Сервисы', 'Описание'];
+          return (
+            <div className="mt-2 mb-1">
+              <div className="flex items-center gap-0">
+                {stepLabels.map((label, index) => {
+                  const stepNum = index + 1;
+                  const isCompleted = step > stepNum;
+                  const isCurrent = step === stepNum;
+                  return (
+                    <div key={stepNum} className="flex items-center flex-1 last:flex-none">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                          isCompleted
+                            ? 'bg-primary text-primary-foreground'
+                            : isCurrent
+                            ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {isCompleted ? <Icon name="Check" size={14} /> : stepNum}
+                        </div>
+                        <span className={`text-[10px] whitespace-nowrap ${isCurrent ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                          {label}
+                        </span>
+                      </div>
+                      {index < stepLabels.length - 1 && (
+                        <div className={`flex-1 h-[2px] mb-4 mx-1 rounded transition-all ${step > stepNum ? 'bg-primary' : 'bg-muted'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
 
 
