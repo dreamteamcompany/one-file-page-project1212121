@@ -108,14 +108,14 @@ const TicketsKanban = ({ tickets, statuses, loading, onUpdateStatus }: TicketsKa
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto pb-4" style={{ height: 'calc(100vh - 260px)' }}>
         {sortedStatuses.map((status) => {
           const statusTickets = getTicketsByStatus(status.id);
           
           return (
             <div
               key={status.id}
-              className="flex-shrink-0 w-[320px] bg-muted/30 rounded-lg p-3"
+              className="flex-shrink-0 w-[320px] bg-muted/30 rounded-lg p-3 flex flex-col"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -135,7 +135,7 @@ const TicketsKanban = ({ tickets, statuses, loading, onUpdateStatus }: TicketsKa
                 strategy={verticalListSortingStrategy}
                 id={status.id.toString()}
               >
-                <div className="space-y-2 min-h-[200px]">
+                <div className="space-y-2 flex-1 overflow-y-auto">
                   {statusTickets.map((ticket) => (
                     <TicketKanbanCard
                       key={ticket.id}

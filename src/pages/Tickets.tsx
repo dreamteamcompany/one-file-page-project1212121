@@ -105,7 +105,7 @@ const Tickets = () => {
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
-      <div className="w-full overflow-hidden">
+      <div className="w-full flex flex-col flex-1 overflow-hidden">
         <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
         <TicketsViewToggle
@@ -165,6 +165,7 @@ const Tickets = () => {
               )}
             </div>
           ) : (
+            <div className="flex-1 min-h-0">
             <TicketsKanban
               tickets={filteredTickets}
               statuses={statuses}
@@ -186,6 +187,7 @@ const Tickets = () => {
                 }
               }}
             />
+            </div>
           )}
       </div>
 
