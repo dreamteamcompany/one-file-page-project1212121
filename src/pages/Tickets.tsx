@@ -115,22 +115,24 @@ const Tickets = () => {
           onBulkModeToggle={handleBulkModeToggle}
         />
 
-          <TicketForm
-            dialogOpen={dialogOpen}
-            setDialogOpen={setDialogOpen}
-            formData={formData}
-            setFormData={setFormData}
-            categories={categories}
-            priorities={priorities}
-            statuses={statuses}
-            departments={departments}
-            customFields={customFields}
-            services={services}
-            ticketServices={ticketServices}
-            handleSubmit={handleSubmit}
-            onDialogOpen={handleFormOpen}
-            canCreate={hasPermission('tickets', 'create')}
-          />
+          <div className="w-fit">
+            <TicketForm
+              dialogOpen={dialogOpen}
+              setDialogOpen={setDialogOpen}
+              formData={formData}
+              setFormData={setFormData}
+              categories={categories}
+              priorities={priorities}
+              statuses={statuses}
+              departments={departments}
+              customFields={customFields}
+              services={services}
+              ticketServices={ticketServices}
+              handleSubmit={handleSubmit}
+              onDialogOpen={handleFormOpen}
+              canCreate={hasPermission('tickets', 'create')}
+            />
+          </div>
 
           {viewMode === 'list' ? (
             <div className="mt-6">
