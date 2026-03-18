@@ -62,13 +62,13 @@ const PaymentsSidebar = ({
   return (
     <aside 
       style={{ backgroundColor: 'hsl(var(--sidebar-bg))' }}
-      className={`${collapsed ? 'w-[70px]' : 'w-[250px]'} border-r border-white/10 dark:border-white/10 light:border-gray-200 fixed left-0 top-0 h-screen z-50 transition-all duration-300 lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}
+      className={`${collapsed ? 'w-[70px]' : 'w-[250px]'} border-r border-border fixed left-0 top-0 h-screen z-50 transition-all duration-300 lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="flex items-center justify-between gap-3 px-5 py-5 pb-[30px] border-b border-white/10 dark:border-white/10 light:border-gray-200 flex-shrink-0">
-        {!collapsed && <a href="/"><Logo className="h-8 w-auto text-white dark:text-white light:text-gray-900" /></a>}
+      <div className="flex items-center justify-between gap-3 px-5 py-5 pb-[30px] border-b border-border flex-shrink-0">
+        {!collapsed && <a href="/"><Logo className="h-8 w-auto text-foreground" /></a>}
         <button
           onClick={onToggleCollapse}
           className="hidden lg:flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
@@ -109,7 +109,7 @@ const PaymentsSidebar = ({
       </ul>
       </div>
       
-      <div className="flex-shrink-0 border-t border-white/10 p-4 space-y-3">
+      <div className="flex-shrink-0 border-t border-border p-4 space-y-3">
         <button
           onClick={toggleTheme}
           className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 py-2 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors`}
@@ -133,7 +133,7 @@ const PaymentsSidebar = ({
               {user?.full_name?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-white truncate">{user?.full_name}</div>
+              <div className="text-sm font-medium text-foreground truncate">{user?.full_name}</div>
               <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
             </div>
           </div>
@@ -141,7 +141,7 @@ const PaymentsSidebar = ({
         <Button
           variant="outline"
           size="sm"
-          className={`w-full ${collapsed ? 'justify-center px-2' : 'justify-start gap-2'} border-white/10 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20`}
+          className={`w-full ${collapsed ? 'justify-center px-2' : 'justify-start gap-2'} border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20`}
           onClick={handleLogout}
           title="Выйти"
         >

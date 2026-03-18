@@ -135,7 +135,7 @@ const NotificationBell = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-white hover:bg-white/10"
+          className="relative text-foreground hover:bg-foreground/10"
         >
           <Icon name="Bell" size={20} />
           {unreadCount > 0 && (

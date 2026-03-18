@@ -37,12 +37,12 @@ const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
         >
           <Icon name="Menu" size={24} />
         </Button>
-        <h1 className="text-2xl font-bold text-white">Мои заявки</h1>
+        <h1 className="text-2xl font-bold text-foreground">Мои заявки</h1>
       </div>
 
       <div className="flex items-center gap-3">
         <NotificationBell />
-        <div className="flex items-center gap-2 text-white">
+        <div className="flex items-center gap-2 text-foreground">
           <span className="text-sm">{user?.username || 'User'}</span>
           <Button
             variant="ghost"
