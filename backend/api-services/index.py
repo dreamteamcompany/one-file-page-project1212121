@@ -59,6 +59,7 @@ def handler(event, context):
             intermediate_approver_id = body.get('intermediate_approver_id')
             final_approver_id = body.get('final_approver_id')
             customer_department_id = body.get('customer_department_id')
+            category_id = body.get('category_id')
             
             if not name:
                 return response(400, {'error': 'Название сервиса обязательно'})
@@ -71,13 +72,14 @@ def handler(event, context):
                     intermediate_approver_id, 
                     final_approver_id,
                     customer_department_id,
+                    category_id,
                     created_at, 
                     updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
                 RETURNING id, name, description, intermediate_approver_id, 
-                          final_approver_id, customer_department_id, created_at, updated_at
-            """, (name, description, intermediate_approver_id, final_approver_id, customer_department_id))
+                          final_approver_id, customer_department_id, category_id, created_at, updated_at
+            """, (name, description, intermediate_approver_id, final_approver_id, customer_department_id, category_id))
             
             new_service = dict(cur.fetchone())
             conn.commit()
@@ -110,12 +112,13 @@ def handler(event, context):
                     intermediate_approver_id = %s,
                     final_approver_id = %s,
                     customer_department_id = %s,
+                    category_id = %s,
                     updated_at = NOW()
                 WHERE id = %s
                 RETURNING id, name, description, intermediate_approver_id,
-                          final_approver_id, customer_department_id, created_at, updated_at
+                          final_approver_id, customer_department_id, category_id, created_at, updated_at
             """, (name, description, intermediate_approver_id, final_approver_id,
-                  customer_department_id, service_id))
+                  customer_department_id, category_id, service_id))
             
             updated = cur.fetchone()
             if not updated:
