@@ -11,10 +11,17 @@ interface Permission {
   description: string;
 }
 
+const SYSTEM_ROLE_MAP: Record<string, { label: string; icon: string; color: string }> = {
+  user: { label: 'Пользователь', icon: 'User', color: 'text-blue-500 bg-blue-500/10' },
+  executor: { label: 'Исполнитель', icon: 'Wrench', color: 'text-green-500 bg-green-500/10' },
+  admin: { label: 'Администратор', icon: 'ShieldCheck', color: 'text-purple-500 bg-purple-500/10' },
+};
+
 interface Role {
   id: number;
   name: string;
   description: string;
+  system_role?: string;
   permissions?: Permission[];
   user_count: number;
 }
@@ -59,11 +66,19 @@ const RoleCard = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">
-          <Icon name="Users" size={16} className="text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {role.user_count} {role.user_count === 1 ? 'пользователь' : 'пользователей'}
-          </span>
+        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Icon name="Users" size={16} className="text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {role.user_count} {role.user_count === 1 ? 'пользователь' : 'пользователей'}
+            </span>
+          </div>
+          {role.system_role && SYSTEM_ROLE_MAP[role.system_role] && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${SYSTEM_ROLE_MAP[role.system_role].color}`}>
+              <Icon name={SYSTEM_ROLE_MAP[role.system_role].icon} size={11} />
+              {SYSTEM_ROLE_MAP[role.system_role].label}
+            </span>
+          )}
         </div>
 
         <div className="space-y-2 mb-4">

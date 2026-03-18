@@ -42,8 +42,8 @@ def handle_roles(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = RoleRequest(**body)
             
-            cur.execute(f"INSERT INTO {SCHEMA}.roles (name, description) VALUES (%s, %s) RETURNING id",
-                       (req.name, req.description))
+            cur.execute(f"INSERT INTO {SCHEMA}.roles (name, description, system_role) VALUES (%s, %s, %s) RETURNING id",
+                       (req.name, req.description, req.system_role or None))
             role_id = cur.fetchone()['id']
             
             for perm_id in req.permission_ids:
@@ -73,8 +73,8 @@ def handle_roles(method, event, conn, payload):
                 log(f"[ROLES PUT] Validation error: {str(validation_error)}")
                 return response(400, {'error': f'Validation error: {str(validation_error)}'})
             
-            cur.execute(f"UPDATE {SCHEMA}.roles SET name=%s, description=%s WHERE id=%s",
-                       (req.name, req.description, role_id))
+            cur.execute(f"UPDATE {SCHEMA}.roles SET name=%s, description=%s, system_role=%s WHERE id=%s",
+                       (req.name, req.description, req.system_role or None, role_id))
             cur.execute(f"DELETE FROM {SCHEMA}.role_permissions WHERE role_id=%s", (role_id,))
             
             for perm_id in req.permission_ids:

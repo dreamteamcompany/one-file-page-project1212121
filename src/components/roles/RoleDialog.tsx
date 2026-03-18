@@ -10,8 +10,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/contexts/AuthContext';
+
+const SYSTEM_ROLES = [
+  { value: 'user', label: 'Пользователь', icon: 'User', description: 'Создаёт заявки и следит за своими' },
+  { value: 'executor', label: 'Исполнитель', icon: 'Wrench', description: 'Берёт заявки в работу и решает их' },
+  { value: 'admin', label: 'Администратор', icon: 'ShieldCheck', description: 'Полный доступ к настройкам системы' },
+];
 
 interface Permission {
   id: number;
@@ -37,8 +50,9 @@ interface RoleDialogProps {
     name: string;
     description: string;
     permission_ids: number[];
+    system_role: string;
   };
-  onFormChange: (data: { name: string; description: string; permission_ids: number[] }) => void;
+  onFormChange: (data: { name: string; description: string; permission_ids: number[]; system_role: string }) => void;
   onSubmit: (e: React.FormEvent) => void;
   permissions: Permission[];
   togglePermission: (permId: number) => void;
@@ -107,6 +121,32 @@ const RoleDialog = ({
               onChange={(e) => onFormChange({ ...formData, description: e.target.value })}
               placeholder="Полный доступ ко всем функциям"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Системная роль</Label>
+            <Select
+              value={formData.system_role || 'none'}
+              onValueChange={(val) => onFormChange({ ...formData, system_role: val === 'none' ? '' : val })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Не выбрана" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">Не выбрана</span>
+                </SelectItem>
+                {SYSTEM_ROLES.map(sr => (
+                  <SelectItem key={sr.value} value={sr.value}>
+                    <div className="flex items-center gap-2">
+                      <Icon name={sr.icon} size={14} />
+                      <span>{sr.label}</span>
+                      <span className="text-xs text-muted-foreground ml-1">— {sr.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-3 border-t border-white/10 pt-4">

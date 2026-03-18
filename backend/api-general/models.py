@@ -13,6 +13,7 @@ class RoleRequest(BaseModel):
     name: str = Field(..., min_length=1)
     description: str = Field(default='')
     permission_ids: list[int] = Field(default=[])
+    system_role: str = Field(default=None)
 
 class CategoryRequest(BaseModel):
     name: str = Field(..., min_length=1)

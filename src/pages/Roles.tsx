@@ -20,6 +20,7 @@ interface Role {
   id: number;
   name: string;
   description: string;
+  system_role?: string;
   permissions?: Permission[];
   user_count: number;
 }
@@ -42,6 +43,7 @@ const Roles = () => {
     name: '',
     description: '',
     permission_ids: [] as number[],
+    system_role: '',
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -142,6 +144,7 @@ const Roles = () => {
           name: '',
           description: '',
           permission_ids: [],
+          system_role: '',
         });
         loadRoles();
       } else {
@@ -178,6 +181,7 @@ const Roles = () => {
       name: role.name,
       description: role.description,
       permission_ids: role.permissions?.map(p => p.id) || [],
+      system_role: role.system_role || '',
     });
     setDialogOpen(true);
   };

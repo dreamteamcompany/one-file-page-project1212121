@@ -1,0 +1,1 @@
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS system_role VARCHAR(20) CHECK (system_role IN ('executor', 'user', 'admin')) DEFAULT NULL;
