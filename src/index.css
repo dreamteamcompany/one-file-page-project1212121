@@ -31,27 +31,27 @@
   }
 
   :root.light {
-    --background: 240 20% 96%;
-    --foreground: 240 10% 3.9%;
+    --background: 220 16% 93%;
+    --foreground: 220 15% 18%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 220 15% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 220 15% 18%;
     --primary: 262 67% 61%;
     --primary-foreground: 0 0% 100%;
     --secondary: 218 100% 62%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 220 14% 88%;
+    --muted-foreground: 220 10% 45%;
     --accent: 39 100% 64%;
     --accent-foreground: 240 5.9% 10%;
     --success: 158 97% 36%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
+    --border: 220 13% 84%;
+    --input: 220 13% 84%;
     --ring: 262 67% 61%;
-    --sidebar-bg: 0 0% 100%;
+    --sidebar-bg: 220 18% 97%;
   }
 }
 
