@@ -47,7 +47,7 @@ def handle_roles(method, event, conn, payload):
             role_id = cur.fetchone()['id']
             
             for perm_id in req.permission_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s)",
+                cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                            (role_id, perm_id))
             
             conn.commit()
@@ -78,7 +78,7 @@ def handle_roles(method, event, conn, payload):
             cur.execute(f"DELETE FROM {SCHEMA}.role_permissions WHERE role_id=%s", (role_id,))
             
             for perm_id in req.permission_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s)",
+                cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                            (role_id, perm_id))
             
             conn.commit()
