@@ -85,6 +85,48 @@ def handler(event, context):
             
             return response(201, new_service)
         
+        elif method == 'PUT':
+            service_id = event.get('queryStringParameters', {}).get('id')
+            
+            if not service_id:
+                return response(400, {'error': 'ID сервиса обязателен'})
+            
+            body = json.loads(event.get('body', '{}'))
+            name = body.get('name')
+            description = body.get('description', '')
+            intermediate_approver_id = body.get('intermediate_approver_id')
+            final_approver_id = body.get('final_approver_id')
+            customer_department_id = body.get('customer_department_id')
+            category_id = body.get('category_id')
+            
+            if not name:
+                return response(400, {'error': 'Название сервиса обязательно'})
+            
+            cur = conn.cursor()
+            cur.execute(f"""
+                UPDATE {SCHEMA}.services
+                SET name = %s,
+                    description = %s,
+                    intermediate_approver_id = %s,
+                    final_approver_id = %s,
+                    customer_department_id = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, name, description, intermediate_approver_id,
+                          final_approver_id, customer_department_id, created_at, updated_at
+            """, (name, description, intermediate_approver_id, final_approver_id,
+                  customer_department_id, service_id))
+            
+            updated = cur.fetchone()
+            if not updated:
+                cur.close()
+                return response(404, {'error': 'Сервис не найден'})
+            
+            conn.commit()
+            cur.close()
+            
+            return response(200, dict(updated))
+        
         elif method == 'DELETE':
             service_id = event.get('queryStringParameters', {}).get('id')
             
