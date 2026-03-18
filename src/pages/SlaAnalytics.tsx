@@ -111,7 +111,7 @@ const SlaAnalytics = () => {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/settings')}
-          className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+          className="p-2 hover:bg-accent/30 rounded-lg transition-colors"
         >
           <Icon name="ArrowLeft" size={20} />
         </button>
@@ -151,7 +151,7 @@ const SlaAnalytics = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card className="bg-card/50 border-white/10">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Icon name="BarChart3" size={20} className="text-primary" />
@@ -187,7 +187,7 @@ const SlaAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-white/10">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Icon name="Users" size={20} className="text-primary" />
@@ -221,7 +221,7 @@ const SlaAnalytics = () => {
         </Card>
       </div>
 
-      <Card className="bg-card/50 border-white/10">
+      <Card className="bg-card/50 border-border">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Icon name="Activity" size={20} className="text-primary" />
@@ -253,7 +253,7 @@ const StatCard = ({
   icon: string;
   color: string;
 }) => (
-  <Card className="bg-card/50 border-white/10">
+  <Card className="bg-card/50 border-border">
     <CardContent className="p-4 flex items-center gap-4">
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -281,7 +281,7 @@ const GroupPerformanceCard = ({ group }: { group: GroupPerformance }) => {
         : '#ef4444';
 
   return (
-    <div className="p-4 rounded-lg bg-muted/30 border border-white/5 space-y-3">
+    <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-sm">{group.group_name}</h4>
         <span className="text-xs font-mono" style={{ color }}>

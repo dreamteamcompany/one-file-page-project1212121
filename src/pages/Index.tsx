@@ -281,14 +281,14 @@ const Index = () => {
       )}
 
       <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-[30px] px-4 md:px-[25px] py-4 md:py-[18px] bg-card backdrop-blur-[20px] rounded-[15px] border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-[30px] px-4 md:px-[25px] py-4 md:py-[18px] bg-card backdrop-blur-[20px] rounded-[15px] border border-border shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="lg:hidden p-2 text-white"
+            className="lg:hidden p-2 text-foreground"
           >
             <Icon name="Menu" size={24} />
           </button>
-          <div className="flex items-center gap-3 bg-card border border-white/10 rounded-[15px] px-4 md:px-5 py-2 md:py-[10px] w-full sm:w-[300px] lg:w-[400px]">
+          <div className="flex items-center gap-3 bg-card border border-border rounded-[15px] px-4 md:px-5 py-2 md:py-[10px] w-full sm:w-[300px] lg:w-[400px]">
             <Icon name="Search" size={20} className="text-muted-foreground" />
             <Input 
               type="text" 
@@ -296,7 +296,7 @@ const Index = () => {
               className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
             />
           </div>
-          <div className="flex items-center gap-2 md:gap-3 px-3 md:px-[15px] py-2 md:py-[10px] rounded-[12px] bg-white/5 border border-white/10">
+          <div className="flex items-center gap-2 md:gap-3 px-3 md:px-[15px] py-2 md:py-[10px] rounded-[12px] bg-accent/50 border border-border">
             <div className="w-8 h-8 md:w-9 md:h-9 rounded-[10px] bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-bold text-white text-sm md:text-base">
               А
             </div>
@@ -308,7 +308,7 @@ const Index = () => {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-[30px]">
-          <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+          <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-5">
                 <div>
@@ -324,7 +324,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
+          <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
             <CardContent className="p-[25px]">
               <div className="flex justify-between items-start mb-5">
                 <div>
@@ -340,7 +340,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
+          <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
             <CardContent className="p-[25px]">
               <div className="flex justify-between items-start mb-5">
                 <div>
@@ -359,7 +359,7 @@ const Index = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-6 md:mb-[30px]">
           {stats.category_stats.map((category) => (
-            <Card key={category.id} className="border-white/5 bg-card rounded-[20px]">
+            <Card key={category.id} className="border-border bg-card rounded-[20px]">
               <CardContent className="p-[20px] flex items-center gap-[15px]">
                 <div className="w-[56px] h-[56px] rounded-[15px] bg-primary/10 flex items-center justify-center text-2xl flex-shrink-0">
                   {category.icon}
@@ -374,7 +374,7 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-[30px]">
-          <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
+          <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
             <CardContent className="p-[25px]">
               <h3 className="text-lg font-bold mb-5">Расходы по категориям</h3>
               <div className="h-[300px]">
@@ -383,7 +383,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
+          <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
             <CardContent className="p-[25px]">
               <h3 className="text-lg font-bold mb-5">Распределение бюджета</h3>
               <div className="h-[300px]">
@@ -392,7 +392,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
+          <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] rounded-[20px]">
             <CardContent className="p-[25px]">
               <h3 className="text-lg font-bold mb-5">Расходы по отделам-заказчикам</h3>
               <div className="h-[300px]">
@@ -405,7 +405,7 @@ const Index = () => {
         <div className="mb-6">
           <h2 className="text-xl font-bold mb-4">Сервисы</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="border-white/5 bg-card hover:bg-card/80 transition-colors cursor-pointer">
+            <Card className="border-border bg-card hover:bg-card/80 transition-colors cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
@@ -419,7 +419,7 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-white/5 bg-card hover:bg-card/80 transition-colors cursor-pointer">
+            <Card className="border-border bg-card hover:bg-card/80 transition-colors cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 flex-shrink-0">
@@ -433,7 +433,7 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-white/5 bg-card hover:bg-card/80 transition-colors cursor-pointer">
+            <Card className="border-border bg-card hover:bg-card/80 transition-colors cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 flex-shrink-0">
@@ -447,7 +447,7 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-white/5 bg-card hover:bg-card/80 transition-colors cursor-pointer">
+            <Card className="border-border bg-card hover:bg-card/80 transition-colors cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 flex-shrink-0">
@@ -461,7 +461,7 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-white/5 bg-card hover:bg-card/80 transition-colors cursor-pointer">
+            <Card className="border-border bg-card hover:bg-card/80 transition-colors cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 flex-shrink-0">
@@ -475,7 +475,7 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-white/5 bg-card hover:bg-card/80 transition-colors cursor-pointer">
+            <Card className="border-border bg-card hover:bg-card/80 transition-colors cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 flex-shrink-0">

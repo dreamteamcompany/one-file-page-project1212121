@@ -54,7 +54,7 @@ const RoleCard = ({
   }, {} as Record<string, Permission[]>);
 
   return (
-    <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+    <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -66,7 +66,7 @@ const RoleCard = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10 flex-wrap">
+        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border flex-wrap">
           <div className="flex items-center gap-2">
             <Icon name="Users" size={16} className="text-muted-foreground" />
             <span className="text-sm text-muted-foreground">

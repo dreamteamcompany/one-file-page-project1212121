@@ -294,7 +294,7 @@ const Users = () => {
           />
         </div>
 
-        <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+        <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
           <CardContent className="p-0">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground">Загрузка...</div>

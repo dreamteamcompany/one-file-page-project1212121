@@ -218,7 +218,7 @@ const SLA = () => {
     <PageLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/settings')} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={() => navigate('/settings')} className="p-2 hover:bg-accent/30 rounded-lg transition-colors">
             <Icon name="ArrowLeft" size={20} />
           </button>
           <div>
@@ -244,7 +244,7 @@ const SLA = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       ) : slas.length === 0 ? (
-        <Card className="bg-card/50 border-white/10">
+        <Card className="bg-card/50 border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Icon name="Clock" size={64} className="text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-xl font-semibold mb-2">SLA не найдены</h3>
@@ -256,7 +256,7 @@ const SLA = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {slas.map((sla) => (
-            <Card key={sla.id} className="bg-card/50 border-white/10 hover:border-white/20 transition-all">
+            <Card key={sla.id} className="bg-card/50 border-border hover:border-border/80 transition-all">
               <CardContent className="p-4 md:p-6">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                   <div className="flex-1 w-full">
@@ -309,7 +309,7 @@ const SLA = () => {
                   </div>
                   <div className="flex gap-2">
                     {hasPermission('sla', 'update') && (
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(sla)} className="hover:bg-white/5">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(sla)} className="hover:bg-accent/30">
                         <Icon name="Pencil" size={18} />
                       </Button>
                     )}
@@ -346,7 +346,7 @@ const SLA = () => {
               />
             </div>
 
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-border pt-4">
               <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                 <Icon name="Timer" size={18} className="text-primary" />
                 Время реакции
@@ -367,7 +367,7 @@ const SLA = () => {
               </div>
             </div>
 
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-border pt-4">
               <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                 <Icon name="AlertTriangle" size={18} className="text-orange-500" />
                 При отсутствии ответа
@@ -401,7 +401,7 @@ const SLA = () => {
               </div>
             </div>
 
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-border pt-4">
               <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                 <Icon name="CheckCircle2" size={18} className="text-green-500" />
                 Время решения

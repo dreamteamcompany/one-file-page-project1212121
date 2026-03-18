@@ -182,7 +182,7 @@ const ContractorForm = ({
               />
             </div>
 
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-border pt-4">
               <h4 className="text-sm font-semibold mb-3">Банковские реквизиты</h4>
               
               <div className="space-y-4">

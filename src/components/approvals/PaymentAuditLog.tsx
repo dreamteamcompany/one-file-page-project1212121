@@ -66,7 +66,7 @@ const PaymentAuditLog = ({ paymentId }: PaymentAuditLogProps) => {
       case 'approved': return 'text-green-500';
       case 'rejected': return 'text-red-500';
       case 'submitted': return 'text-yellow-400';
-      default: return 'text-gray-400';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -119,7 +119,7 @@ const PaymentAuditLog = ({ paymentId }: PaymentAuditLogProps) => {
       {logs.map((log) => (
         <div
           key={log.id}
-          className="border border-white/10 rounded-lg p-3 hover:bg-white/5 transition-colors"
+          className="border border-border rounded-lg p-3 hover:bg-accent/50 transition-colors"
         >
           <div className="flex items-start gap-3">
             <div className={`w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${getActionColor(log.action)}`}>
@@ -155,7 +155,7 @@ const PaymentAuditLog = ({ paymentId }: PaymentAuditLogProps) => {
               )}
               
               {log.metadata?.comment && (
-                <div className="mt-2 text-xs text-muted-foreground italic border-l-2 border-white/20 pl-2">
+                <div className="mt-2 text-xs text-muted-foreground italic border-l-2 border-border pl-2">
                   {log.metadata.comment}
                 </div>
               )}

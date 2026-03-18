@@ -149,7 +149,7 @@ const RoleDialog = ({
             </Select>
           </div>
 
-          <div className="space-y-3 border-t border-white/10 pt-4">
+          <div className="space-y-3 border-t border-border pt-4">
             <h4 className="text-sm font-semibold">Права доступа</h4>
             {Object.entries(groupedPermissions).map(([resource, perms]) => (
               <div key={resource} className="space-y-2">

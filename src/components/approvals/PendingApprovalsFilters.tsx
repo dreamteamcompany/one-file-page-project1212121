@@ -46,7 +46,7 @@ const PendingApprovalsFilters = ({
   totalCount,
 }: PendingApprovalsFiltersProps) => {
   return (
-    <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] mb-6">
+    <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] mb-6">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -71,7 +71,7 @@ const PendingApprovalsFilters = ({
             <select
               value={selectedService}
               onChange={(e) => setSelectedService(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 rounded-lg bg-accent/30 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">Все сервисы</option>
               {services.map((service) => (
@@ -88,7 +88,7 @@ const PendingApprovalsFilters = ({
               placeholder="0"
               value={amountFrom}
               onChange={(e) => setAmountFrom(e.target.value)}
-              className="bg-white/5 border-white/10"
+              className="bg-accent/30 border-border"
             />
           </div>
           <div>
@@ -98,7 +98,7 @@ const PendingApprovalsFilters = ({
               placeholder="∞"
               value={amountTo}
               onChange={(e) => setAmountTo(e.target.value)}
-              className="bg-white/5 border-white/10"
+              className="bg-accent/30 border-border"
             />
           </div>
           <div>
@@ -107,7 +107,7 @@ const PendingApprovalsFilters = ({
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="bg-white/5 border-white/10"
+              className="bg-accent/30 border-border"
             />
           </div>
           <div>
@@ -116,13 +116,13 @@ const PendingApprovalsFilters = ({
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="bg-white/5 border-white/10"
+              className="bg-accent/30 border-border"
             />
           </div>
           <div className="flex items-end">
             <div className="text-sm text-muted-foreground">
               {filteredCount === totalCount ? (
-                <>Показано: <span className="font-semibold text-white">{totalCount}</span> платежей</>
+                <>Показано: <span className="font-semibold text-foreground">{totalCount}</span> платежей</>
               ) : (
                 <>Найдено: <span className="font-semibold text-primary">{filteredCount}</span> из {totalCount}</>
               )}

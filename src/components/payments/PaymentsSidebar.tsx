@@ -77,7 +77,7 @@ const PaymentsSidebar = ({
           <Icon name={collapsed ? 'ChevronRight' : 'ChevronLeft'} size={20} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-accent/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-accent/50">
         <ul className={`${collapsed ? 'px-1' : 'px-[15px]'} py-5 space-y-1 pb-4`}>
         {hasPermission('dashboard', 'read') && (
           <li>

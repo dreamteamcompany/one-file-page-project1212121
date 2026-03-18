@@ -37,10 +37,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] p-4">
-      <Card className="w-full max-w-md border-white/10 bg-card/50 backdrop-blur-xl">
+      <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 flex items-center justify-center">
-            <Logo className="h-10 w-auto text-white" />
+            <Logo className="h-10 w-auto text-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">Вход в систему</CardTitle>
           <CardDescription>
@@ -88,7 +88,7 @@ const Login = () => {
                 id="remember"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary focus:ring-offset-0"
+                className="w-4 h-4 rounded border-border bg-accent/30 text-primary focus:ring-primary focus:ring-offset-0"
               />
               <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
                 Запомнить меня

@@ -31,7 +31,7 @@ interface ContractorsListProps {
 
 const ContractorsList = ({ contractors, loading, handleEdit, handleDelete }: ContractorsListProps) => {
   return (
-    <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+    <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
       <CardContent className="p-0">
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
@@ -44,7 +44,7 @@ const ContractorsList = ({ contractors, loading, handleEdit, handleDelete }: Con
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-border">
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Название</th>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">ИНН</th>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Контакты</th>
@@ -53,7 +53,7 @@ const ContractorsList = ({ contractors, loading, handleEdit, handleDelete }: Con
                 </thead>
                 <tbody>
                   {contractors.map((contractor) => (
-                    <tr key={contractor.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <tr key={contractor.id} className="border-b border-border hover:bg-accent/30 transition-colors">
                       <td className="p-4">
                         <div className="font-medium">{contractor.name}</div>
                         {contractor.contact_person && (
@@ -97,7 +97,7 @@ const ContractorsList = ({ contractors, loading, handleEdit, handleDelete }: Con
             
             <div className="md:hidden space-y-3 p-4">
               {contractors.map((contractor) => (
-                <Card key={contractor.id} className="border-white/10 bg-white/5">
+                <Card key={contractor.id} className="border-border bg-accent/30">
                   <CardContent className="p-4 space-y-3">
                     <div className="font-medium text-lg">{contractor.name}</div>
                     {contractor.inn && (

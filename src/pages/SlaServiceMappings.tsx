@@ -191,7 +191,7 @@ const SlaServiceMappings = () => {
     <PageLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/sla')} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+          <button onClick={() => navigate('/sla')} className="p-2 hover:bg-accent/30 rounded-lg transition-colors">
             <Icon name="ArrowLeft" size={20} />
           </button>
           <div>
@@ -219,7 +219,7 @@ const SlaServiceMappings = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       ) : mappings.length === 0 ? (
-        <Card className="bg-card/50 border-white/10">
+        <Card className="bg-card/50 border-border">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Icon name="Link" size={64} className="text-muted-foreground mb-4 opacity-50" />
             <h3 className="text-xl font-semibold mb-2">Связи не настроены</h3>
@@ -231,7 +231,7 @@ const SlaServiceMappings = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {mappings.map((m) => (
-            <Card key={m.id} className="bg-card/50 border-white/10 hover:border-white/20 transition-all">
+            <Card key={m.id} className="bg-card/50 border-border hover:border-border/80 transition-all">
               <CardContent className="p-4">
                 <div className="flex justify-between items-start gap-2 mb-3">
                   <div className="flex items-center gap-2">
@@ -264,7 +264,7 @@ const SlaServiceMappings = () => {
                       <span>{m.service_name}</span>
                     </div>
                   )}
-                  <div className="flex gap-4 pt-2 border-t border-white/5 text-muted-foreground">
+                  <div className="flex gap-4 pt-2 border-t border-border text-muted-foreground">
                     <span>Реакция: {formatTime(m.response_time_minutes)}</span>
                     <span>Решение: {formatTime(m.resolution_time_minutes)}</span>
                   </div>

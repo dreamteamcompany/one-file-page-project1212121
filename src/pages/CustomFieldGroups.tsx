@@ -98,17 +98,17 @@ const CustomFieldGroups = () => {
         <div className="flex lg:hidden items-center gap-2 mb-4">
           <button 
             onClick={() => setMenuOpen(true)}
-            className="p-2 hover:bg-white/10 rounded-md transition-colors"
+            className="p-2 hover:bg-accent rounded-md transition-colors"
           >
-            <Icon name="Menu" size={24} className="text-white" />
+            <Icon name="Menu" size={24} className="text-foreground" />
           </button>
-          <h1 className="text-lg font-bold text-white">Группы полей</h1>
+          <h1 className="text-lg font-bold text-foreground">Группы полей</h1>
         </div>
 
         <header className="hidden lg:flex flex-row justify-between items-center gap-4 mb-6 md:mb-[30px] px-[25px] py-[18px] bg-[#1b2735] rounded-[8px]">
           <div>
-            <h1 className="text-2xl font-bold text-white">Группы полей</h1>
-            <p className="text-sm text-white/60">Управление группами пользовательских полей</p>
+            <h1 className="text-2xl font-bold text-foreground">Группы полей</h1>
+            <p className="text-sm text-muted-foreground">Управление группами пользовательских полей</p>
           </div>
           <Button onClick={openDialog}>
             <Icon name="Plus" size={18} className="mr-2" />

@@ -51,7 +51,7 @@ const TicketHistory = ({ logs, loading }: TicketHistoryProps) => {
       case 'approved': return 'text-green-600';
       case 'rejected': return 'text-red-600';
       case 'approval_sent': return 'text-indigo-500';
-      default: return 'text-gray-500';
+      default: return 'text-muted-foreground';
     }
   };
 

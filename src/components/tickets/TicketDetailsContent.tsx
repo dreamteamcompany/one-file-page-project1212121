@@ -302,7 +302,7 @@ const TicketDetailsContent = ({
                           {displayText.split('→').slice(0, -1).map((part, i) => (
                             <span key={i} className="text-muted-foreground">{part.trim()}{' → '}</span>
                           ))}
-                          <span className="font-bold text-white">{displayText.split('→').pop()?.trim()}</span>
+                          <span className="font-bold text-foreground">{displayText.split('→').pop()?.trim()}</span>
                         </p>
                       ) : (
                         <p className="text-sm font-medium text-foreground break-words">{displayText}</p>

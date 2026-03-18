@@ -114,13 +114,13 @@ const TicketTemplates = () => {
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               onClick={() => setMenuOpen(true)}
-              className="lg:hidden p-2 hover:bg-white/10 rounded-md transition-colors"
+              className="lg:hidden p-2 hover:bg-accent/50 rounded-md transition-colors"
             >
-              <Icon name="Menu" size={24} className="text-white" />
+              <Icon name="Menu" size={24} className="text-foreground" />
             </button>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-white">Шаблоны заявок</h1>
-              <p className="text-sm text-white/60">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground">Шаблоны заявок</h1>
+              <p className="text-sm text-muted-foreground">
                 Готовые комбинации услуг, сервисов и SLA
               </p>
             </div>

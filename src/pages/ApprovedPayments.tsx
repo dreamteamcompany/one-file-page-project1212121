@@ -158,7 +158,7 @@ const ApprovedPayments = () => {
       )}
 
       <main className="flex-1 lg:ml-64 bg-background min-h-screen overflow-x-hidden max-w-full">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-white/10">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
           <PaymentsHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
           
           <div className="px-4 sm:px-6 py-4">
@@ -188,7 +188,7 @@ const ApprovedPayments = () => {
                 placeholder="Поиск по описанию, категории, сумме..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-background border-white/10"
+                className="pl-10 bg-background border-border"
               />
             </div>
           </div>
@@ -218,7 +218,7 @@ const ApprovedPayments = () => {
               {filteredPayments.map((payment) => (
                 <Card 
                   key={payment.id} 
-                  className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:border-white/10 transition-all cursor-pointer"
+                  className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)] hover:border-border/80 transition-all cursor-pointer"
                   onClick={() => setSelectedPayment(payment)}
                 >
                   <CardContent className="p-6">
@@ -282,7 +282,7 @@ const ApprovedPayments = () => {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col items-start lg:items-end gap-2 lg:border-l lg:border-white/10 lg:pl-6">
+                      <div className="flex flex-col items-start lg:items-end gap-2 lg:border-l lg:border-border lg:pl-6">
                         <div className="text-center lg:text-right">
                           <div className="text-sm text-muted-foreground mb-1">Сумма платежа</div>
                           <div className="text-2xl font-bold">{payment.amount.toLocaleString('ru-RU')} ₽</div>

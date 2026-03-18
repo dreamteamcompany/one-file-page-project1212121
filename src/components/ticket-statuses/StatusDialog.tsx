@@ -164,7 +164,7 @@ const StatusDialog = ({
                   onClick={() => setFormData({ ...formData, color: colorOption.value })}
                   className={`h-12 rounded-lg border-2 transition-all hover:scale-105 ${
                     formData.color === colorOption.value 
-                      ? 'border-white shadow-lg' 
+                      ? 'border-foreground shadow-lg' 
                       : 'border-transparent'
                   }`}
                   style={{ backgroundColor: colorOption.value }}

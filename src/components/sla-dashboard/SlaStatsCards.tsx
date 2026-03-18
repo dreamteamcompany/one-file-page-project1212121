@@ -49,7 +49,7 @@ const SlaStatsCards = ({ data }: Props) => {
       {STATS_CONFIG.map((cfg) => {
         const color = cfg.getColor(data);
         return (
-          <Card key={cfg.key} className="bg-card/50 border-white/10">
+          <Card key={cfg.key} className="bg-card/50 border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"

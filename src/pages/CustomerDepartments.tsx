@@ -179,12 +179,12 @@ const CustomerDepartments = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden text-white p-2 hover:bg-white/10 rounded-lg"
+              className="lg:hidden text-foreground p-2 hover:bg-accent rounded-lg"
             >
               <Icon name="Menu" size={24} />
             </button>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Отделы-заказчики</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Отделы-заказчики</h1>
               <p className="text-muted-foreground mt-1">Управление отделами-заказчиками</p>
             </div>
           </div>
@@ -244,7 +244,7 @@ const CustomerDepartments = () => {
             <Icon name="Loader2" size={32} className="text-primary animate-spin" />
           </div>
         ) : departments.length === 0 ? (
-          <Card className="border-white/10 bg-card/50 backdrop-blur-xl">
+          <Card className="border-border bg-card/50 backdrop-blur-xl">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Icon name="Building" size={48} className="text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-center">
@@ -255,7 +255,7 @@ const CustomerDepartments = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {departments.map((department) => (
-              <Card key={department.id} className="border-white/10 bg-card/50 backdrop-blur-xl">
+              <Card key={department.id} className="border-border bg-card/50 backdrop-blur-xl">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ const CustomerDepartments = () => {
                         <Icon name="Building" size={20} className="text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white">{department.name}</h3>
+                        <h3 className="font-semibold text-foreground">{department.name}</h3>
                         {department.description && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {department.description}

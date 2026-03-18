@@ -141,11 +141,11 @@ const PendingApprovals = () => {
       />
 
       <main className="flex-1 lg:ml-64 bg-background min-h-screen overflow-x-hidden max-w-full">
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-white/10">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
           <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
+              className="lg:hidden p-2 rounded-lg hover:bg-accent/30 transition-colors"
             >
               <Icon name="Menu" size={24} />
             </button>
@@ -157,7 +157,7 @@ const PendingApprovals = () => {
             </div>
           </div>
           
-          <div className="px-4 sm:px-6 py-3 border-t border-white/10">
+          <div className="px-4 sm:px-6 py-3 border-t border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="flex-1 relative">
                 <Icon name="Search" size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -165,12 +165,12 @@ const PendingApprovals = () => {
                   placeholder="Поиск по описанию, категории, сумме..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-background border-white/10"
+                  className="pl-10 bg-background border-border"
                 />
               </div>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="relative p-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
+                className="relative p-2 rounded-lg border border-border hover:bg-accent/50 transition-colors"
               >
                 <Icon name="SlidersHorizontal" size={20} />
                 {activeFiltersCount > 0 && (

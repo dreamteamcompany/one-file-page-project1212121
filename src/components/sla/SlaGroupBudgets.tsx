@@ -175,7 +175,7 @@ const SlaGroupBudgets = ({ slaId, budgets, onBudgetsChange }: Props) => {
 
   if (loading) {
     return (
-      <div className="border-t border-white/10 pt-4">
+      <div className="border-t border-border pt-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
           Загрузка бюджетов групп...
@@ -185,7 +185,7 @@ const SlaGroupBudgets = ({ slaId, budgets, onBudgetsChange }: Props) => {
   }
 
   return (
-    <div className="border-t border-white/10 pt-4">
+    <div className="border-t border-border pt-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Icon name="Users" size={18} className="text-blue-500" />
@@ -213,7 +213,7 @@ const SlaGroupBudgets = ({ slaId, budgets, onBudgetsChange }: Props) => {
           {budgets.map((budget, index) => (
             <div
               key={index}
-              className="flex flex-col sm:flex-row gap-3 p-3 rounded-lg bg-muted/30 border border-white/5"
+              className="flex flex-col sm:flex-row gap-3 p-3 rounded-lg bg-muted/30 border border-border"
             >
               <div className="flex-1 min-w-0">
                 <Label className="text-xs text-muted-foreground">Группа</Label>

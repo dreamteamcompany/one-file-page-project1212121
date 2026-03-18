@@ -105,7 +105,7 @@ const AuditLogs = () => {
       case 'approved': return 'text-green-500';
       case 'rejected': return 'text-red-500';
       case 'submitted': return 'text-yellow-400';
-      default: return 'text-gray-400';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -170,7 +170,7 @@ const AuditLogs = () => {
             <p className="text-sm md:text-base text-muted-foreground">Все действия в системе</p>
           </div>
 
-          <Card className="border-white/5 bg-card">
+          <Card className="border-border bg-card">
             <CardContent className="p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 <div className="flex-1 relative">
@@ -224,7 +224,7 @@ const AuditLogs = () => {
                   {filteredLogs.map((log) => (
                     <div
                       key={log.id}
-                      className="border border-white/10 rounded-lg p-4 hover:bg-white/5 transition-colors"
+                      className="border border-border rounded-lg p-4 hover:bg-accent/30 transition-colors"
                     >
                       <div className="flex items-start gap-4">
                         <div className={`w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${getActionColor(log.action)}`}>

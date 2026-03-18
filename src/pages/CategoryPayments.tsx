@@ -114,17 +114,17 @@ const CategoryPayments = () => {
       <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
         <div className="flex items-center gap-3 mb-6">
           <button
-            className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="lg:hidden p-2 hover:bg-accent rounded-lg transition-colors"
             onClick={() => setMenuOpen(!menuOpen)}
           >
-            <Icon name="Menu" size={24} style={{ color: '#fff' }} />
+            <Icon name="Menu" size={24} className="text-foreground" />
           </button>
         </div>
 
         {loading ? (
-          <div className="text-[#a3aed0] p-8">Загрузка...</div>
+          <div className="text-muted-foreground p-8">Загрузка...</div>
         ) : !categoryInfo ? (
-          <div className="text-[#a3aed0] p-8">Категория не найдена</div>
+          <div className="text-muted-foreground p-8">Категория не найдена</div>
         ) : (
           <>
             <div 
@@ -139,10 +139,10 @@ const CategoryPayments = () => {
                 <Icon name={categoryInfo.icon} fallback="Tag" className="w-6 h-6 sm:w-7 sm:h-7" style={{ color: '#fff' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white mb-1 truncate">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground mb-1 truncate">
                   {categoryInfo.name}
                 </h1>
-                <p className="text-xs sm:text-sm text-[#a3aed0] truncate">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {categoryInfo.payments_count} платежей • {new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(categoryInfo.total_amount)}
                 </p>
               </div>
@@ -153,7 +153,7 @@ const CategoryPayments = () => {
               border: '1px solid rgba(117, 81, 233, 0.3)'
             }}>
               <CardHeader>
-                <CardTitle style={{ color: '#fff' }}>Все платежи</CardTitle>
+                <CardTitle className="text-foreground">Все платежи</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-3">
@@ -161,14 +161,14 @@ const CategoryPayments = () => {
                     <div
                       key={payment.id}
                       onClick={() => setSelectedPayment(payment)}
-                      className="bg-white/[0.03] p-3 sm:p-4 rounded-xl border border-white/[0.08] cursor-pointer transition-all duration-300 hover:bg-white/[0.05] hover:border-[#7551e9]/50"
+                      className="bg-accent/30 p-3 sm:p-4 rounded-xl border border-border cursor-pointer transition-all duration-300 hover:bg-accent/50 hover:border-[#7551e9]/50"
                     >
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-2">
                         <div className="flex-1 min-w-0">
-                          <div className="text-white text-sm sm:text-base font-semibold mb-1 truncate">
+                          <div className="text-foreground text-sm sm:text-base font-semibold mb-1 truncate">
                             {payment.service}
                           </div>
-                          <div className="text-[#a3aed0] text-xs sm:text-sm truncate">
+                          <div className="text-muted-foreground text-xs sm:text-sm truncate">
                             {payment.contractor} • {payment.department}
                           </div>
                         </div>
@@ -184,7 +184,7 @@ const CategoryPayments = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="text-[#a3aed0] text-xs sm:text-sm mt-2 pt-2 border-t border-white/5 line-clamp-2">
+                      <div className="text-muted-foreground text-xs sm:text-sm mt-2 pt-2 border-t border-border line-clamp-2">
                         {payment.description}
                       </div>
                     </div>

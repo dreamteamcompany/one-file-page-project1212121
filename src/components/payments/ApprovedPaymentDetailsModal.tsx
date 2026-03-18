@@ -93,22 +93,22 @@ const ApprovedPaymentDetailsModal = ({ payment, onClose, onRevoked }: ApprovedPa
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-card border border-white/10 rounded-xl w-full max-w-[1200px] max-h-[95vh] sm:max-h-[90vh] flex flex-col">
-        <div className="bg-card border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      <div className="bg-card border border-border rounded-xl w-full max-w-[1200px] max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+        <div className="bg-card border-b border-border px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-lg sm:text-xl font-semibold">Детали платежа #{payment.id}</h2>
             <span className="px-3 py-1 rounded-full text-sm bg-green-500/20 text-green-300">✓ Одобрено CEO</span>
           </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <Icon name="X" size={20} />
           </button>
         </div>
 
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          <div className="w-full lg:w-1/2 lg:border-r border-white/10 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <div className="w-full lg:w-1/2 lg:border-r border-border overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
             <div className="flex items-start gap-3 sm:gap-4">
               <div className="bg-primary/20 p-2 sm:p-3 rounded-lg">
                 <Icon name={payment.category_icon} size={24} />
@@ -201,7 +201,7 @@ const ApprovedPaymentDetailsModal = ({ payment, onClose, onRevoked }: ApprovedPa
               </>
             )}
 
-            <div className="pt-4 border-t border-white/10">
+            <div className="pt-4 border-t border-border">
               {!showRevokeForm ? (
                 <Button 
                   variant="destructive"
@@ -249,8 +249,8 @@ const ApprovedPaymentDetailsModal = ({ payment, onClose, onRevoked }: ApprovedPa
             </div>
           </div>
 
-          <div className="w-full lg:w-1/2 flex flex-col border-t lg:border-t-0 border-white/10 overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-white/10">
+          <div className="w-full lg:w-1/2 flex flex-col border-t lg:border-t-0 border-border overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-border">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Дата платежа:</span>

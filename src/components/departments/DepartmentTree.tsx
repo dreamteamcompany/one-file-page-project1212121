@@ -46,7 +46,7 @@ const TreeNode = ({
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-white/5"
+        className="flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-border"
         style={{ paddingLeft: `${level * 24 + 12}px` }}
       >
         <button

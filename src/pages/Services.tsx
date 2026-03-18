@@ -72,7 +72,7 @@ const Services = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 text-white"
+              className="lg:hidden p-2 text-foreground"
             >
               <Icon name="Menu" size={24} />
             </button>

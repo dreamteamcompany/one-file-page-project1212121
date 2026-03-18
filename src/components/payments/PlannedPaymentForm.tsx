@@ -339,7 +339,7 @@ const PlannedPaymentForm = ({
           </div>
 
           {customFields.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-white/10">
+            <div className="space-y-3 pt-4 border-t border-border">
               <h3 className="font-medium text-sm">Дополнительные поля</h3>
               {customFields.map((field) => (
                 <div key={field.id} className="space-y-2">

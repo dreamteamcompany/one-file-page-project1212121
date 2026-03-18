@@ -15,7 +15,7 @@ interface Props {
 
 const SlaViolationsByType = ({ items }: Props) => {
   return (
-    <Card className="bg-card/50 border-white/10">
+    <Card className="bg-card/50 border-border">
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Icon name="BarChart3" size={20} className="text-primary" />

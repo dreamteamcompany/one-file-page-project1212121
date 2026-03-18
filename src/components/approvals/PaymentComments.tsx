@@ -167,7 +167,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="bg-card border border-white/10 rounded-lg p-2 sm:p-3 mb-2">
+            <div className="bg-card border border-border rounded-lg p-2 sm:p-3 mb-2">
               <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2 mb-1">
                 <span className="font-medium text-xs sm:text-sm">{comment.full_name || comment.username}</span>
                 <span className="text-[10px] sm:text-xs text-muted-foreground">
@@ -204,7 +204,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Напишите ответ..."
-                  className="w-full bg-background border border-white/10 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full bg-background border border-border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={2}
                 />
                 <div className="flex gap-2 mt-2">
@@ -220,7 +220,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
                       setReplyingTo(null);
                       setReplyText('');
                     }}
-                    className="px-2 sm:px-3 py-1 bg-white/5 hover:bg-white/10 text-xs sm:text-sm rounded-lg transition-colors"
+                    className="px-2 sm:px-3 py-1 bg-accent/30 hover:bg-accent text-xs sm:text-sm rounded-lg transition-colors"
                   >
                     Отмена
                   </button>
@@ -265,12 +265,12 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
         </div>
       </div>
 
-      <div className="border-t border-white/10 p-3 sm:p-6">
+      <div className="border-t border-border p-3 sm:p-6">
         <textarea
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Напишите комментарий..."
-          className="w-full bg-background border border-white/10 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          className="w-full bg-background border border-border rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           rows={2}
         />
         <button

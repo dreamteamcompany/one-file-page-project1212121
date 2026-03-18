@@ -29,7 +29,7 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
         <thead>
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-border">
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Пользователь</th>
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Должность</th>
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Роли</th>
@@ -40,14 +40,14 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
         </thead>
         <tbody>
           {users.map((user) => (
-            <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+            <tr key={user.id} className="border-b border-border hover:bg-accent/30 transition-colors">
               <td className="p-4">
                 <div className="flex items-center gap-3">
                   {user.photo_url ? (
                     <img 
                       src={user.photo_url} 
                       alt={user.full_name}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white/10"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-border"
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
@@ -128,14 +128,14 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
       {/* Mobile version */}
       <div className="md:hidden space-y-3">
         {users.map((user) => (
-          <div key={user.id} className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+          <div key={user.id} className="bg-accent/30 border border-border rounded-lg p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 flex-1">
                 {user.photo_url ? (
                   <img 
                     src={user.photo_url} 
                     alt={user.full_name}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-white/10 flex-shrink-0"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-border flex-shrink-0"
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold flex-shrink-0">
@@ -180,7 +180,7 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
               }
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-white/10">
+            <div className="flex gap-2 pt-2 border-t border-border">
               <Button
                 variant="ghost"
                 size="sm"

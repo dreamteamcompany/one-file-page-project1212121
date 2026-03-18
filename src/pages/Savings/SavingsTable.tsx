@@ -18,7 +18,7 @@ const frequencyLabels: Record<string, string> = {
 
 const SavingsTable = ({ savings, loading, onDeleteSaving }: SavingsTableProps) => {
   return (
-    <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+    <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
       <CardContent className="p-0">
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
@@ -30,7 +30,7 @@ const SavingsTable = ({ savings, loading, onDeleteSaving }: SavingsTableProps) =
           <>
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b border-white/5">
+                <thead className="border-b border-border">
                   <tr>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Сервис</th>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Описание</th>
@@ -45,7 +45,7 @@ const SavingsTable = ({ savings, loading, onDeleteSaving }: SavingsTableProps) =
                 </thead>
                 <tbody>
                   {savings.map(saving => (
-                    <tr key={saving.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
+                    <tr key={saving.id} className="border-b border-border last:border-0 hover:bg-accent/30">
                       <td className="p-4 font-medium">{saving.service_name}</td>
                       <td className="p-4 text-muted-foreground max-w-xs truncate">{saving.description}</td>
                       <td className="p-4">
@@ -88,7 +88,7 @@ const SavingsTable = ({ savings, loading, onDeleteSaving }: SavingsTableProps) =
 
             <div className="md:hidden space-y-4 p-4">
               {savings.map(saving => (
-                <div key={saving.id} className="p-4 rounded-lg border border-white/5 bg-card space-y-2">
+                <div key={saving.id} className="p-4 rounded-lg border border-border bg-card space-y-2">
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="font-medium">{saving.service_name}</div>

@@ -161,7 +161,7 @@ const UserFormDialog = ({
             <Label>Фото профиля</Label>
             <div className="flex items-center gap-4">
               {formData.photo_url ? (
-                <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-white/10">
+                <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-border">
                   <img src={formData.photo_url} alt="Фото профиля" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -172,7 +172,7 @@ const UserFormDialog = ({
                   </button>
                 </div>
               ) : (
-                <div className="w-20 h-20 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-accent/30 border-2 border-border flex items-center justify-center">
                   <Icon name="User" size={32} className="text-muted-foreground" />
                 </div>
               )}
@@ -233,12 +233,12 @@ const UserFormDialog = ({
           </div>
           <div className="space-y-2">
             <Label>Роли</Label>
-            <div className="space-y-2 border border-white/10 rounded-md p-3 bg-white/5">
+            <div className="space-y-2 border border-border rounded-md p-3 bg-accent/30">
               {!roles || roles.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Загрузка ролей...</p>
               ) : (
                 roles.map((role) => (
-                  <div key={role.id} className="flex items-start gap-3 p-2 rounded hover:bg-white/5 transition-colors">
+                  <div key={role.id} className="flex items-start gap-3 p-2 rounded hover:bg-accent/50 transition-colors">
                     <input
                       type="checkbox"
                       id={`role-${role.id}`}

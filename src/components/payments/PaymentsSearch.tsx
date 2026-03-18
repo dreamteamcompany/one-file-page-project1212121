@@ -15,7 +15,7 @@ const PaymentsSearch = ({ searchQuery, onSearchChange }: PaymentsSearchProps) =>
           placeholder="Поиск по описанию, категории, сумме, контрагенту..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 bg-background border-white/10"
+          className="pl-10 bg-background border-border"
         />
       </div>
     </div>

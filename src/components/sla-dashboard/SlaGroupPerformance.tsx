@@ -27,7 +27,7 @@ const GroupCard = ({ group }: { group: GroupPerformance }) => {
   const compliancePercent = 100 - (group.overdue_percent || 0);
 
   return (
-    <Card className="bg-muted/20 border-white/5">
+    <Card className="bg-muted/20 border-border">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <div
@@ -77,7 +77,7 @@ const GroupCard = ({ group }: { group: GroupPerformance }) => {
 
 const SlaGroupPerformance = ({ items }: Props) => {
   return (
-    <Card className="bg-card/50 border-white/10">
+    <Card className="bg-card/50 border-border">
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Icon name="Activity" size={20} className="text-primary" />

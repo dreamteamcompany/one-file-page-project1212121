@@ -11,7 +11,7 @@ interface StatusCardProps {
 
 const StatusCard = ({ status, onEdit, onDelete }: StatusCardProps) => {
   return (
-    <Card className="bg-card border-white/10">
+    <Card className="bg-card border-border">
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 flex-1">

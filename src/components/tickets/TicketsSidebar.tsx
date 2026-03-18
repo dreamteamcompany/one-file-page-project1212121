@@ -58,15 +58,15 @@ const TicketsSidebar = ({
   return (
     <aside 
       style={{ backgroundColor: 'hsl(var(--sidebar-bg))' }}
-      className={`w-[250px] border-r border-white/10 fixed left-0 top-0 h-screen z-50 transition-all lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}
+      className={`w-[250px] border-r border-border fixed left-0 top-0 h-screen z-50 transition-all lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <a href="/" className="flex items-center gap-3 px-5 py-5 pb-[30px] border-b border-white/10 flex-shrink-0">
-        <Logo className="h-8 w-auto text-white" />
+      <a href="/" className="flex items-center gap-3 px-5 py-5 pb-[30px] border-b border-border flex-shrink-0">
+        <Logo className="h-8 w-auto text-foreground" />
       </a>
-      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/10">
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-accent/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-accent/50">
         <ul className="px-[15px] py-5 space-y-1 pb-4">
           <li>
             <Link to="/" className={`flex items-center gap-3 px-[15px] py-3 rounded-lg ${isActive('/') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`}>
@@ -231,7 +231,7 @@ const TicketsSidebar = ({
           </li>
         </ul>
       </div>
-      <div className="px-[15px] py-4 border-t border-white/10 space-y-2 flex-shrink-0">
+      <div className="px-[15px] py-4 border-t border-border space-y-2 flex-shrink-0">
         <Button 
           variant="ghost" 
           className="w-full justify-start gap-3 text-muted-foreground hover:bg-primary/10 hover:text-primary"

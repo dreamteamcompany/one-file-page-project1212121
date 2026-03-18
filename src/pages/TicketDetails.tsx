@@ -122,7 +122,7 @@ const TicketDetails = () => {
             <button
               type="button"
               onClick={() => setSidebarOpen(prev => !prev)}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[#1b254b]/50 border border-white/10 text-white text-sm font-medium"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[#1b254b]/50 border border-border text-foreground text-sm font-medium"
             >
               <span className="flex items-center gap-2">
                 <Icon name="Info" size={16} />

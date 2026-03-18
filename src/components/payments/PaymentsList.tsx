@@ -47,7 +47,7 @@ interface PaymentsListProps {
 
 const getStatusBadge = (status?: string) => {
   if (!status || status === 'draft') {
-    return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-300">Черновик</span>;
+    return <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-muted-foreground">Черновик</span>;
   }
   if (status === 'pending_ceo') {
     return <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-300">Ожидает CEO</span>;
@@ -66,7 +66,7 @@ const getStatusBadge = (status?: string) => {
 
 const PaymentsList = ({ payments, loading, onApprove, onReject, onSubmitForApproval, onPaymentClick, isPlannedPayments = false }: PaymentsListProps) => {
   return (
-    <Card className="border-white/5 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+    <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
       <CardContent className="p-0">
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
@@ -79,7 +79,7 @@ const PaymentsList = ({ payments, loading, onApprove, onReject, onSubmitForAppro
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-border">
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Категория</th>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Юр. лицо</th>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Назначение</th>
@@ -93,7 +93,7 @@ const PaymentsList = ({ payments, loading, onApprove, onReject, onSubmitForAppro
                   {payments.map((payment) => (
                     <tr 
                       key={payment.id} 
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                      className="border-b border-border hover:bg-accent/50 transition-colors cursor-pointer"
                       onClick={() => onPaymentClick && onPaymentClick(payment)}
                     >
                       <td className="p-4">
@@ -167,7 +167,7 @@ const PaymentsList = ({ payments, loading, onApprove, onReject, onSubmitForAppro
               {payments.map((payment) => (
                 <Card 
                   key={payment.id} 
-                  className="border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors"
+                  className="border-border bg-accent/30 cursor-pointer hover:bg-accent transition-colors"
                   onClick={() => onPaymentClick && onPaymentClick(payment)}
                 >
                   <CardContent className="p-4 space-y-3">
