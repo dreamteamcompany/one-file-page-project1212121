@@ -4,6 +4,7 @@ import TicketConfirmationBlock from './TicketConfirmationBlock';
 import TicketTimerCard from './sidebar/TicketTimerCard';
 import TicketPingCard from './sidebar/TicketPingCard';
 import TicketInfoFields from './sidebar/TicketInfoFields';
+import TicketWatchersBlock from './sidebar/TicketWatchersBlock';
 import ApprovalDialog from './sidebar/ApprovalDialog';
 
 interface User {
@@ -166,6 +167,11 @@ const TicketDetailsSidebar = ({
           onStatusChange={handleStatusChange}
           onAssignUser={onAssignUser}
           onUpdateDueDate={onUpdateDueDate}
+        />
+
+        <TicketWatchersBlock
+          ticketId={ticket.id}
+          availableUsers={users}
         />
 
         <TicketApprovalBlock

@@ -67,6 +67,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_service_mappings(method, event, conn)
         elif endpoint == 'ticket-confirmation':
             return handle_ticket_confirmation(method, event, conn)
+        elif endpoint == 'ticket-watchers':
+            return handle_ticket_watchers(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -1223,6 +1225,93 @@ def handle_ticket_confirmation(method: str, event: dict, conn) -> dict:
 
                 conn.commit()
                 return response(200, {'message': 'Заявка возвращена в работу'})
+
+        return response(405, {'error': 'Метод не поддерживается'})
+
+    finally:
+        cur.close()
+
+
+def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
+    """Управление наблюдателями заявки (добавление, удаление, просмотр)"""
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    user_id = payload.get('user_id')
+    cur = conn.cursor()
+
+    try:
+        if method == 'GET':
+            query_params = event.get('queryStringParameters', {}) or {}
+            ticket_id = query_params.get('ticket_id')
+            if not ticket_id:
+                return response(400, {'error': 'ticket_id обязателен'})
+
+            cur.execute(f"""
+                SELECT tw.id, tw.user_id, tw.added_at,
+                       u.full_name, u.username as email, u.photo_url
+                FROM {SCHEMA}.ticket_watchers tw
+                JOIN {SCHEMA}.users u ON tw.user_id = u.id
+                WHERE tw.ticket_id = %s
+                ORDER BY tw.added_at
+            """, (int(ticket_id),))
+            watchers = [dict(row) for row in cur.fetchall()]
+            return response(200, {'watchers': watchers})
+
+        elif method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            ticket_id = body.get('ticket_id')
+            watcher_user_id = body.get('user_id')
+            if not ticket_id or not watcher_user_id:
+                return response(400, {'error': 'ticket_id и user_id обязательны'})
+
+            cur.execute(f"SELECT id FROM {SCHEMA}.tickets WHERE id = %s", (ticket_id,))
+            if not cur.fetchone():
+                return response(404, {'error': 'Заявка не найдена'})
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id, added_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (ticket_id, user_id) DO NOTHING
+                RETURNING id
+            """, (ticket_id, watcher_user_id))
+            conn.commit()
+
+            # Уведомление новому наблюдателю
+            cur.execute(f"SELECT title FROM {SCHEMA}.tickets WHERE id = %s", (ticket_id,))
+            ticket_row = cur.fetchone()
+            if ticket_row:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.notifications (user_id, ticket_id, type, message, is_read, created_at)
+                    VALUES (%s, %s, 'watcher_added', %s, false, NOW())
+                """, (watcher_user_id, ticket_id, f'Вы добавлены как наблюдатель к заявке: {ticket_row["title"]}'))
+                conn.commit()
+
+            cur.execute(f"""
+                SELECT tw.id, tw.user_id, tw.added_at,
+                       u.full_name, u.username as email, u.photo_url
+                FROM {SCHEMA}.ticket_watchers tw
+                JOIN {SCHEMA}.users u ON tw.user_id = u.id
+                WHERE tw.ticket_id = %s
+                ORDER BY tw.added_at
+            """, (ticket_id,))
+            watchers = [dict(row) for row in cur.fetchall()]
+            return response(201, {'watchers': watchers})
+
+        elif method == 'DELETE':
+            body = json.loads(event.get('body', '{}'))
+            ticket_id = body.get('ticket_id')
+            watcher_user_id = body.get('user_id')
+            if not ticket_id or not watcher_user_id:
+                return response(400, {'error': 'ticket_id и user_id обязательны'})
+
+            cur.execute(f"""
+                DELETE FROM {SCHEMA}.ticket_watchers
+                WHERE ticket_id = %s AND user_id = %s
+            """, (ticket_id, watcher_user_id))
+            conn.commit()
+            return response(200, {'success': True})
 
         return response(405, {'error': 'Метод не поддерживается'})
 

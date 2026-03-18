@@ -39,6 +39,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get ticket watchers - requires auth",
+      "method": "GET",
+      "path": "/?endpoint=ticket-watchers&ticket_id=1",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }
