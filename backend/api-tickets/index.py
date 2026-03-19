@@ -187,8 +187,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 OR t.assigned_to = %s
                 OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_watchers tw WHERE tw.ticket_id = t.id AND tw.user_id = %s)
                 OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_approvals ta WHERE ta.ticket_id = t.id AND ta.approver_id = %s)
+                OR (t.executor_group_id IS NOT NULL AND t.assigned_to IS NULL AND EXISTS (
+                    SELECT 1 FROM {SCHEMA}.executor_group_members egm 
+                    WHERE egm.group_id = t.executor_group_id AND egm.user_id = %s
+                ))
             )"""
-            params.extend([user_id, user_id, user_id, user_id])
+            params.extend([user_id, user_id, user_id, user_id, user_id])
         
         if status_id:
             where_clause += " AND t.status_id = %s"
@@ -219,16 +223,18 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         main_query = f"""
             SELECT DISTINCT t.id, t.title, t.description, t.status_id, t.priority_id,
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
-                   t.department_id, t.due_date,
+                   t.department_id, t.due_date, t.executor_group_id,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,
-                   u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url
+                   u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url,
+                   eg.name as executor_group_name
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
             LEFT JOIN {SCHEMA}.users u1 ON t.assigned_to = u1.id
             LEFT JOIN {SCHEMA}.users u2 ON t.created_by = u2.id
+            LEFT JOIN {SCHEMA}.executor_groups eg ON t.executor_group_id = eg.id
             {where_clause}
             ORDER BY t.created_at DESC
             LIMIT %s OFFSET %s
@@ -488,6 +494,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 history_entries.append(('assigned_to', str(old_ticket['assigned_to']) if old_ticket['assigned_to'] else 'Не назначен', str(body['assigned_to']) if body['assigned_to'] else 'Снят с назначения'))
             update_fields.append("assigned_to = %s")
             params.append(body['assigned_to'])
+        
+        if 'executor_group_id' in body:
+            old_group = old_ticket.get('executor_group_id')
+            new_group = body['executor_group_id']
+            if new_group != old_group:
+                history_entries.append(('executor_group_id', str(old_group) if old_group else 'Не назначена', str(new_group) if new_group else 'Снята'))
+            update_fields.append("executor_group_id = %s")
+            params.append(new_group if new_group else None)
         
         if 'due_date' in body:
             old_due_date_str = old_ticket['due_date'].isoformat() if old_ticket['due_date'] else None

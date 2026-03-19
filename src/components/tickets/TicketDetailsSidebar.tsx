@@ -23,6 +23,11 @@ interface Status {
   is_pending_confirmation?: boolean;
 }
 
+interface ExecutorGroup {
+  id: number;
+  name: string;
+}
+
 interface Ticket {
   id: number;
   title: string;
@@ -49,6 +54,8 @@ interface Ticket {
   confirmation_sent_at?: string;
   rating?: number;
   rejection_reason?: string;
+  executor_group_id?: number;
+  executor_group_name?: string;
   ticket_service?: {
     id: number;
     name: string;
@@ -68,8 +75,10 @@ interface TicketDetailsSidebarProps {
   sendingPing?: boolean;
   isCustomer?: boolean;
   hasAssignee?: boolean;
+  executorGroups?: ExecutorGroup[];
   onUpdateStatus: (statusId: string) => void;
   onAssignUser: (userId: string) => void;
+  onAssignGroup?: (groupId: string) => void;
   onSendPing?: () => void;
   onApprovalChange?: () => void;
   onUpdateDueDate?: (dueDate: string | null) => void;
@@ -84,8 +93,10 @@ const TicketDetailsSidebar = ({
   sendingPing = false,
   isCustomer = false,
   hasAssignee = false,
+  executorGroups = [],
   onUpdateStatus,
   onAssignUser,
+  onAssignGroup,
   onSendPing,
   onApprovalChange,
   onUpdateDueDate,
@@ -164,8 +175,10 @@ const TicketDetailsSidebar = ({
           users={users}
           updating={updating}
           isCustomer={isCustomer}
+          executorGroups={executorGroups}
           onStatusChange={handleStatusChange}
           onAssignUser={onAssignUser}
+          onAssignGroup={onAssignGroup}
           onUpdateDueDate={onUpdateDueDate}
         />
 

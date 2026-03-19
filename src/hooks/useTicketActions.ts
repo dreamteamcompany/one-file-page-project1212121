@@ -136,6 +136,31 @@ export const useTicketActions = (
     }
   };
 
+  const handleAssignGroup = async (groupId: string) => {
+    try {
+      setUpdating(true);
+      const executorGroupId = groupId === 'unassign' ? null : Number(groupId);
+
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token,
+        },
+        body: JSON.stringify({ id: ticketId, executor_group_id: executorGroupId }),
+      });
+
+      if (response.ok) {
+        loadTicket();
+        loadHistory();
+      }
+    } catch (error) {
+      console.error('Error assigning group:', error);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
@@ -176,6 +201,7 @@ export const useTicketActions = (
     handleReaction,
     handleFileUpload,
     handleAssignUser,
+    handleAssignGroup,
     handleUpdateDueDate,
   };
 };

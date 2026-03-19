@@ -11,6 +11,7 @@ interface Role {
   id: number;
   name: string;
   description: string;
+  system_role?: string;
 }
 
 interface User {
@@ -32,6 +33,7 @@ interface AuthContextType {
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
+  hasSystemRole: (...roles: string[]) => boolean;
   checkAuth: () => Promise<void>;
   refreshToken: () => Promise<void>;
 }
@@ -220,7 +222,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const hasPermission = (resource: string, action: string): boolean => {
     if (!user) return false;
     
-    // Если у пользователя есть роль "Администратор", даём полный доступ
     if (user.roles?.some(role => role.name === 'Администратор' || role.name === 'Admin')) {
       return true;
     }
@@ -231,8 +232,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     );
   };
 
+  const hasSystemRole = (...roles: string[]): boolean => {
+    if (!user?.roles) return false;
+    return user.roles.some(role => role.system_role && roles.includes(role.system_role));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, hasPermission, checkAuth, refreshToken }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, hasPermission, hasSystemRole, checkAuth, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );

@@ -20,6 +20,11 @@ interface User {
   photo_url?: string;
 }
 
+interface ExecutorGroup {
+  id: number;
+  name: string;
+}
+
 interface Status {
   id: number;
   name: string;
@@ -53,6 +58,8 @@ interface Ticket {
   created_at?: string;
   updated_at?: string;
   closed_at?: string;
+  executor_group_id?: number;
+  executor_group_name?: string;
   ticket_service?: {
     id: number;
     name: string;
@@ -70,8 +77,10 @@ interface TicketInfoFieldsProps {
   users: User[];
   updating: boolean;
   isCustomer?: boolean;
+  executorGroups?: ExecutorGroup[];
   onStatusChange: (statusId: string) => void;
   onAssignUser: (userId: string) => void;
+  onAssignGroup?: (groupId: string) => void;
   onUpdateDueDate?: (dueDate: string | null) => void;
 }
 
@@ -81,11 +90,14 @@ const TicketInfoFields = ({
   users,
   updating,
   isCustomer = false,
+  executorGroups = [],
   onStatusChange,
   onAssignUser,
+  onAssignGroup,
   onUpdateDueDate,
 }: TicketInfoFieldsProps) => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasSystemRole } = useAuth();
+  const canSeeGroup = hasSystemRole('admin', 'executor');
   const canAssignExecutor = hasPermission('tickets', 'assign_executor');
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
@@ -216,6 +228,42 @@ const TicketInfoFields = ({
           </div>
         )}
       </div>
+
+      {canSeeGroup && onAssignGroup && (
+        <div className="p-4">
+          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="Users" size={14} />
+            Группа исполнителей
+          </h3>
+          <Select
+            value={ticket.executor_group_id?.toString() || 'unassign'}
+            onValueChange={onAssignGroup}
+            disabled={updating}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите группу" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassign">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Icon name="Users" size={14} />
+                  Не назначена
+                </div>
+              </SelectItem>
+              {executorGroups.map((group) => (
+                <SelectItem key={group.id} value={group.id.toString()}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="Users" size={12} className="text-primary" />
+                    </div>
+                    <span className="text-sm">{group.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {ticket.response_due_date && (
         <div className="p-4" style={responseDeadlineInfo ? { 

@@ -26,7 +26,8 @@ def get_user_by_username(conn, username: str) -> Optional[Dict[str, Any]]:
                COALESCE(json_agg(DISTINCT jsonb_build_object(
                    'id', r.id, 
                    'name', r.name,
-                   'description', r.description
+                   'description', r.description,
+                   'system_role', r.system_role
                )) FILTER (WHERE r.id IS NOT NULL), '[]') as roles,
                COALESCE(json_agg(DISTINCT jsonb_build_object(
                    'name', p.name,
@@ -56,7 +57,8 @@ def get_user_by_id(conn, user_id: int) -> Optional[Dict[str, Any]]:
                COALESCE(json_agg(DISTINCT jsonb_build_object(
                    'id', r.id,
                    'name', r.name,
-                   'description', r.description
+                   'description', r.description,
+                   'system_role', r.system_role
                )) FILTER (WHERE r.id IS NOT NULL), '[]') as roles,
                COALESCE(json_agg(DISTINCT jsonb_build_object(
                    'name', p.name,

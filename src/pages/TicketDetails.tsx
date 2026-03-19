@@ -23,6 +23,7 @@ const TicketDetails = () => {
     statuses,
     comments,
     users,
+    executorGroups,
     auditLogs,
     loading,
     loadingComments,
@@ -45,6 +46,7 @@ const TicketDetails = () => {
     handleReaction,
     handleFileUpload,
     handleAssignUser,
+    handleAssignGroup,
     handleUpdateDueDate,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
 
@@ -110,8 +112,10 @@ const TicketDetails = () => {
               sendingPing={sendingPing}
               isCustomer={ticket.created_by === user?.id}
               hasAssignee={!!ticket.assigned_to}
+              executorGroups={executorGroups}
               onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
               onAssignUser={handleAssignUser}
+              onAssignGroup={handleAssignGroup}
               onSendPing={handleSendPing}
               onApprovalChange={loadTicket}
               onUpdateDueDate={handleUpdateDueDate}
@@ -151,8 +155,10 @@ const TicketDetails = () => {
                   sendingPing={sendingPing}
                   isCustomer={ticket.created_by === user?.id}
                   hasAssignee={!!ticket.assigned_to}
+                  executorGroups={executorGroups}
                   onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
                   onAssignUser={handleAssignUser}
+                  onAssignGroup={handleAssignGroup}
                   onSendPing={handleSendPing}
                   onApprovalChange={loadTicket}
                   onUpdateDueDate={handleUpdateDueDate}

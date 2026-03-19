@@ -3,12 +3,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { API_URL, apiFetch } from '@/utils/api';
 import type { Ticket, TicketComment, TicketAuditLog, TicketStatus, User } from '@/types';
 
+interface ExecutorGroup {
+  id: number;
+  name: string;
+}
+
 export const useTicketData = (id: string | undefined, initialTicket: Ticket | null = null) => {
   const { token } = useAuth();
   const [ticket, setTicket] = useState<Ticket | null>(initialTicket);
   const [statuses, setStatuses] = useState<TicketStatus[]>([]);
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [executorGroups, setExecutorGroups] = useState<ExecutorGroup[]>([]);
   const [auditLogs, setAuditLogs] = useState<TicketAuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -115,6 +121,23 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     }
   };
 
+  const loadExecutorGroups = async () => {
+    try {
+      const EXECUTOR_GROUPS_URL = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
+      const response = await apiFetch(EXECUTOR_GROUPS_URL, {
+        headers: {
+          'X-Auth-Token': token,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExecutorGroups(data.groups || []);
+      }
+    } catch (error) {
+      console.error('Error loading executor groups:', error);
+    }
+  };
+
   useEffect(() => {
     if (id && token) {
       loadTicket();
@@ -122,6 +145,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       loadComments();
       loadUsers();
       loadHistory();
+      loadExecutorGroups();
     }
   }, [id, token]);
 
@@ -130,6 +154,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     statuses,
     comments,
     users,
+    executorGroups,
     auditLogs,
     loading,
     loadingComments,
