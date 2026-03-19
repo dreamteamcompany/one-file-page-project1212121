@@ -159,12 +159,12 @@ const TicketInfoFields = ({
         </Select>
       </div>
 
-      {canAssignExecutor && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="UserCheck" size={14} />
-            Исполнитель
-          </h3>
+      <div className="p-4">
+        <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+          <Icon name="UserCheck" size={14} />
+          Исполнитель
+        </h3>
+        {canAssignExecutor ? (
           <Select
             value={ticket.assigned_to?.toString() || 'unassign'}
             onValueChange={onAssignUser}
@@ -190,8 +190,26 @@ const TicketInfoFields = ({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center gap-2 text-sm">
+            {ticket.assignee_name ? (
+              <>
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Icon name="User" size={14} className="text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium">{ticket.assignee_name}</span>
+                  {ticket.assignee_email && (
+                    <span className="text-xs text-muted-foreground">{ticket.assignee_email}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Не назначен</span>
+            )}
+          </div>
+        )}
+      </div>
 
       {ticket.response_due_date && (
         <div className="p-4" style={responseDeadlineInfo ? { 
