@@ -61,7 +61,8 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
             tc.created_at,
             tc.is_read,
             u.username as user_name,
-            u.full_name as user_full_name
+            u.full_name as user_full_name,
+            u.photo_url as user_photo_url
         FROM {SCHEMA}.ticket_comments tc
         LEFT JOIN {SCHEMA}.users u ON tc.user_id = u.id
         WHERE tc.ticket_id = %s
@@ -121,7 +122,7 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     
     # Получаем данные пользователя
     cur.execute(f"""
-        SELECT username as user_name, full_name as user_full_name
+        SELECT username as user_name, full_name as user_full_name, photo_url as user_photo_url
         FROM {SCHEMA}.users
         WHERE id = %s
     """, (user_id,))

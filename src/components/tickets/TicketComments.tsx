@@ -10,6 +10,7 @@ interface Comment {
   user_id: number;
   user_name?: string;
   user_email?: string;
+  user_photo_url?: string;
   comment: string;
   is_internal: boolean;
   created_at?: string;
@@ -366,9 +367,13 @@ const TicketComments = ({
                   comment.parent_comment_id ? 'ml-4 lg:ml-8' : ''
                 }`}
               >
-                <div className={`w-8 h-8 rounded-full ${getAvatarColor(comment.user_id)} flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-xs font-bold`}>
-                  {getInitials(comment.user_name)}
-                </div>
+                {comment.user_photo_url ? (
+                  <img src={comment.user_photo_url} alt={comment.user_name || ''} className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full ${getAvatarColor(comment.user_id)} flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-xs font-bold`}>
+                    {getInitials(comment.user_name)}
+                  </div>
+                )}
                 <div className={`max-w-[80%] min-w-[120px]`}>
                   <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
                     <p className="font-semibold text-xs">{comment.user_name || 'Пользователь'}</p>
