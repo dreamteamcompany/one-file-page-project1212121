@@ -9,6 +9,7 @@ interface Comment {
   ticket_id: number;
   user_id: number;
   user_name?: string;
+  user_full_name?: string;
   user_email?: string;
   user_photo_url?: string;
   comment: string;
@@ -368,15 +369,15 @@ const TicketComments = ({
                 }`}
               >
                 {comment.user_photo_url ? (
-                  <img src={comment.user_photo_url} alt={comment.user_name || ''} className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
+                  <img src={comment.user_photo_url} alt={comment.user_full_name || comment.user_name || ''} className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
                 ) : (
                   <div className={`w-8 h-8 rounded-full ${getAvatarColor(comment.user_id)} flex items-center justify-center flex-shrink-0 mt-0.5 text-white text-xs font-bold`}>
-                    {getInitials(comment.user_name)}
+                    {getInitials(comment.user_full_name || comment.user_name)}
                   </div>
                 )}
                 <div className={`max-w-[80%] min-w-[120px]`}>
                   <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                    <p className="font-semibold text-xs">{comment.user_name || 'Пользователь'}</p>
+                    <p className="font-semibold text-xs">{comment.user_full_name || comment.user_name || 'Пользователь'}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDate(comment.created_at)}
                     </p>

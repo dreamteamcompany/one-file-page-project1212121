@@ -280,10 +280,16 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
                 className="flex items-center justify-between p-2 rounded bg-muted/50"
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {approval.status === 'pending' && <Icon name="Clock" size={14} className="text-yellow-500 flex-shrink-0" />}
-                  {approval.status === 'approved' && <Icon name="CheckCircle" size={14} className="text-green-500 flex-shrink-0" />}
-                  {approval.status === 'rejected' && <Icon name="XCircle" size={14} className="text-red-500 flex-shrink-0" />}
-                  {approval.status === 'revoked' && <Icon name="XCircle" size={14} className="text-orange-500 flex-shrink-0" />}
+                  {approval.approver_photo_url ? (
+                    <img src={approval.approver_photo_url} alt={approval.approver_name || ''} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <>
+                      {approval.status === 'pending' && <Icon name="Clock" size={14} className="text-yellow-500 flex-shrink-0" />}
+                      {approval.status === 'approved' && <Icon name="CheckCircle" size={14} className="text-green-500 flex-shrink-0" />}
+                      {approval.status === 'rejected' && <Icon name="XCircle" size={14} className="text-red-500 flex-shrink-0" />}
+                      {approval.status === 'revoked' && <Icon name="XCircle" size={14} className="text-orange-500 flex-shrink-0" />}
+                    </>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
                       {approval.approver_name || `Пользователь #${approval.approver_id}`}

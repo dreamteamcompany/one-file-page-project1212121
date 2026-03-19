@@ -999,7 +999,7 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
             cur.execute(f"""
                 SELECT ta.id, ta.ticket_id, ta.approver_id, ta.status, ta.comment, 
                        ta.created_at, ta.updated_at,
-                       u.username as approver_name, u.email as approver_email
+                       u.full_name as approver_name, u.email as approver_email, u.photo_url as approver_photo_url
                 FROM {SCHEMA}.ticket_approvals ta
                 LEFT JOIN {SCHEMA}.users u ON ta.approver_id = u.id
                 WHERE ta.ticket_id = %s

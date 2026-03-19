@@ -191,10 +191,7 @@ const TicketInfoFields = ({
                         <Icon name="User" size={12} className="text-primary" />
                       </div>
                     )}
-                    <div className="flex flex-col">
-                      <span className="text-sm">{u.name}</span>
-                      <span className="text-xs text-muted-foreground">{u.email}</span>
-                    </div>
+                    <span className="text-sm">{u.name}</span>
                   </div>
                 </SelectItem>
               ))}
@@ -211,12 +208,7 @@ const TicketInfoFields = ({
                     <Icon name="User" size={14} className="text-primary" />
                   </div>
                 )}
-                <div className="flex flex-col">
-                  <span className="font-medium">{ticket.assignee_name}</span>
-                  {ticket.assignee_email && (
-                    <span className="text-xs text-muted-foreground">{ticket.assignee_email}</span>
-                  )}
-                </div>
+                <span className="font-medium">{ticket.assignee_name}</span>
               </>
             ) : (
               <span className="text-muted-foreground">Не назначен</span>
