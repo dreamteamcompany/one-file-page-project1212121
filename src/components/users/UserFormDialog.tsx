@@ -4,6 +4,7 @@ import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { UPLOAD_FILE_URL } from '@/utils/api';
 import {
   Dialog,
   DialogContent,

@@ -8,6 +8,7 @@ import boto3
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
+
 def handler(event, context):
     '''Загрузка файлов (фото) в S3-хранилище'''
     
