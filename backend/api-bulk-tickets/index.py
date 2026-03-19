@@ -122,6 +122,36 @@ def handler(event, context):
             except Exception as e:
                 log(f"[BULK-TICKETS] Error deleting custom fields: {e}")
             
+            try:
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_approvals WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted approvals: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting approvals: {e}")
+            
+            try:
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_watchers WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted watchers: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting watchers: {e}")
+            
+            try:
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_group_log WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted group log: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting group log: {e}")
+            
+            try:
+                cur.execute(f"DELETE FROM {SCHEMA}.sla_violations WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted SLA violations: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting SLA violations: {e}")
+            
+            try:
+                cur.execute(f"DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_id IN ({placeholders})", ticket_ids)
+                log(f"[BULK-TICKETS] Deleted service mappings (old): {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting service mappings (old): {e}")
+            
             # Теперь удаляем сами заявки
             cur.execute(f"DELETE FROM {SCHEMA}.tickets WHERE id IN ({placeholders})", ticket_ids)
             successful = cur.rowcount
