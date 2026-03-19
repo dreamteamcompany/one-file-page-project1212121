@@ -148,7 +148,7 @@ const TicketsList = ({
   const allSelected = bulkMode && sortedTickets.length > 0 && sortedTickets.every(t => selectedTicketIds.includes(t.id));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {bulkMode && sortedTickets.length > 0 && (
         <Card className="p-3 bg-muted/50">
           <div className="flex items-center gap-3">
@@ -163,165 +163,177 @@ const TicketsList = ({
         </Card>
       )}
       
-      <div className="grid gap-2">
+      <div className="grid gap-4">
         {sortedTickets.map((ticket) => {
-          const isCritical = ticket.priority_name?.toLowerCase().includes('критич');
-          const deadline = ticket.due_date ? getDeadlineProgress(ticket.due_date) : null;
-
-          return (
-            <Card
-              key={ticket.id}
-              className={`hover:shadow-md transition-all cursor-pointer hover:border-primary/40 relative w-full overflow-hidden group ${
-                isCritical ? 'border-red-500 border-2' : ''
-              } ${
-                selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
-              }`}
-              style={isCritical ? {
-                boxShadow: '0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2)',
-                animation: 'pulse-glow 2s ease-in-out infinite'
-              } : {}}
-              onClick={(e) => {
-                if (bulkMode && onToggleTicket) {
-                  e.stopPropagation();
-                  onToggleTicket(ticket.id);
-                } else {
-                  onTicketClick(ticket);
-                }
-              }}
-            >
-              {/* Цветная полоска слева по приоритету */}
-              {ticket.priority_color && (
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-                  style={{ backgroundColor: ticket.priority_color }}
-                />
-              )}
-
-              <div className="pl-4 pr-4 py-3">
-                {/* Верхняя строка: номер + статус + алерты + дата */}
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  {bulkMode && onToggleTicket && (
-                    <Checkbox
-                      checked={selectedTicketIds.includes(ticket.id)}
-                      onCheckedChange={(e) => { if (e) onToggleTicket(ticket.id); }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+        const isCritical = ticket.priority_name?.toLowerCase().includes('критич');
+        
+        return (
+        <Card
+          key={ticket.id}
+          className={`p-4 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative w-full overflow-hidden ${
+            isCritical ? 'border-red-500 border-2' : ''
+          } ${
+            selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
+          }`}
+          style={isCritical ? {
+            boxShadow: '0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2)',
+            animation: 'pulse-glow 2s ease-in-out infinite'
+          } : {}}
+          onClick={(e) => {
+            if (bulkMode && onToggleTicket) {
+              e.stopPropagation();
+              onToggleTicket(ticket.id);
+            } else {
+              onTicketClick(ticket);
+            }
+          }}
+        >
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                {bulkMode && onToggleTicket && (
+                  <Checkbox
+                    checked={selectedTicketIds.includes(ticket.id)}
+                    onCheckedChange={(e) => {
+                      if (e) onToggleTicket(ticket.id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1"
+                  />
+                )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {(ticket.status_name === 'На согласовании' || ticket.status_name === 'Одобрена' || ticket.status_name === 'Отклонена') && (
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      ticket.status_name === 'На согласовании' ? 'bg-green-500' :
+                      ticket.status_name === 'Отклонена' ? 'bg-red-500' :
+                      'bg-blue-500'
+                    } animate-pulse`} />
                   )}
-
-                  <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded font-medium">
-                    #{ticket.id}
-                  </span>
-
-                  {ticket.status_name && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs border"
-                      style={{ 
-                        backgroundColor: `${ticket.status_color}18`,
-                        color: ticket.status_color,
-                        borderColor: `${ticket.status_color}40`,
-                      }}
-                    >
-                      {ticket.status_name}
-                    </Badge>
-                  )}
-
-                  {isCritical && (
-                    <Badge variant="destructive" className="text-xs font-semibold flex items-center gap-1 animate-pulse">
-                      <Icon name="AlertTriangle" size={11} />
-                      Критично
-                    </Badge>
-                  )}
-
-                  {ticket.has_response && ticket.created_by === currentUserId && (
-                    <Badge className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-xs">
-                      <Icon name="MessageSquareReply" size={11} />
-                      Есть ответ
-                    </Badge>
-                  )}
-
-                  {ticket.unread_comments && ticket.unread_comments > 0 && (
-                    <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
-                      <Icon name="MessageCircle" size={11} />
-                      {ticket.unread_comments}
-                    </Badge>
-                  )}
-
-                  {ticket.created_at && (
-                    <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
-                      <Icon name="Clock" size={11} />
-                      {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  )}
-                </div>
-
-                {/* Средняя строка: иконка категории + заголовок */}
-                <div className="flex items-start gap-2.5">
                   {ticket.category_icon && (
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Icon name={ticket.category_icon} size={15} className="text-primary" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name={ticket.category_icon} size={16} className="text-primary sm:w-5 sm:h-5" />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm leading-snug line-clamp-1 group-hover:text-primary transition-colors">
-                      {ticket.title}
-                    </h3>
-                    {ticket.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                        {ticket.description.replace(/<[^>]*>/g, '')}
-                      </p>
-                    )}
-                  </div>
                 </div>
-
-                {/* Нижняя строка: метаданные */}
-                {(ticket.customer_name || ticket.assigned_to_name || ticket.department_name || ticket.ticket_service || (ticket.services && ticket.services.length > 0)) && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 pt-2 border-t border-border/50 text-xs text-muted-foreground">
-                    {ticket.customer_name && (
-                      <span className="flex items-center gap-1">
-                        <Icon name="User" size={11} />
-                        {ticket.customer_name}
-                      </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
+                    {ticket.status_name && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs"
+                        style={{ 
+                          backgroundColor: `${ticket.status_color}20`,
+                          color: ticket.status_color,
+                          borderColor: ticket.status_color
+                        }}
+                      >
+                        {ticket.status_name}
+                      </Badge>
                     )}
-                    {ticket.assigned_to_name && (
-                      <span className="flex items-center gap-1">
-                        <Icon name="UserCheck" size={11} />
-                        {ticket.assigned_to_name}
-                      </span>
+                    {isCritical && (
+                      <Badge variant="destructive" className="text-xs font-bold uppercase flex items-center gap-1 animate-pulse">
+                        <Icon name="AlertTriangle" size={12} />
+                        Критично
+                      </Badge>
                     )}
-                    {ticket.department_name && (
-                      <span className="flex items-center gap-1">
-                        <Icon name="Building" size={11} />
-                        {ticket.department_name}
-                      </span>
+                    {ticket.has_response && ticket.created_by === currentUserId && (
+                      <Badge variant="default" className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-xs">
+                        <Icon name="MessageSquareReply" size={12} />
+                        Есть ответ
+                      </Badge>
                     )}
-                    {ticket.ticket_service && (
-                      <span className="flex items-center gap-1">
-                        <Icon name="Tag" size={11} />
-                        {ticket.ticket_service.name}
-                      </span>
-                    )}
-                    {ticket.services && ticket.services.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Icon name="Wrench" size={11} />
-                        {ticket.services.map(s => s.name).join(', ')}
-                      </span>
+                    {ticket.unread_comments && ticket.unread_comments > 0 && (
+                      <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
+                        <Icon name="MessageCircle" size={12} />
+                        {ticket.unread_comments}
+                      </Badge>
                     )}
                   </div>
-                )}
+                  <h3 className="font-semibold text-base line-clamp-1">
+                    {ticket.status_name === 'На согласовании' && '🔔 '}
+                    {ticket.status_name === 'Отклонена' && '❌ '}
+                    {ticket.status_name === 'Одобрена' && '✅ '}
+                    {ticket.title}
+                  </h3>
+                  {ticket.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {ticket.description.replace(/<[^>]*>/g, '')}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                {/* Дедлайн */}
-                {deadline && (
-                  <div className="mt-2 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {ticket.customer_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="User" size={12} />
+                  <span>{ticket.customer_name}</span>
+                </div>
+              )}
+              {ticket.ticket_service && (
+                <div className="flex items-center gap-1">
+                  <Icon name="Tag" size={12} />
+                  <span>{ticket.ticket_service.name}</span>
+                </div>
+              )}
+              {ticket.services && ticket.services.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Icon name="Wrench" size={12} />
+                  <span>{ticket.services.map(s => s.name).join(', ')}</span>
+                </div>
+              )}
+              {ticket.department_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="Building" size={12} />
+                  <span>{ticket.department_name}</span>
+                </div>
+              )}
+              {ticket.assigned_to_name && (
+                <div className="flex items-center gap-1">
+                  <Icon name="UserCheck" size={12} />
+                  <span>{ticket.assigned_to_name}</span>
+                </div>
+              )}
+              {ticket.priority_name && (
+                <Badge
+                  variant="outline"
+                  className="h-5 text-xs px-1.5 flex items-center gap-1"
+                  style={{
+                    borderColor: ticket.priority_color,
+                    color: ticket.priority_color,
+                  }}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color }} />
+                  {ticket.priority_name}
+                </Badge>
+              )}
+              {ticket.created_at && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <Icon name="Clock" size={12} />
+                  <span>
+                    {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+              {ticket.due_date && (() => {
+                const deadline = getDeadlineProgress(ticket.due_date);
+                if (!deadline) return null;
+                
+                return (
+                  <div className="space-y-1.5 mt-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Icon name="Calendar" size={11} />
-                        {new Date(ticket.due_date!).toLocaleDateString('ru-RU', {
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Icon name="Calendar" size={12} />
+                        Дедлайн: {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
@@ -332,18 +344,19 @@ const TicketsList = ({
                         {deadline.label}
                       </span>
                     </div>
-                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full transition-all duration-300 rounded-full"
+                        className="h-full transition-all duration-300"
                         style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }}
                       />
                     </div>
                   </div>
-                )}
-              </div>
-            </Card>
-          );
-        })}
+                );
+              })()}
+          </div>
+        </Card>
+        );
+      })}
       </div>
 
       {totalPages > 1 && (
