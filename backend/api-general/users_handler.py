@@ -72,32 +72,26 @@ def handle_users(method, event, conn, payload):
                 password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 log(f"[CREATE USER] Password hashed successfully")
                 
-                # Генерируем ID вручную, чтобы обойти битый DEFAULT
-                cur.execute(f"SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM {SCHEMA}.users")
-                next_id_result = cur.fetchone()
-                next_id = next_id_result['next_id'] if next_id_result else 1
-                log(f"[CREATE USER] Generated next ID: {next_id}")
+                email_value = req.email if req.email else f"no-email-{req.username}@placeholder.local"
                 
-                # Используем простейший INSERT без подзапросов
                 insert_query = f"""
                     INSERT INTO {SCHEMA}.users 
-                    (id, username, password_hash, full_name, position, email, photo_url, is_active, created_at, updated_at)
-                    VALUES ({next_id}, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                    (username, password_hash, full_name, position, email, photo_url, is_active, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                    RETURNING id
                 """
-                log(f"[CREATE USER] About to execute INSERT with id={next_id}, username={req.username}")
+                log(f"[CREATE USER] About to execute INSERT, username={req.username}")
                 
                 cur.execute(insert_query, (
                     req.username, 
                     password_hash, 
                     req.full_name, 
                     req.position if req.position else '', 
-                    req.email if req.email else '', 
+                    email_value, 
                     req.photo_url if req.photo_url else ''
                 ))
                 
-                log(f"[CREATE USER] Insert executed successfully, rowcount: {cur.rowcount}")
-                
-                new_user_id = next_id
+                new_user_id = cur.fetchone()['id']
                 log(f"[CREATE USER] User created with ID: {new_user_id}")
                 
                 for role_id in req.role_ids:
@@ -125,19 +119,21 @@ def handle_users(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = UserRequest(**body)
             
+            email_value = req.email if req.email else f"no-email-{target_user_id}@placeholder.local"
+            
             if req.password:
                 password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 cur.execute(f"""
                     UPDATE {SCHEMA}.users 
                     SET username=%s, password_hash=%s, full_name=%s, position=%s, email=%s, photo_url=%s
                     WHERE id=%s
-                """, (req.username, password_hash, req.full_name, req.position, req.email, req.photo_url, target_user_id))
+                """, (req.username, password_hash, req.full_name, req.position, email_value, req.photo_url, target_user_id))
             else:
                 cur.execute(f"""
                     UPDATE {SCHEMA}.users 
                     SET username=%s, full_name=%s, position=%s, email=%s, photo_url=%s
                     WHERE id=%s
-                """, (req.username, req.full_name, req.position, req.email, req.photo_url, target_user_id))
+                """, (req.username, req.full_name, req.position, email_value, req.photo_url, target_user_id))
             
             cur.execute(f"DELETE FROM {SCHEMA}.user_roles WHERE user_id=%s", (target_user_id,))
             for role_id in req.role_ids:
