@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import DateMaskedInput from '@/components/ui/date-masked-input';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface User {
   id: number;
@@ -83,6 +84,8 @@ const TicketInfoFields = ({
   onAssignUser,
   onUpdateDueDate,
 }: TicketInfoFieldsProps) => {
+  const { hasPermission } = useAuth();
+  const canAssignExecutor = hasPermission('tickets', 'assign_executor');
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
   const [dueTimeValue, setDueTimeValue] = useState(() => {
@@ -156,37 +159,39 @@ const TicketInfoFields = ({
         </Select>
       </div>
 
-      <div className="p-4">
-        <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-          <Icon name="UserCheck" size={14} />
-          Исполнитель
-        </h3>
-        <Select
-          value={ticket.assigned_to?.toString() || 'unassign'}
-          onValueChange={onAssignUser}
-          disabled={updating}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите исполнителя" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="unassign">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Icon name="UserX" size={14} />
-                Не назначен
-              </div>
-            </SelectItem>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id.toString()}>
-                <div className="flex flex-col">
-                  <span className="text-sm">{u.name}</span>
-                  <span className="text-xs text-muted-foreground">{u.email}</span>
+      {canAssignExecutor && (
+        <div className="p-4">
+          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="UserCheck" size={14} />
+            Исполнитель
+          </h3>
+          <Select
+            value={ticket.assigned_to?.toString() || 'unassign'}
+            onValueChange={onAssignUser}
+            disabled={updating}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите исполнителя" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassign">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Icon name="UserX" size={14} />
+                  Не назначен
                 </div>
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id.toString()}>
+                  <div className="flex flex-col">
+                    <span className="text-sm">{u.name}</span>
+                    <span className="text-xs text-muted-foreground">{u.email}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {ticket.response_due_date && (
         <div className="p-4" style={responseDeadlineInfo ? { 

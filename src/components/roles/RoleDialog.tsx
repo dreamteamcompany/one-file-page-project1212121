@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -162,14 +163,29 @@ const RoleDialog = ({
                 <div className="ml-8 space-y-2">
                   {perms.map((perm) => (
                     <div key={perm.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`perm-${perm.id}`}
-                        checked={formData.permission_ids.includes(perm.id)}
-                        onCheckedChange={() => togglePermission(perm.id)}
-                      />
-                      <Label htmlFor={`perm-${perm.id}`} className="text-sm cursor-pointer">
-                        {perm.description}
-                      </Label>
+                      {resource === 'tickets' ? (
+                        <>
+                          <Switch
+                            id={`perm-${perm.id}`}
+                            checked={formData.permission_ids.includes(perm.id)}
+                            onCheckedChange={() => togglePermission(perm.id)}
+                          />
+                          <Label htmlFor={`perm-${perm.id}`} className="text-sm cursor-pointer">
+                            {perm.description}
+                          </Label>
+                        </>
+                      ) : (
+                        <>
+                          <Checkbox
+                            id={`perm-${perm.id}`}
+                            checked={formData.permission_ids.includes(perm.id)}
+                            onCheckedChange={() => togglePermission(perm.id)}
+                          />
+                          <Label htmlFor={`perm-${perm.id}`} className="text-sm cursor-pointer">
+                            {perm.description}
+                          </Label>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
