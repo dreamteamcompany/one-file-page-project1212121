@@ -14,7 +14,7 @@ class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
     description: str = Field(default='')
     status_id: Optional[int] = None
-    priority_id: int = Field(..., gt=0)
+    priority_id: Optional[int] = None
     assigned_to: Optional[int] = None
     service_ids: list[int] = Field(default=[])
     custom_fields: dict = Field(default={})
@@ -326,6 +326,13 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             if open_status:
                 status_id = open_status['id']
         
+        priority_id = data.priority_id
+        if not priority_id:
+            cur.execute(f"SELECT id FROM {SCHEMA}.ticket_priorities ORDER BY id LIMIT 1")
+            default_priority = cur.fetchone()
+            if default_priority:
+                priority_id = default_priority['id']
+        
         resolved_ts_id = data.ticket_service_id
         if not resolved_ts_id and data.service_ids:
             cur.execute(f"""
@@ -361,7 +368,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             data.title,
             data.description,
             status_id,
-            data.priority_id,
+            priority_id,
             assigned_to,
             executor_group_id,
             payload['user_id']
