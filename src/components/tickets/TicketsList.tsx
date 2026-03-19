@@ -274,12 +274,10 @@ const TicketsList = ({
                       {ticket.customer_name}
                     </span>
                   )}
-                  {ticket.assigned_to_name && (
-                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
-                      <Icon name="UserCheck" size={11} />
-                      {ticket.assigned_to_name}
-                    </span>
-                  )}
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${ticket.assigned_to_name ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
+                    <Icon name={ticket.assigned_to_name ? "UserCheck" : "UserX"} size={11} />
+                    {ticket.assigned_to_name || 'Не назначен'}
+                  </span>
                   {ticket.department_name && (
                     <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
                       <Icon name="Building" size={11} />
