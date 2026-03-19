@@ -131,7 +131,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       });
       if (response.ok) {
         const data = await response.json();
-        setExecutorGroups(data.groups || []);
+        setExecutorGroups(Array.isArray(data) ? data : data.groups || []);
       }
     } catch (error) {
       console.error('Error loading executor groups:', error);
