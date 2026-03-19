@@ -39,7 +39,9 @@ interface Ticket {
   created_at?: string;
   custom_fields?: CustomField[];
   customer_name?: string;
+  creator_name?: string;
   assigned_to_name?: string;
+  assignee_name?: string;
   assigned_to?: number;
   created_by?: number;
   unread_comments?: number;
@@ -265,18 +267,17 @@ const TicketsList = ({
               </div>
             </div>
 
-            {(ticket.customer_name || ticket.assigned_to_name || ticket.department_name || ticket.ticket_service || (ticket.services && ticket.services.length > 0) || ticket.priority_name || ticket.created_at) && (
-              <div className="border-t border-border/40 pt-2.5 mt-1 space-y-2">
+            <div className="border-t border-border/40 pt-2.5 mt-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {ticket.customer_name && (
-                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                  {(ticket.customer_name || ticket.creator_name) && (
+                    <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
                       <Icon name="User" size={11} />
-                      {ticket.customer_name}
+                      {ticket.customer_name || ticket.creator_name}
                     </span>
                   )}
-                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${ticket.assigned_to_name ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
-                    <Icon name={ticket.assigned_to_name ? "UserCheck" : "UserX"} size={11} />
-                    {ticket.assigned_to_name || 'Не назначен'}
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
+                    <Icon name={(ticket.assigned_to_name || ticket.assignee_name) ? "UserCheck" : "UserX"} size={11} />
+                    {ticket.assigned_to_name || ticket.assignee_name || 'Не назначен'}
                   </span>
                   {ticket.department_name && (
                     <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
@@ -321,7 +322,6 @@ const TicketsList = ({
                   )}
                 </div>
               </div>
-            )}
 
               {ticket.due_date && (() => {
                 const deadline = getDeadlineProgress(ticket.due_date);
