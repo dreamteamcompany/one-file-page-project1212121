@@ -129,9 +129,13 @@ const PaymentsSidebar = ({
         </button>
         {!collapsed && (
           <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-              {user?.full_name?.charAt(0) || 'U'}
-            </div>
+            {user?.photo_url ? (
+              <img src={user.photo_url} alt={user.full_name} className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                {user?.full_name?.charAt(0) || 'U'}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-foreground truncate">{user?.full_name}</div>
               <div className="text-xs text-muted-foreground truncate">{user?.email}</div>

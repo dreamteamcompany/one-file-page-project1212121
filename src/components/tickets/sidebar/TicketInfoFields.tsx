@@ -194,9 +194,13 @@ const TicketInfoFields = ({
           <div className="flex items-center gap-2 text-sm">
             {ticket.assignee_name ? (
               <>
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Icon name="User" size={14} className="text-primary" />
-                </div>
+                {ticket.assignee_photo_url ? (
+                  <img src={ticket.assignee_photo_url} alt={ticket.assignee_name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon name="User" size={14} className="text-primary" />
+                  </div>
+                )}
                 <div className="flex flex-col">
                   <span className="font-medium">{ticket.assignee_name}</span>
                   {ticket.assignee_email && (

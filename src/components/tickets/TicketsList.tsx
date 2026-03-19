@@ -271,12 +271,20 @@ const TicketsList = ({
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   {(ticket.customer_name || ticket.creator_name) && (
                     <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
-                      <Icon name="User" size={11} />
+                      {ticket.creator_photo_url ? (
+                        <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                      ) : (
+                        <Icon name="User" size={11} />
+                      )}
                       {ticket.customer_name || ticket.creator_name}
                     </span>
                   )}
                   <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
-                    <Icon name={(ticket.assigned_to_name || ticket.assignee_name) ? "UserCheck" : "UserX"} size={11} />
+                    {ticket.assignee_photo_url ? (
+                      <img src={ticket.assignee_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    ) : (
+                      <Icon name={(ticket.assigned_to_name || ticket.assignee_name) ? "UserCheck" : "UserX"} size={11} />
+                    )}
                     {ticket.assigned_to_name || ticket.assignee_name || 'Не назначен'}
                   </span>
                   {ticket.department_name && (

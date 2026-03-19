@@ -206,7 +206,11 @@ const TicketDetailsContent = ({
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-muted-foreground uppercase tracking-wide">Заказчик</span>
                   <div className="flex items-center gap-2">
-                    <Icon name="User" size={16} className="text-muted-foreground" />
+                    {ticket.creator_photo_url ? (
+                      <img src={ticket.creator_photo_url} alt={ticket.creator_name} className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <Icon name="User" size={16} className="text-muted-foreground" />
+                    )}
                     <span className="font-medium text-foreground">{ticket.creator_name}</span>
                   </div>
                 </div>

@@ -22,7 +22,7 @@ def get_user_by_username(conn, username: str) -> Optional[Dict[str, Any]]:
     cur = conn.cursor()
     schema = MAIN_DB_SCHEMA
     cur.execute(f"""
-        SELECT u.id, u.username, u.email, u.full_name, u.password_hash, u.is_active,
+        SELECT u.id, u.username, u.email, u.full_name, u.photo_url, u.password_hash, u.is_active,
                COALESCE(json_agg(DISTINCT jsonb_build_object(
                    'id', r.id, 
                    'name', r.name,
@@ -52,7 +52,7 @@ def get_user_by_id(conn, user_id: int) -> Optional[Dict[str, Any]]:
     cur = conn.cursor()
     schema = MAIN_DB_SCHEMA
     cur.execute(f"""
-        SELECT u.id, u.username, u.email, u.full_name, u.is_active, u.last_login,
+        SELECT u.id, u.username, u.email, u.full_name, u.photo_url, u.is_active, u.last_login,
                COALESCE(json_agg(DISTINCT jsonb_build_object(
                    'id', r.id,
                    'name', r.name,

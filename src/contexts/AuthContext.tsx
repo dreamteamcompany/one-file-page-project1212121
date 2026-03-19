@@ -18,6 +18,7 @@ interface User {
   username: string;
   email: string;
   full_name: string;
+  photo_url?: string;
   is_active: boolean;
   last_login: string | null;
   roles: Role[];
