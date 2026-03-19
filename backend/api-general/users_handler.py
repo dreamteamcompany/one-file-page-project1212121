@@ -19,8 +19,9 @@ def handle_users(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            # Проверка права на чтение пользователей
-            if not check_permission(conn, user_id, 'users', 'read'):
+            has_users_read = check_permission(conn, user_id, 'users', 'read')
+            has_assign_executor = check_permission(conn, user_id, 'tickets', 'assign_executor')
+            if not has_users_read and not has_assign_executor:
                 return response(403, {'error': 'Access denied', 'message': 'No permission to read users'})
             params = event.get('queryStringParameters', {}) or {}
             user_id = params.get('id')

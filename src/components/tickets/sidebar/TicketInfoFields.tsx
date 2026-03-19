@@ -164,7 +164,7 @@ const TicketInfoFields = ({
           <Icon name="UserCheck" size={14} />
           Исполнитель
         </h3>
-        {canAssignExecutor && users.length > 0 ? (
+        {canAssignExecutor ? (
           <Select
             value={ticket.assigned_to?.toString() || 'unassign'}
             onValueChange={onAssignUser}
