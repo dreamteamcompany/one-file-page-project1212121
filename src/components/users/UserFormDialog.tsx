@@ -87,13 +87,13 @@ const UserFormDialog = ({
     }
 
     setUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
         const base64 = reader.result as string;
         const base64Data = base64.split(',')[1];
 
-        const response = await fetch('https://functions.poehali.dev/37368ef2-6990-44c6-9439-232d3a5820ff', {
+        const response = await fetch(UPLOAD_FILE_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -114,18 +114,18 @@ const UserFormDialog = ({
         } else {
           throw new Error('Upload failed');
         }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error('Failed to upload photo:', err);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить фото',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
+      } catch (err) {
+        console.error('Failed to upload photo:', err);
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось загрузить фото',
+          variant: 'destructive',
+        });
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
