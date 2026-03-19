@@ -17,6 +17,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  photo_url?: string;
 }
 
 interface Status {
@@ -182,9 +183,18 @@ const TicketInfoFields = ({
               </SelectItem>
               {users.map((u) => (
                 <SelectItem key={u.id} value={u.id.toString()}>
-                  <div className="flex flex-col">
-                    <span className="text-sm">{u.name}</span>
-                    <span className="text-xs text-muted-foreground">{u.email}</span>
+                  <div className="flex items-center gap-2">
+                    {u.photo_url ? (
+                      <img src={u.photo_url} alt={u.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon name="User" size={12} className="text-primary" />
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <span className="text-sm">{u.name}</span>
+                      <span className="text-xs text-muted-foreground">{u.email}</span>
+                    </div>
                   </div>
                 </SelectItem>
               ))}

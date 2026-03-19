@@ -65,7 +65,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
           id: u.id,
           name: u.full_name || u.username,
           email: u.username,
-          role: ''
+          role: '',
+          photo_url: u.photo_url || ''
         })) : [];
         setUsers(adaptedUsers);
       }
