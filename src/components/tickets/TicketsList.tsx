@@ -265,64 +265,65 @@ const TicketsList = ({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {ticket.customer_name && (
-                <div className="flex items-center gap-1">
-                  <Icon name="User" size={12} />
-                  <span>{ticket.customer_name}</span>
+            {(ticket.customer_name || ticket.assigned_to_name || ticket.department_name || ticket.ticket_service || (ticket.services && ticket.services.length > 0) || ticket.priority_name || ticket.created_at) && (
+              <div className="border-t border-border/40 pt-2.5 mt-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {ticket.customer_name && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="User" size={11} />
+                      {ticket.customer_name}
+                    </span>
+                  )}
+                  {ticket.assigned_to_name && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="UserCheck" size={11} />
+                      {ticket.assigned_to_name}
+                    </span>
+                  )}
+                  {ticket.department_name && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="Building" size={11} />
+                      {ticket.department_name}
+                    </span>
+                  )}
+                  {ticket.ticket_service && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="Tag" size={11} />
+                      {ticket.ticket_service.name}
+                    </span>
+                  )}
+                  {ticket.services && ticket.services.length > 0 && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="Wrench" size={11} />
+                      {ticket.services.map(s => s.name).join(', ')}
+                    </span>
+                  )}
+                  {ticket.priority_name && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium"
+                      style={{
+                        backgroundColor: `${ticket.priority_color}15`,
+                        color: ticket.priority_color,
+                      }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color }} />
+                      {ticket.priority_name}
+                    </span>
+                  )}
+                  {ticket.created_at && (
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 ml-auto text-[11px]">
+                      <Icon name="Clock" size={11} />
+                      {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  )}
                 </div>
-              )}
-              {ticket.ticket_service && (
-                <div className="flex items-center gap-1">
-                  <Icon name="Tag" size={12} />
-                  <span>{ticket.ticket_service.name}</span>
-                </div>
-              )}
-              {ticket.services && ticket.services.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <Icon name="Wrench" size={12} />
-                  <span>{ticket.services.map(s => s.name).join(', ')}</span>
-                </div>
-              )}
-              {ticket.department_name && (
-                <div className="flex items-center gap-1">
-                  <Icon name="Building" size={12} />
-                  <span>{ticket.department_name}</span>
-                </div>
-              )}
-              {ticket.assigned_to_name && (
-                <div className="flex items-center gap-1">
-                  <Icon name="UserCheck" size={12} />
-                  <span>{ticket.assigned_to_name}</span>
-                </div>
-              )}
-              {ticket.priority_name && (
-                <Badge
-                  variant="outline"
-                  className="h-5 text-xs px-1.5 flex items-center gap-1"
-                  style={{
-                    borderColor: ticket.priority_color,
-                    color: ticket.priority_color,
-                  }}
-                >
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color }} />
-                  {ticket.priority_name}
-                </Badge>
-              )}
-              {ticket.created_at && (
-                <div className="flex items-center gap-1 ml-auto">
-                  <Icon name="Clock" size={12} />
-                  <span>
-                    {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
               {ticket.due_date && (() => {
                 const deadline = getDeadlineProgress(ticket.due_date);
