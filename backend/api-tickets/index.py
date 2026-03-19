@@ -385,6 +385,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     cur.execute(f"""
                         INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id, ticket_service_id)
                         VALUES (%s, %s, %s)
+                        ON CONFLICT DO NOTHING
                     """, (ticket['id'], service_id, ts_id))
                 except Exception as e:
                     print(f"[TICKETS] Error linking service {service_id}: {e}")
