@@ -8,6 +8,7 @@ from shared_utils import response, get_db_connection, verify_token, handle_optio
 from priorities_handler import handle_ticket_priorities
 from sla_handler import handle_sla
 from sla_service_mappings_handler import handle_sla_service_mappings, resolve_sla_for_ticket
+from executor_assignment_resolver import resolve_executor, resolve_executor_group
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -18,8 +19,6 @@ class TicketRequest(BaseModel):
     service_ids: list[int] = Field(default=[])
     custom_fields: dict = Field(default={})
     ticket_service_id: Optional[int] = None
-
-from executor_assignment_resolver import resolve_executor
 
 class ServiceCategoryRequest(BaseModel):
     name: str = Field(..., min_length=1)
@@ -327,18 +326,22 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             if open_status:
                 status_id = open_status['id']
         
+        resolved_ts_id = data.ticket_service_id
+        if not resolved_ts_id and data.service_ids:
+            cur.execute(f"""
+                SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
+                WHERE service_id = %s LIMIT 1
+            """, (data.service_ids[0],))
+            ts_row = cur.fetchone()
+            resolved_ts_id = ts_row['ticket_service_id'] if ts_row else None
+
         assigned_to = data.assigned_to
         if not assigned_to and data.service_ids:
-            resolved_ts_id = data.ticket_service_id
-            if not resolved_ts_id and data.service_ids:
-                cur.execute(f"""
-                    SELECT ticket_service_id FROM {SCHEMA}.ticket_service_mappings
-                    WHERE service_id = %s LIMIT 1
-                """, (data.service_ids[0],))
-                ts_row = cur.fetchone()
-                resolved_ts_id = ts_row['ticket_service_id'] if ts_row else None
-
             assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
+
+        executor_group_id = None
+        if data.service_ids:
+            executor_group_id = resolve_executor_group(cur, SCHEMA, resolved_ts_id, data.service_ids)
         
         sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
         due_date_sql = 'NULL'
@@ -351,20 +354,22 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         cur.execute(f"""
             INSERT INTO {SCHEMA}.tickets 
-            (title, description, status_id, priority_id, assigned_to, created_by, due_date, response_due_date, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, {due_date_sql}, {response_due_date_sql}, NOW(), NOW())
-            RETURNING id, title, description, status_id, priority_id, assigned_to, created_by, due_date, response_due_date, created_at, updated_at
+            (title, description, status_id, priority_id, assigned_to, executor_group_id, created_by, due_date, response_due_date, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, {due_date_sql}, {response_due_date_sql}, NOW(), NOW())
+            RETURNING id, title, description, status_id, priority_id, assigned_to, executor_group_id, created_by, due_date, response_due_date, created_at, updated_at
         """, (
             data.title,
             data.description,
             status_id,
             data.priority_id,
             assigned_to,
+            executor_group_id,
             payload['user_id']
         ))
         
         ticket = dict(cur.fetchone())
         ticket['auto_assigned'] = (assigned_to is not None and data.assigned_to is None)
+        ticket['auto_group_assigned'] = (executor_group_id is not None)
         
         # Привязываем сервисы (из таблицы services)
         if data.service_ids:

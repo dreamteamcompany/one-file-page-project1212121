@@ -1,12 +1,12 @@
 """
-Определяет исполнителя для заявки на основе привязок
+Определяет исполнителя и группу исполнителей для заявки на основе привязок
 (executor_user_service_mappings и executor_group_service_mappings).
 
 Приоритет:
 1. Индивидуальная привязка пользователя к комбинации (ticket_service + service)
 2. Привязка группы → выбирается участник (lead в приоритете, затем round-robin)
 """
-from typing import Optional
+from typing import Optional, Tuple
 
 
 def resolve_executor(cur, schema: str, ticket_service_id: Optional[int], service_ids: list[int]) -> Optional[int]:
@@ -21,6 +21,28 @@ def resolve_executor(cur, schema: str, ticket_service_id: Optional[int], service
         user_id = _find_from_group(cur, schema, ticket_service_id, service_id)
         if user_id:
             return user_id
+
+    return None
+
+
+def resolve_executor_group(cur, schema: str, ticket_service_id: Optional[int], service_ids: list[int]) -> Optional[int]:
+    """Находит подходящую группу исполнителей по маппингу ticket_service + service.
+    Возвращает group_id или None."""
+    if not ticket_service_id or not service_ids:
+        return None
+
+    for service_id in service_ids:
+        cur.execute(f"""
+            SELECT g.id AS group_id
+            FROM {schema}.executor_group_service_mappings m
+            JOIN {schema}.executor_groups g ON g.id = m.group_id AND g.is_active = true
+            WHERE m.ticket_service_id = %s AND m.service_id = %s
+            ORDER BY g.id
+            LIMIT 1
+        """, (ticket_service_id, service_id))
+        row = cur.fetchone()
+        if row:
+            return row['group_id']
 
     return None
 
