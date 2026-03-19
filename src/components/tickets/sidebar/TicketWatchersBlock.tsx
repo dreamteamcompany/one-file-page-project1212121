@@ -114,9 +114,13 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
                 {watchers.map(watcher => (
                   <div key={watcher.user_id} className="flex items-center justify-between gap-2 group">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
-                        {getInitials(watcher.full_name)}
-                      </div>
+                      {watcher.photo_url ? (
+                        <img src={watcher.photo_url} alt={watcher.full_name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                          {getInitials(watcher.full_name)}
+                        </div>
+                      )}
                       <span className="text-sm truncate text-foreground">{watcher.full_name}</span>
                     </div>
                     <button
