@@ -267,7 +267,7 @@ const TicketsList = ({
               </div>
             </div>
 
-            <div className="border-t border-border/10 pt-2.5 mt-1 space-y-2">
+            <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   {(ticket.customer_name || ticket.creator_name) && (
                     <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
