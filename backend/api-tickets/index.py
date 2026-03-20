@@ -143,12 +143,13 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     if method == 'GET':
         query_params = event.get('queryStringParameters', {}) or {}
         
+        ticket_id_param = query_params.get('ticket_id')
         status_id = query_params.get('status_id')
         priority_id = query_params.get('priority_id')
         assigned_to = query_params.get('assigned_to')
         created_by = query_params.get('created_by')
         service_id = query_params.get('service_id')
-        is_archived = query_params.get('is_archived', 'false')
+        is_archived = query_params.get('is_archived')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
         page = max(1, int(query_params.get('page', 1)))
@@ -206,13 +207,17 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if created_by:
             where_clause += " AND t.created_by = %s"
             params.append(int(created_by))
+        if ticket_id_param:
+            where_clause += " AND t.id = %s"
+            params.append(int(ticket_id_param))
         if service_id:
             where_clause += " AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsm2 WHERE tsm2.ticket_id = t.id AND tsm2.ticket_service_id = %s)".format(SCHEMA=SCHEMA)
             params.append(int(service_id))
-        if is_archived == 'true':
-            where_clause += " AND t.is_archived = true"
-        else:
-            where_clause += " AND t.is_archived = false"
+        if not ticket_id_param:
+            if is_archived == 'true':
+                where_clause += " AND t.is_archived = true"
+            else:
+                where_clause += " AND t.is_archived = false"
         if from_date:
             where_clause += " AND t.created_at >= %s"
             params.append(from_date)

@@ -20,17 +20,17 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [loadingComments, setLoadingComments] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const loadTicket = async () => {
+  const loadTicket = async (showLoader = true) => {
     try {
-      setLoading(true);
-      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
+      if (showLoader) setLoading(true);
+      const response = await apiFetch(`${API_URL}?endpoint=tickets&ticket_id=${id}`, {
         headers: {
           'X-Auth-Token': token,
         },
       });
       if (response.ok) {
         const data = await response.json();
-        const foundTicket = data.tickets?.find((t: Ticket) => t.id === Number(id));
+        const foundTicket = data.tickets?.[0];
         if (foundTicket) {
           setTicket(foundTicket);
         }
@@ -38,7 +38,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     } catch (error) {
       console.error('Error loading ticket:', error);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 

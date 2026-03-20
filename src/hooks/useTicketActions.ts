@@ -4,7 +4,7 @@ import { API_URL, apiFetch } from '@/utils/api';
 
 export const useTicketActions = (
   ticketId: string | undefined,
-  loadTicket: () => Promise<void>,
+  loadTicket: (showLoader?: boolean) => Promise<void>,
   loadComments: () => Promise<void>,
   loadHistory: () => Promise<void>
 ) => {
@@ -63,7 +63,7 @@ export const useTicketActions = (
       });
       
       if (response.ok) {
-        loadTicket();
+        loadTicket(false);
         loadHistory();
       }
     } catch (error) {
@@ -123,10 +123,8 @@ export const useTicketActions = (
         body: JSON.stringify({ id: ticketId, assigned_to: assignedUserId }),
       });
       
-      console.log('Assign response:', response.status, await response.text());
-      
       if (response.ok) {
-        loadTicket();
+        loadTicket(false);
         loadHistory();
       }
     } catch (error) {
@@ -151,7 +149,7 @@ export const useTicketActions = (
       });
 
       if (response.ok) {
-        loadTicket();
+        loadTicket(false);
         loadHistory();
       }
     } catch (error) {
@@ -177,9 +175,8 @@ export const useTicketActions = (
       console.log('[UpdateDueDate] Ответ:', response.status, await response.text());
       
       if (response.ok) {
-        await loadTicket();
+        await loadTicket(false);
         await loadHistory();
-        console.log('[UpdateDueDate] Данные обновлены');
       }
     } catch (error) {
       console.error('[UpdateDueDate] Ошибка:', error);
