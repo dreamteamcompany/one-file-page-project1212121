@@ -87,6 +87,14 @@ def handle_callback(event):
 
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
+        existing_user = find_user_by_email(conn, bitrix_user)
+        if not existing_user:
+            bitrix_user_id = str(bitrix_user.get('ID', ''))
+            if not is_department_head(access_token, bitrix_user_id):
+                return response(403, {
+                    'error': 'Автоматическая регистрация доступна только руководителям отделов. Обратитесь к администратору для создания учётной записи.'
+                })
+
         user = find_or_create_user(conn, bitrix_user)
         jwt_token = create_jwt(user['id'], user['username'])
 
@@ -164,6 +172,42 @@ def get_bitrix_user(access_token, member_id=''):
     except Exception as e:
         print(f"[Bitrix OAuth] Get user error: {e}")
         return None
+
+
+def is_department_head(access_token, bitrix_user_id):
+    """Проверяет, является ли пользователь руководителем хотя бы одного отдела в Битрикс24"""
+    portal_url = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
+    url = f"{portal_url}/rest/department.get?auth={access_token}&UF_HEAD={bitrix_user_id}"
+    print(f"[Bitrix OAuth] Checking if user {bitrix_user_id} is department head")
+    try:
+        req = urllib.request.Request(url, method='GET')
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode()
+            print(f"[Bitrix OAuth] Department head check response: {raw[:500]}")
+            data = json.loads(raw)
+            departments = data.get('result', [])
+            if departments:
+                dept_names = [d.get('NAME', '?') for d in departments]
+                print(f"[Bitrix OAuth] User {bitrix_user_id} is head of: {dept_names}")
+                return True
+            return False
+    except Exception as e:
+        print(f"[Bitrix OAuth] Department head check error: {e}")
+        return False
+
+
+def find_user_by_email(conn, bitrix_user):
+    """Проверяет, существует ли пользователь с таким email в системе"""
+    email = (bitrix_user.get('EMAIL') or '').strip().lower()
+    bitrix_id = str(bitrix_user.get('ID', ''))
+    if not email:
+        email = f"bitrix_{bitrix_id}@local"
+
+    cur = conn.cursor()
+    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
+    result = cur.fetchone()
+    cur.close()
+    return result
 
 
 def find_or_create_user(conn, bitrix_user):
