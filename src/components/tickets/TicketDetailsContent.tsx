@@ -172,7 +172,7 @@ const TicketDetailsContent = ({
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
 
   return (
-    <div className="flex-1 lg:p-6 lg:pr-0">
+    <div className="flex-1 min-w-0 lg:p-6 lg:pr-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
         <div className="flex flex-col md:flex-row gap-6">
@@ -216,9 +216,9 @@ const TicketDetailsContent = ({
             </div>
             
             {ticket.description && (
-              <div>
+              <div className="overflow-hidden">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
-                <p className="text-sm whitespace-pre-wrap break-words overflow-hidden leading-relaxed text-foreground">{ticket.description}</p>
+                <p className="text-sm whitespace-pre-wrap break-all leading-relaxed text-foreground" style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}>{ticket.description}</p>
               </div>
             )}
           </div>
