@@ -123,19 +123,25 @@ def exchange_code(code, redirect_uri):
     client_secret = os.environ.get('BITRIX24_CLIENT_SECRET', '')
 
     url = f"{portal_url}/oauth/token/"
-    params = urllib.parse.urlencode({
+    data = urllib.parse.urlencode({
         'grant_type': 'authorization_code',
         'client_id': client_id,
         'client_secret': client_secret,
         'code': code,
         'redirect_uri': redirect_uri,
-    })
-    full_url = f"{url}?{params}"
+    }).encode('utf-8')
 
     try:
-        req = urllib.request.Request(full_url, method='GET')
+        req = urllib.request.Request(url, data=data, method='POST')
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode())
+            result = json.loads(resp.read().decode())
+            print(f"[Bitrix OAuth] Token response keys: {list(result.keys())}")
+            return result
+    except urllib.error.HTTPError as e:
+        body = e.read().decode() if e.fp else ''
+        print(f"[Bitrix OAuth] Token exchange HTTP {e.code}: {body[:500]}")
+        return None
     except Exception as e:
         print(f"[Bitrix OAuth] Token exchange error: {e}")
         return None
