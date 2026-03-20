@@ -179,7 +179,7 @@ const TicketDetailsContent = ({
         <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
-              <span className="text-muted-foreground">#{ticket.id}</span> {ticket.title}
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
             </h1>
             
             <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-4 md:mb-6 text-sm">
