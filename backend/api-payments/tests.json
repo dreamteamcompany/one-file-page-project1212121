@@ -7,10 +7,10 @@
       "expectedStatus": 200
     },
     {
-      "name": "GET unauthorized",
+      "name": "GET frozen",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 401
+      "expectedStatus": 503
     }
   ]
 }
