@@ -85,14 +85,21 @@ def handle_callback(event):
     if not bitrix_user:
         return response(401, {'error': 'Не удалось получить профиль пользователя из Битрикс24'})
 
+    bitrix_user_id = str(bitrix_user.get('ID', ''))
+
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     try:
         existing_user = find_user_by_email(conn, bitrix_user)
+
         if not existing_user:
-            bitrix_user_id = str(bitrix_user.get('ID', ''))
             if not is_department_head(access_token, bitrix_user_id):
                 return response(403, {
                     'error': 'Автоматическая регистрация доступна только руководителям отделов. Обратитесь к администратору для создания учётной записи.'
+                })
+        elif existing_user.get('auto_registered'):
+            if not is_department_head(access_token, bitrix_user_id):
+                return response(403, {
+                    'error': 'Вы больше не являетесь руководителем отдела. Доступ в систему заблокирован. Обратитесь к администратору.'
                 })
 
         user = find_or_create_user(conn, bitrix_user)
@@ -197,14 +204,14 @@ def is_department_head(access_token, bitrix_user_id):
 
 
 def find_user_by_email(conn, bitrix_user):
-    """Проверяет, существует ли пользователь с таким email в системе"""
+    """Проверяет, существует ли пользователь с таким email в системе. Возвращает id и auto_registered."""
     email = (bitrix_user.get('EMAIL') or '').strip().lower()
     bitrix_id = str(bitrix_user.get('ID', ''))
     if not email:
         email = f"bitrix_{bitrix_id}@local"
 
     cur = conn.cursor()
-    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
+    cur.execute(f"SELECT id, auto_registered FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
     result = cur.fetchone()
     cur.close()
     return result
@@ -265,8 +272,8 @@ def find_or_create_user(conn, bitrix_user):
         counter += 1
 
     cur.execute(f"""
-        INSERT INTO {SCHEMA}.users (username, email, full_name, photo_url, password_hash, is_active, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO {SCHEMA}.users (username, email, full_name, photo_url, password_hash, is_active, auto_registered, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         RETURNING id
     """, (username, email, full_name, photo_url, 'BITRIX_OAUTH'))
 
