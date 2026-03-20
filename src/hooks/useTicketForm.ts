@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { API_URL, apiFetch } from '@/utils/api';
@@ -13,6 +14,7 @@ interface CustomField {
 export const useTicketForm = (customFields: CustomField[], loadTickets: () => void) => {
   const { token, hasPermission } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const initialFormData = {
@@ -90,6 +92,9 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
         setDialogOpen(false);
         setFormData(initialFormData);
         loadTickets();
+        if (result.id) {
+          navigate(`/tickets/${result.id}`);
+        }
       } else {
         const error = await response.json();
         toast({
