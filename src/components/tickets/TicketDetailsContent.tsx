@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
@@ -234,27 +233,6 @@ const TicketDetailsContent = ({
                   {ticket.priority_name}
                 </Badge>
               )}
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-4 md:mb-6 pb-4 md:pb-6 border-b">
-              <Button variant="ghost" size="sm" title="Список заявок">
-                <Icon name="List" size={18} />
-              </Button>
-              <Button variant="ghost" size="sm" title="Редактировать заявку">
-                <Icon name="Edit" size={18} />
-              </Button>
-              <Button variant="ghost" size="sm" title="Добавить комментарий">
-                <Icon name="MessageSquare" size={18} />
-              </Button>
-              <Button variant="ghost" size="sm" title="Копировать заявку">
-                <Icon name="Copy" size={18} />
-              </Button>
-              <Button variant="ghost" size="sm" title="Наблюдатели">
-                <Icon name="Eye" size={18} />
-              </Button>
-              <Button variant="ghost" size="sm" title="Поиск по базе знаний">
-                <Icon name="Search" size={18} />
-              </Button>
             </div>
             
             {ticket.description && (
