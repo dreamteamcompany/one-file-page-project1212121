@@ -11,9 +11,6 @@ from datetime import datetime, timedelta
 DATABASE_URL = os.environ.get('DATABASE_URL')
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 JWT_SECRET = os.environ.get('JWT_SECRET', 'super_secret_key_change_me')
-BITRIX_CLIENT_ID = os.environ.get('BITRIX24_CLIENT_ID')
-BITRIX_CLIENT_SECRET = os.environ.get('BITRIX24_CLIENT_SECRET')
-BITRIX_PORTAL_URL = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
 
 CORS_HEADERS = {
     'Content-Type': 'application/json',
@@ -46,13 +43,21 @@ def handler(event, context):
 
 def handle_get_auth_url(params):
     """Возвращает URL для редиректа на Битрикс24 OAuth"""
+    portal_url = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
+    client_id = os.environ.get('BITRIX24_CLIENT_ID', '')
+
+    if not portal_url:
+        return response(500, {'error': 'BITRIX24_PORTAL_URL не настроен'})
+    if not client_id:
+        return response(500, {'error': 'BITRIX24_CLIENT_ID не настроен'})
+
     redirect_uri = params.get('redirect_uri', '')
     if not redirect_uri:
         return response(400, {'error': 'redirect_uri is required'})
 
     auth_url = (
-        f"{BITRIX_PORTAL_URL}/oauth/authorize/"
-        f"?client_id={BITRIX_CLIENT_ID}"
+        f"{portal_url}/oauth/authorize/"
+        f"?client_id={client_id}"
         f"&response_type=code"
         f"&redirect_uri={urllib.parse.quote(redirect_uri, safe='')}"
     )
@@ -113,11 +118,15 @@ def handle_callback(event):
 
 def exchange_code(code, redirect_uri):
     """Обменивает код авторизации на access_token"""
-    url = f"{BITRIX_PORTAL_URL}/oauth/token/"
+    portal_url = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
+    client_id = os.environ.get('BITRIX24_CLIENT_ID', '')
+    client_secret = os.environ.get('BITRIX24_CLIENT_SECRET', '')
+
+    url = f"{portal_url}/oauth/token/"
     params = urllib.parse.urlencode({
         'grant_type': 'authorization_code',
-        'client_id': BITRIX_CLIENT_ID,
-        'client_secret': BITRIX_CLIENT_SECRET,
+        'client_id': client_id,
+        'client_secret': client_secret,
         'code': code,
         'redirect_uri': redirect_uri,
     })
@@ -134,7 +143,8 @@ def exchange_code(code, redirect_uri):
 
 def get_bitrix_user(access_token):
     """Получает профиль текущего пользователя из Битрикс24"""
-    url = f"{BITRIX_PORTAL_URL}/rest/user.current?auth={access_token}"
+    portal_url = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
+    url = f"{portal_url}/rest/user.current?auth={access_token}"
     try:
         req = urllib.request.Request(url, method='GET')
         with urllib.request.urlopen(req, timeout=10) as resp:
