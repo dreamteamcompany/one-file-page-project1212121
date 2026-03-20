@@ -143,6 +143,27 @@ const TicketInfoFields = ({
 
   return (
     <div className="rounded-lg bg-card border divide-y">
+      {ticket.priority_name && (
+        <div className="p-4">
+          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="Flag" size={14} />
+            Приоритет
+          </h3>
+          <div className="flex items-center gap-2">
+            <Badge
+              style={{ 
+                backgroundColor: `${ticket.priority_color}20`,
+                color: ticket.priority_color,
+                borderColor: ticket.priority_color
+              }}
+              className="border"
+            >
+              {ticket.priority_name}
+            </Badge>
+          </div>
+        </div>
+      )}
+
       <div className="p-4">
         <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
           <Icon name="CheckCircle" size={14} />
@@ -171,99 +192,6 @@ const TicketInfoFields = ({
           </SelectContent>
         </Select>
       </div>
-
-      <div className="p-4">
-        <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-          <Icon name="UserCheck" size={14} />
-          Исполнитель
-        </h3>
-        {canAssignExecutor ? (
-          <Select
-            value={ticket.assigned_to?.toString() || 'unassign'}
-            onValueChange={onAssignUser}
-            disabled={updating}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите исполнителя" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassign">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Icon name="UserX" size={14} />
-                  Не назначен
-                </div>
-              </SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id.toString()}>
-                  <div className="flex items-center gap-2">
-                    {u.photo_url ? (
-                      <img src={u.photo_url} alt={u.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Icon name="User" size={12} className="text-primary" />
-                      </div>
-                    )}
-                    <span className="text-sm">{u.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <div className="flex items-center gap-2 text-sm">
-            {ticket.assignee_name ? (
-              <>
-                {ticket.assignee_photo_url ? (
-                  <img src={ticket.assignee_photo_url} alt={ticket.assignee_name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Icon name="User" size={14} className="text-primary" />
-                  </div>
-                )}
-                <span className="font-medium">{ticket.assignee_name}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">Не назначен</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {canSeeGroup && onAssignGroup && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Users" size={14} />
-            Группа исполнителей
-          </h3>
-          <Select
-            value={ticket.executor_group_id?.toString() || 'unassign'}
-            onValueChange={onAssignGroup}
-            disabled={updating}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите группу" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassign">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Icon name="Users" size={14} />
-                  Не назначена
-                </div>
-              </SelectItem>
-              {executorGroups.map((group) => (
-                <SelectItem key={group.id} value={group.id.toString()}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon name="Users" size={12} className="text-primary" />
-                    </div>
-                    <span className="text-sm">{group.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
 
       {ticket.response_due_date && (
         <div className="p-4" style={responseDeadlineInfo ? { 
@@ -448,6 +376,99 @@ const TicketInfoFields = ({
         </div>
       )}
 
+      {canSeeGroup && onAssignGroup && (
+        <div className="p-4">
+          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="Users" size={14} />
+            Группа исполнителей
+          </h3>
+          <Select
+            value={ticket.executor_group_id?.toString() || 'unassign'}
+            onValueChange={onAssignGroup}
+            disabled={updating}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите группу" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassign">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Icon name="Users" size={14} />
+                  Не назначена
+                </div>
+              </SelectItem>
+              {executorGroups.map((group) => (
+                <SelectItem key={group.id} value={group.id.toString()}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name="Users" size={12} className="text-primary" />
+                    </div>
+                    <span className="text-sm">{group.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="p-4">
+        <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
+          <Icon name="UserCheck" size={14} />
+          Исполнитель
+        </h3>
+        {canAssignExecutor ? (
+          <Select
+            value={ticket.assigned_to?.toString() || 'unassign'}
+            onValueChange={onAssignUser}
+            disabled={updating}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите исполнителя" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unassign">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Icon name="UserX" size={14} />
+                  Не назначен
+                </div>
+              </SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id.toString()}>
+                  <div className="flex items-center gap-2">
+                    {u.photo_url ? (
+                      <img src={u.photo_url} alt={u.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon name="User" size={12} className="text-primary" />
+                      </div>
+                    )}
+                    <span className="text-sm">{u.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex items-center gap-2 text-sm">
+            {ticket.assignee_name ? (
+              <>
+                {ticket.assignee_photo_url ? (
+                  <img src={ticket.assignee_photo_url} alt={ticket.assignee_name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon name="User" size={14} className="text-primary" />
+                  </div>
+                )}
+                <span className="font-medium">{ticket.assignee_name}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Не назначен</span>
+            )}
+          </div>
+        )}
+      </div>
+
       {ticket.category_name && (
         <div className="p-4">
           <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
@@ -459,27 +480,6 @@ const TicketInfoFields = ({
               <Icon name={ticket.category_icon} size={14} className="text-primary" />
             )}
             <p className="text-sm">{ticket.category_name}</p>
-          </div>
-        </div>
-      )}
-
-      {ticket.priority_name && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Flag" size={14} />
-            Приоритет
-          </h3>
-          <div className="flex items-center gap-2">
-            <Badge
-              style={{ 
-                backgroundColor: `${ticket.priority_color}20`,
-                color: ticket.priority_color,
-                borderColor: ticket.priority_color
-              }}
-              className="border"
-            >
-              {ticket.priority_name}
-            </Badge>
           </div>
         </div>
       )}
