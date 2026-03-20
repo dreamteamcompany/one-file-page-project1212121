@@ -170,12 +170,13 @@ const TicketDetailsContent = ({
   };
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
+  const isShortDescription = !ticket.description || ticket.description.length < 500;
 
   return (
     <div className="flex-1 min-w-0 lg:p-6 lg:pr-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
               <span className="text-muted-foreground">#{ticket.id}</span> {ticket.title}
@@ -224,7 +225,7 @@ const TicketDetailsContent = ({
           </div>
 
           {((ticket.custom_fields && ticket.custom_fields.length > 0) || ticket.ticket_service || (ticket.services && ticket.services.length > 0)) && (
-            <div className="w-full md:w-[420px] flex-shrink-0">
+            <div className={`w-full ${isShortDescription ? '' : 'md:w-[420px]'} flex-shrink-0`}>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
