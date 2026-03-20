@@ -117,27 +117,25 @@ def handle_callback(event):
 
 
 def exchange_code(code, redirect_uri):
-    """Обменивает код авторизации на access_token"""
-    portal_url = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
+    """Обменивает код авторизации на access_token через сервер авторизации Битрикс24"""
     client_id = os.environ.get('BITRIX24_CLIENT_ID', '')
     client_secret = os.environ.get('BITRIX24_CLIENT_SECRET', '')
 
-    url = f"{portal_url}/oauth/token/"
-    data = urllib.parse.urlencode({
+    params = urllib.parse.urlencode({
         'grant_type': 'authorization_code',
         'client_id': client_id,
         'client_secret': client_secret,
         'code': code,
         'redirect_uri': redirect_uri,
-    }).encode('utf-8')
+    })
+    url = f"https://oauth.bitrix.info/oauth/token/?{params}"
 
     try:
-        req = urllib.request.Request(url, data=data, method='POST')
-        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            result = json.loads(resp.read().decode())
-            print(f"[Bitrix OAuth] Token response keys: {list(result.keys())}")
-            return result
+        req = urllib.request.Request(url, method='GET')
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode()
+            print(f"[Bitrix OAuth] Token response: {raw[:300]}")
+            return json.loads(raw)
     except urllib.error.HTTPError as e:
         body = e.read().decode() if e.fp else ''
         print(f"[Bitrix OAuth] Token exchange HTTP {e.code}: {body[:500]}")
@@ -147,15 +145,22 @@ def exchange_code(code, redirect_uri):
         return None
 
 
-def get_bitrix_user(access_token):
+def get_bitrix_user(access_token, member_id=''):
     """Получает профиль текущего пользователя из Битрикс24"""
     portal_url = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
     url = f"{portal_url}/rest/user.current?auth={access_token}"
+    print(f"[Bitrix OAuth] Getting user from: {portal_url}/rest/user.current")
     try:
         req = urllib.request.Request(url, method='GET')
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode()
+            print(f"[Bitrix OAuth] User response: {raw[:300]}")
+            data = json.loads(raw)
             return data.get('result')
+    except urllib.error.HTTPError as e:
+        body = e.read().decode() if e.fp else ''
+        print(f"[Bitrix OAuth] Get user HTTP {e.code}: {body[:500]}")
+        return None
     except Exception as e:
         print(f"[Bitrix OAuth] Get user error: {e}")
         return None
