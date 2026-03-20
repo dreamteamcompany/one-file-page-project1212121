@@ -27,14 +27,16 @@ export const useTicketsData = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalTickets, setTotalTickets] = useState(0);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const loadTickets = useCallback(async (targetPage = 1) => {
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean) => {
     if (!token) return;
 
+    const archived = isArchived !== undefined ? isArchived : showArchived;
     setLoading(true);
     try {
       const response = await apiFetch(
-        `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`,
+        `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}&is_archived=${archived}`,
         { headers: { 'X-Auth-Token': token } }
       );
 
@@ -54,7 +56,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, showArchived]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -129,6 +131,12 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
+  const toggleArchived = useCallback((archived: boolean) => {
+    setShowArchived(archived);
+    setPage(1);
+    loadTickets(1, archived);
+  }, [loadTickets]);
+
   return {
     tickets,
     categories,
@@ -142,8 +150,10 @@ export const useTicketsData = () => {
     page,
     totalPages,
     totalTickets,
+    showArchived,
     loadTickets,
     loadDictionaries,
     loadServices,
+    toggleArchived,
   };
 };

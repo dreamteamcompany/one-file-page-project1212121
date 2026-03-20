@@ -47,6 +47,8 @@ const Tickets = () => {
     loadTickets,
     loadDictionaries,
     loadServices,
+    showArchived,
+    toggleArchived,
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
@@ -113,9 +115,11 @@ const Tickets = () => {
           onViewModeChange={setViewMode}
           bulkMode={bulkMode}
           onBulkModeToggle={handleBulkModeToggle}
+          showArchived={showArchived}
+          onToggleArchived={toggleArchived}
         />
 
-          <div className="w-fit">
+          {!showArchived && <div className="w-fit">
             <TicketForm
               dialogOpen={dialogOpen}
               setDialogOpen={setDialogOpen}
@@ -132,7 +136,7 @@ const Tickets = () => {
               onDialogOpen={handleFormOpen}
               canCreate={hasPermission('tickets', 'create')}
             />
-          </div>
+          </div>}
 
           {viewMode === 'list' ? (
             <div className="mt-6">

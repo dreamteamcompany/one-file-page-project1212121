@@ -51,6 +51,7 @@ def handler(event: dict, context) -> dict:
                 UPDATE {SCHEMA}.tickets
                 SET status_id = %s,
                     rating = 5,
+                    is_archived = true,
                     updated_at = NOW()
                 WHERE id = %s
             """, (closed_status['id'], ticket['id']))

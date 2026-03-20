@@ -148,6 +148,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         assigned_to = query_params.get('assigned_to')
         created_by = query_params.get('created_by')
         service_id = query_params.get('service_id')
+        is_archived = query_params.get('is_archived', 'false')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
         page = max(1, int(query_params.get('page', 1)))
@@ -208,6 +209,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if service_id:
             where_clause += " AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsm2 WHERE tsm2.ticket_id = t.id AND tsm2.ticket_service_id = %s)".format(SCHEMA=SCHEMA)
             params.append(int(service_id))
+        if is_archived == 'true':
+            where_clause += " AND t.is_archived = true"
+        else:
+            where_clause += " AND t.is_archived = false"
         if from_date:
             where_clause += " AND t.created_at >= %s"
             params.append(from_date)
@@ -495,6 +500,11 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 history_entries.append(('status_id', str(old_ticket['status_id']), str(body['status_id'])))
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
+            cur.execute(f"SELECT is_open FROM {SCHEMA}.ticket_statuses WHERE id = %s", (body['status_id'],))
+            new_status = cur.fetchone()
+            if new_status:
+                update_fields.append("is_archived = %s")
+                params.append(not new_status['is_open'])
         
         if 'priority_id' in body:
             if body['priority_id'] != old_ticket['priority_id']:
