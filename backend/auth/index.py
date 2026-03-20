@@ -7,6 +7,7 @@ from data_service import (
     handle_budget_breakdown,
     handle_dashboard_stats,
     handle_notifications,
+    handle_mark_notifications_read,
     handle_ticket_services,
     handle_ticket_service_categories
 )
@@ -58,7 +59,10 @@ def handler(event, context):
             return format_service_response(result)
         
         elif endpoint == 'notifications':
-            result = handle_notifications(conn, payload['user_id'])
+            if method == 'PUT':
+                result = handle_mark_notifications_read(conn, payload['user_id'], event)
+            else:
+                result = handle_notifications(conn, payload['user_id'])
             return format_service_response(result)
         
         elif endpoint == 'ticket-services':
