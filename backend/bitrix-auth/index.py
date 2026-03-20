@@ -96,10 +96,22 @@ def handle_callback(event):
                 return response(403, {
                     'error': 'Автоматическая регистрация доступна только руководителям отделов. Обратитесь к администратору для создания учётной записи.'
                 })
+        elif not existing_user.get('is_active'):
+            return response(403, {
+                'error': 'Учётная запись отключена. Обратитесь к администратору.'
+            })
         elif existing_user.get('auto_registered'):
             if not is_department_head(access_token, bitrix_user_id):
+                cur = conn.cursor()
+                cur.execute(
+                    f"UPDATE {SCHEMA}.users SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (existing_user['id'],)
+                )
+                conn.commit()
+                cur.close()
+                print(f"[Bitrix OAuth] User {existing_user['id']} deactivated: no longer department head")
                 return response(403, {
-                    'error': 'Вы больше не являетесь руководителем отдела. Доступ в систему заблокирован. Обратитесь к администратору.'
+                    'error': 'Вы больше не являетесь руководителем отдела. Учётная запись отключена. Обратитесь к администратору.'
                 })
 
         user = find_or_create_user(conn, bitrix_user)
@@ -211,7 +223,7 @@ def find_user_by_email(conn, bitrix_user):
         email = f"bitrix_{bitrix_id}@local"
 
     cur = conn.cursor()
-    cur.execute(f"SELECT id, auto_registered FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
+    cur.execute(f"SELECT id, auto_registered, is_active FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
     result = cur.fetchone()
     cur.close()
     return result
