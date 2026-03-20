@@ -118,6 +118,15 @@ def handle_users(method, event, conn, payload):
                 return response(400, {'error': 'User ID required'})
             
             body = json.loads(event.get('body', '{}'))
+
+            if 'is_active' in body and len(body) == 1:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.users SET is_active=%s, updated_at=NOW() WHERE id=%s",
+                    (body['is_active'], target_user_id)
+                )
+                conn.commit()
+                return response(200, {'message': 'User status updated'})
+
             req = UserRequest(**body)
             
             email_value = req.email if req.email else f"no-email-{target_user_id}@placeholder.local"
