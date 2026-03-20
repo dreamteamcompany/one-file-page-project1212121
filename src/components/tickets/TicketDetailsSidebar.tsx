@@ -6,6 +6,7 @@ import TicketPingCard from './sidebar/TicketPingCard';
 import TicketInfoFields from './sidebar/TicketInfoFields';
 import TicketWatchersBlock from './sidebar/TicketWatchersBlock';
 import ApprovalDialog from './sidebar/ApprovalDialog';
+import RecentTicketsBlock from './sidebar/RecentTicketsBlock';
 
 interface User {
   id: number;
@@ -180,6 +181,11 @@ const TicketDetailsSidebar = ({
           onAssignUser={onAssignUser}
           onAssignGroup={onAssignGroup}
           onUpdateDueDate={onUpdateDueDate}
+        />
+
+        <RecentTicketsBlock
+          ticketId={ticket.id}
+          createdBy={ticket.created_by}
         />
 
         <TicketWatchersBlock
