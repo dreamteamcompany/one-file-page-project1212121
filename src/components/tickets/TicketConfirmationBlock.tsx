@@ -247,15 +247,15 @@ const TicketConfirmationBlock = ({
           </div>
         )}
         <Button
-          size="sm"
-          className="w-full"
+          size="lg"
           disabled={loading}
           onClick={sendForConfirmation}
+          className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold text-base shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
         >
           {loading ? (
-            <Icon name="Loader2" size={14} className="mr-1 animate-spin" />
+            <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
           ) : (
-            <Icon name="Send" size={14} className="mr-1" />
+            <Icon name="Send" size={18} className="mr-2" />
           )}
           Отправить на подтверждение
         </Button>
