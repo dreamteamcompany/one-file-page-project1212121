@@ -34,6 +34,7 @@ import Departments from "./pages/Departments";
 import Positions from "./pages/Positions";
 import ExecutorGroups from "./pages/ExecutorGroups";
 import ExecutorAssignments from "./pages/ExecutorAssignments";
+import BitrixCallback from "./pages/BitrixCallback";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -49,6 +50,7 @@ const App = () => {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/bitrix/callback" element={<BitrixCallback />} />
             <Route path="/" element={<ProtectedRoute><Dashboard2 /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute requiredPermission={{ resource: 'users', action: 'read' }}><Users /></ProtectedRoute>} />
             <Route path="/roles" element={<ProtectedRoute requiredPermission={{ resource: 'roles', action: 'read' }}><Roles /></ProtectedRoute>} />

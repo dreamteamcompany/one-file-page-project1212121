@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Get Bitrix auth URL",
+      "method": "GET",
+      "path": "/?action=get-auth-url&redirect_uri=https://example.com/auth/bitrix/callback",
+      "expectedStatus": 200,
+      "expectedBody": {"auth_url": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Callback without code returns error",
+      "method": "POST",
+      "path": "/?action=callback",
+      "body": {"redirect_uri": "https://example.com/auth/bitrix/callback"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unknown action returns error",
+      "method": "GET",
+      "path": "/?action=unknown",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

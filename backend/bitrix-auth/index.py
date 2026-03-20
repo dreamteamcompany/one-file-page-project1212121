@@ -1,0 +1,255 @@
+"""Авторизация через Битрикс24 OAuth 2.0"""
+import json
+import os
+import urllib.request
+import urllib.parse
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import jwt
+from datetime import datetime, timedelta
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
+JWT_SECRET = os.environ.get('JWT_SECRET', 'super_secret_key_change_me')
+BITRIX_CLIENT_ID = os.environ.get('BITRIX24_CLIENT_ID')
+BITRIX_CLIENT_SECRET = os.environ.get('BITRIX24_CLIENT_SECRET')
+BITRIX_PORTAL_URL = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
+
+CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, X-User-Id, Authorization',
+}
+
+DEFAULT_ROLE_ID = 7
+
+
+def handler(event, context):
+    """Обработка OAuth авторизации через Битрикс24"""
+    method = event.get('httpMethod', 'GET')
+
+    if method == 'OPTIONS':
+        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+
+    params = event.get('queryStringParameters') or {}
+    action = params.get('action', '')
+
+    if action == 'get-auth-url':
+        return handle_get_auth_url(params)
+
+    if action == 'callback':
+        return handle_callback(event)
+
+    return response(400, {'error': 'Unknown action'})
+
+
+def handle_get_auth_url(params):
+    """Возвращает URL для редиректа на Битрикс24 OAuth"""
+    redirect_uri = params.get('redirect_uri', '')
+    if not redirect_uri:
+        return response(400, {'error': 'redirect_uri is required'})
+
+    auth_url = (
+        f"{BITRIX_PORTAL_URL}/oauth/authorize/"
+        f"?client_id={BITRIX_CLIENT_ID}"
+        f"&response_type=code"
+        f"&redirect_uri={urllib.parse.quote(redirect_uri, safe='')}"
+    )
+    return response(200, {'auth_url': auth_url})
+
+
+def handle_callback(event):
+    """Обмен кода на токен, получение профиля, создание/вход пользователя"""
+    body = json.loads(event.get('body', '{}'))
+    code = body.get('code', '')
+    redirect_uri = body.get('redirect_uri', '')
+
+    if not code:
+        return response(400, {'error': 'code is required'})
+
+    token_data = exchange_code(code, redirect_uri)
+    if not token_data:
+        return response(401, {'error': 'Не удалось получить токен от Битрикс24'})
+
+    access_token = token_data.get('access_token')
+    if not access_token:
+        return response(401, {'error': 'Битрикс24 не вернул access_token'})
+
+    bitrix_user = get_bitrix_user(access_token)
+    if not bitrix_user:
+        return response(401, {'error': 'Не удалось получить профиль пользователя из Битрикс24'})
+
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    try:
+        user = find_or_create_user(conn, bitrix_user)
+        jwt_token = create_jwt(user['id'], user['username'])
+
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE {SCHEMA}.users SET last_login = CURRENT_TIMESTAMP WHERE id = %s",
+            (user['id'],)
+        )
+        conn.commit()
+        cur.close()
+
+        return response(200, {
+            'token': jwt_token,
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'email': user['email'],
+                'full_name': user['full_name'],
+                'photo_url': user.get('photo_url', ''),
+                'is_active': user['is_active'],
+                'last_login': user.get('last_login'),
+                'roles': user.get('roles', []),
+                'permissions': user.get('permissions', []),
+            }
+        })
+    finally:
+        conn.close()
+
+
+def exchange_code(code, redirect_uri):
+    """Обменивает код авторизации на access_token"""
+    url = f"{BITRIX_PORTAL_URL}/oauth/token/"
+    params = urllib.parse.urlencode({
+        'grant_type': 'authorization_code',
+        'client_id': BITRIX_CLIENT_ID,
+        'client_secret': BITRIX_CLIENT_SECRET,
+        'code': code,
+        'redirect_uri': redirect_uri,
+    })
+    full_url = f"{url}?{params}"
+
+    try:
+        req = urllib.request.Request(full_url, method='GET')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        print(f"[Bitrix OAuth] Token exchange error: {e}")
+        return None
+
+
+def get_bitrix_user(access_token):
+    """Получает профиль текущего пользователя из Битрикс24"""
+    url = f"{BITRIX_PORTAL_URL}/rest/user.current?auth={access_token}"
+    try:
+        req = urllib.request.Request(url, method='GET')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            return data.get('result')
+    except Exception as e:
+        print(f"[Bitrix OAuth] Get user error: {e}")
+        return None
+
+
+def find_or_create_user(conn, bitrix_user):
+    """Ищет пользователя по email или создаёт нового"""
+    email = (bitrix_user.get('EMAIL') or '').strip().lower()
+    bitrix_id = str(bitrix_user.get('ID', ''))
+    first_name = bitrix_user.get('NAME', '')
+    last_name = bitrix_user.get('LAST_NAME', '')
+    full_name = f"{first_name} {last_name}".strip() or email
+    photo_url = bitrix_user.get('PERSONAL_PHOTO', '') or ''
+
+    if not email:
+        email = f"bitrix_{bitrix_id}@local"
+
+    cur = conn.cursor()
+
+    cur.execute(f"""
+        SELECT u.id, u.username, u.email, u.full_name, u.photo_url, u.is_active, u.last_login,
+               COALESCE(json_agg(DISTINCT jsonb_build_object(
+                   'id', r.id, 'name', r.name, 'description', r.description, 'system_role', r.system_role
+               )) FILTER (WHERE r.id IS NOT NULL), '[]') as roles,
+               COALESCE(json_agg(DISTINCT jsonb_build_object(
+                   'name', p.name, 'resource', p.resource, 'action', p.action
+               )) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions
+        FROM {SCHEMA}.users u
+        LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
+        LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
+        LEFT JOIN {SCHEMA}.role_permissions rp ON r.id = rp.role_id
+        LEFT JOIN {SCHEMA}.permissions p ON rp.permission_id = p.id
+        WHERE LOWER(u.email) = %s
+        GROUP BY u.id
+    """, (email,))
+
+    user = cur.fetchone()
+
+    if user:
+        if photo_url and photo_url != user.get('photo_url', ''):
+            cur.execute(
+                f"UPDATE {SCHEMA}.users SET photo_url = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                (photo_url, user['id'])
+            )
+            conn.commit()
+            user['photo_url'] = photo_url
+        cur.close()
+        return user
+
+    username = email.split('@')[0]
+    base_username = username
+    counter = 1
+    while True:
+        cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE username = %s", (username,))
+        if not cur.fetchone():
+            break
+        username = f"{base_username}_{counter}"
+        counter += 1
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.users (username, email, full_name, photo_url, password_hash, is_active, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING id
+    """, (username, email, full_name, photo_url, 'BITRIX_OAUTH'))
+
+    new_user_id = cur.fetchone()['id']
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.user_roles (user_id, role_id)
+        VALUES (%s, %s)
+        ON CONFLICT DO NOTHING
+    """, (new_user_id, DEFAULT_ROLE_ID))
+
+    conn.commit()
+
+    cur.execute(f"""
+        SELECT u.id, u.username, u.email, u.full_name, u.photo_url, u.is_active, u.last_login,
+               COALESCE(json_agg(DISTINCT jsonb_build_object(
+                   'id', r.id, 'name', r.name, 'description', r.description, 'system_role', r.system_role
+               )) FILTER (WHERE r.id IS NOT NULL), '[]') as roles,
+               COALESCE(json_agg(DISTINCT jsonb_build_object(
+                   'name', p.name, 'resource', p.resource, 'action', p.action
+               )) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions
+        FROM {SCHEMA}.users u
+        LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
+        LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
+        LEFT JOIN {SCHEMA}.role_permissions rp ON r.id = rp.role_id
+        LEFT JOIN {SCHEMA}.permissions p ON rp.permission_id = p.id
+        WHERE u.id = %s
+        GROUP BY u.id
+    """, (new_user_id,))
+
+    user = cur.fetchone()
+    cur.close()
+    return user
+
+
+def create_jwt(user_id, username):
+    """Создаёт JWT токен"""
+    payload = {
+        'user_id': user_id,
+        'username': username,
+        'exp': datetime.utcnow() + timedelta(days=7)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+
+def response(status, data):
+    return {
+        'statusCode': status,
+        'headers': CORS_HEADERS,
+        'body': json.dumps(data, ensure_ascii=False, default=str)
+    }

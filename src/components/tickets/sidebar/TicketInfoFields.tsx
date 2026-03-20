@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import {
   Select,
@@ -9,67 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import DateMaskedInput from '@/components/ui/date-masked-input';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  photo_url?: string;
-}
-
-interface ExecutorGroup {
-  id: number;
-  name: string;
-}
-
-interface Status {
-  id: number;
-  name: string;
-  color: string;
-  is_closed: boolean;
-  is_approval?: boolean;
-}
-
-interface Ticket {
-  id: number;
-  title: string;
-  description?: string;
-  category_name?: string;
-  category_icon?: string;
-  priority_id?: number;
-  priority_name?: string;
-  priority_color?: string;
-  status_id?: number;
-  status_name?: string;
-  status_color?: string;
-  department_name?: string;
-  created_by: number;
-  creator_name?: string;
-  creator_email?: string;
-  assigned_to?: number;
-  assignee_name?: string;
-  assignee_email?: string;
-  due_date?: string;
-  response_due_date?: string;
-  has_response?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  closed_at?: string;
-  executor_group_id?: number;
-  executor_group_name?: string;
-  ticket_service?: {
-    id: number;
-    name: string;
-  };
-  services?: Array<{
-    id: number;
-    name: string;
-    category_name?: string;
-  }>;
-}
+import { getDeadlineInfo } from './ticket-info/types';
+import type { Ticket, Status, User, ExecutorGroup } from './ticket-info/types';
+import DeadlineSection from './ticket-info/DeadlineSection';
+import AssignmentSection from './ticket-info/AssignmentSection';
 
 interface TicketInfoFieldsProps {
   ticket: Ticket;
@@ -99,44 +41,6 @@ const TicketInfoFields = ({
   const { hasPermission, hasSystemRole } = useAuth();
   const canSeeGroup = hasSystemRole('admin', 'executor');
   const canAssignExecutor = hasPermission('tickets', 'assign_executor');
-  const [isEditingDueDate, setIsEditingDueDate] = useState(false);
-  const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
-  const [dueTimeValue, setDueTimeValue] = useState(() => {
-    if (ticket.due_date) {
-      const date = new Date(ticket.due_date);
-      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    }
-    return '12:00';
-  });
-
-  const getDeadlineInfo = (dueDate?: string) => {
-    if (!dueDate) return null;
-    
-    const now = new Date().getTime();
-    const due = new Date(dueDate).getTime();
-    const timeLeft = due - now;
-    
-    if (timeLeft < 0) {
-      return { color: '#ef4444', label: 'Просрочена', urgent: true };
-    }
-    
-    const oneDay = 24 * 60 * 60 * 1000;
-    const oneHour = 60 * 60 * 1000;
-    const daysLeft = Math.floor(timeLeft / oneDay);
-    const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
-    
-    if (daysLeft === 0) {
-      return { color: '#ef4444', label: `Менее суток (${hoursLeft} ч)`, urgent: true };
-    } else if (daysLeft === 1) {
-      return { color: '#ef4444', label: `Остался ${daysLeft} день ${hoursLeft} ч`, urgent: true };
-    } else if (daysLeft <= 3) {
-      return { color: '#f97316', label: `Осталось ${daysLeft} дня ${hoursLeft} ч`, urgent: true };
-    } else if (daysLeft <= 7) {
-      return { color: '#eab308', label: `Осталось ${daysLeft} дней ${hoursLeft} ч`, urgent: false };
-    } else {
-      return { color: '#22c55e', label: `Осталось ${daysLeft} дней ${hoursLeft} ч`, urgent: false };
-    }
-  };
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
   const responseDeadlineInfo = getDeadlineInfo(ticket.response_due_date);
@@ -193,281 +97,24 @@ const TicketInfoFields = ({
         </Select>
       </div>
 
-      {ticket.response_due_date && (
-        <div className="p-4" style={responseDeadlineInfo ? { 
-          backgroundColor: ticket.has_response ? '#22c55e08' : `${responseDeadlineInfo.color}08`
-        } : {}}>
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Timer" size={14} />
-            Время реакции
-          </h3>
-          {ticket.has_response ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-green-500/20">
-                <Icon name="CheckCircle2" size={16} className="text-green-500" />
-              </div>
-              <p className="font-medium text-sm text-green-500">Ответ получен</p>
-            </div>
-          ) : responseDeadlineInfo ? (
-            <div className="flex items-start gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{
-                backgroundColor: `${responseDeadlineInfo.color}20`
-              }}>
-                <Icon name={responseDeadlineInfo.urgent ? 'AlertCircle' : 'Timer'} size={16} style={{ color: responseDeadlineInfo.color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm mb-0.5" style={{ color: responseDeadlineInfo.color }}>
-                  {responseDeadlineInfo.label}
-                </p>
-                <p className="text-xs" style={{ color: responseDeadlineInfo.color, opacity: 0.75 }}>
-                  {new Date(ticket.response_due_date).toLocaleDateString('ru-RU', {
-                    day: 'numeric', month: 'long', year: 'numeric'
-                  })}
-                  {' в '}
-                  {new Date(ticket.response_due_date).toLocaleTimeString('ru-RU', {
-                    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow'
-                  })}
-                  {' МСК'}
-                </p>
-              </div>
-              {responseDeadlineInfo.urgent && (
-                <Badge 
-                  variant="secondary"
-                  className="flex-shrink-0"
-                  style={{ backgroundColor: responseDeadlineInfo.color, color: 'white', fontSize: '10px', padding: '2px 6px' }}
-                >
-                  Срочно
-                </Badge>
-              )}
-            </div>
-          ) : null}
-        </div>
-      )}
+      <DeadlineSection
+        ticket={ticket}
+        deadlineInfo={deadlineInfo}
+        responseDeadlineInfo={responseDeadlineInfo}
+        isCustomer={isCustomer}
+        onUpdateDueDate={onUpdateDueDate}
+      />
 
-      {(ticket.due_date || isCustomer) && (
-        <div className="p-4" style={deadlineInfo ? { 
-          backgroundColor: `${deadlineInfo.color}08`
-        } : {}}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
-              <Icon name="Calendar" size={14} />
-              Дедлайн
-            </h3>
-            {isCustomer && onUpdateDueDate && (
-              <button
-                onClick={() => {
-                  setIsEditingDueDate(!isEditingDueDate);
-                  if (!isEditingDueDate) {
-                    if (ticket.due_date) {
-                      const date = new Date(ticket.due_date);
-                      const year = date.getFullYear();
-                      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                      const day = date.getDate().toString().padStart(2, '0');
-                      setDueDateValue(`${year}-${month}-${day}`);
-                      setDueTimeValue(`${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`);
-                    } else {
-                      setDueDateValue('');
-                      setDueTimeValue('12:00');
-                    }
-                  }
-                }}
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                <Icon name={isEditingDueDate ? 'X' : 'Edit'} size={12} />
-                {isEditingDueDate ? 'Отмена' : 'Изменить'}
-              </button>
-            )}
-          </div>
-          
-          {isEditingDueDate ? (
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Дата</label>
-                <DateMaskedInput
-                  value={dueDateValue}
-                  onChange={(isoDate) => setDueDateValue(isoDate)}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Время (МСК)</label>
-                <input
-                  type="time"
-                  value={dueTimeValue}
-                  onChange={(e) => setDueTimeValue(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border rounded-md bg-background text-foreground"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (dueDateValue) {
-                      const combinedDateTime = `${dueDateValue}T${dueTimeValue}:00+03:00`;
-                      onUpdateDueDate(combinedDateTime);
-                    } else {
-                      onUpdateDueDate(null);
-                    }
-                    setIsEditingDueDate(false);
-                  }}
-                  className="flex-1"
-                >
-                  Сохранить
-                </Button>
-                {ticket.due_date && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      onUpdateDueDate(null);
-                      setDueDateValue('');
-                      setDueTimeValue('12:00');
-                      setIsEditingDueDate(false);
-                    }}
-                  >
-                    <Icon name="Trash2" size={14} />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : ticket.due_date && deadlineInfo ? (
-            <div className="flex items-start gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ 
-                backgroundColor: `${deadlineInfo.color}20`
-              }}>
-                <Icon name={deadlineInfo.urgent ? 'AlertCircle' : 'Clock'} size={16} style={{ color: deadlineInfo.color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm mb-0.5" style={{ color: deadlineInfo.color }}>
-                  {deadlineInfo.label}
-                </p>
-                <p className="text-xs" style={{ color: deadlineInfo.color, opacity: 0.75 }}>
-                  {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                  {' в '}
-                  {new Date(ticket.due_date).toLocaleTimeString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'Europe/Moscow'
-                  })}
-                  {' МСК'}
-                </p>
-              </div>
-              {deadlineInfo.urgent && (
-                <Badge 
-                  variant="secondary"
-                  className="flex-shrink-0"
-                  style={{ 
-                    backgroundColor: deadlineInfo.color,
-                    color: 'white',
-                    fontSize: '10px',
-                    padding: '2px 6px'
-                  }}
-                >
-                  Срочно
-                </Badge>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Не установлен</p>
-          )}
-        </div>
-      )}
-
-      {canSeeGroup && onAssignGroup && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-            <Icon name="Users" size={14} />
-            Группа исполнителей
-          </h3>
-          <Select
-            value={ticket.executor_group_id?.toString() || 'unassign'}
-            onValueChange={onAssignGroup}
-            disabled={updating}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите группу" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassign">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Icon name="Users" size={14} />
-                  Не назначена
-                </div>
-              </SelectItem>
-              {executorGroups.map((group) => (
-                <SelectItem key={group.id} value={group.id.toString()}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon name="Users" size={12} className="text-primary" />
-                    </div>
-                    <span className="text-sm">{group.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      <div className="p-4">
-        <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-          <Icon name="UserCheck" size={14} />
-          Исполнитель
-        </h3>
-        {canAssignExecutor ? (
-          <Select
-            value={ticket.assigned_to?.toString() || 'unassign'}
-            onValueChange={onAssignUser}
-            disabled={updating}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Выберите исполнителя" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unassign">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Icon name="UserX" size={14} />
-                  Не назначен
-                </div>
-              </SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id.toString()}>
-                  <div className="flex items-center gap-2">
-                    {u.photo_url ? (
-                      <img src={u.photo_url} alt={u.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Icon name="User" size={12} className="text-primary" />
-                      </div>
-                    )}
-                    <span className="text-sm">{u.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <div className="flex items-center gap-2 text-sm">
-            {ticket.assignee_name ? (
-              <>
-                {ticket.assignee_photo_url ? (
-                  <img src={ticket.assignee_photo_url} alt={ticket.assignee_name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Icon name="User" size={14} className="text-primary" />
-                  </div>
-                )}
-                <span className="font-medium">{ticket.assignee_name}</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">Не назначен</span>
-            )}
-          </div>
-        )}
-      </div>
+      <AssignmentSection
+        ticket={ticket}
+        users={users}
+        updating={updating}
+        executorGroups={executorGroups}
+        canSeeGroup={canSeeGroup}
+        canAssignExecutor={canAssignExecutor}
+        onAssignUser={onAssignUser}
+        onAssignGroup={onAssignGroup}
+      />
 
       {ticket.category_name && (
         <div className="p-4">
