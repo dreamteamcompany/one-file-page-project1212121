@@ -183,11 +183,6 @@ const TicketDetailsSidebar = ({
           onUpdateDueDate={onUpdateDueDate}
         />
 
-        <RecentTicketsBlock
-          ticketId={ticket.id}
-          createdBy={ticket.created_by}
-        />
-
         <TicketWatchersBlock
           ticketId={ticket.id}
           availableUsers={users}
@@ -204,6 +199,11 @@ const TicketDetailsSidebar = ({
           ticket={ticket}
           isPendingConfirmation={!!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation}
           onChanged={onApprovalChange || (() => {})}
+        />
+
+        <RecentTicketsBlock
+          ticketId={ticket.id}
+          createdBy={ticket.created_by}
         />
       </div>
       
