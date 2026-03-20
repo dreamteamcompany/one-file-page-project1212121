@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
-import { Badge } from '@/components/ui/badge';
 import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
@@ -213,25 +212,6 @@ const TicketDetailsContent = ({
                     <span className="font-medium text-foreground">{ticket.creator_name}</span>
                   </div>
                 </div>
-              )}
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              {ticket.status_name && (
-                <Badge
-                  style={{ backgroundColor: `${ticket.status_color}20`, color: ticket.status_color, borderColor: ticket.status_color }}
-                  className="border font-medium"
-                >
-                  {ticket.status_name}
-                </Badge>
-              )}
-              {ticket.priority_name && (
-                <Badge
-                  style={{ backgroundColor: `${ticket.priority_color}20`, color: ticket.priority_color, borderColor: ticket.priority_color }}
-                  className="border font-medium"
-                >
-                  {ticket.priority_name}
-                </Badge>
               )}
             </div>
             
