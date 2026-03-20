@@ -190,7 +190,7 @@ const Users = () => {
     }
     
     try {
-      const response = await fetch(`https://functions.poehali.dev/8f2170d4-9167-4354-85a1-4478c2403dfd?endpoint=users&id=${userId}`, {
+      const response = await apiFetch(`${API_URL}?endpoint=users&id=${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
