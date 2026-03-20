@@ -282,6 +282,7 @@ const Users = () => {
             <p className="text-sm md:text-base text-muted-foreground">Управление пользователями системы</p>
           </div>
           <UserFormDialog
+            onToggleStatus={toggleUserStatus}
             dialogOpen={dialogOpen}
             setDialogOpen={setDialogOpen}
             editingUser={editingUser}

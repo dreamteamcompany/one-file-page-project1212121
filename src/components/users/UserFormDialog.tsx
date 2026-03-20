@@ -44,11 +44,13 @@ interface UserFormDialogProps {
     position: string;
     role_ids: number[];
     photo_url: string;
+    is_active?: boolean;
   };
   setFormData: (data: any) => void;
   roles: Role[];
   handleSubmit: (e: React.FormEvent) => void;
   canCreate?: boolean;
+  onToggleStatus?: (userId: number, currentStatus: boolean) => void;
 }
 
 const UserFormDialog = ({
@@ -61,6 +63,7 @@ const UserFormDialog = ({
   roles,
   handleSubmit,
   canCreate = true,
+  onToggleStatus,
 }: UserFormDialogProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -265,6 +268,32 @@ const UserFormDialog = ({
               )}
             </div>
           </div>
+          {editingUser && onToggleStatus && (
+            <div className="flex items-center justify-between p-3 rounded-md border border-border bg-accent/30">
+              <div>
+                <Label className="font-medium">Статус учётной записи</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {editingUser.is_active ? 'Пользователь активен и может входить в систему' : 'Учётная запись отключена, вход заблокирован'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onToggleStatus(editingUser.id, editingUser.is_active);
+                  setDialogOpen(false);
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                  editingUser.is_active ? 'bg-green-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                    editingUser.is_active ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
           <Button type="submit" className="w-full">
             {editingUser ? 'Сохранить изменения' : 'Создать пользователя'}
           </Button>
