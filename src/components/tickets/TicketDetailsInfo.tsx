@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
@@ -50,7 +51,23 @@ const isShortField = (field: CustomField): boolean => {
   return valueLength <= SHORT_VALUE_THRESHOLD && nameLength <= SHORT_NAME_THRESHOLD;
 };
 
+const getDisplayValue = (field: CustomField): string => {
+  if (field.field_type === 'date' && field.value) return isoToDisplay(field.value) || field.value;
+  if (field.field_type === 'phone' && field.value) return phoneDisplay(field.value);
+  return field.value || '—';
+};
+
 const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  const handleCopy = (field: CustomField) => {
+    if (field.field_type === 'phone' || !field.value) return;
+    const text = getDisplayValue(field);
+    navigator.clipboard.writeText(text);
+    setCopiedId(field.id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
+
   return (
     <div className="space-y-6">
       {ticket.description && (
@@ -70,21 +87,29 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
             Дополнительные поля
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            {ticket.custom_fields.map((field) => (
-              <div
-                key={field.id}
-                className={`p-3 rounded-lg bg-muted/50 ${isShortField(field) ? '' : 'col-span-2'}`}
-              >
-                {!field.hide_label && <p className="text-xs text-muted-foreground mb-1">{field.name}</p>}
-                <p className="text-sm break-words">
-                  {field.field_type === 'date' && field.value
-                    ? (isoToDisplay(field.value) || field.value)
-                    : field.field_type === 'phone' && field.value
-                      ? phoneDisplay(field.value)
-                      : (field.value || '—')}
-                </p>
-              </div>
-            ))}
+            {ticket.custom_fields.map((field) => {
+              const isPhone = field.field_type === 'phone';
+              const canCopy = !isPhone && !!field.value;
+              const isCopied = copiedId === field.id;
+
+              return (
+                <div
+                  key={field.id}
+                  onClick={() => handleCopy(field)}
+                  className={`p-3 rounded-lg bg-muted/50 ${isShortField(field) ? '' : 'col-span-2'} ${canCopy ? 'cursor-pointer hover:bg-muted/80 transition-colors group relative' : ''}`}
+                >
+                  {!field.hide_label && <p className="text-xs text-muted-foreground mb-1">{field.name}</p>}
+                  <p className="text-sm break-words">
+                    {getDisplayValue(field)}
+                  </p>
+                  {canCopy && (
+                    <span className={`absolute top-2 right-2 transition-opacity ${isCopied ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}>
+                      <Icon name={isCopied ? 'Check' : 'Copy'} size={14} className={isCopied ? 'text-green-500' : 'text-muted-foreground'} />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
