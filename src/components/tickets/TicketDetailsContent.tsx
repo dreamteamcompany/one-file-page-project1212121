@@ -122,6 +122,7 @@ const TicketDetailsContent = ({
   loadingHistory = false,
 }: TicketDetailsContentProps) => {
   const [activeTab, setActiveTab] = useState<'comments' | 'files' | 'history'>('comments');
+  const [copiedFieldId, setCopiedFieldId] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
@@ -257,8 +258,21 @@ const TicketDetailsContent = ({
                         : rawValue;
                   const isLongValue = displayText.length > 25 || field.name.length > 20;
                   const isChain = field.field_type === 'company_structure' && displayText.includes('→');
+                  const isPhone = field.field_type === 'phone';
+                  const canCopy = !isPhone && rawValue !== '—';
+                  const isCopied = copiedFieldId === field.id;
+                  const handleFieldCopy = () => {
+                    if (!canCopy) return;
+                    navigator.clipboard.writeText(displayText);
+                    setCopiedFieldId(field.id);
+                    setTimeout(() => setCopiedFieldId(null), 1500);
+                  };
                   return (
-                    <div key={field.id} className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2' : ''}`}>
+                    <div
+                      key={field.id}
+                      onClick={handleFieldCopy}
+                      className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2' : ''} ${canCopy ? 'cursor-pointer hover:bg-muted/50 active:bg-muted/70 transition-colors relative group' : ''}`}
+                    >
                       {!field.hide_label && <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>}
                       {isChain ? (
                         <p className="text-sm text-foreground break-words">
@@ -269,6 +283,18 @@ const TicketDetailsContent = ({
                         </p>
                       ) : (
                         <p className="text-sm font-medium text-foreground break-words">{displayText}</p>
+                      )}
+                      {canCopy && (
+                        <span className={`absolute top-2 right-2 transition-opacity ${isCopied ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}>
+                          {isCopied ? (
+                            <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">
+                              <Icon name="Check" size={12} />
+                              Скопировано
+                            </span>
+                          ) : (
+                            <Icon name="Copy" size={14} className="text-muted-foreground" />
+                          )}
+                        </span>
                       )}
                     </div>
                   );
