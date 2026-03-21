@@ -104,7 +104,14 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
                   </p>
                   {canCopy && (
                     <span className={`absolute top-2 right-2 transition-opacity ${isCopied ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}>
-                      <Icon name={isCopied ? 'Check' : 'Copy'} size={14} className={isCopied ? 'text-green-500' : 'text-muted-foreground'} />
+                      {isCopied ? (
+                        <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">
+                          <Icon name="Check" size={12} />
+                          Скопировано
+                        </span>
+                      ) : (
+                        <Icon name="Copy" size={14} className="text-muted-foreground" />
+                      )}
                     </span>
                   )}
                 </div>
