@@ -4,6 +4,7 @@ import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CustomField {
   id: number;
@@ -121,6 +122,8 @@ const TicketDetailsContent = ({
   auditLogs = [],
   loadingHistory = false,
 }: TicketDetailsContentProps) => {
+  const { hasSystemRole } = useAuth();
+  const canCallPhone = hasSystemRole('admin', 'executor');
   const [activeTab, setActiveTab] = useState<'comments' | 'files' | 'history'>('comments');
   const [copiedFieldId, setCopiedFieldId] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -259,11 +262,12 @@ const TicketDetailsContent = ({
                   const isLongValue = displayText.length > 25 || field.name.length > 20;
                   const isChain = field.field_type === 'company_structure' && displayText.includes('→');
                   const isPhone = field.field_type === 'phone';
-                  const canCopy = !isPhone && rawValue !== '—';
+                  const canCopy = rawValue !== '—';
                   const isCopied = copiedFieldId === field.id;
+                  const phoneRaw = isPhone ? (field.value || '').replace(/\D/g, '') : '';
                   const handleFieldCopy = () => {
                     if (!canCopy) return;
-                    navigator.clipboard.writeText(displayText);
+                    navigator.clipboard.writeText(isPhone ? phoneRaw : displayText);
                     setCopiedFieldId(field.id);
                     setTimeout(() => setCopiedFieldId(null), 1500);
                   };
@@ -281,6 +285,19 @@ const TicketDetailsContent = ({
                           ))}
                           <span className="font-bold text-foreground">{displayText.split('→').pop()?.trim()}</span>
                         </p>
+                      ) : isPhone ? (
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground break-words">{displayText}</p>
+                          {canCallPhone && phoneRaw && (
+                            <a
+                              href={`tel:+${phoneRaw}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="shrink-0 w-7 h-7 rounded-full bg-green-500/15 hover:bg-green-500/25 active:bg-green-500/35 flex items-center justify-center transition-colors"
+                            >
+                              <Icon name="Phone" size={14} className="text-green-600" />
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-sm font-medium text-foreground break-words">{displayText}</p>
                       )}
