@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
@@ -29,11 +28,11 @@ import useWorkSchedules, { type ScheduleEntry, type UserWithSchedule } from '@/h
 const DAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-const DEFAULT_SCHEDULE: ScheduleEntry[] = Array.from({ length: 5 }, (_, i) => ({
+const DEFAULT_SCHEDULE: ScheduleEntry[] = Array.from({ length: 7 }, (_, i) => ({
   day_of_week: i,
   start_time: '09:00',
   end_time: '18:00',
-  is_active: true,
+  is_active: i < 5,
 }));
 
 const WorkSchedules = () => {
@@ -116,13 +115,13 @@ const WorkSchedules = () => {
       {!editingUserId && (
         <Card className="mb-6">
           <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <Select
                 value={selectedUserId?.toString() || ''}
                 onValueChange={(v) => setSelectedUserId(Number(v))}
               >
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Выберите исполнителя для добавления графика" />
+                <SelectTrigger className="w-full sm:flex-1">
+                  <SelectValue placeholder="Выберите исполнителя" />
                 </SelectTrigger>
                 <SelectContent>
                   {usersWithoutSchedule.map(u => (
@@ -146,7 +145,7 @@ const WorkSchedules = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Icon name="Calendar" size={18} />
-              График работы: {editingUserName}
+              <span className="truncate">График: {editingUserName}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -159,39 +158,41 @@ const WorkSchedules = () => {
                 return (
                   <div
                     key={dayIdx}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
+                    className={`rounded-lg border transition-colors ${
                       schedule.is_active ? 'bg-card border-border' : 'bg-muted/30 border-border/50'
                     }`}
                   >
-                    <Switch
-                      checked={schedule.is_active}
-                      onCheckedChange={(v) => updateDay(dayIdx, 'is_active', v)}
-                    />
-                    <span className={`w-24 text-sm font-medium ${
-                      isWeekend ? 'text-orange-500' : ''
-                    } ${!schedule.is_active ? 'text-muted-foreground' : ''}`}>
-                      {DAY_NAMES[dayIdx]}
-                    </span>
-                    {schedule.is_active ? (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs text-muted-foreground">с</Label>
-                        <Input
-                          type="time"
-                          value={schedule.start_time}
-                          onChange={(e) => updateDay(dayIdx, 'start_time', e.target.value)}
-                          className="w-28 h-8 text-sm"
-                        />
-                        <Label className="text-xs text-muted-foreground">до</Label>
-                        <Input
-                          type="time"
-                          value={schedule.end_time}
-                          onChange={(e) => updateDay(dayIdx, 'end_time', e.target.value)}
-                          className="w-28 h-8 text-sm"
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Выходной</span>
-                    )}
+                    <div className="flex items-center gap-2 sm:gap-3 p-2.5">
+                      <Switch
+                        checked={schedule.is_active}
+                        onCheckedChange={(v) => updateDay(dayIdx, 'is_active', v)}
+                      />
+                      <span className={`text-sm font-medium min-w-0 ${
+                        isWeekend ? 'text-orange-500' : ''
+                      } ${!schedule.is_active ? 'text-muted-foreground' : ''}`}>
+                        <span className="hidden sm:inline">{DAY_NAMES[dayIdx]}</span>
+                        <span className="sm:hidden">{DAY_SHORT[dayIdx]}</span>
+                      </span>
+                      {schedule.is_active ? (
+                        <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+                          <Input
+                            type="time"
+                            value={schedule.start_time}
+                            onChange={(e) => updateDay(dayIdx, 'start_time', e.target.value)}
+                            className="w-[6.5rem] sm:w-28 h-8 text-sm px-2"
+                          />
+                          <span className="text-xs text-muted-foreground">—</span>
+                          <Input
+                            type="time"
+                            value={schedule.end_time}
+                            onChange={(e) => updateDay(dayIdx, 'end_time', e.target.value)}
+                            className="w-[6.5rem] sm:w-28 h-8 text-sm px-2"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground ml-auto">Выходной</span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
