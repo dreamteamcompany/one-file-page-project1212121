@@ -85,4 +85,55 @@ export const useWorkSchedules = () => {
   return { usersWithSchedules, allUsers, loading, loadSchedules, saveSchedule, deleteSchedule };
 };
 
+export function isUserOnShift(schedules: ScheduleEntry[]): boolean {
+  const now = new Date();
+  const mskOffset = 3 * 60;
+  const msk = new Date(now.getTime() + (mskOffset + now.getTimezoneOffset()) * 60000);
+  const day = msk.getDay() === 0 ? 6 : msk.getDay() - 1;
+  const timeStr = msk.toTimeString().slice(0, 5);
+
+  const todaySchedule = schedules.find(s => s.day_of_week === day && s.is_active);
+  if (!todaySchedule) return false;
+
+  return timeStr >= todaySchedule.start_time.slice(0, 5) && timeStr < todaySchedule.end_time.slice(0, 5);
+}
+
+export const useMemberSchedules = (userIds: number[]) => {
+  const [scheduleMap, setScheduleMap] = useState<Record<number, ScheduleEntry[]>>({});
+  const [loaded, setLoaded] = useState(false);
+
+  const idsKey = userIds.sort().join(',');
+
+  const load = useCallback(async () => {
+    if (userIds.length === 0) {
+      setScheduleMap({});
+      setLoaded(true);
+      return;
+    }
+    try {
+      const res = await apiFetch(API_BASE);
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<number, ScheduleEntry[]> = {};
+        const idsSet = new Set(userIds);
+        for (const u of (data.users_with_schedules || []) as UserWithSchedule[]) {
+          if (idsSet.has(u.user_id)) {
+            map[u.user_id] = u.schedules;
+          }
+        }
+        setScheduleMap(map);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoaded(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return { scheduleMap, loaded };
+};
+
 export default useWorkSchedules;

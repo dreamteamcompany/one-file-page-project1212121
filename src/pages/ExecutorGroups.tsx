@@ -14,6 +14,7 @@ import {
   useReferenceData,
   type ExecutorGroup,
 } from '@/hooks/useExecutorGroups';
+import { useMemberSchedules } from '@/hooks/useWorkSchedules';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,10 @@ const ExecutorGroups = () => {
 
   const membersHook = useGroupMembers(selectedGroup?.id ?? null);
   const mappingsHook = useGroupMappings(selectedGroup?.id ?? null);
+
+  const selectedAssignType = selectedGroup?.auto_assign_type || (selectedGroup?.auto_assign ? 'all' : 'none');
+  const memberUserIds = selectedAssignType === 'working' ? membersHook.members.map(m => m.user_id) : [];
+  const { scheduleMap } = useMemberSchedules(memberUserIds);
 
   const handleSave = async (data: {
     name: string;
@@ -137,6 +142,8 @@ const ExecutorGroups = () => {
                   loading={membersHook.loading}
                   onAdd={membersHook.addMember}
                   onRemove={membersHook.removeMember}
+                  autoAssignType={selectedAssignType}
+                  scheduleMap={scheduleMap}
                 />
               </div>
 
