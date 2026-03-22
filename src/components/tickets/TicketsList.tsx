@@ -2,6 +2,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import Icon from '@/components/ui/icon';
+import { useAuth } from '@/contexts/AuthContext';
+import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 
 interface CustomField {
   id: number;
@@ -79,6 +81,14 @@ const TicketsList = ({
   totalTickets = 0,
   onPageChange,
 }: TicketsListProps) => {
+  const { hasSystemRole } = useAuth();
+  const canCallPhone = hasSystemRole('admin', 'executor');
+
+  const getPhoneFromTicket = (ticket: Ticket): string | null => {
+    const phoneField = ticket.custom_fields?.find(f => f.field_type === 'phone' && f.value);
+    return phoneField ? phoneField.value.replace(/\D/g, '') : null;
+  };
+
   const getDeadlineProgress = (dueDate?: string) => {
     if (!dueDate) return null;
     
@@ -269,16 +279,31 @@ const TicketsList = ({
 
             <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {(ticket.customer_name || ticket.creator_name) && (
-                    <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
-                      {ticket.creator_photo_url ? (
-                        <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
-                      ) : (
-                        <Icon name="User" size={11} />
-                      )}
-                      {ticket.customer_name || ticket.creator_name}
-                    </span>
-                  )}
+                  {(ticket.customer_name || ticket.creator_name) && (() => {
+                    const phone = getPhoneFromTicket(ticket);
+                    return (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
+                          {ticket.creator_photo_url ? (
+                            <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                          ) : (
+                            <Icon name="User" size={11} />
+                          )}
+                          {ticket.customer_name || ticket.creator_name}
+                        </span>
+                        {canCallPhone && phone && (
+                          <a
+                            href={`tel:+${phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            title={phoneDisplay(`+${phone}`) || phone}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 hover:bg-green-500/25 active:bg-green-500/35 transition-colors -ml-0.5"
+                          >
+                            <Icon name="Phone" size={11} className="text-green-600" />
+                          </a>
+                        )}
+                      </>
+                    );
+                  })()}
                   <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
                     {ticket.assignee_photo_url ? (
                       <img src={ticket.assignee_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
