@@ -11,7 +11,15 @@ interface GroupCardProps {
   onRemove: (group: ExecutorGroup) => void;
 }
 
+const AUTO_ASSIGN_LABELS: Record<string, { label: string; icon: string }> = {
+  all: { label: 'Авто: все', icon: 'Zap' },
+  working: { label: 'Авто: на смене', icon: 'Clock' },
+};
+
 const GroupCard = ({ group, isSelected, onSelect, onEdit, onRemove }: GroupCardProps) => {
+  const assignType = group.auto_assign_type || (group.auto_assign ? 'all' : 'none');
+  const assignLabel = AUTO_ASSIGN_LABELS[assignType];
+
   return (
     <div
       onClick={() => onSelect(group)}
@@ -30,10 +38,10 @@ const GroupCard = ({ group, isSelected, onSelect, onEdit, onRemove }: GroupCardP
             )}
           </div>
           <div className="flex flex-wrap gap-1 mb-1">
-            {group.auto_assign && (
+            {assignLabel && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                <Icon name="Zap" size={10} />
-                Авто
+                <Icon name={assignLabel.icon} size={10} />
+                {assignLabel.label}
               </Badge>
             )}
             {group.assign_group_only && (

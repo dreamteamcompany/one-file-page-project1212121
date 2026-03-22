@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, getApiUrl } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 
+export type AutoAssignType = 'none' | 'all' | 'working';
+
 export interface ExecutorGroup {
   id: number;
   name: string;
   description: string;
   is_active: boolean;
   auto_assign: boolean;
+  auto_assign_type: AutoAssignType;
   assign_group_only: boolean;
   member_count: number;
   mapping_count: number;
@@ -82,13 +85,13 @@ export const useExecutorGroups = () => {
   const createGroup = async (
     name: string,
     description: string,
-    auto_assign = false,
+    auto_assign_type: AutoAssignType = 'none',
     assign_group_only = false,
   ): Promise<ExecutorGroup | null> => {
     try {
       const res = await apiFetch(API_BASE, {
         method: 'POST',
-        body: JSON.stringify({ name, description, auto_assign, assign_group_only }),
+        body: JSON.stringify({ name, description, auto_assign_type, assign_group_only }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -108,13 +111,13 @@ export const useExecutorGroups = () => {
     name: string,
     description: string,
     is_active: boolean,
-    auto_assign = false,
+    auto_assign_type: AutoAssignType = 'none',
     assign_group_only = false,
   ): Promise<boolean> => {
     try {
       const res = await apiFetch(API_BASE, {
         method: 'PUT',
-        body: JSON.stringify({ id, name, description, is_active, auto_assign, assign_group_only }),
+        body: JSON.stringify({ id, name, description, is_active, auto_assign_type, assign_group_only }),
       });
       if (res.ok) {
         toast({ title: 'Группа обновлена' });

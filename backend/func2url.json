@@ -1,4 +1,5 @@
 {
+  "api-work-schedules": "https://functions.poehali.dev/8db7a0da-8978-4e99-8d6b-45d47fc080c2",
   "bitrix-auth": "https://functions.poehali.dev/1ba4ba6c-50e0-4458-b7e4-4464ffcff093",
   "upload-file": "https://functions.poehali.dev/3d20e803-c39e-4d0f-84c2-6c5eb7bb1af7",
   "ticket-auto-close": "https://functions.poehali.dev/e496c2b6-0f8f-4c29-8c52-42f53899ec94",

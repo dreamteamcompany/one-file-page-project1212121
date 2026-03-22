@@ -65,6 +65,7 @@ const Settings = () => {
         { name: 'Приоритеты заявок', path: '/ticket-priorities', icon: 'AlertCircle', permission: { resource: 'ticket_priorities', action: 'read' } },
         { name: 'Группы исполнителей', path: '/executor-groups', icon: 'UsersRound', permission: { resource: 'executor_groups', action: 'read' } },
         { name: 'Привязка исполнителей', path: '/executor-assignments', icon: 'UserCheck', permission: { resource: 'executor_groups', action: 'read' } },
+        { name: 'Графики работы', path: '/work-schedules', icon: 'Calendar', permission: { resource: 'executor_groups', action: 'read' } },
       ],
     },
     {
