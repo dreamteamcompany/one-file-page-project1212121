@@ -10,6 +10,7 @@ const SERVICE_FIELD_MAPPINGS_API = 'https://functions.poehali.dev/bc96bbe3-687c-
 const EXECUTOR_GROUPS_API = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
 const EXECUTOR_ASSIGNMENTS_API = 'https://functions.poehali.dev/bb7f3193-fa1a-4243-b236-08b2795bd696';
 const WORK_SCHEDULES_API = 'https://functions.poehali.dev/8db7a0da-8978-4e99-8d6b-45d47fc080c2';
+const CLASSIFY_TICKET_API = 'https://functions.poehali.dev/b1d49417-fb02-4b11-9656-d30b68924b54';
 export const UPLOAD_FILE_URL = 'https://functions.poehali.dev/3d20e803-c39e-4d0f-84c2-6c5eb7bb1af7';
 
 const ENDPOINT_MAP: Record<string, string> = {
@@ -53,6 +54,7 @@ const ENDPOINT_MAP: Record<string, string> = {
 export const API_URL = AUTH_API;
 export const FIELD_GROUPS_URL = FIELD_GROUPS_API;
 export const SERVICE_FIELD_MAPPINGS_URL = SERVICE_FIELD_MAPPINGS_API;
+export const CLASSIFY_TICKET_URL = CLASSIFY_TICKET_API;
 
 export const getApiUrl = (endpoint?: string): string => {
   if (endpoint && ENDPOINT_MAP[endpoint]) {

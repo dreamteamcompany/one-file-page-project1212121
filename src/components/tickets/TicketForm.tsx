@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, apiFetch } from '@/utils/api';
+import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, CLASSIFY_TICKET_URL, apiFetch } from '@/utils/api';
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import TicketFormStep1 from './TicketFormStep1';
-import TicketFormStep2 from './TicketFormStep2';
-import TicketFormStep3 from './TicketFormStep3';
+import TicketFormStepClassify from './TicketFormStepClassify';
 import TicketFormStep4 from './TicketFormStep4';
 
 interface Category {
@@ -56,6 +54,14 @@ interface Service {
   category_id?: number;
   category_name?: string;
   service_ids?: number[];
+}
+
+interface ClassificationResult {
+  ticket_service_id: number;
+  service_ids: number[];
+  ticket_service_name: string;
+  service_names: string[];
+  confidence: number;
 }
 
 interface TicketFormProps {
@@ -103,45 +109,16 @@ const TicketForm = ({
 }: TicketFormProps) => {
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<number[]>([]);
-
-
-  
-  console.log('[TicketForm] Current step:', step, 'Dialog open:', dialogOpen);
-
-  const handleNext = () => {
-    if (!formData.service_id) {
-      return;
-    }
-    setStep(2);
-  };
-
-  const handleNextToServices = () => {
-    setStep(3);
-  };
-
-  const handleNextToCustomFields = () => {
-    setStep(4);
-  };
-
-  const handleBack = () => {
-    if (step === 4) {
-      setStep(3);
-    } else if (step === 3) {
-      setStep(2);
-    } else {
-      setStep(1);
-    }
-  };
-
-  const handleServiceSelect = (serviceId: number) => {
-    setFormData({ ...formData, service_id: serviceId.toString() });
-  };
+  const [classifying, setClassifying] = useState(false);
+  const [classification, setClassification] = useState<ClassificationResult | null>(null);
+  const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
 
   const handleDialogChange = (open: boolean) => {
     if (open) {
-      // При открытии диалога всегда сбрасываем на шаг 1
       setStep(1);
       setSelectedServices([]);
+      setClassification(null);
+      setVisibleCustomFields([]);
       if (onDialogOpen) {
         onDialogOpen();
       }
@@ -149,50 +126,95 @@ const TicketForm = ({
     setDialogOpen(open);
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Автоматически проставляем title из выбранной услуги
-    // НЕ передаем category_id, так как он относится к ticket_service_categories, а не ticket_categories
-    const updatedFormData = { 
-      ...formData, 
-      service_ids: selectedServices,
-      title: selectedTicketService?.ticket_title || formData.title || 'Новая заявка',
-      category_id: '', // Оставляем пустым, чтобы не нарушать FK constraint
-    };
-    
-    // Обновляем formData синхронно
-    setFormData(updatedFormData);
-    
-    // Отправляем обновленные данные
-    await handleSubmit(e, updatedFormData);
-    
-    // Сбрасываем состояние формы после успешной отправки
-    setStep(1);
+  const selectedTicketService = ticketServices.find(
+    ts => ts.id.toString() === formData.service_id
+  );
+
+  const filteredServices = selectedTicketService?.service_ids
+    ? services.filter(service => selectedTicketService.service_ids?.includes(service.id))
+    : [];
+
+  const classifyTicket = async () => {
+    if (!formData.description.trim()) return;
+
+    setClassifying(true);
+    try {
+      const resp = await apiFetch(CLASSIFY_TICKET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: formData.description }),
+      });
+
+      if (resp.ok) {
+        const result: ClassificationResult = await resp.json();
+        setClassification(result);
+        setFormData({
+          ...formData,
+          service_id: result.ticket_service_id.toString(),
+        });
+        setSelectedServices(result.service_ids);
+        setStep(2);
+      } else {
+        setStep(2);
+        setClassification(null);
+      }
+    } catch (err) {
+      console.error('[TicketForm] Classification failed:', err);
+      setStep(2);
+      setClassification(null);
+    } finally {
+      setClassifying(false);
+    }
+  };
+
+  const handleNextFromDescription = () => {
+    classifyTicket();
+  };
+
+  const handleChangeTicketService = (serviceId: number) => {
+    setFormData({ ...formData, service_id: serviceId.toString() });
     setSelectedServices([]);
   };
 
   const toggleService = (serviceId: number) => {
-    setSelectedServices(prev => 
-      prev.includes(serviceId) 
+    setSelectedServices(prev =>
+      prev.includes(serviceId)
         ? prev.filter(id => id !== serviceId)
         : [...prev, serviceId]
     );
   };
 
-  // Находим выбранную услугу заявки
-  const selectedTicketService = ticketServices.find(
-    ts => ts.id.toString() === formData.service_id
-  );
-  
-  // Фильтруем сервисы по service_ids из выбранной услуги
-  const filteredServices = selectedTicketService?.service_ids
-    ? services.filter(service => selectedTicketService.service_ids?.includes(service.id))
-    : [];
-  
-  const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
+  const handleNextFromClassify = () => {
+    if (visibleCustomFields.length > 0) {
+      setStep(3);
+    } else {
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+      onSubmit(fakeEvent);
+    }
+  };
 
-  const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
+  const handleBack = () => {
+    if (step === 3) {
+      setStep(2);
+    } else if (step === 2) {
+      setStep(1);
+    }
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedFormData = {
+      ...formData,
+      service_ids: selectedServices,
+      title: selectedTicketService?.ticket_title || formData.description.slice(0, 100) || 'Новая заявка',
+      category_id: '',
+    };
+    setFormData(updatedFormData);
+    await handleSubmit(e, updatedFormData);
+    setStep(1);
+    setSelectedServices([]);
+    setClassification(null);
+  };
 
   const loadVisibleFields = useCallback(async () => {
     if (!formData.service_id || selectedServices.length === 0) {
@@ -255,6 +277,13 @@ const TicketForm = ({
     loadVisibleFields();
   }, [loadVisibleFields]);
 
+  const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
+
+  const totalSteps = visibleCustomFields.length > 0 ? 3 : 2;
+  const stepLabels = totalSteps === 3
+    ? ['Описание', 'Категория', 'Доп. поля']
+    : ['Описание', 'Категория'];
+
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
       {canCreate && (
@@ -272,83 +301,82 @@ const TicketForm = ({
             Новая заявка
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {step === 1 && '🎯 Выберите услугу для вашей заявки'}
-            {step === 2 && '🔧 Выберите сервисы для услуги'}
-            {step === 3 && '📝 Заполните основную информацию о заявке'}
-            {step === 4 && '📋 Заполните дополнительные поля'}
+            {step === 1 && 'Опишите вашу проблему или запрос'}
+            {step === 2 && 'Проверьте категорию заявки'}
+            {step === 3 && 'Заполните дополнительные поля'}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Прогресс-бар */}
-        {(() => {
-          const totalSteps = visibleCustomFields.length > 0 ? 4 : 3;
-          const stepLabels = totalSteps === 4
-            ? ['Услуга', 'Сервисы', 'Описание', 'Доп. поля']
-            : ['Услуга', 'Сервисы', 'Описание'];
-          return (
-            <div className="mt-2 mb-1">
-              <div className="flex items-center gap-0">
-                {stepLabels.map((label, index) => {
-                  const stepNum = index + 1;
-                  const isCompleted = step > stepNum;
-                  const isCurrent = step === stepNum;
-                  return (
-                    <div key={stepNum} className="flex items-center flex-1 last:flex-none">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                          isCompleted
-                            ? 'bg-primary text-primary-foreground'
-                            : isCurrent
-                            ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {isCompleted ? <Icon name="Check" size={14} /> : stepNum}
-                        </div>
-                        <span className={`text-[10px] whitespace-nowrap ${isCurrent ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                          {label}
-                        </span>
-                      </div>
-                      {index < stepLabels.length - 1 && (
-                        <div className={`flex-1 h-[2px] mb-4 mx-1 rounded transition-all ${step > stepNum ? 'bg-primary' : 'bg-muted'}`} />
-                      )}
+        <div className="mt-2 mb-1">
+          <div className="flex items-center gap-0">
+            {stepLabels.map((label, index) => {
+              const stepNum = index + 1;
+              const isCompleted = step > stepNum;
+              const isCurrent = step === stepNum;
+              return (
+                <div key={stepNum} className="flex items-center flex-1 last:flex-none">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                      isCompleted
+                        ? 'bg-primary text-primary-foreground'
+                        : isCurrent
+                        ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {isCompleted ? <Icon name="Check" size={14} /> : stepNum}
                     </div>
-                  );
-                })}
-              </div>
+                    <span className={`text-[10px] whitespace-nowrap ${isCurrent ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {label}
+                    </span>
+                  </div>
+                  {index < stepLabels.length - 1 && (
+                    <div className={`flex-1 h-[2px] mb-4 mx-1 rounded transition-all ${step > stepNum ? 'bg-primary' : 'bg-muted'}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {classifying && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="animate-spin">
+              <Icon name="Loader2" size={32} className="text-primary" />
             </div>
-          );
-        })()}
+            <p className="text-sm text-muted-foreground">ИИ анализирует описание...</p>
+          </div>
+        )}
 
-
-
-        {step === 1 ? (
-          <TicketFormStep2
-            formData={formData}
-            availableTicketServices={availableTicketServices}
-            onServiceSelect={handleServiceSelect}
-            onNext={handleNext}
-            onBack={() => handleDialogChange(false)}
-          />
-        ) : step === 2 ? (
-          <TicketFormStep3
-            filteredServices={filteredServices}
-            selectedServices={selectedServices}
-            onToggleService={toggleService}
-            onNext={handleNextToServices}
-            onBack={handleBack}
-          />
-        ) : step === 3 ? (
+        {!classifying && step === 1 && (
           <TicketFormStep1
             formData={formData}
             setFormData={setFormData}
             priorities={priorities}
-            selectedTicketService={selectedTicketService}
-            hasCustomFields={visibleCustomFields.length > 0}
-            onNext={visibleCustomFields.length > 0 ? handleNextToCustomFields : undefined}
-            onSubmit={onSubmit}
-            onBack={handleBack}
+            selectedTicketService={undefined}
+            hasCustomFields={false}
+            onNext={handleNextFromDescription}
+            onSubmit={async (e) => { e.preventDefault(); handleNextFromDescription(); }}
+            onBack={() => handleDialogChange(false)}
+            isFirstStep
           />
-        ) : (
+        )}
+
+        {!classifying && step === 2 && (
+          <TicketFormStepClassify
+            classification={classification || { ticket_service_id: 0, service_ids: [], ticket_service_name: '', service_names: [], confidence: 0 }}
+            ticketServices={availableTicketServices}
+            services={services}
+            selectedTicketServiceId={formData.service_id}
+            selectedServices={selectedServices}
+            onChangeTicketService={handleChangeTicketService}
+            onToggleService={toggleService}
+            onNext={handleNextFromClassify}
+            onBack={handleBack}
+            filteredServices={filteredServices}
+          />
+        )}
+
+        {!classifying && step === 3 && (
           <TicketFormStep4
             formData={formData}
             setFormData={setFormData}
