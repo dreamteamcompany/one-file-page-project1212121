@@ -106,6 +106,7 @@ def get_all_groups(conn):
         SELECT 
             g.id, g.name, g.description, g.is_active,
             g.auto_assign, g.assign_group_only, g.auto_assign_type,
+            g.balance_mode,
             g.created_at, g.updated_at,
             COALESCE(mc.member_count, 0) as member_count,
             COALESCE(sc.mapping_count, 0) as mapping_count
@@ -130,7 +131,7 @@ def get_all_groups(conn):
 def get_group_by_id(conn, group_id):
     cur = conn.cursor()
     cur.execute(f"""
-        SELECT id, name, description, is_active, auto_assign, assign_group_only, auto_assign_type, created_at, updated_at
+        SELECT id, name, description, is_active, auto_assign, assign_group_only, auto_assign_type, balance_mode, created_at, updated_at
         FROM {SCHEMA}.executor_groups WHERE id = %s
     """, (group_id,))
     group = cur.fetchone()
@@ -202,6 +203,9 @@ def get_reference_data(conn):
     })
 
 
+VALID_BALANCE_MODES = ('none', 'balanced')
+
+
 def create_group(conn, body):
     name = body.get('name', '').strip()
     if not name:
@@ -211,13 +215,16 @@ def create_group(conn, body):
     auto_assign_type = _compat_auto_assign(body)
     assign_group_only = body.get('assign_group_only', False)
     auto_assign = auto_assign_type != 'none'
+    balance_mode = body.get('balance_mode', 'none')
+    if balance_mode not in VALID_BALANCE_MODES:
+        balance_mode = 'none'
 
     cur = conn.cursor()
     cur.execute(f"""
-        INSERT INTO {SCHEMA}.executor_groups (name, description, auto_assign, assign_group_only, auto_assign_type)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id, name, description, is_active, auto_assign, assign_group_only, auto_assign_type, created_at, updated_at
-    """, (name, description, auto_assign, assign_group_only, auto_assign_type))
+        INSERT INTO {SCHEMA}.executor_groups (name, description, auto_assign, assign_group_only, auto_assign_type, balance_mode)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id, name, description, is_active, auto_assign, assign_group_only, auto_assign_type, balance_mode, created_at, updated_at
+    """, (name, description, auto_assign, assign_group_only, auto_assign_type, balance_mode))
     group = dict(cur.fetchone())
     conn.commit()
     cur.close()
@@ -238,15 +245,18 @@ def update_group(conn, body):
     auto_assign_type = _compat_auto_assign(body)
     assign_group_only = body.get('assign_group_only', False)
     auto_assign = auto_assign_type != 'none'
+    balance_mode = body.get('balance_mode', 'none')
+    if balance_mode not in VALID_BALANCE_MODES:
+        balance_mode = 'none'
 
     cur = conn.cursor()
     cur.execute(f"""
         UPDATE {SCHEMA}.executor_groups
         SET name = %s, description = %s, is_active = %s,
-            auto_assign = %s, assign_group_only = %s, auto_assign_type = %s, updated_at = NOW()
+            auto_assign = %s, assign_group_only = %s, auto_assign_type = %s, balance_mode = %s, updated_at = NOW()
         WHERE id = %s
-        RETURNING id, name, description, is_active, auto_assign, assign_group_only, auto_assign_type, created_at, updated_at
-    """, (name, description, is_active, auto_assign, assign_group_only, auto_assign_type, group_id))
+        RETURNING id, name, description, is_active, auto_assign, assign_group_only, auto_assign_type, balance_mode, created_at, updated_at
+    """, (name, description, is_active, auto_assign, assign_group_only, auto_assign_type, balance_mode, group_id))
     group = cur.fetchone()
     if not group:
         cur.close()

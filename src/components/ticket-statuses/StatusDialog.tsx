@@ -40,6 +40,7 @@ interface StatusDialogProps {
       is_approved: boolean;
       is_waiting_response: boolean;
       is_awaiting_confirmation: boolean;
+      count_for_distribution: boolean;
     },
     editingStatus: TicketStatus | null
   ) => Promise<boolean>;
@@ -63,6 +64,7 @@ const StatusDialog = ({
     is_approved: false,
     is_waiting_response: false,
     is_awaiting_confirmation: false,
+    count_for_distribution: false,
   });
 
   useEffect(() => {
@@ -77,6 +79,7 @@ const StatusDialog = ({
         is_approved: editingStatus.is_approved || false,
         is_waiting_response: editingStatus.is_waiting_response || false,
         is_awaiting_confirmation: editingStatus.is_awaiting_confirmation || false,
+        count_for_distribution: editingStatus.count_for_distribution || false,
       });
     } else {
       setFormData({
@@ -89,6 +92,7 @@ const StatusDialog = ({
         is_approved: false,
         is_waiting_response: false,
         is_awaiting_confirmation: false,
+        count_for_distribution: false,
       });
     }
   }, [editingStatus]);
@@ -113,6 +117,7 @@ const StatusDialog = ({
       is_approved: false,
       is_waiting_response: false,
       is_awaiting_confirmation: false,
+      count_for_distribution: false,
     });
     onReset();
   };
@@ -289,6 +294,26 @@ const StatusDialog = ({
               >
                 Закрытый статус (заявка завершена)
               </Label>
+            </div>
+            <div className="border-t pt-3 mt-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="count_for_distribution"
+                  checked={formData.count_for_distribution}
+                  onCheckedChange={(checked) => 
+                    setFormData({ ...formData, count_for_distribution: checked as boolean })
+                  }
+                />
+                <Label
+                  htmlFor="count_for_distribution"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Учитывать при распределении заявок
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 ml-6">
+                Заявки в этом статусе будут учитываться при автоматическом распределении нагрузки между исполнителями
+              </p>
             </div>
           </div>
           <div className="flex gap-2 pt-4">

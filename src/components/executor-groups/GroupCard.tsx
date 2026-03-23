@@ -44,6 +44,12 @@ const GroupCard = ({ group, isSelected, onSelect, onEdit, onRemove }: GroupCardP
                 {assignLabel.label}
               </Badge>
             )}
+            {assignType !== 'none' && group.balance_mode === 'balanced' && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                <Icon name="Scale" size={10} />
+                С учётом нагрузки
+              </Badge>
+            )}
             {group.assign_group_only && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
                 <Icon name="UsersRound" size={10} />

@@ -3,6 +3,7 @@ import { apiFetch, getApiUrl } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 
 export type AutoAssignType = 'none' | 'all' | 'working';
+export type BalanceMode = 'none' | 'balanced';
 
 export interface ExecutorGroup {
   id: number;
@@ -11,6 +12,7 @@ export interface ExecutorGroup {
   is_active: boolean;
   auto_assign: boolean;
   auto_assign_type: AutoAssignType;
+  balance_mode: BalanceMode;
   assign_group_only: boolean;
   member_count: number;
   mapping_count: number;
@@ -87,11 +89,12 @@ export const useExecutorGroups = () => {
     description: string,
     auto_assign_type: AutoAssignType = 'none',
     assign_group_only = false,
+    balance_mode: BalanceMode = 'none',
   ): Promise<ExecutorGroup | null> => {
     try {
       const res = await apiFetch(API_BASE, {
         method: 'POST',
-        body: JSON.stringify({ name, description, auto_assign_type, assign_group_only }),
+        body: JSON.stringify({ name, description, auto_assign_type, assign_group_only, balance_mode }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -113,11 +116,12 @@ export const useExecutorGroups = () => {
     is_active: boolean,
     auto_assign_type: AutoAssignType = 'none',
     assign_group_only = false,
+    balance_mode: BalanceMode = 'none',
   ): Promise<boolean> => {
     try {
       const res = await apiFetch(API_BASE, {
         method: 'PUT',
-        body: JSON.stringify({ id, name, description, is_active, auto_assign_type, assign_group_only }),
+        body: JSON.stringify({ id, name, description, is_active, auto_assign_type, assign_group_only, balance_mode }),
       });
       if (res.ok) {
         toast({ title: 'Группа обновлена' });

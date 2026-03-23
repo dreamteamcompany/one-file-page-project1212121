@@ -49,6 +49,7 @@ const ExecutorGroups = () => {
     isActive: boolean;
     autoAssignType: 'none' | 'all' | 'working';
     assignGroupOnly: boolean;
+    balanceMode: 'none' | 'balanced';
   }): Promise<boolean> => {
     if (editingGroup) {
       return updateGroup(
@@ -58,9 +59,10 @@ const ExecutorGroups = () => {
         data.isActive,
         data.autoAssignType,
         data.assignGroupOnly,
+        data.balanceMode,
       );
     }
-    const result = await createGroup(data.name, data.description, data.autoAssignType, data.assignGroupOnly);
+    const result = await createGroup(data.name, data.description, data.autoAssignType, data.assignGroupOnly, data.balanceMode);
     return !!result;
   };
 

@@ -747,7 +747,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
     
     if method == 'GET':
         cur = conn.cursor()
-        cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation, count_for_distribution FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         cur.close()
         return response(200, statuses)
@@ -762,6 +762,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         is_approval_revoked = body.get('is_approval_revoked', False)
         is_approved = body.get('is_approved', False)
         is_waiting_response = body.get('is_waiting_response', False)
+        count_for_distribution = body.get('count_for_distribution', False)
         
         if not name:
             return response(400, {'error': 'Name is required'})
@@ -784,8 +785,8 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
             cur.execute(f"UPDATE {SCHEMA}.ticket_statuses SET is_waiting_response = false WHERE is_waiting_response = true")
         
         cur.execute(
-            f"INSERT INTO {SCHEMA}.ticket_statuses (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response",
-            (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response)
+            f"INSERT INTO {SCHEMA}.ticket_statuses (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, count_for_distribution) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, count_for_distribution",
+            (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, count_for_distribution)
         )
         status = dict(cur.fetchone())
         conn.commit()
@@ -803,6 +804,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         is_approval_revoked = body.get('is_approval_revoked', False)
         is_approved = body.get('is_approved', False)
         is_waiting_response = body.get('is_waiting_response', False)
+        count_for_distribution = body.get('count_for_distribution', False)
         
         if not status_id or not name:
             return response(400, {'error': 'ID and name are required'})
@@ -825,8 +827,8 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
             cur.execute(f"UPDATE {SCHEMA}.ticket_statuses SET is_waiting_response = false WHERE is_waiting_response = true AND id != %s", (status_id,))
         
         cur.execute(
-            f"UPDATE {SCHEMA}.ticket_statuses SET name = %s, color = %s, is_closed = %s, is_open = %s, is_approval = %s, is_approval_revoked = %s, is_approved = %s, is_waiting_response = %s WHERE id = %s RETURNING id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response",
-            (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, status_id)
+            f"UPDATE {SCHEMA}.ticket_statuses SET name = %s, color = %s, is_closed = %s, is_open = %s, is_approval = %s, is_approval_revoked = %s, is_approved = %s, is_waiting_response = %s, count_for_distribution = %s WHERE id = %s RETURNING id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, count_for_distribution",
+            (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, count_for_distribution, status_id)
         )
         status = dict(cur.fetchone())
         

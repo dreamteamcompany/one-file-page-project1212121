@@ -57,6 +57,12 @@ const StatusCard = ({ status, onEdit, onDelete }: StatusCardProps) => {
                   Закрытый статус
                 </p>
               )}
+              {status.count_for_distribution && (
+                <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-1">
+                  <Icon name="Scale" size={12} className="inline mr-1" />
+                  Учитывается при распределении
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">

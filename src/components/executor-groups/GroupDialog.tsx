@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
-import type { ExecutorGroup, AutoAssignType } from '@/hooks/useExecutorGroups';
+import type { ExecutorGroup, AutoAssignType, BalanceMode } from '@/hooks/useExecutorGroups';
 
 interface GroupFormData {
   name: string;
@@ -28,6 +28,7 @@ interface GroupFormData {
   isActive: boolean;
   autoAssignType: AutoAssignType;
   assignGroupOnly: boolean;
+  balanceMode: BalanceMode;
 }
 
 interface GroupDialogProps {
@@ -44,12 +45,18 @@ const AUTO_ASSIGN_OPTIONS: { value: AutoAssignType; label: string; description: 
   { value: 'working', label: 'Равномерно по работающим', description: 'Распределять только по исполнителям на смене' },
 ];
 
+const BALANCE_MODE_OPTIONS: { value: BalanceMode; label: string; description: string }[] = [
+  { value: 'none', label: 'Без учёта текущих заявок', description: 'Заявки распределяются поровну, не учитывая текущую загрузку' },
+  { value: 'balanced', label: 'С учётом текущих заявок', description: 'Заявки распределяются с учётом количества активных заявок у каждого исполнителя' },
+];
+
 const GroupDialog = ({ open, onOpenChange, editingGroup, onSave, onReset }: GroupDialogProps) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [autoAssignType, setAutoAssignType] = useState<AutoAssignType>('none');
   const [assignGroupOnly, setAssignGroupOnly] = useState(false);
+  const [balanceMode, setBalanceMode] = useState<BalanceMode>('none');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -59,12 +66,14 @@ const GroupDialog = ({ open, onOpenChange, editingGroup, onSave, onReset }: Grou
       setIsActive(editingGroup.is_active);
       setAutoAssignType(editingGroup.auto_assign_type || (editingGroup.auto_assign ? 'all' : 'none'));
       setAssignGroupOnly(editingGroup.assign_group_only ?? false);
+      setBalanceMode(editingGroup.balance_mode || 'none');
     } else {
       setName('');
       setDescription('');
       setIsActive(true);
       setAutoAssignType('none');
       setAssignGroupOnly(false);
+      setBalanceMode('none');
     }
   }, [editingGroup, open]);
 
@@ -77,6 +86,7 @@ const GroupDialog = ({ open, onOpenChange, editingGroup, onSave, onReset }: Grou
       isActive,
       autoAssignType,
       assignGroupOnly,
+      balanceMode: autoAssignType !== 'none' ? balanceMode : 'none',
     });
     setSaving(false);
     if (success) {
@@ -145,19 +155,40 @@ const GroupDialog = ({ open, onOpenChange, editingGroup, onSave, onReset }: Grou
             </div>
 
             {autoAssignType !== 'none' && (
-              <div className="flex items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="assign-group-only" className="cursor-pointer">Назначать только группу</Label>
+              <>
+                <div className="space-y-1.5">
+                  <Label>Способ автораспределения</Label>
+                  <Select value={balanceMode} onValueChange={(v) => setBalanceMode(v as BalanceMode)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BALANCE_MODE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <span>{opt.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
-                    Заявка назначается на группу без выбора конкретного исполнителя
+                    {BALANCE_MODE_OPTIONS.find(o => o.value === balanceMode)?.description}
                   </p>
                 </div>
-                <Switch
-                  id="assign-group-only"
-                  checked={assignGroupOnly}
-                  onCheckedChange={setAssignGroupOnly}
-                />
-              </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="assign-group-only" className="cursor-pointer">Назначать только группу</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Заявка назначается на группу без выбора конкретного исполнителя
+                    </p>
+                  </div>
+                  <Switch
+                    id="assign-group-only"
+                    checked={assignGroupOnly}
+                    onCheckedChange={setAssignGroupOnly}
+                  />
+                </div>
+              </>
             )}
           </div>
 
