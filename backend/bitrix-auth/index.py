@@ -216,15 +216,24 @@ def is_department_head(access_token, bitrix_user_id):
 
 
 def find_user_by_email(conn, bitrix_user):
-    """Проверяет, существует ли пользователь с таким email в системе. Возвращает id и auto_registered."""
+    """Проверяет, существует ли пользователь с таким email или bitrix_user_id в системе."""
     email = (bitrix_user.get('EMAIL') or '').strip().lower()
     bitrix_id = str(bitrix_user.get('ID', ''))
     if not email:
         email = f"bitrix_{bitrix_id}@local"
 
     cur = conn.cursor()
-    cur.execute(f"SELECT id, auto_registered, is_active, bypass_department_head_check FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
+    cur.execute(
+        f"SELECT id, auto_registered, is_active, bypass_department_head_check FROM {SCHEMA}.users WHERE bitrix_user_id = %s",
+        (bitrix_id,)
+    )
     result = cur.fetchone()
+    if not result:
+        cur.execute(
+            f"SELECT id, auto_registered, is_active, bypass_department_head_check FROM {SCHEMA}.users WHERE LOWER(email) = %s",
+            (email,)
+        )
+        result = cur.fetchone()
     cur.close()
     return result
 
@@ -256,11 +265,30 @@ def find_or_create_user(conn, bitrix_user):
         LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
         LEFT JOIN {SCHEMA}.role_permissions rp ON r.id = rp.role_id
         LEFT JOIN {SCHEMA}.permissions p ON rp.permission_id = p.id
-        WHERE LOWER(u.email) = %s
+        WHERE u.bitrix_user_id = %s
         GROUP BY u.id
-    """, (email,))
+    """, (bitrix_id,))
 
     user = cur.fetchone()
+
+    if not user:
+        cur.execute(f"""
+            SELECT u.id, u.username, u.email, u.full_name, u.photo_url, u.is_active, u.last_login,
+                   COALESCE(json_agg(DISTINCT jsonb_build_object(
+                       'id', r.id, 'name', r.name, 'description', r.description, 'system_role', r.system_role
+                   )) FILTER (WHERE r.id IS NOT NULL), '[]') as roles,
+                   COALESCE(json_agg(DISTINCT jsonb_build_object(
+                       'name', p.name, 'resource', p.resource, 'action', p.action
+                   )) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions
+            FROM {SCHEMA}.users u
+            LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
+            LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
+            LEFT JOIN {SCHEMA}.role_permissions rp ON r.id = rp.role_id
+            LEFT JOIN {SCHEMA}.permissions p ON rp.permission_id = p.id
+            WHERE LOWER(u.email) = %s
+            GROUP BY u.id
+        """, (email,))
+        user = cur.fetchone()
 
     if user:
         updates = []
@@ -272,6 +300,10 @@ def find_or_create_user(conn, bitrix_user):
         if bitrix_id:
             updates.append("bitrix_user_id = %s")
             params.append(bitrix_id)
+        if email and user.get('email', '').endswith('@placeholder.local'):
+            updates.append("email = %s")
+            params.append(email)
+            user['email'] = email
         if updates:
             updates.append("updated_at = CURRENT_TIMESTAMP")
             params.append(user['id'])
