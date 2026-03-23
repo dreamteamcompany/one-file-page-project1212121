@@ -184,6 +184,17 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     return response(200, {'message': 'Комментарий удален'})
 
 
+def _priority_emoji(priority_name: str) -> str:
+    name = priority_name.lower()
+    if 'критич' in name:
+        return '🚨🚨🚨'
+    if 'высок' in name:
+        return '⚠️⚠️⚠️'
+    if 'средн' in name:
+        return '🟠🟠🟠'
+    return '⚪️⚪️⚪️'
+
+
 def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_text: str, is_internal: bool, app_origin: str = ''):
     """Отправляет уведомления через чат-бота DreamDesk в Битрикс24"""
     if not BITRIX_BOT_ID or not BITRIX_PORTAL_URL:
@@ -194,11 +205,13 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
         SELECT t.id, t.title, t.created_by, t.assigned_to,
                author.full_name AS author_name,
                creator.bitrix_user_id AS creator_bitrix_id,
-               executor.bitrix_user_id AS executor_bitrix_id
+               executor.bitrix_user_id AS executor_bitrix_id,
+               p.name AS priority_name
         FROM {SCHEMA}.tickets t
         JOIN {SCHEMA}.users author ON author.id = %s
         LEFT JOIN {SCHEMA}.users creator ON creator.id = t.created_by
         LEFT JOIN {SCHEMA}.users executor ON executor.id = t.assigned_to
+        LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
         WHERE t.id = %s
     """, (author_user_id, ticket_id))
 
@@ -223,9 +236,11 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
         print("[bitrix-bot] Failed to get access token")
         return
 
+    priority_emoji = _priority_emoji(row.get('priority_name') or '')
+
     for r in recipients:
         message = (
-            f"[b]Новый комментарий в заявке #{row['id']}[/b]\n"
+            f"{priority_emoji} [b]Новый комментарий в заявке #{row['id']}[/b]\n"
             f"{ticket_title}\n\n"
             f"[b]{row['author_name']}[/b]: {preview}"
         )
@@ -321,4 +336,3 @@ def _send_bot_message(access_token: str, bitrix_user_id: str, message: str, keyb
         print(f"[bitrix-bot] HTTP {e.code} sending to {bitrix_user_id}: {body[:300]}")
     except Exception as e:
         print(f"[bitrix-bot] Failed to send to {bitrix_user_id}: {e}")
-

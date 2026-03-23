@@ -70,6 +70,17 @@ def _send_bot_message(access_token: str, bitrix_user_id: str, message: str, keyb
         print(f"[bitrix-bot] Failed to send to {bitrix_user_id}: {e}")
 
 
+def _priority_emoji(priority_name: str) -> str:
+    name = priority_name.lower()
+    if 'критич' in name:
+        return '🚨🚨🚨'
+    if 'высок' in name:
+        return '⚠️⚠️⚠️'
+    if 'средн' in name:
+        return '🟠🟠🟠'
+    return '⚪️⚪️⚪️'
+
+
 def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_id: int, app_origin: str = ''):
     """Уведомляет исполнителя о назначении на заявку"""
     if not BITRIX_BOT_ID or not BITRIX_PORTAL_URL:
@@ -112,7 +123,8 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
         print("[bitrix-bot] Failed to get access token for assignment notification")
         return
 
-    priority = row.get('priority_name') or 'Не указан'
+    priority_name = row.get('priority_name') or 'Не указан'
+    priority_emoji = _priority_emoji(priority_name)
     description = (row.get('description') or '')[:200]
     if len(row.get('description') or '') > 200:
         description += '...'
@@ -128,9 +140,9 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
             service_line = f"\n[b]Услуга:[/b] {' → '.join(parts)}"
 
     message = (
-        f"[b]📋 Вам назначена заявка #{row['id']}[/b]\n"
+        f"{priority_emoji} [b]Вам назначена заявка #{row['id']}[/b]\n"
         f"{row['title']}\n\n"
-        f"[b]Приоритет:[/b] {priority}"
+        f"[b]Приоритет:[/b] {priority_emoji} {priority_name}"
         f"{service_line}\n\n"
         f"{description}"
     )
