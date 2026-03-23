@@ -10,6 +10,7 @@ interface User {
   created_at: string;
   last_login: string | null;
   photo_url?: string;
+  bypass_department_head_check?: boolean;
   roles: { id: number; name: string }[];
 }
 
@@ -77,13 +78,21 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
                 }
               </td>
               <td className="p-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  user.is_active 
-                    ? 'bg-green-500/10 text-green-500' 
-                    : 'bg-red-500/10 text-red-500'
-                }`}>
-                  {user.is_active ? 'Активен' : 'Заблокирован'}
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    user.is_active 
+                      ? 'bg-green-500/10 text-green-500' 
+                      : 'bg-red-500/10 text-red-500'
+                  }`}>
+                    {user.is_active ? 'Активен' : 'Заблокирован'}
+                  </span>
+                  {user.bypass_department_head_check && (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 flex items-center gap-1" title="Вход через Битрикс без должности руководителя">
+                      <Icon name="KeyRound" size={12} />
+                      Б24
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="p-4">
                 <div className="flex gap-2">
@@ -147,13 +156,21 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
                   <div className="text-sm text-muted-foreground truncate">@{user.username}</div>
                 </div>
               </div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                user.is_active 
-                  ? 'bg-green-500/10 text-green-500' 
-                  : 'bg-red-500/10 text-red-500'
-              }`}>
-                {user.is_active ? 'Активен' : 'Заблокирован'}
-              </span>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  user.is_active 
+                    ? 'bg-green-500/10 text-green-500' 
+                    : 'bg-red-500/10 text-red-500'
+                }`}>
+                  {user.is_active ? 'Активен' : 'Заблокирован'}
+                </span>
+                {user.bypass_department_head_check && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 flex items-center gap-1">
+                    <Icon name="KeyRound" size={12} />
+                    Б24
+                  </span>
+                )}
+              </div>
             </div>
 
             {user.position && (
