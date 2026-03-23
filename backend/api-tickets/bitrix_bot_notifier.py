@@ -88,13 +88,20 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
         return
 
     cur.execute(f"""
-        SELECT t.id, t.title, t.description,
+        SELECT t.id, t.title, t.description, t.created_by,
                p.name AS priority_name,
                executor.bitrix_user_id AS executor_bitrix_id,
-               executor.full_name AS executor_name
+               executor.full_name AS executor_name,
+               creator.full_name AS creator_name,
+               creator.position AS creator_position,
+               comp.name AS creator_company,
+               dept.name AS creator_department
         FROM {schema}.tickets t
         LEFT JOIN {schema}.ticket_priorities p ON t.priority_id = p.id
         JOIN {schema}.users executor ON executor.id = %s
+        LEFT JOIN {schema}.users creator ON creator.id = t.created_by
+        LEFT JOIN {schema}.companies comp ON comp.id = creator.company_id
+        LEFT JOIN {schema}.departments dept ON dept.id = creator.department_id
         WHERE t.id = %s
     """, (assigned_to_user_id, ticket_id))
 
@@ -129,6 +136,15 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
     if len(row.get('description') or '') > 200:
         description += '...'
 
+    creator_line = ''
+    if row.get('creator_name'):
+        creator_parts = [row['creator_name']]
+        if row.get('creator_company'):
+            creator_parts.append(row['creator_company'])
+        if row.get('creator_department'):
+            creator_parts.append(row['creator_department'])
+        creator_line = f"\n[b]Заказчик:[/b] {', '.join(creator_parts)}"
+
     service_line = ''
     if svc:
         parts = []
@@ -143,6 +159,7 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
         f"{priority_emoji} [b]Вам назначена заявка #{row['id']}[/b]\n"
         f"{row['title']}\n\n"
         f"[b]Приоритет:[/b] {priority_emoji} {priority_name}"
+        f"{creator_line}"
         f"{service_line}\n\n"
         f"{description}"
     )
