@@ -131,8 +131,14 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     comment.update(user_data)
 
     try:
-        print(f"[bitrix-notify] Starting notification for ticket {data.ticket_id}, author {user_id}, webhook configured: {bool(BITRIX_WEBHOOK_URL)}")
-        send_bitrix_notifications(cur, data.ticket_id, user_id, data.comment, data.is_internal)
+        headers = event.get('headers', {})
+        origin = headers.get('Origin') or headers.get('origin') or headers.get('Referer') or headers.get('referer') or ''
+        if origin and not origin.endswith('/'):
+            origin = origin.rstrip('/')
+        if '/' in origin.replace('https://', '').replace('http://', ''):
+            origin = origin.split('/')[0] + '//' + origin.split('/')[2]
+        print(f"[bitrix-notify] Starting notification for ticket {data.ticket_id}, author {user_id}, origin: {origin}")
+        send_bitrix_notifications(cur, data.ticket_id, user_id, data.comment, data.is_internal, origin)
     except Exception as e:
         import traceback
         print(f"[bitrix-notify] Error: {e}\n{traceback.format_exc()}")
@@ -183,7 +189,7 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     return response(200, {'message': 'Комментарий удален'})
 
 
-def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_text: str, is_internal: bool):
+def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_text: str, is_internal: bool, app_origin: str = ''):
     """Отправляет уведомления в Битрикс24 чат получателям"""
     if not BITRIX_WEBHOOK_URL:
         print(f"[bitrix-notify] BITRIX24_WEBHOOK_URL is empty, skipping")
@@ -215,11 +221,17 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
     preview = comment_text[:150] + ('...' if len(comment_text) > 150 else '')
     ticket_title = row['title'] or f"Заявка #{row['id']}"
 
+    ticket_link = ''
+    if app_origin:
+        ticket_url = f"{app_origin}/tickets/{row['id']}"
+        ticket_link = f"\n\n[url={ticket_url}]Перейти к заявке →[/url]"
+
     for r in recipients:
         message = (
             f"[b]Новый комментарий в заявке #{row['id']}[/b]\n"
             f"{ticket_title}\n\n"
             f"[b]{row['author_name']}[/b]: {preview}"
+            f"{ticket_link}"
         )
         _send_im_message(r['bitrix_id'], message)
 
