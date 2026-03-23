@@ -234,11 +234,12 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
         if ticket_url:
             keyboard = [
                 {
-                    "TEXT": "Перейти к заявке",
+                    "TEXT": f"📋 Открыть заявку #{row['id']}",
                     "LINK": ticket_url,
-                    "BG_COLOR": "#7c3aed",
-                    "TEXT_COLOR": "#ffffff",
-                    "DISPLAY": "LINE"
+                    "BG_COLOR": "#3B82F6",
+                    "TEXT_COLOR": "#FFFFFF",
+                    "DISPLAY": "LINE",
+                    "BLOCK": "Y"
                 }
             ]
 
@@ -320,3 +321,5 @@ def _send_bot_message(access_token: str, bitrix_user_id: str, message: str, keyb
         print(f"[bitrix-bot] HTTP {e.code} sending to {bitrix_user_id}: {body[:300]}")
     except Exception as e:
         print(f"[bitrix-bot] Failed to send to {bitrix_user_id}: {e}")
+
+
