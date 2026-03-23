@@ -88,7 +88,7 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
         return
 
     cur.execute(f"""
-        SELECT t.id, t.title, t.description, t.created_by,
+        SELECT t.id, t.title, t.description, t.created_by, t.due_date,
                p.name AS priority_name,
                executor.bitrix_user_id AS executor_bitrix_id,
                executor.full_name AS executor_name,
@@ -136,15 +136,6 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
     if len(row.get('description') or '') > 200:
         description += '...'
 
-    creator_line = ''
-    if row.get('creator_name'):
-        creator_parts = [row['creator_name']]
-        if row.get('creator_company'):
-            creator_parts.append(row['creator_company'])
-        if row.get('creator_department'):
-            creator_parts.append(row['creator_department'])
-        creator_line = f"\n[b]Заказчик:[/b] {', '.join(creator_parts)}"
-
     service_line = ''
     if svc:
         parts = []
@@ -155,13 +146,33 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
         if parts:
             service_line = f"\n[b]Услуга:[/b] {' → '.join(parts)}"
 
+    creator_line = ''
+    if row.get('creator_name'):
+        creator_parts = [row['creator_name']]
+        if row.get('creator_company'):
+            creator_parts.append(row['creator_company'])
+        if row.get('creator_department'):
+            creator_parts.append(row['creator_department'])
+        creator_line = f"\n[b]Заказчик:[/b] {', '.join(creator_parts)}"
+
+    due_line = ''
+    if row.get('due_date'):
+        try:
+            from datetime import datetime
+            due = row['due_date']
+            if isinstance(due, str):
+                due = datetime.fromisoformat(due.replace('Z', '+00:00'))
+            due_line = f"\n\n[b]Необходимо выполнить до:[/b] {due.strftime('%d.%m.%Y %H:%M')}"
+        except Exception:
+            due_line = f"\n\n[b]Необходимо выполнить до:[/b] {row['due_date']}"
+
     message = (
-        f"{priority_emoji} [b]Вам назначена заявка #{row['id']}[/b]\n"
-        f"{row['title']}\n\n"
-        f"[b]Приоритет:[/b] {priority_emoji} {priority_name}"
-        f"{creator_line}"
-        f"{service_line}\n\n"
-        f"{description}"
+        f"{priority_emoji} [b]Вам назначена заявка #{row['id']}[/b] {priority_emoji}\n\n"
+        f"[b]Приоритет:[/b] {priority_emoji} {priority_name} {priority_emoji}"
+        f"{service_line}"
+        f"{creator_line}\n\n"
+        f"[b]Содержание:[/b] {description}"
+        f"{due_line}"
     )
 
     keyboard = []
