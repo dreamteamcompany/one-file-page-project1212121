@@ -131,9 +131,11 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     comment.update(user_data)
 
     try:
+        print(f"[bitrix-notify] Starting notification for ticket {data.ticket_id}, author {user_id}, webhook configured: {bool(BITRIX_WEBHOOK_URL)}")
         send_bitrix_notifications(cur, data.ticket_id, user_id, data.comment, data.is_internal)
     except Exception as e:
-        print(f"[bitrix-notify] Error: {e}")
+        import traceback
+        print(f"[bitrix-notify] Error: {e}\n{traceback.format_exc()}")
 
     cur.close()
     
@@ -184,7 +186,9 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_text: str, is_internal: bool):
     """Отправляет уведомления в Битрикс24 чат получателям"""
     if not BITRIX_WEBHOOK_URL:
+        print(f"[bitrix-notify] BITRIX24_WEBHOOK_URL is empty, skipping")
         return
+    print(f"[bitrix-notify] Webhook URL: {BITRIX_WEBHOOK_URL[:40]}...")
 
     cur.execute(f"""
         SELECT t.id, t.title, t.created_by, t.assigned_to,
@@ -204,7 +208,9 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
 
     recipients = _collect_recipients(row, author_user_id, is_internal)
     if not recipients:
+        print(f"[bitrix-notify] No recipients found for ticket {ticket_id}")
         return
+    print(f"[bitrix-notify] Recipients: {recipients}")
 
     preview = comment_text[:150] + ('...' if len(comment_text) > 150 else '')
     ticket_title = row['title'] or f"Заявка #{row['id']}"
