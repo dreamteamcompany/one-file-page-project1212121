@@ -2,9 +2,13 @@
 API для работы с комментариями к заявкам
 """
 import json
-from typing import Dict, Any
+import os
+import urllib.request
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
+
+BITRIX_WEBHOOK_URL = os.environ.get('BITRIX24_WEBHOOK_URL', '').rstrip('/')
 
 
 class CommentRequest(BaseModel):
@@ -88,13 +92,11 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     
     cur = conn.cursor()
     
-    # Проверяем существование заявки
     cur.execute(f"SELECT id FROM {SCHEMA}.tickets WHERE id = %s", (data.ticket_id,))
     if not cur.fetchone():
         cur.close()
         return response(404, {'error': 'Ticket not found'})
     
-    # Создаем комментарий
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_comments 
         (ticket_id, user_id, comment, is_internal, created_at)
@@ -104,7 +106,6 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     
     comment = dict(cur.fetchone())
     
-    # Добавляем запись в историю
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_history 
         (ticket_id, user_id, field_name, old_value, new_value, created_at)
@@ -120,7 +121,6 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     
     conn.commit()
     
-    # Получаем данные пользователя
     cur.execute(f"""
         SELECT username as user_name, full_name as user_full_name, photo_url as user_photo_url
         FROM {SCHEMA}.users
@@ -129,6 +129,12 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     user_data = dict(cur.fetchone())
     
     comment.update(user_data)
+
+    try:
+        send_bitrix_notifications(cur, data.ticket_id, user_id, data.comment, data.is_internal)
+    except Exception as e:
+        print(f"[bitrix-notify] Error: {e}")
+
     cur.close()
     
     return response(201, comment)
@@ -146,7 +152,6 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     
     cur = conn.cursor()
     
-    # Проверяем, что комментарий принадлежит пользователю
     cur.execute(f"""
         SELECT user_id, ticket_id 
         FROM {SCHEMA}.ticket_comments 
@@ -162,10 +167,8 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         cur.close()
         return response(403, {'error': 'You can only delete your own comments'})
     
-    # Удаляем комментарий
     cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE id = %s", (comment_id,))
     
-    # Добавляем запись в историю
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_history 
         (ticket_id, user_id, field_name, old_value, new_value, created_at)
@@ -176,3 +179,76 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     cur.close()
     
     return response(200, {'message': 'Комментарий удален'})
+
+
+def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_text: str, is_internal: bool):
+    """Отправляет уведомления в Битрикс24 чат получателям"""
+    if not BITRIX_WEBHOOK_URL:
+        return
+
+    cur.execute(f"""
+        SELECT t.id, t.title, t.created_by, t.assigned_to,
+               author.full_name AS author_name,
+               creator.bitrix_user_id AS creator_bitrix_id,
+               executor.bitrix_user_id AS executor_bitrix_id
+        FROM {SCHEMA}.tickets t
+        JOIN {SCHEMA}.users author ON author.id = %s
+        LEFT JOIN {SCHEMA}.users creator ON creator.id = t.created_by
+        LEFT JOIN {SCHEMA}.users executor ON executor.id = t.assigned_to
+        WHERE t.id = %s
+    """, (author_user_id, ticket_id))
+
+    row = cur.fetchone()
+    if not row:
+        return
+
+    recipients = _collect_recipients(row, author_user_id, is_internal)
+    if not recipients:
+        return
+
+    preview = comment_text[:150] + ('...' if len(comment_text) > 150 else '')
+    ticket_title = row['title'] or f"Заявка #{row['id']}"
+
+    for r in recipients:
+        message = (
+            f"[b]Новый комментарий в заявке #{row['id']}[/b]\n"
+            f"{ticket_title}\n\n"
+            f"[b]{row['author_name']}[/b]: {preview}"
+        )
+        _send_im_notify(r['bitrix_id'], message)
+
+
+def _collect_recipients(row, author_user_id: int, is_internal: bool) -> List[dict]:
+    """Определяет получателей уведомления"""
+    recipients = []
+
+    if is_internal:
+        if row['assigned_to'] and row['assigned_to'] != author_user_id and row.get('executor_bitrix_id'):
+            recipients.append({'bitrix_id': row['executor_bitrix_id'], 'role': 'executor'})
+        return recipients
+
+    if row['created_by'] != author_user_id and row.get('creator_bitrix_id'):
+        recipients.append({'bitrix_id': row['creator_bitrix_id'], 'role': 'creator'})
+
+    if row['assigned_to'] and row['assigned_to'] != author_user_id and row.get('executor_bitrix_id'):
+        recipients.append({'bitrix_id': row['executor_bitrix_id'], 'role': 'executor'})
+
+    return recipients
+
+
+def _send_im_notify(bitrix_user_id: str, message: str):
+    """Отправляет системное уведомление в Битрикс24"""
+    url = f"{BITRIX_WEBHOOK_URL}/im.notify.system.add.json"
+
+    payload = json.dumps({
+        'USER_ID': bitrix_user_id,
+        'MESSAGE': message
+    }).encode('utf-8')
+
+    try:
+        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+        with urllib.request.urlopen(req, timeout=5) as r:
+            result = json.loads(r.read().decode())
+            print(f"[bitrix-notify] Sent to user {bitrix_user_id}: {result.get('result', 'unknown')}")
+    except Exception as e:
+        print(f"[bitrix-notify] Failed to send to user {bitrix_user_id}: {e}")

@@ -263,13 +263,23 @@ def find_or_create_user(conn, bitrix_user):
     user = cur.fetchone()
 
     if user:
+        updates = []
+        params = []
         if photo_url and photo_url != user.get('photo_url', ''):
+            updates.append("photo_url = %s")
+            params.append(photo_url)
+            user['photo_url'] = photo_url
+        if bitrix_id:
+            updates.append("bitrix_user_id = %s")
+            params.append(bitrix_id)
+        if updates:
+            updates.append("updated_at = CURRENT_TIMESTAMP")
+            params.append(user['id'])
             cur.execute(
-                f"UPDATE {SCHEMA}.users SET photo_url = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-                (photo_url, user['id'])
+                f"UPDATE {SCHEMA}.users SET {', '.join(updates)} WHERE id = %s",
+                tuple(params)
             )
             conn.commit()
-            user['photo_url'] = photo_url
         cur.close()
         return user
 
@@ -284,10 +294,10 @@ def find_or_create_user(conn, bitrix_user):
         counter += 1
 
     cur.execute(f"""
-        INSERT INTO {SCHEMA}.users (username, email, full_name, photo_url, password_hash, is_active, auto_registered, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO {SCHEMA}.users (username, email, full_name, photo_url, password_hash, is_active, auto_registered, bitrix_user_id, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, true, true, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         RETURNING id
-    """, (username, email, full_name, photo_url, 'BITRIX_OAUTH'))
+    """, (username, email, full_name, photo_url, 'BITRIX_OAUTH', bitrix_id))
 
     new_user_id = cur.fetchone()['id']
 
