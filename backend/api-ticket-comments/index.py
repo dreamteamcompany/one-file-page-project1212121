@@ -322,4 +322,3 @@ def _send_bot_message(access_token: str, bitrix_user_id: str, message: str, keyb
     except Exception as e:
         print(f"[bitrix-bot] Failed to send to {bitrix_user_id}: {e}")
 
-
