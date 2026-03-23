@@ -221,7 +221,7 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
             f"{ticket_title}\n\n"
             f"[b]{row['author_name']}[/b]: {preview}"
         )
-        _send_im_notify(r['bitrix_id'], message)
+        _send_im_message(r['bitrix_id'], message)
 
 
 def _collect_recipients(row, author_user_id: int, is_internal: bool) -> List[dict]:
@@ -242,12 +242,12 @@ def _collect_recipients(row, author_user_id: int, is_internal: bool) -> List[dic
     return recipients
 
 
-def _send_im_notify(bitrix_user_id: str, message: str):
-    """Отправляет системное уведомление в Битрикс24"""
-    url = f"{BITRIX_WEBHOOK_URL}/im.notify.system.add.json"
+def _send_im_message(bitrix_user_id: str, message: str):
+    """Отправляет личное сообщение пользователю в Битрикс24 чат"""
+    url = f"{BITRIX_WEBHOOK_URL}/im.message.add.json"
 
     payload = json.dumps({
-        'USER_ID': bitrix_user_id,
+        'DIALOG_ID': bitrix_user_id,
         'MESSAGE': message
     }).encode('utf-8')
 
@@ -255,6 +255,6 @@ def _send_im_notify(bitrix_user_id: str, message: str):
         req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
         with urllib.request.urlopen(req, timeout=5) as r:
             result = json.loads(r.read().decode())
-            print(f"[bitrix-notify] Sent to user {bitrix_user_id}: {result.get('result', 'unknown')}")
+            print(f"[bitrix-notify] Message sent to user {bitrix_user_id}: {result.get('result', 'unknown')}")
     except Exception as e:
-        print(f"[bitrix-notify] Failed to send to user {bitrix_user_id}: {e}")
+        print(f"[bitrix-notify] Failed to send message to user {bitrix_user_id}: {e}")

@@ -137,11 +137,11 @@ def collect_recipients(row, author_user_id, is_internal):
 
 
 def send_bitrix_notification(bitrix_user_id, message):
-    """Отправляет системное уведомление пользователю в Битрикс24"""
-    url = f"{BITRIX_WEBHOOK_URL}/im.notify.system.add.json"
+    """Отправляет личное сообщение пользователю в Битрикс24 чат"""
+    url = f"{BITRIX_WEBHOOK_URL}/im.message.add.json"
 
     payload = json.dumps({
-        'USER_ID': bitrix_user_id,
+        'DIALOG_ID': bitrix_user_id,
         'MESSAGE': message
     }).encode('utf-8')
 
