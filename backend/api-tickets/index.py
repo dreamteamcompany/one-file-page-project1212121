@@ -9,6 +9,7 @@ from priorities_handler import handle_ticket_priorities
 from sla_handler import handle_sla
 from sla_service_mappings_handler import handle_sla_service_mappings, resolve_sla_for_ticket
 from executor_assignment_resolver import resolve_executor, resolve_executor_group
+from bitrix_bot_notifier import notify_executor_assigned
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -459,6 +460,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             if assignee:
                 ticket['assignee_name'] = assignee['full_name']
                 ticket['assignee_email'] = assignee['email']
+            
+            try:
+                origin = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
+                notify_executor_assigned(cur, SCHEMA, ticket['id'], ticket['assigned_to'], origin)
+            except Exception as e:
+                print(f"[TICKETS] Bitrix notification error on create: {e}")
         
         cur.close()
         
@@ -589,6 +596,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 """, (ticket_id, int(field_id), value))
         
         conn.commit()
+        
+        if 'assigned_to' in body and body['assigned_to'] and body['assigned_to'] != old_ticket.get('assigned_to'):
+            try:
+                origin = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
+                notify_executor_assigned(cur, SCHEMA, ticket_id, body['assigned_to'], origin)
+            except Exception as e:
+                print(f"[TICKETS] Bitrix notification error on assign: {e}")
+        
         cur.close()
         
         return response(200, ticket)
