@@ -4,6 +4,7 @@ API для работы с комментариями к заявкам
 import json
 import os
 import urllib.request
+import urllib.parse
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
@@ -272,7 +273,7 @@ def _get_bot_token() -> str:
         print("[bitrix-bot] Missing bot credentials for token refresh")
         return ''
 
-    params = urllib.request.urlencode({
+    params = urllib.parse.urlencode({
         'grant_type': 'refresh_token',
         'client_id': BITRIX_BOT_CLIENT_ID,
         'client_secret': BITRIX_BOT_CLIENT_SECRET,
