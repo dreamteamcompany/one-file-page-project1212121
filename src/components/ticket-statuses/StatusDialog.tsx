@@ -137,7 +137,7 @@ const StatusDialog = ({
           <span className="sm:inline">Добавить статус</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingStatus ? 'Редактировать статус' : 'Новый статус'}
