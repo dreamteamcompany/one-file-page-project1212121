@@ -100,7 +100,7 @@ def handle_callback(event):
             return response(403, {
                 'error': 'Учётная запись отключена. Обратитесь к администратору.'
             })
-        elif existing_user.get('auto_registered'):
+        elif existing_user.get('auto_registered') and not existing_user.get('bypass_department_head_check'):
             if not is_department_head(access_token, bitrix_user_id):
                 cur = conn.cursor()
                 cur.execute(
@@ -223,7 +223,7 @@ def find_user_by_email(conn, bitrix_user):
         email = f"bitrix_{bitrix_id}@local"
 
     cur = conn.cursor()
-    cur.execute(f"SELECT id, auto_registered, is_active FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
+    cur.execute(f"SELECT id, auto_registered, is_active, bypass_department_head_check FROM {SCHEMA}.users WHERE LOWER(email) = %s", (email,))
     result = cur.fetchone()
     cur.close()
     return result

@@ -23,6 +23,7 @@ interface User {
   created_at: string;
   last_login: string | null;
   photo_url?: string;
+  bypass_department_head_check?: boolean;
   roles: { id: number; name: string }[];
 }
 
@@ -51,6 +52,7 @@ interface UserFormDialogProps {
   handleSubmit: (e: React.FormEvent) => void;
   canCreate?: boolean;
   onToggleStatus?: (userId: number, currentStatus: boolean) => void;
+  onToggleBypassDepartmentHead?: (userId: number, currentValue: boolean) => void;
 }
 
 const UserFormDialog = ({
@@ -64,6 +66,7 @@ const UserFormDialog = ({
   handleSubmit,
   canCreate = true,
   onToggleStatus,
+  onToggleBypassDepartmentHead,
 }: UserFormDialogProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -289,6 +292,33 @@ const UserFormDialog = ({
                 <span
                   className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
                     editingUser.is_active ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
+          {editingUser && onToggleBypassDepartmentHead && (
+            <div className="flex items-center justify-between p-3 rounded-md border border-border bg-accent/30">
+              <div className="flex-1 mr-3">
+                <Label className="font-medium">Вход через Битрикс без руководства</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {editingUser.bypass_department_head_check
+                    ? 'Пользователь может входить через Битрикс, даже если не является руководителем отдела'
+                    : 'Вход через Битрикс только при наличии должности руководителя отдела'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onToggleBypassDepartmentHead(editingUser.id, !!editingUser.bypass_department_head_check);
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                  editingUser.bypass_department_head_check ? 'bg-green-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                    editingUser.bypass_department_head_check ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>

@@ -127,6 +127,14 @@ def handle_users(method, event, conn, payload):
                 conn.commit()
                 return response(200, {'message': 'User status updated'})
 
+            if 'bypass_department_head_check' in body and len(body) == 1:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.users SET bypass_department_head_check=%s, updated_at=NOW() WHERE id=%s",
+                    (body['bypass_department_head_check'], target_user_id)
+                )
+                conn.commit()
+                return response(200, {'message': 'Bypass department head check updated'})
+
             req = UserRequest(**body)
             
             email_value = req.email if req.email else f"no-email-{target_user_id}@placeholder.local"

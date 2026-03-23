@@ -17,6 +17,7 @@ interface User {
   created_at: string;
   last_login: string | null;
   photo_url?: string;
+  bypass_department_head_check?: boolean;
   roles: { id: number; name: string }[];
 }
 
@@ -209,6 +210,33 @@ const Users = () => {
     }
   };
 
+  const toggleBypassDepartmentHead = async (userId: number, currentValue: boolean) => {
+    if (!hasPermission('users', 'update')) {
+      alert('У вас нет прав для изменения этой настройки');
+      return;
+    }
+    
+    try {
+      const response = await apiFetch(`${API_URL}?endpoint=users&id=${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token || '',
+        },
+        body: JSON.stringify({
+          bypass_department_head_check: !currentValue,
+        }),
+      });
+
+      if (response.ok) {
+        loadUsers();
+        setEditingUser((prev: User | null) => prev ? { ...prev, bypass_department_head_check: !currentValue } : null);
+      }
+    } catch (err) {
+      console.error('Failed to toggle bypass department head check:', err);
+    }
+  };
+
   const handleDeleteUser = async (userId: number, userName: string) => {
     if (!hasPermission('users', 'remove')) {
       alert('У вас нет прав для удаления пользователей');
@@ -283,6 +311,7 @@ const Users = () => {
           </div>
           <UserFormDialog
             onToggleStatus={toggleUserStatus}
+            onToggleBypassDepartmentHead={toggleBypassDepartmentHead}
             dialogOpen={dialogOpen}
             setDialogOpen={setDialogOpen}
             editingUser={editingUser}
