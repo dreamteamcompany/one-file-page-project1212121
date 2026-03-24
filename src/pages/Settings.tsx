@@ -107,6 +107,14 @@ const Settings = () => {
       permission: { resource: 'roles', action: 'read' },
     },
     {
+      title: 'Обучение AI',
+      description: 'Примеры заявок и правила для автоматической классификации',
+      icon: 'Sparkles',
+      color: 'hsl(280, 80%, 55%)',
+      path: '/ai-training',
+      permission: { resource: 'settings', action: 'read' },
+    },
+    {
       title: 'Анализатор логов',
       description: 'Просмотр и анализ системных логов',
       icon: 'FileText',

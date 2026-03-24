@@ -39,7 +39,6 @@ def get_db_connection():
 
 
 def get_gigachat_token():
-    """Получение токена доступа GigaChat через OAuth"""
     resp = requests.post(
         'https://ngw.devices.sberbank.ru:9443/api/v2/oauth',
         headers={
@@ -57,9 +56,7 @@ def get_gigachat_token():
 
 
 def extract_json_from_text(text):
-    """Извлекает JSON из текста, даже если он обёрнут в markdown или текст"""
     text = text.strip()
-
     if text.startswith('```'):
         lines = text.split('\n')
         json_lines = []
@@ -78,12 +75,58 @@ def extract_json_from_text(text):
     match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
     if match:
         return match.group(0)
-
     return text
 
 
-def classify_with_gigachat(description, ticket_services, services, mappings):
-    """Отправка запроса в GigaChat для классификации"""
+def build_training_context(cur):
+    """Подгружает примеры и правила из БД для обогащения промпта"""
+    examples_text = ''
+    cur.execute(f"""
+        SELECT e.description, e.ticket_service_id, e.service_ids,
+               ts.name as ts_name
+        FROM {SCHEMA}.ai_training_examples e
+        JOIN {SCHEMA}.ticket_services ts ON ts.id = e.ticket_service_id
+        ORDER BY e.created_at DESC
+        LIMIT 30
+    """)
+    examples = [dict(r) for r in cur.fetchall()]
+
+    if examples:
+        svc_ids = set()
+        for ex in examples:
+            if ex['service_ids']:
+                svc_ids.update(ex['service_ids'])
+
+        svc_names = {}
+        if svc_ids:
+            ids_str = ','.join(str(i) for i in svc_ids)
+            cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE id IN ({ids_str})")
+            for r in cur.fetchall():
+                svc_names[r['id']] = r['name']
+
+        examples_text = '\nПРИМЕРЫ КЛАССИФИКАЦИИ:\n'
+        for ex in examples:
+            svc_list = ', '.join([svc_names.get(sid, '?') for sid in (ex['service_ids'] or [])])
+            examples_text += f'- "{ex["description"]}" → услуга "{ex["ts_name"]}" (id={ex["ticket_service_id"]}), сервис: {svc_list} (ids={ex["service_ids"]})\n'
+
+    rules_text = ''
+    cur.execute(f"""
+        SELECT rule_text FROM {SCHEMA}.ai_training_rules
+        WHERE is_active = true
+        ORDER BY created_at DESC
+        LIMIT 20
+    """)
+    rules = [dict(r) for r in cur.fetchall()]
+
+    if rules:
+        rules_text = '\nДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА:\n'
+        for r in rules:
+            rules_text += f'- {r["rule_text"]}\n'
+
+    return examples_text, rules_text
+
+
+def classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text):
     token = get_gigachat_token()
 
     services_map = {}
@@ -130,7 +173,7 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
 - Почта, email, mail, письмо, Outlook → сервис "Корпоративная почта" (id=9)
 - Телефон, звонок, АТС, номер, гарнитура → сервис "Телефония" (id=10)
 - Отчёт, дашборд, аналитика, статистика, BI → сервис "Аналитика" (id=11)
-
+{rules_text}{examples_text}
 Ответь ТОЛЬКО JSON, без пояснений:
 {{"ticket_service_id": ЧИСЛО, "service_ids": [ЧИСЛО], "confidence": 0-100}}
 
@@ -138,7 +181,7 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
 Допустимые service_ids: {', '.join(valid_svc_ids)}"""
 
     print(f'[classify] Description: {description[:200]}')
-    print(f'[classify] Prompt length: {len(prompt)} chars')
+    print(f'[classify] Training: {len(examples_text)} chars examples, {len(rules_text)} chars rules')
 
     resp = requests.post(
         'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
@@ -162,18 +205,16 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
     resp.raise_for_status()
 
     raw_content = resp.json()['choices'][0]['message']['content'].strip()
-    print(f'[classify] GigaChat raw response: {raw_content}')
+    print(f'[classify] GigaChat raw: {raw_content}')
 
     content = extract_json_from_text(raw_content)
-    print(f'[classify] Extracted JSON: {content}')
-
     result = json.loads(content)
 
     valid_ts_id_list = [ts_id for ts_id in services_map.keys()]
     valid_svc_id_list = [s['id'] for info in services_map.values() for s in info['services']]
 
     if result.get('ticket_service_id') not in valid_ts_id_list:
-        print(f'[classify] Invalid ticket_service_id: {result.get("ticket_service_id")}, valid: {valid_ts_id_list}')
+        print(f'[classify] Invalid ticket_service_id: {result.get("ticket_service_id")}')
         result['ticket_service_id'] = valid_ts_id_list[0] if valid_ts_id_list else None
         result['confidence'] = 0
 
@@ -196,13 +237,12 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
         if svc:
             result['service_names'].append(svc['name'])
 
-    print(f'[classify] Final result: ts={result["ticket_service_id"]} ({result["ticket_service_name"]}), services={result["service_ids"]} ({result["service_names"]}), confidence={result.get("confidence")}')
-
+    print(f'[classify] Result: ts={result["ticket_service_id"]} ({result["ticket_service_name"]}), svcs={result["service_ids"]}, conf={result.get("confidence")}')
     return result
 
 
 def handler(event, context):
-    """Классификация заявки по описанию через GigaChat Lite"""
+    """Классификация заявки по описанию через GigaChat Lite с обучением"""
     if event.get('httpMethod') == 'OPTIONS':
         return response(200, {})
 
@@ -230,17 +270,19 @@ def handler(event, context):
     cur.execute('SELECT ticket_service_id, service_id FROM ticket_service_mappings')
     mappings = [dict(r) for r in cur.fetchall()]
 
+    examples_text, rules_text = build_training_context(cur)
+
     cur.close()
     conn.close()
 
     try:
-        result = classify_with_gigachat(description, ticket_services, services, mappings)
+        result = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
         return response(200, result)
     except json.JSONDecodeError as e:
         print(f'[classify] JSON parse error: {e}')
         return response(500, {'error': 'Не удалось распознать ответ ИИ'})
     except requests.exceptions.Timeout:
-        print('[classify] Timeout from GigaChat')
+        print('[classify] Timeout')
         return response(504, {'error': 'Таймаут ответа от ИИ'})
     except requests.exceptions.RequestException as e:
         print(f'[classify] Request error: {e}')

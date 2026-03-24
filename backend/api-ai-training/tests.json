@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS request",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get examples without auth",
+      "method": "GET",
+      "path": "/?endpoint=examples",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Get stats without auth",
+      "method": "GET",
+      "path": "/?endpoint=stats",
+      "expectedStatus": 401
+    },
+    {
+      "name": "No endpoint",
+      "method": "GET",
+      "path": "/",
+      "headers": {
+        "X-Auth-Token": "invalid"
+      },
+      "expectedStatus": 401
+    }
+  ]
+}

@@ -36,6 +36,7 @@ import ExecutorGroups from "./pages/ExecutorGroups";
 import ExecutorAssignments from "./pages/ExecutorAssignments";
 import WorkSchedules from "./pages/WorkSchedules";
 import BitrixCallback from "./pages/BitrixCallback";
+import AiTraining from "./pages/AiTraining";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -78,6 +79,7 @@ const App = () => {
             <Route path="/executor-groups" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><ExecutorGroups /></ProtectedRoute>} />
             <Route path="/executor-assignments" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><ExecutorAssignments /></ProtectedRoute>} />
             <Route path="/work-schedules" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><WorkSchedules /></ProtectedRoute>} />
+            <Route path="/ai-training" element={<ProtectedRoute><AiTraining /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,4 +1,5 @@
 {
+  "api-ai-training": "https://functions.poehali.dev/1c8f10ba-1def-440e-b5b8-b36840076c65",
   "api-classify-ticket": "https://functions.poehali.dev/b1d49417-fb02-4b11-9656-d30b68924b54",
   "bitrix-notify": "https://functions.poehali.dev/cdfcc112-f6fd-4cd9-b7e0-f5d77786ad12",
   "api-work-schedules": "https://functions.poehali.dev/8db7a0da-8978-4e99-8d6b-45d47fc080c2",
