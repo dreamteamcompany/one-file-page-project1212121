@@ -1,6 +1,7 @@
 """Классификация заявок с помощью GigaChat Lite"""
 import json
 import os
+import re
 import uuid
 import requests
 import psycopg2
@@ -55,6 +56,32 @@ def get_gigachat_token():
     return resp.json()['access_token']
 
 
+def extract_json_from_text(text):
+    """Извлекает JSON из текста, даже если он обёрнут в markdown или текст"""
+    text = text.strip()
+
+    if text.startswith('```'):
+        lines = text.split('\n')
+        json_lines = []
+        inside = False
+        for line in lines:
+            if line.strip().startswith('```') and not inside:
+                inside = True
+                continue
+            elif line.strip().startswith('```') and inside:
+                break
+            elif inside:
+                json_lines.append(line)
+        if json_lines:
+            text = '\n'.join(json_lines).strip()
+
+    match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+    if match:
+        return match.group(0)
+
+    return text
+
+
 def classify_with_gigachat(description, ticket_services, services, mappings):
     """Отправка запроса в GigaChat для классификации"""
     token = get_gigachat_token()
@@ -67,36 +94,51 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
                 svc = next((s for s in services if s['id'] == m['service_id']), None)
                 if svc:
                     linked.append({'id': svc['id'], 'name': svc['name']})
-        services_map[ts['id']] = {
-            'name': ts['name'],
-            'services': linked,
-        }
+        if linked:
+            services_map[ts['id']] = {
+                'name': ts['name'],
+                'services': linked,
+            }
 
     services_text = ''
     for ts_id, info in services_map.items():
-        svc_list = ', '.join([f"{s['name']} (id={s['id']})" for s in info['services']])
-        services_text += f"- Услуга \"{info['name']}\" (id={ts_id}): сервисы [{svc_list}]\n"
+        svc_list = ', '.join([f'"{s["name"]}" (id={s["id"]})' for s in info['services']])
+        services_text += f'  {ts_id}. "{info["name"]}" → сервисы: {svc_list}\n'
 
-    prompt = f"""Ты — классификатор IT-заявок. Пользователь написал описание проблемы. Определи наиболее подходящую услугу и сервис.
+    valid_ts_ids = [str(ts_id) for ts_id in services_map.keys()]
+    valid_svc_ids = []
+    for info in services_map.values():
+        for s in info['services']:
+            if str(s['id']) not in valid_svc_ids:
+                valid_svc_ids.append(str(s['id']))
 
-Доступные услуги и их сервисы:
+    prompt = f"""Классифицируй IT-заявку. Выбери одну услугу и один или несколько сервисов.
+
+КАТАЛОГ УСЛУГ:
 {services_text}
+ЗАЯВКА: "{description}"
 
-Описание заявки: "{description}"
+ИНСТРУКЦИЯ:
+- Если проблема/ошибка/не работает/сломалось → услуга "Сообщить о проблеме" (id=9)
+- Если нужен доступ/подключить/создать учётку → услуга "Предоставить доступ" (id=1)
+- Если заблокировать/отключить/удалить доступ → услуга "Заблокировать доступ" (id=6)
+- Если вопрос/предложение/жалоба → услуга "Спросить | Предложить | Жалоба | Иное" (id=10)
 
-Ответь СТРОГО в формате JSON (без markdown):
-{{"ticket_service_id": число, "service_ids": [число], "confidence": число_от_0_до_100}}
+ОПРЕДЕЛЕНИЕ СЕРВИСА по ключевым словам:
+- 1С, база, процедура, удалёнка, RDP, терминал, рабочий стол → сервис "1С и удалённый рабочий стол" (id=2)
+- Битрикс, CRM, портал, задача, Bitrix → сервис "Битрикс24" (id=3)
+- Почта, email, mail, письмо, Outlook → сервис "Корпоративная почта" (id=9)
+- Телефон, звонок, АТС, номер, гарнитура → сервис "Телефония" (id=10)
+- Отчёт, дашборд, аналитика, статистика, BI → сервис "Аналитика" (id=11)
 
-Правила:
-- ticket_service_id — ID одной услуги
-- service_ids — массив из одного или нескольких ID сервисов
-- confidence — уверенность в классификации от 0 до 100
-- Если описание про проблему/ошибку/не работает — выбирай "Сообщить о проблеме"
-- Если про доступ/подключить/создать — выбирай "Предоставить доступ"
-- Если про заблокировать/отключить/удалить доступ — выбирай "Заблокировать доступ"
-- Если вопрос/предложение/жалоба — выбирай "Спросить | Предложить | Жалоба | Иное"
-- Определяй сервис по ключевым словам: 1С/базы/процедуры/удалёнка → "1С и удалённый рабочий стол", Битрикс/CRM/портал → "Битрикс24", почта/email/mail → "Корпоративная почта", телефон/звонки/АТС → "Телефония", отчёты/дашборд/аналитика → "Аналитика"
-- Выбирай ТОЛЬКО из предложенных ID"""
+Ответь ТОЛЬКО JSON, без пояснений:
+{{"ticket_service_id": ЧИСЛО, "service_ids": [ЧИСЛО], "confidence": 0-100}}
+
+Допустимые ticket_service_id: {', '.join(valid_ts_ids)}
+Допустимые service_ids: {', '.join(valid_svc_ids)}"""
+
+    print(f'[classify] Description: {description[:200]}')
+    print(f'[classify] Prompt length: {len(prompt)} chars')
 
     resp = requests.post(
         'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
@@ -107,40 +149,44 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
         },
         json={
             'model': 'GigaChat',
-            'messages': [{'role': 'user', 'content': prompt}],
+            'messages': [
+                {'role': 'system', 'content': 'Ты — классификатор IT-заявок. Отвечай только JSON без пояснений.'},
+                {'role': 'user', 'content': prompt},
+            ],
             'temperature': 0.1,
-            'max_tokens': 150,
+            'max_tokens': 100,
         },
         verify=False,
-        timeout=20,
+        timeout=45,
     )
     resp.raise_for_status()
 
-    content = resp.json()['choices'][0]['message']['content'].strip()
-    if content.startswith('```'):
-        parts = content.split('\n', 1)
-        if len(parts) > 1:
-            content = parts[1]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
+    raw_content = resp.json()['choices'][0]['message']['content'].strip()
+    print(f'[classify] GigaChat raw response: {raw_content}')
+
+    content = extract_json_from_text(raw_content)
+    print(f'[classify] Extracted JSON: {content}')
 
     result = json.loads(content)
 
-    valid_ts_ids = [ts['id'] for ts in ticket_services]
-    valid_svc_ids = [s['id'] for s in services]
+    valid_ts_id_list = [ts_id for ts_id in services_map.keys()]
+    valid_svc_id_list = [s['id'] for info in services_map.values() for s in info['services']]
 
-    if result.get('ticket_service_id') not in valid_ts_ids:
-        result['ticket_service_id'] = valid_ts_ids[0] if valid_ts_ids else None
+    if result.get('ticket_service_id') not in valid_ts_id_list:
+        print(f'[classify] Invalid ticket_service_id: {result.get("ticket_service_id")}, valid: {valid_ts_id_list}')
+        result['ticket_service_id'] = valid_ts_id_list[0] if valid_ts_id_list else None
         result['confidence'] = 0
 
     raw_svc_ids = result.get('service_ids', [])
     if not isinstance(raw_svc_ids, list):
-        raw_svc_ids = []
-    result['service_ids'] = [sid for sid in raw_svc_ids if sid in valid_svc_ids]
-    if not result['service_ids'] and valid_svc_ids:
-        result['service_ids'] = [valid_svc_ids[0]]
-        result['confidence'] = min(result.get('confidence', 0), 30)
+        raw_svc_ids = [raw_svc_ids] if isinstance(raw_svc_ids, int) else []
+    result['service_ids'] = [sid for sid in raw_svc_ids if sid in valid_svc_id_list]
+
+    if not result['service_ids']:
+        ts_services = services_map.get(result['ticket_service_id'], {}).get('services', [])
+        if ts_services:
+            result['service_ids'] = [ts_services[0]['id']]
+            result['confidence'] = min(result.get('confidence', 0), 30)
 
     ts_info = services_map.get(result['ticket_service_id'], {})
     result['ticket_service_name'] = ts_info.get('name', '')
@@ -149,6 +195,8 @@ def classify_with_gigachat(description, ticket_services, services, mappings):
         svc = next((s for s in services if s['id'] == sid), None)
         if svc:
             result['service_names'].append(svc['name'])
+
+    print(f'[classify] Final result: ts={result["ticket_service_id"]} ({result["ticket_service_name"]}), services={result["service_ids"]} ({result["service_names"]}), confidence={result.get("confidence")}')
 
     return result
 
@@ -188,11 +236,15 @@ def handler(event, context):
     try:
         result = classify_with_gigachat(description, ticket_services, services, mappings)
         return response(200, result)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f'[classify] JSON parse error: {e}')
         return response(500, {'error': 'Не удалось распознать ответ ИИ'})
     except requests.exceptions.Timeout:
+        print('[classify] Timeout from GigaChat')
         return response(504, {'error': 'Таймаут ответа от ИИ'})
     except requests.exceptions.RequestException as e:
+        print(f'[classify] Request error: {e}')
         return response(502, {'error': f'Ошибка связи с ИИ: {str(e)}'})
-    except (KeyError, IndexError):
+    except (KeyError, IndexError) as e:
+        print(f'[classify] Parse error: {e}')
         return response(500, {'error': 'Неожиданный формат ответа от ИИ'})
