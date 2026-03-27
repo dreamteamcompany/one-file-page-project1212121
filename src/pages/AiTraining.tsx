@@ -1,66 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/utils/api';
-import { useToast } from '@/hooks/use-toast';
 import func2url from '../../backend/func2url.json';
+import ExamplesTab from '@/components/ai-training/ExamplesTab';
+import RulesTab from '@/components/ai-training/RulesTab';
+import TestTab from '@/components/ai-training/TestTab';
+import type { TrainingExample, TicketService, Service } from '@/components/ai-training/ExamplesTab';
+import type { TrainingRule } from '@/components/ai-training/RulesTab';
 
 const AI_TRAINING_URL = func2url['api-ai-training'];
-
-interface TrainingExample {
-  id: number;
-  description: string;
-  ticket_service_id: number;
-  service_ids: number[];
-  ticket_service_name: string;
-  service_names: string[];
-  created_at: string;
-}
-
-interface TrainingRule {
-  id: number;
-  rule_text: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface TicketService {
-  id: number;
-  name: string;
-  service_ids?: number[];
-}
-
-interface Service {
-  id: number;
-  name: string;
-}
 
 const AiTraining = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const [tab, setTab] = useState<'examples' | 'rules' | 'test'>('examples');
   const [examples, setExamples] = useState<TrainingExample[]>([]);
@@ -69,21 +26,6 @@ const AiTraining = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [stats, setStats] = useState({ examples_count: 0, active_rules_count: 0 });
   const [loading, setLoading] = useState(true);
-
-  const [testText, setTestText] = useState('');
-  const [testLoading, setTestLoading] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    result: { ticket_service_id: number; ticket_service_name: string; service_ids: number[]; service_names: string[]; confidence: number };
-    debug: { prompt: string; raw_response: string; examples_count: number; rules_count: number; examples_text: string; rules_text: string };
-  } | null>(null);
-
-  const [exampleDialog, setExampleDialog] = useState(false);
-  const [ruleDialog, setRuleDialog] = useState(false);
-  const [editingExample, setEditingExample] = useState<TrainingExample | null>(null);
-  const [editingRule, setEditingRule] = useState<TrainingRule | null>(null);
-
-  const [exampleForm, setExampleForm] = useState({ description: '', ticket_service_id: '', service_ids: [] as number[] });
-  const [ruleForm, setRuleForm] = useState({ rule_text: '', is_active: true });
 
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
@@ -120,168 +62,6 @@ const AiTraining = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const selectedTs = ticketServices.find(ts => ts.id.toString() === exampleForm.ticket_service_id);
-  const filteredServices = selectedTs?.service_ids
-    ? services.filter(s => selectedTs.service_ids?.includes(s.id))
-    : services;
-
-  const openExampleDialog = (example?: TrainingExample) => {
-    if (example) {
-      setEditingExample(example);
-      setExampleForm({
-        description: example.description,
-        ticket_service_id: example.ticket_service_id.toString(),
-        service_ids: example.service_ids || [],
-      });
-    } else {
-      setEditingExample(null);
-      setExampleForm({ description: '', ticket_service_id: '', service_ids: [] });
-    }
-    setExampleDialog(true);
-  };
-
-  const openRuleDialog = (rule?: TrainingRule) => {
-    if (rule) {
-      setEditingRule(rule);
-      setRuleForm({ rule_text: rule.rule_text, is_active: rule.is_active });
-    } else {
-      setEditingRule(null);
-      setRuleForm({ rule_text: '', is_active: true });
-    }
-    setRuleDialog(true);
-  };
-
-  const saveExample = async () => {
-    if (!exampleForm.description.trim() || !exampleForm.ticket_service_id) {
-      toast({ title: 'Заполните описание и выберите услугу', variant: 'destructive' });
-      return;
-    }
-
-    const body = {
-      ...(editingExample ? { id: editingExample.id } : {}),
-      description: exampleForm.description.trim(),
-      ticket_service_id: parseInt(exampleForm.ticket_service_id),
-      service_ids: exampleForm.service_ids,
-    };
-
-    const res = await apiFetch(AI_TRAINING_URL + '?endpoint=examples', {
-      method: editingExample ? 'PUT' : 'POST',
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      toast({ title: editingExample ? 'Пример обновлён' : 'Пример добавлен' });
-      setExampleDialog(false);
-      loadData();
-    } else {
-      toast({ title: 'Ошибка сохранения', variant: 'destructive' });
-    }
-  };
-
-  const deleteExample = async (id: number) => {
-    const res = await apiFetch(AI_TRAINING_URL + '?endpoint=examples', {
-      method: 'DELETE',
-      body: JSON.stringify({ id }),
-    });
-    if (res.ok) {
-      toast({ title: 'Пример удалён' });
-      loadData();
-    }
-  };
-
-  const saveRule = async () => {
-    if (!ruleForm.rule_text.trim()) {
-      toast({ title: 'Заполните текст правила', variant: 'destructive' });
-      return;
-    }
-
-    const body = {
-      ...(editingRule ? { id: editingRule.id } : {}),
-      rule_text: ruleForm.rule_text.trim(),
-      is_active: ruleForm.is_active,
-    };
-
-    const res = await apiFetch(AI_TRAINING_URL + '?endpoint=rules', {
-      method: editingRule ? 'PUT' : 'POST',
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      toast({ title: editingRule ? 'Правило обновлено' : 'Правило добавлено' });
-      setRuleDialog(false);
-      loadData();
-    } else {
-      toast({ title: 'Ошибка сохранения', variant: 'destructive' });
-    }
-  };
-
-  const deleteRule = async (id: number) => {
-    const res = await apiFetch(AI_TRAINING_URL + '?endpoint=rules', {
-      method: 'DELETE',
-      body: JSON.stringify({ id }),
-    });
-    if (res.ok) {
-      toast({ title: 'Правило удалено' });
-      loadData();
-    }
-  };
-
-  const toggleRule = async (rule: TrainingRule) => {
-    const res = await apiFetch(AI_TRAINING_URL + '?endpoint=rules', {
-      method: 'PUT',
-      body: JSON.stringify({ id: rule.id, is_active: !rule.is_active }),
-    });
-    if (res.ok) loadData();
-  };
-
-  const CLASSIFY_URL = func2url['api-classify-ticket'];
-
-  const runTest = async () => {
-    if (!testText.trim()) {
-      toast({ title: 'Введите текст заявки', variant: 'destructive' });
-      return;
-    }
-    setTestLoading(true);
-    setTestResult(null);
-    try {
-      const res = await apiFetch(CLASSIFY_URL, {
-        method: 'POST',
-        body: JSON.stringify({ description: testText.trim(), test_mode: true }),
-      });
-      if (res.ok) {
-        setTestResult(await res.json());
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast({ title: err.error || 'Ошибка классификации', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Ошибка соединения', variant: 'destructive' });
-    } finally {
-      setTestLoading(false);
-    }
-  };
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 80) return 'text-green-500';
-    if (confidence >= 50) return 'text-yellow-500';
-    return 'text-red-500';
-  };
-
-  const getConfidenceBg = (confidence: number) => {
-    if (confidence >= 80) return 'bg-green-500/10 border-green-500/30';
-    if (confidence >= 50) return 'bg-yellow-500/10 border-yellow-500/30';
-    return 'bg-red-500/10 border-red-500/30';
-  };
-
-  const toggleServiceId = (serviceId: number) => {
-    setExampleForm(prev => ({
-      ...prev,
-      service_ids: prev.service_ids.includes(serviceId)
-        ? prev.service_ids.filter(id => id !== serviceId)
-        : [...prev.service_ids, serviceId],
-    }));
   };
 
   if (loading) {
@@ -370,338 +150,24 @@ const AiTraining = () => {
       </div>
 
       {tab === 'examples' && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Примеры заявок</CardTitle>
-                <CardDescription className="text-xs mt-1">
-                  Добавьте реальные заявки с правильной классификацией. AI будет использовать их как образец.
-                </CardDescription>
-              </div>
-              <Button size="sm" className="gap-2" onClick={() => openExampleDialog()}>
-                <Icon name="Plus" size={16} />
-                Добавить
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {examples.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Icon name="BookOpen" size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Пока нет примеров</p>
-                <p className="text-xs mt-1">Добавьте первый пример заявки для обучения AI</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {examples.map(ex => (
-                  <div key={ex.id} className="p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium mb-1.5 line-clamp-2">{ex.description}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          <Badge variant="secondary" className="text-xs">
-                            {ex.ticket_service_name}
-                          </Badge>
-                          {ex.service_names?.map((name, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openExampleDialog(ex)}>
-                          <Icon name="Pencil" size={14} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteExample(ex.id)}>
-                          <Icon name="Trash2" size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ExamplesTab
+          examples={examples}
+          ticketServices={ticketServices}
+          services={services}
+          onReload={loadData}
+        />
       )}
 
       {tab === 'rules' && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Правила классификации</CardTitle>
-                <CardDescription className="text-xs mt-1">
-                  Текстовые подсказки для AI. Например: «Если упоминается Stoma1C — это сервис 1С»
-                </CardDescription>
-              </div>
-              <Button size="sm" className="gap-2" onClick={() => openRuleDialog()}>
-                <Icon name="Plus" size={16} />
-                Добавить
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {rules.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Icon name="Lightbulb" size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Пока нет правил</p>
-                <p className="text-xs mt-1">Добавьте правило, чтобы AI лучше понимал ваш контекст</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {rules.map(rule => (
-                  <div key={rule.id} className={`p-3 rounded-lg border transition-colors ${rule.is_active ? 'bg-muted/20 hover:bg-muted/40' : 'bg-muted/5 opacity-60'}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">{rule.rule_text}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Switch
-                          checked={rule.is_active}
-                          onCheckedChange={() => toggleRule(rule)}
-                        />
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openRuleDialog(rule)}>
-                          <Icon name="Pencil" size={14} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteRule(rule.id)}>
-                          <Icon name="Trash2" size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <RulesTab
+          rules={rules}
+          onReload={loadData}
+        />
       )}
 
       {tab === 'test' && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Тестирование классификации</CardTitle>
-              <CardDescription className="text-xs mt-1">
-                Введите текст заявки и посмотрите, как AI её классифицирует с учётом ваших правил и примеров
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <Textarea
-                  value={testText}
-                  onChange={e => setTestText(e.target.value)}
-                  placeholder="Например: Не могу зайти в базу Stoma1C, выдаёт ошибку подключения к серверу"
-                  rows={3}
-                />
-                <Button
-                  onClick={runTest}
-                  disabled={testLoading || !testText.trim()}
-                  className="gap-2"
-                >
-                  {testLoading ? (
-                    <Icon name="Loader2" size={16} className="animate-spin" />
-                  ) : (
-                    <Icon name="Play" size={16} />
-                  )}
-                  {testLoading ? 'Классификация...' : 'Классифицировать'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {testResult && (
-            <>
-              <Card className={`border ${getConfidenceBg(testResult.result.confidence)}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Результат</CardTitle>
-                    <div className={`text-2xl font-bold ${getConfidenceColor(testResult.result.confidence)}`}>
-                      {testResult.result.confidence}%
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Icon name="Tag" size={16} className="text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm text-muted-foreground">Услуга:</span>
-                      <Badge variant="secondary">{testResult.result.ticket_service_name}</Badge>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <Icon name="Server" size={16} className="text-muted-foreground flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-muted-foreground">Сервисы:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {testResult.result.service_names.map((name, i) => (
-                          <Badge key={i} variant="outline">{name}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Icon name="Info" size={16} />
-                    Детали обучения
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex gap-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Icon name="BookOpen" size={14} className="text-blue-500" />
-                        <span className="text-muted-foreground">Примеров:</span>
-                        <span className="font-medium">{testResult.debug.examples_count}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Icon name="Lightbulb" size={14} className="text-purple-500" />
-                        <span className="text-muted-foreground">Правил:</span>
-                        <span className="font-medium">{testResult.debug.rules_count}</span>
-                      </div>
-                    </div>
-
-                    {testResult.debug.rules_text && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Применённые правила:</p>
-                        <pre className="text-xs bg-muted/30 rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-32">
-                          {testResult.debug.rules_text}
-                        </pre>
-                      </div>
-                    )}
-
-                    {testResult.debug.examples_text && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Использованные примеры:</p>
-                        <pre className="text-xs bg-muted/30 rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-32">
-                          {testResult.debug.examples_text}
-                        </pre>
-                      </div>
-                    )}
-
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Ответ AI (raw):</p>
-                      <pre className="text-xs bg-muted/30 rounded-lg p-3 whitespace-pre-wrap overflow-auto max-h-20">
-                        {testResult.debug.raw_response}
-                      </pre>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
+        <TestTab />
       )}
-
-      <Dialog open={exampleDialog} onOpenChange={setExampleDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingExample ? 'Редактировать пример' : 'Новый пример заявки'}</DialogTitle>
-            <DialogDescription>
-              Опишите заявку и укажите правильную классификацию
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Описание заявки *</Label>
-              <Textarea
-                value={exampleForm.description}
-                onChange={e => setExampleForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Не могу списать процедуры в базе Stoma1C_Krasnodar"
-                className="mt-1.5"
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label>Услуга *</Label>
-              <Select
-                value={exampleForm.ticket_service_id}
-                onValueChange={v => setExampleForm(prev => ({ ...prev, ticket_service_id: v, service_ids: [] }))}
-              >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Выберите услугу" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ticketServices.map(ts => (
-                    <SelectItem key={ts.id} value={ts.id.toString()}>
-                      {ts.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {filteredServices.length > 0 && (
-              <div>
-                <Label>Сервисы</Label>
-                <div className="flex flex-wrap gap-2 mt-1.5">
-                  {filteredServices.map(svc => (
-                    <Badge
-                      key={svc.id}
-                      variant={exampleForm.service_ids.includes(svc.id) ? 'default' : 'outline'}
-                      className="cursor-pointer transition-colors"
-                      onClick={() => toggleServiceId(svc.id)}
-                    >
-                      {svc.name}
-                      {exampleForm.service_ids.includes(svc.id) && (
-                        <Icon name="Check" size={12} className="ml-1" />
-                      )}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setExampleDialog(false)}>Отмена</Button>
-              <Button onClick={saveExample}>
-                {editingExample ? 'Сохранить' : 'Добавить'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={ruleDialog} onOpenChange={setRuleDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingRule ? 'Редактировать правило' : 'Новое правило'}</DialogTitle>
-            <DialogDescription>
-              Напишите правило для AI-классификатора своими словами
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Текст правила *</Label>
-              <Textarea
-                value={ruleForm.rule_text}
-                onChange={e => setRuleForm(prev => ({ ...prev, rule_text: e.target.value }))}
-                placeholder="Если упоминается Stoma1C или любая база 1С — это всегда сервис «1С и удалённый рабочий стол»"
-                className="mt-1.5"
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Пишите как объясняли бы человеку. AI воспримет это как инструкцию.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={ruleForm.is_active}
-                onCheckedChange={v => setRuleForm(prev => ({ ...prev, is_active: v }))}
-              />
-              <Label>Правило активно</Label>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setRuleDialog(false)}>Отмена</Button>
-              <Button onClick={saveRule}>
-                {editingRule ? 'Сохранить' : 'Добавить'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </PageLayout>
   );
 };
