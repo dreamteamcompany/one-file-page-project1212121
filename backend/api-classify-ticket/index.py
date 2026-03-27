@@ -210,6 +210,25 @@ def call_gigachat(prompt):
     return resp.json()['choices'][0]['message']['content'].strip()
 
 
+FALLBACK_RESULT = {
+    'ticket_service_id': None,
+    'service_ids': [],
+    'ticket_service_name': '',
+    'service_names': [],
+    'confidence': 0,
+    'error': 'Не удалось определить сервис и услугу',
+}
+
+
+def safe_call_gigachat(prompt):
+    try:
+        return call_gigachat(prompt), None
+    except (ValueError, TypeError, KeyError, IndexError, RuntimeError, json.JSONDecodeError) as e:
+        return None, str(e)
+    except BaseException as e:
+        return None, str(e)
+
+
 def validate_result(result, services_map):
     valid_ts_id_list = [ts_id for ts_id in services_map.keys()]
     valid_svc_id_list = [s['id'] for info in services_map.values() for s in info['services']]
@@ -251,7 +270,11 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
     print(f'[classify] Description: {description[:200]}')
     print(f'[classify] Training: {len(examples_text)} chars examples, {len(rules_text)} chars rules')
 
-    raw_content = call_gigachat(prompt)
+    raw_content, error = safe_call_gigachat(prompt)
+    if error or not raw_content:
+        print(f'[classify] GigaChat error: {error}')
+        return None, error or 'Empty response'
+
     print(f'[classify] GigaChat raw: {raw_content}')
 
     content = extract_json_from_text(raw_content)
@@ -260,20 +283,23 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
     result = enrich_result(result, services_map, services)
 
     print(f'[classify] Result: ts={result["ticket_service_id"]} ({result["ticket_service_name"]}), svcs={result["service_ids"]}, conf={result.get("confidence")}')
-    return result
+    return result, None
 
 
 def classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text):
     services_map = build_services_map(ticket_services, services, mappings)
     prompt, _, _ = build_prompt(description, services_map, rules_text, examples_text)
 
-    raw_content = call_gigachat(prompt)
+    raw_content, error = safe_call_gigachat(prompt)
+    if error or not raw_content:
+        return None, error or 'Empty response'
+
     content = extract_json_from_text(raw_content)
     result = json.loads(content)
     result = validate_result(result, services_map)
     result = enrich_result(result, services_map, services)
 
-    return {
+    test_result = {
         'result': result,
         'debug': {
             'prompt': prompt,
@@ -284,6 +310,7 @@ def classify_test_mode(description, ticket_services, services, mappings, example
             'rules_text': rules_text.strip() if rules_text else '',
         },
     }
+    return test_result, None
 
 
 def save_log(description, result_data, success, error_message, raw_resp, examples_count, rules_count, duration_ms, test_mode):
@@ -366,28 +393,19 @@ def handler(event, context):
 
     start_time = time.time()
 
-    try:
-        if test_mode:
-            test_result = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text)
-            duration_ms = int((time.time() - start_time) * 1000)
-            save_log(description, test_result['result'], True, None, test_result['debug'].get('raw_response', ''), examples_count, rules_count, duration_ms, True)
-            return response(200, test_result)
-        else:
-            result = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
-            duration_ms = int((time.time() - start_time) * 1000)
-            save_log(description, result, True, None, None, examples_count, rules_count, duration_ms, False)
-            return response(200, result)
-    except (json.JSONDecodeError, KeyError, IndexError, ValueError, TypeError, RuntimeError) as e:
+    if test_mode:
+        test_result, error = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text)
         duration_ms = int((time.time() - start_time) * 1000)
-        error_msg = str(e)
-        print(f'[classify] Error: {error_msg}')
-        save_log(description, None, False, error_msg, None, examples_count, rules_count, duration_ms, test_mode)
-        fallback = {
-            'ticket_service_id': None,
-            'service_ids': [],
-            'ticket_service_name': '',
-            'service_names': [],
-            'confidence': 0,
-            'error': 'Не удалось определить сервис и услугу',
-        }
-        return response(200, fallback)
+        if error or not test_result:
+            save_log(description, None, False, error, None, examples_count, rules_count, duration_ms, True)
+            return response(200, FALLBACK_RESULT)
+        save_log(description, test_result['result'], True, None, test_result['debug'].get('raw_response', ''), examples_count, rules_count, duration_ms, True)
+        return response(200, test_result)
+    else:
+        result, error = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
+        duration_ms = int((time.time() - start_time) * 1000)
+        if error or not result:
+            save_log(description, None, False, error, None, examples_count, rules_count, duration_ms, False)
+            return response(200, FALLBACK_RESULT)
+        save_log(description, result, True, None, None, examples_count, rules_count, duration_ms, False)
+        return response(200, result)
