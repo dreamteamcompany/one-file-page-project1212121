@@ -25,8 +25,10 @@ def handler(event, context):
             return handle_rules(method, event, cur, conn)
         elif endpoint == 'stats':
             return handle_stats(cur)
+        elif endpoint == 'logs':
+            return handle_logs(method, event, cur)
         else:
-            return response(400, {'error': 'Укажите endpoint: examples, rules или stats'})
+            return response(400, {'error': 'Укажите endpoint: examples, rules, stats или logs'})
     finally:
         cur.close()
         conn.close()
@@ -213,4 +215,51 @@ def handle_stats(cur):
     return response(200, {
         'examples_count': examples_count,
         'active_rules_count': rules_count,
+    })
+
+
+def handle_logs(method, event, cur):
+    if method != 'GET':
+        return response(405, {'error': 'Method not allowed'})
+
+    limit = int(get_query_param(event, 'limit', '50'))
+    offset = int(get_query_param(event, 'offset', '0'))
+    success_filter = get_query_param(event, 'success', '')
+
+    where = ''
+    if success_filter == 'true':
+        where = 'WHERE success = true'
+    elif success_filter == 'false':
+        where = 'WHERE success = false'
+
+    cur.execute(f"""
+        SELECT id, description, ticket_service_id, ticket_service_name,
+               service_ids, service_names, confidence, success, error_message,
+               raw_response, examples_used, rules_used, duration_ms,
+               test_mode, created_at
+        FROM {SCHEMA}.ai_classification_logs
+        {where}
+        ORDER BY created_at DESC
+        LIMIT %s OFFSET %s
+    """, (limit, offset))
+    logs = [dict(r) for r in cur.fetchall()]
+
+    cur.execute(f"SELECT COUNT(*) as total FROM {SCHEMA}.ai_classification_logs {where}")
+    total = cur.fetchone()['total']
+
+    cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_classification_logs WHERE success = true")
+    success_count = cur.fetchone()['c']
+
+    cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_classification_logs WHERE success = false")
+    fail_count = cur.fetchone()['c']
+
+    cur.execute(f"SELECT COALESCE(AVG(confidence), 0) as avg FROM {SCHEMA}.ai_classification_logs WHERE success = true AND confidence IS NOT NULL")
+    avg_confidence = round(cur.fetchone()['avg'])
+
+    return response(200, {
+        'logs': logs,
+        'total': total,
+        'success_count': success_count,
+        'fail_count': fail_count,
+        'avg_confidence': avg_confidence,
     })

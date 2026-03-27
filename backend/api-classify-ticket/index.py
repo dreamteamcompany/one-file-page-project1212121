@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import time
 import uuid
 import requests
 import psycopg2
@@ -285,6 +286,38 @@ def classify_test_mode(description, ticket_services, services, mappings, example
     }
 
 
+def save_log(description, result_data, success, error_message, raw_resp, examples_count, rules_count, duration_ms, test_mode):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ai_classification_logs
+            (description, ticket_service_id, ticket_service_name, service_ids, service_names,
+             confidence, success, error_message, raw_response, examples_used, rules_used,
+             duration_ms, test_mode)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            description[:500],
+            result_data.get('ticket_service_id') if result_data else None,
+            result_data.get('ticket_service_name', '') if result_data else None,
+            result_data.get('service_ids') if result_data else None,
+            result_data.get('service_names') if result_data else None,
+            result_data.get('confidence') if result_data else None,
+            success,
+            error_message,
+            raw_resp[:2000] if raw_resp else None,
+            examples_count,
+            rules_count,
+            duration_ms,
+            test_mode,
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except (TypeError, AttributeError, ValueError, RuntimeError) as e:
+        print(f'[classify] Failed to save log: {e}')
+
+
 def handler(event, context):
     """Классификация заявки по описанию через GigaChat Lite с обучением"""
     if event.get('httpMethod') == 'OPTIONS':
@@ -293,15 +326,24 @@ def handler(event, context):
     if event.get('httpMethod') != 'POST':
         return response(405, {'error': 'Method not allowed'})
 
-    if not GIGACHAT_AUTH_KEY:
-        return response(500, {'error': 'GIGACHAT_AUTH_KEY not configured'})
-
     body = json.loads(event.get('body', '{}'))
     description = body.get('description', '').strip()
     test_mode = body.get('test_mode', False)
 
     if not description:
         return response(400, {'error': 'description is required'})
+
+    if not GIGACHAT_AUTH_KEY:
+        fallback = {
+            'ticket_service_id': None,
+            'service_ids': [],
+            'ticket_service_name': '',
+            'service_names': [],
+            'confidence': 0,
+            'error': 'Не удалось определить сервис и услугу',
+        }
+        save_log(description, None, False, 'GIGACHAT_AUTH_KEY not configured', None, 0, 0, 0, test_mode)
+        return response(200, fallback)
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -316,25 +358,36 @@ def handler(event, context):
     mappings = [dict(r) for r in cur.fetchall()]
 
     examples_text, rules_text = build_training_context(cur)
+    examples_count = examples_text.count('\n- ') if examples_text else 0
+    rules_count = rules_text.count('\n- ') if rules_text else 0
 
     cur.close()
     conn.close()
 
+    start_time = time.time()
+
     try:
         if test_mode:
-            result = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text)
+            test_result = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text)
+            duration_ms = int((time.time() - start_time) * 1000)
+            save_log(description, test_result['result'], True, None, test_result['debug'].get('raw_response', ''), examples_count, rules_count, duration_ms, True)
+            return response(200, test_result)
         else:
             result = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
-        return response(200, result)
-    except json.JSONDecodeError as e:
-        print(f'[classify] JSON parse error: {e}')
-        return response(500, {'error': 'Не удалось распознать ответ ИИ'})
-    except requests.exceptions.Timeout:
-        print('[classify] Timeout')
-        return response(504, {'error': 'Таймаут ответа от ИИ'})
-    except requests.exceptions.RequestException as e:
-        print(f'[classify] Request error: {e}')
-        return response(502, {'error': f'Ошибка связи с ИИ: {str(e)}'})
-    except (KeyError, IndexError) as e:
-        print(f'[classify] Parse error: {e}')
-        return response(500, {'error': 'Неожиданный формат ответа от ИИ'})
+            duration_ms = int((time.time() - start_time) * 1000)
+            save_log(description, result, True, None, None, examples_count, rules_count, duration_ms, False)
+            return response(200, result)
+    except (json.JSONDecodeError, KeyError, IndexError, ValueError, TypeError, RuntimeError) as e:
+        duration_ms = int((time.time() - start_time) * 1000)
+        error_msg = str(e)
+        print(f'[classify] Error: {error_msg}')
+        save_log(description, None, False, error_msg, None, examples_count, rules_count, duration_ms, test_mode)
+        fallback = {
+            'ticket_service_id': None,
+            'service_ids': [],
+            'ticket_service_name': '',
+            'service_names': [],
+            'confidence': 0,
+            'error': 'Не удалось определить сервис и услугу',
+        }
+        return response(200, fallback)

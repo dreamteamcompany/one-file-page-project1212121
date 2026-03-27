@@ -10,6 +10,7 @@ import func2url from '../../backend/func2url.json';
 import ExamplesTab from '@/components/ai-training/ExamplesTab';
 import RulesTab from '@/components/ai-training/RulesTab';
 import TestTab from '@/components/ai-training/TestTab';
+import LogsTab from '@/components/ai-training/LogsTab';
 import type { TrainingExample, TicketService, Service } from '@/components/ai-training/ExamplesTab';
 import type { TrainingRule } from '@/components/ai-training/RulesTab';
 
@@ -19,7 +20,7 @@ const AiTraining = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<'examples' | 'rules' | 'test'>('examples');
+  const [tab, setTab] = useState<'examples' | 'rules' | 'test' | 'logs'>('examples');
   const [examples, setExamples] = useState<TrainingExample[]>([]);
   const [rules, setRules] = useState<TrainingRule[]>([]);
   const [ticketServices, setTicketServices] = useState<TicketService[]>([]);
@@ -147,6 +148,15 @@ const AiTraining = () => {
           <Icon name="Play" size={16} />
           Тестирование
         </Button>
+        <Button
+          variant={tab === 'logs' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTab('logs')}
+          className="gap-2"
+        >
+          <Icon name="ScrollText" size={16} />
+          Логирование
+        </Button>
       </div>
 
       {tab === 'examples' && (
@@ -167,6 +177,10 @@ const AiTraining = () => {
 
       {tab === 'test' && (
         <TestTab />
+      )}
+
+      {tab === 'logs' && (
+        <LogsTab />
       )}
     </PageLayout>
   );

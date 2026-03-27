@@ -147,12 +147,16 @@ const TicketForm = ({
 
       if (resp.ok) {
         const result: ClassificationResult = await resp.json();
-        setClassification(result);
-        setFormData({
-          ...formData,
-          service_id: result.ticket_service_id.toString(),
-        });
-        setSelectedServices(result.service_ids);
+        if (result.ticket_service_id && result.confidence > 0) {
+          setClassification(result);
+          setFormData({
+            ...formData,
+            service_id: result.ticket_service_id.toString(),
+          });
+          setSelectedServices(result.service_ids || []);
+        } else {
+          setClassification(null);
+        }
         setStep(2);
       } else {
         setStep(2);
