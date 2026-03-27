@@ -204,7 +204,7 @@ def call_gigachat(prompt):
             'max_tokens': 100,
         },
         verify=False,
-        timeout=(5, 20),
+        timeout=(5, 30),
     )
     resp.raise_for_status()
     return resp.json()['choices'][0]['message']['content'].strip()
@@ -220,13 +220,18 @@ FALLBACK_RESULT = {
 }
 
 
-def safe_call_gigachat(prompt):
-    try:
-        return call_gigachat(prompt), None
-    except (ValueError, TypeError, KeyError, IndexError, RuntimeError, json.JSONDecodeError) as e:
-        return None, str(e)
-    except BaseException as e:
-        return None, str(e)
+def safe_call_gigachat(prompt, max_retries=2):
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            result = call_gigachat(prompt)
+            return result, None
+        except BaseException as e:
+            last_error = str(e)
+            print(f'[classify] GigaChat attempt {attempt}/{max_retries} failed: {last_error}')
+            if attempt < max_retries:
+                time.sleep(1)
+    return None, last_error
 
 
 def validate_result(result, services_map):
