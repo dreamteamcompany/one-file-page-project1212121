@@ -180,7 +180,11 @@ const AiTraining = () => {
       )}
 
       {tab === 'logs' && (
-        <LogsTab />
+        <LogsTab
+          ticketServices={ticketServices}
+          services={services}
+          onExampleAdded={loadData}
+        />
       )}
     </PageLayout>
   );

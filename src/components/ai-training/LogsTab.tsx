@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -9,9 +10,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { apiFetch } from '@/utils/api';
+import { useToast } from '@/hooks/use-toast';
 import func2url from '../../../backend/func2url.json';
+import type { TicketService, Service } from './ExamplesTab';
 
 const AI_TRAINING_URL = func2url['api-ai-training'];
 
@@ -42,15 +52,21 @@ interface LogsData {
 }
 
 interface LogsTabProps {
-  onStatsUpdate?: (stats: { success_count: number; fail_count: number }) => void;
+  ticketServices: TicketService[];
+  services: Service[];
+  onExampleAdded?: () => void;
 }
 
-const LogsTab = ({ onStatsUpdate }: LogsTabProps) => {
+const LogsTab = ({ ticketServices, services, onExampleAdded }: LogsTabProps) => {
+  const { toast } = useToast();
   const [data, setData] = useState<LogsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'' | 'true' | 'false'>('');
   const [page, setPage] = useState(0);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const [showAddExample, setShowAddExample] = useState(false);
+  const [exampleForm, setExampleForm] = useState({ ticket_service_id: '', service_ids: [] as number[] });
+  const [saving, setSaving] = useState(false);
   const pageSize = 20;
 
   const loadLogs = async () => {
@@ -62,7 +78,6 @@ const LogsTab = ({ onStatsUpdate }: LogsTabProps) => {
       if (res.ok) {
         const result = await res.json();
         setData(result);
-        onStatsUpdate?.({ success_count: result.success_count, fail_count: result.fail_count });
       }
     } catch (err) {
       console.error('Failed to load logs:', err);
@@ -79,6 +94,59 @@ const LogsTab = ({ onStatsUpdate }: LogsTabProps) => {
     return new Date(date).toLocaleString('ru-RU', {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
     });
+  };
+
+  const selectedTs = ticketServices.find(ts => ts.id.toString() === exampleForm.ticket_service_id);
+  const filteredServices = selectedTs?.service_ids
+    ? services.filter(s => selectedTs.service_ids?.includes(s.id))
+    : services;
+
+  const openAddExample = () => {
+    if (selectedLog) {
+      setExampleForm({
+        ticket_service_id: selectedLog.ticket_service_id?.toString() || '',
+        service_ids: selectedLog.service_ids || [],
+      });
+    }
+    setShowAddExample(true);
+  };
+
+  const toggleServiceId = (serviceId: number) => {
+    setExampleForm(prev => ({
+      ...prev,
+      service_ids: prev.service_ids.includes(serviceId)
+        ? prev.service_ids.filter(id => id !== serviceId)
+        : [...prev.service_ids, serviceId],
+    }));
+  };
+
+  const saveAsExample = async () => {
+    if (!selectedLog || !exampleForm.ticket_service_id) {
+      toast({ title: 'Выберите услугу', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    const body = {
+      description: selectedLog.description,
+      ticket_service_id: parseInt(exampleForm.ticket_service_id),
+      service_ids: exampleForm.service_ids,
+    };
+
+    const res = await apiFetch(AI_TRAINING_URL + '?endpoint=examples', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      toast({ title: 'Пример добавлен из лога' });
+      setShowAddExample(false);
+      setSelectedLog(null);
+      onExampleAdded?.();
+    } else {
+      toast({ title: 'Ошибка сохранения', variant: 'destructive' });
+    }
+    setSaving(false);
   };
 
   if (loading && !data) {
@@ -264,7 +332,7 @@ const LogsTab = ({ onStatsUpdate }: LogsTabProps) => {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
+      <Dialog open={!!selectedLog && !showAddExample} onOpenChange={() => setSelectedLog(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -342,6 +410,98 @@ const LogsTab = ({ onStatsUpdate }: LogsTabProps) => {
                   </pre>
                 </div>
               )}
+
+              <div className="pt-2 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={openAddExample}
+                >
+                  <Icon name="GraduationCap" size={16} />
+                  Добавить как обучающий пример
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAddExample} onOpenChange={(open) => { if (!open) setShowAddExample(false); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Icon name="GraduationCap" size={18} />
+              Добавить как пример
+            </DialogTitle>
+            <DialogDescription>
+              Укажите правильную классификацию для этой заявки
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLog && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Текст заявки</p>
+                <p className="text-sm bg-muted/30 rounded-lg p-3 line-clamp-3">{selectedLog.description}</p>
+              </div>
+
+              {selectedLog.ticket_service_name && (
+                <div className="p-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-800">
+                  <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                    AI определил: <strong>{selectedLog.ticket_service_name}</strong>
+                    {selectedLog.service_names?.length ? ` → ${selectedLog.service_names.join(', ')}` : ''}
+                    {' '}({selectedLog.confidence}%)
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <Label>Правильная услуга *</Label>
+                <Select
+                  value={exampleForm.ticket_service_id}
+                  onValueChange={v => setExampleForm(prev => ({ ...prev, ticket_service_id: v, service_ids: [] }))}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Выберите услугу" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ticketServices.map(ts => (
+                      <SelectItem key={ts.id} value={ts.id.toString()}>
+                        {ts.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {filteredServices.length > 0 && (
+                <div>
+                  <Label>Правильные сервисы</Label>
+                  <div className="flex flex-wrap gap-2 mt-1.5">
+                    {filteredServices.map(svc => (
+                      <Badge
+                        key={svc.id}
+                        variant={exampleForm.service_ids.includes(svc.id) ? 'default' : 'outline'}
+                        className="cursor-pointer transition-colors"
+                        onClick={() => toggleServiceId(svc.id)}
+                      >
+                        {svc.name}
+                        {exampleForm.service_ids.includes(svc.id) && (
+                          <Icon name="Check" size={12} className="ml-1" />
+                        )}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowAddExample(false)}>Отмена</Button>
+                <Button onClick={saveAsExample} disabled={saving || !exampleForm.ticket_service_id} className="gap-2">
+                  {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
+                  Сохранить пример
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
