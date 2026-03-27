@@ -50,7 +50,7 @@ def get_gigachat_token():
         },
         data={'scope': 'GIGACHAT_API_PERS'},
         verify=False,
-        timeout=15,
+        timeout=(3, 7),
     )
     resp.raise_for_status()
     return resp.json()['access_token']
@@ -204,7 +204,7 @@ def call_gigachat(prompt):
             'max_tokens': 100,
         },
         verify=False,
-        timeout=45,
+        timeout=(5, 20),
     )
     resp.raise_for_status()
     return resp.json()['choices'][0]['message']['content'].strip()
