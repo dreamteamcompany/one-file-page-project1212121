@@ -10,7 +10,7 @@
       "name": "GET frozen",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 503
+      "expectedStatus": 200
     }
   ]
 }

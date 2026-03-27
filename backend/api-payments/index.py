@@ -1,4 +1,5 @@
 """API для работы с платежами — ЗАМОРОЖЕНА"""
+import json
 
 CORS_HEADERS = {
     'Content-Type': 'application/json',
@@ -8,12 +9,12 @@ CORS_HEADERS = {
 }
 
 def handler(event, context):
-    """Функция заморожена — сразу возвращает ответ без обращения к БД"""
+    """Функция заморожена — возвращает пустые данные без обращения к БД"""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
     return {
-        'statusCode': 503,
+        'statusCode': 200,
         'headers': CORS_HEADERS,
-        'body': '{"error": "Модуль платежей временно отключён"}'
+        'body': json.dumps([]),
     }
