@@ -26,7 +26,7 @@ def handler(event, context):
         elif endpoint == 'stats':
             return handle_stats(cur)
         elif endpoint == 'logs':
-            return handle_logs(method, event, cur)
+            return handle_logs(method, event, cur, conn)
         else:
             return response(400, {'error': 'Укажите endpoint: examples, rules, stats или logs'})
     finally:
@@ -218,7 +218,21 @@ def handle_stats(cur):
     })
 
 
-def handle_logs(method, event, cur):
+def handle_logs(method, event, cur, conn):
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        description = body.get('description', '')[:500]
+        error_message = body.get('error_message', '')[:500]
+        duration_ms = body.get('duration_ms', 0)
+
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ai_classification_logs
+            (description, success, error_message, duration_ms, test_mode)
+            VALUES (%s, false, %s, %s, false)
+        """, (description, error_message, duration_ms))
+        conn.commit()
+        return response(201, {'ok': True})
+
     if method != 'GET':
         return response(405, {'error': 'Method not allowed'})
 

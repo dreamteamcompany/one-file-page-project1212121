@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, CLASSIFY_TICKET_URL, apiFetch } from '@/utils/api';
+import func2url from '../../../backend/func2url.json';
 import {
   Dialog,
   DialogContent,
@@ -134,10 +135,22 @@ const TicketForm = ({
     ? services.filter(service => selectedTicketService.service_ids?.includes(service.id))
     : [];
 
+  const AI_TRAINING_URL = func2url['api-ai-training'];
+
+  const logClassifyError = async (description: string, errorMsg: string, durationMs: number) => {
+    try {
+      await apiFetch(`${AI_TRAINING_URL}?endpoint=logs`, {
+        method: 'POST',
+        body: JSON.stringify({ description, error_message: errorMsg, duration_ms: durationMs }),
+      });
+    } catch { /* ignore */ }
+  };
+
   const classifyTicket = async () => {
     if (!formData.description.trim()) return;
 
     setClassifying(true);
+    const startTime = Date.now();
     try {
       const resp = await apiFetch(CLASSIFY_TICKET_URL, {
         method: 'POST',
@@ -159,11 +172,16 @@ const TicketForm = ({
         }
         setStep(2);
       } else {
+        const duration = Date.now() - startTime;
+        logClassifyError(formData.description, `HTTP ${resp.status}`, duration);
         setStep(2);
         setClassification(null);
       }
     } catch (err) {
+      const duration = Date.now() - startTime;
+      const errMsg = err instanceof Error ? err.message : 'Network error';
       console.error('[TicketForm] Classification failed:', err);
+      logClassifyError(formData.description, errMsg, duration);
       setStep(2);
       setClassification(null);
     } finally {
