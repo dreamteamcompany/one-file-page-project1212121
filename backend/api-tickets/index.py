@@ -512,11 +512,11 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 history_entries.append(('status_id', str(old_ticket['status_id']), str(body['status_id'])))
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
-            cur.execute(f"SELECT is_open FROM {SCHEMA}.ticket_statuses WHERE id = %s", (body['status_id'],))
+            cur.execute(f"SELECT is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s", (body['status_id'],))
             new_status = cur.fetchone()
             if new_status:
                 update_fields.append("is_archived = %s")
-                params.append(not new_status['is_open'])
+                params.append(bool(new_status['is_closed']))
         
         if 'priority_id' in body:
             if body['priority_id'] != old_ticket['priority_id']:

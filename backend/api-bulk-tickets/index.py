@@ -170,9 +170,9 @@ def handler(event, context):
             if not status_id:
                 return response(400, {'error': 'Не указан status_id'})
             
-            cur.execute(f"SELECT is_open FROM {SCHEMA}.ticket_statuses WHERE id = %s", (status_id,))
+            cur.execute(f"SELECT is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s", (status_id,))
             status_row = cur.fetchone()
-            archive_val = not status_row['is_open'] if status_row else False
+            archive_val = bool(status_row['is_closed']) if status_row else False
             
             placeholders = ','.join(['%s'] * len(ticket_ids))
             cur.execute(f"""
