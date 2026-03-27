@@ -126,27 +126,11 @@ def build_training_context(cur):
     return examples_text, rules_text
 
 
-def classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text):
-    token = get_gigachat_token()
-
-    services_map = {}
-    for ts in ticket_services:
-        linked = []
-        for m in mappings:
-            if m['ticket_service_id'] == ts['id']:
-                svc = next((s for s in services if s['id'] == m['service_id']), None)
-                if svc:
-                    linked.append({'id': svc['id'], 'name': svc['name']})
-        if linked:
-            services_map[ts['id']] = {
-                'name': ts['name'],
-                'services': linked,
-            }
-
+def build_prompt(description, services_map, rules_text, examples_text):
     services_text = ''
     for ts_id, info in services_map.items():
         svc_list = ', '.join([f'"{s["name"]}" (id={s["id"]})' for s in info['services']])
-        services_text += f'  {ts_id}. "{info["name"]}" → сервисы: {svc_list}\n'
+        services_text += f'  {ts_id}. "{info["name"]}" -> сервисы: {svc_list}\n'
 
     valid_ts_ids = [str(ts_id) for ts_id in services_map.keys()]
     valid_svc_ids = []
@@ -162,17 +146,17 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
 ЗАЯВКА: "{description}"
 
 ИНСТРУКЦИЯ:
-- Если проблема/ошибка/не работает/сломалось → услуга "Сообщить о проблеме" (id=9)
-- Если нужен доступ/подключить/создать учётку → услуга "Предоставить доступ" (id=1)
-- Если заблокировать/отключить/удалить доступ → услуга "Заблокировать доступ" (id=6)
-- Если вопрос/предложение/жалоба → услуга "Спросить | Предложить | Жалоба | Иное" (id=10)
+- Если проблема/ошибка/не работает/сломалось -> услуга "Сообщить о проблеме" (id=9)
+- Если нужен доступ/подключить/создать учётку -> услуга "Предоставить доступ" (id=1)
+- Если заблокировать/отключить/удалить доступ -> услуга "Заблокировать доступ" (id=6)
+- Если вопрос/предложение/жалоба -> услуга "Спросить | Предложить | Жалоба | Иное" (id=10)
 
 ОПРЕДЕЛЕНИЕ СЕРВИСА по ключевым словам:
-- 1С, база, процедура, удалёнка, RDP, терминал, рабочий стол → сервис "1С и удалённый рабочий стол" (id=2)
-- Битрикс, CRM, портал, задача, Bitrix → сервис "Битрикс24" (id=3)
-- Почта, email, mail, письмо, Outlook → сервис "Корпоративная почта" (id=9)
-- Телефон, звонок, АТС, номер, гарнитура → сервис "Телефония" (id=10)
-- Отчёт, дашборд, аналитика, статистика, BI → сервис "Аналитика" (id=11)
+- 1С, база, процедура, удалёнка, RDP, терминал, рабочий стол -> сервис "1С и удалённый рабочий стол" (id=2)
+- Битрикс, CRM, портал, задача, Bitrix -> сервис "Битрикс24" (id=3)
+- Почта, email, mail, письмо, Outlook -> сервис "Корпоративная почта" (id=9)
+- Телефон, звонок, АТС, номер, гарнитура -> сервис "Телефония" (id=10)
+- Отчёт, дашборд, аналитика, статистика, BI -> сервис "Аналитика" (id=11)
 {rules_text}{examples_text}
 Ответь ТОЛЬКО JSON, без пояснений:
 {{"ticket_service_id": ЧИСЛО, "service_ids": [ЧИСЛО], "confidence": 0-100}}
@@ -180,9 +164,28 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
 Допустимые ticket_service_id: {', '.join(valid_ts_ids)}
 Допустимые service_ids: {', '.join(valid_svc_ids)}"""
 
-    print(f'[classify] Description: {description[:200]}')
-    print(f'[classify] Training: {len(examples_text)} chars examples, {len(rules_text)} chars rules')
+    return prompt, valid_ts_ids, valid_svc_ids
 
+
+def build_services_map(ticket_services, services, mappings):
+    services_map = {}
+    for ts in ticket_services:
+        linked = []
+        for m in mappings:
+            if m['ticket_service_id'] == ts['id']:
+                svc = next((s for s in services if s['id'] == m['service_id']), None)
+                if svc:
+                    linked.append({'id': svc['id'], 'name': svc['name']})
+        if linked:
+            services_map[ts['id']] = {
+                'name': ts['name'],
+                'services': linked,
+            }
+    return services_map
+
+
+def call_gigachat(prompt):
+    token = get_gigachat_token()
     resp = requests.post(
         'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
         headers={
@@ -203,13 +206,10 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
         timeout=45,
     )
     resp.raise_for_status()
+    return resp.json()['choices'][0]['message']['content'].strip()
 
-    raw_content = resp.json()['choices'][0]['message']['content'].strip()
-    print(f'[classify] GigaChat raw: {raw_content}')
 
-    content = extract_json_from_text(raw_content)
-    result = json.loads(content)
-
+def validate_result(result, services_map):
     valid_ts_id_list = [ts_id for ts_id in services_map.keys()]
     valid_svc_id_list = [s['id'] for info in services_map.values() for s in info['services']]
 
@@ -229,6 +229,10 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
             result['service_ids'] = [ts_services[0]['id']]
             result['confidence'] = min(result.get('confidence', 0), 30)
 
+    return result
+
+
+def enrich_result(result, services_map, services):
     ts_info = services_map.get(result['ticket_service_id'], {})
     result['ticket_service_name'] = ts_info.get('name', '')
     result['service_names'] = []
@@ -236,9 +240,49 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
         svc = next((s for s in services if s['id'] == sid), None)
         if svc:
             result['service_names'].append(svc['name'])
+    return result
+
+
+def classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text):
+    services_map = build_services_map(ticket_services, services, mappings)
+    prompt, _, _ = build_prompt(description, services_map, rules_text, examples_text)
+
+    print(f'[classify] Description: {description[:200]}')
+    print(f'[classify] Training: {len(examples_text)} chars examples, {len(rules_text)} chars rules')
+
+    raw_content = call_gigachat(prompt)
+    print(f'[classify] GigaChat raw: {raw_content}')
+
+    content = extract_json_from_text(raw_content)
+    result = json.loads(content)
+    result = validate_result(result, services_map)
+    result = enrich_result(result, services_map, services)
 
     print(f'[classify] Result: ts={result["ticket_service_id"]} ({result["ticket_service_name"]}), svcs={result["service_ids"]}, conf={result.get("confidence")}')
     return result
+
+
+def classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text):
+    services_map = build_services_map(ticket_services, services, mappings)
+    prompt, _, _ = build_prompt(description, services_map, rules_text, examples_text)
+
+    raw_content = call_gigachat(prompt)
+    content = extract_json_from_text(raw_content)
+    result = json.loads(content)
+    result = validate_result(result, services_map)
+    result = enrich_result(result, services_map, services)
+
+    return {
+        'result': result,
+        'debug': {
+            'prompt': prompt,
+            'raw_response': raw_content,
+            'examples_count': examples_text.count('\n- ') if examples_text else 0,
+            'rules_count': rules_text.count('\n- ') if rules_text else 0,
+            'examples_text': examples_text.strip() if examples_text else '',
+            'rules_text': rules_text.strip() if rules_text else '',
+        },
+    }
 
 
 def handler(event, context):
@@ -254,6 +298,7 @@ def handler(event, context):
 
     body = json.loads(event.get('body', '{}'))
     description = body.get('description', '').strip()
+    test_mode = body.get('test_mode', False)
 
     if not description:
         return response(400, {'error': 'description is required'})
@@ -276,7 +321,10 @@ def handler(event, context):
     conn.close()
 
     try:
-        result = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
+        if test_mode:
+            result = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text)
+        else:
+            result = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
         return response(200, result)
     except json.JSONDecodeError as e:
         print(f'[classify] JSON parse error: {e}')
