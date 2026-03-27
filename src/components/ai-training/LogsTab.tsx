@@ -252,7 +252,13 @@ const LogsTab = ({ ticketServices, services, onExampleAdded }: LogsTabProps) => 
               {data.logs.map(log => (
                 <div
                   key={log.id}
-                  className="p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  className={`p-3 rounded-lg border transition-colors cursor-pointer ${
+                    !log.success
+                      ? 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10'
+                      : (log.confidence || 0) < 50
+                      ? 'bg-yellow-500/5 border-yellow-500/20 hover:bg-yellow-500/10'
+                      : 'bg-muted/20 hover:bg-muted/40'
+                  }`}
                   onClick={() => setSelectedLog(log)}
                 >
                   <div className="flex items-start justify-between gap-3">
