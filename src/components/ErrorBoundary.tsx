@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -10,16 +10,33 @@ interface State {
   error?: Error;
 }
 
+const isDomConflictError = (error: Error): boolean => {
+  const msg = error.message || '';
+  return (
+    msg.includes('removeChild') ||
+    msg.includes('insertBefore') ||
+    msg.includes('appendChild') ||
+    msg.includes('is not a child of this node')
+  );
+};
+
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    if (isDomConflictError(error)) {
+      return { hasError: false };
+    }
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (isDomConflictError(error)) {
+      console.warn('[ErrorBoundary] DOM conflict ignored (likely browser extension):', error.message);
+      return;
+    }
     console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
