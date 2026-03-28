@@ -22,6 +22,8 @@ interface Status {
   is_closed: boolean;
   is_approval?: boolean;
   is_pending_confirmation?: boolean;
+  is_reopened?: boolean;
+  is_in_progress?: boolean;
 }
 
 interface ExecutorGroup {

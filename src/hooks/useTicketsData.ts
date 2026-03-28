@@ -28,17 +28,39 @@ export const useTicketsData = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalTickets, setTotalTickets] = useState(0);
   const [showArchived, setShowArchived] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [hiddenCount, setHiddenCount] = useState(0);
 
-  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean) => {
+  const loadHiddenCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await apiFetch(
+        `${API_URL}?endpoint=tickets&page=1&limit=1&is_hidden=true`,
+        { headers: { 'X-Auth-Token': token } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setHiddenCount(data.total || 0);
+      }
+    } catch {
+      // ignore
+    }
+  }, [token]);
+
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean) => {
     if (!token) return;
 
     const archived = isArchived !== undefined ? isArchived : showArchived;
+    const hidden = isHidden !== undefined ? isHidden : showHidden;
     setLoading(true);
     try {
-      const response = await apiFetch(
-        `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}&is_archived=${archived}`,
-        { headers: { 'X-Auth-Token': token } }
-      );
+      let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`;
+      if (hidden) {
+        url += '&is_hidden=true';
+      } else {
+        url += `&is_archived=${archived}`;
+      }
+      const response = await apiFetch(url, { headers: { 'X-Auth-Token': token } });
 
       if (response.ok) {
         const data = await response.json();
@@ -56,7 +78,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, showArchived]);
+  }, [token, showArchived, showHidden]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -126,15 +148,25 @@ export const useTicketsData = () => {
       Promise.all([
         loadTickets(1),
         loadDictionaries(),
-        loadServices()
+        loadServices(),
+        loadHiddenCount()
       ]).finally(() => setLoading(false));
     }
   }, [token]);
 
   const toggleArchived = useCallback((archived: boolean) => {
     setShowArchived(archived);
+    setShowHidden(false);
     setPage(1);
-    loadTickets(1, archived);
+    loadTickets(1, archived, false);
+    loadHiddenCount();
+  }, [loadTickets, loadHiddenCount]);
+
+  const toggleHidden = useCallback((hidden: boolean) => {
+    setShowHidden(hidden);
+    setShowArchived(false);
+    setPage(1);
+    loadTickets(1, false, hidden);
   }, [loadTickets]);
 
   return {
@@ -151,9 +183,13 @@ export const useTicketsData = () => {
     totalPages,
     totalTickets,
     showArchived,
+    showHidden,
+    hiddenCount,
     loadTickets,
     loadDictionaries,
     loadServices,
     toggleArchived,
+    toggleHidden,
+    loadHiddenCount,
   };
 };

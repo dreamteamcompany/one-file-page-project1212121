@@ -12,6 +12,9 @@ interface TicketsViewToggleProps {
   onBulkModeToggle: () => void;
   showArchived: boolean;
   onToggleArchived: (archived: boolean) => void;
+  showHidden?: boolean;
+  onToggleHidden?: (hidden: boolean) => void;
+  hiddenCount?: number;
 }
 
 const TicketsViewToggle = ({
@@ -21,14 +24,17 @@ const TicketsViewToggle = ({
   onBulkModeToggle,
   showArchived,
   onToggleArchived,
+  showHidden = false,
+  onToggleHidden,
+  hiddenCount = 0,
 }: TicketsViewToggleProps) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Button
-          variant={viewMode === 'list' && !showArchived ? 'default' : 'outline'}
+          variant={viewMode === 'list' && !showArchived && !showHidden ? 'default' : 'outline'}
           size="sm"
-          onClick={() => { onViewModeChange('list'); if (showArchived) onToggleArchived(false); }}
+          onClick={() => { onViewModeChange('list'); if (showArchived) onToggleArchived(false); if (showHidden && onToggleHidden) onToggleHidden(false); }}
           className="flex items-center gap-2"
         >
           <Icon name="List" size={16} className="hidden sm:inline" />
@@ -36,9 +42,9 @@ const TicketsViewToggle = ({
           <Icon name="List" size={16} className="sm:hidden" />
         </Button>
         <Button
-          variant={viewMode === 'kanban' && !showArchived ? 'default' : 'outline'}
+          variant={viewMode === 'kanban' && !showArchived && !showHidden ? 'default' : 'outline'}
           size="sm"
-          onClick={() => { onViewModeChange('kanban'); if (showArchived) onToggleArchived(false); }}
+          onClick={() => { onViewModeChange('kanban'); if (showArchived) onToggleArchived(false); if (showHidden && onToggleHidden) onToggleHidden(false); }}
           className="flex items-center gap-2"
         >
           <Icon name="LayoutGrid" size={16} className="hidden sm:inline" />
@@ -48,15 +54,31 @@ const TicketsViewToggle = ({
         <Button
           variant={showArchived ? 'default' : 'outline'}
           size="sm"
-          onClick={() => { onToggleArchived(!showArchived); if (!showArchived) onViewModeChange('list'); }}
+          onClick={() => { onToggleArchived(!showArchived); if (showHidden && onToggleHidden) onToggleHidden(false); if (!showArchived) onViewModeChange('list'); }}
           className="flex items-center gap-2"
         >
           <Icon name="Archive" size={16} />
           <span className="hidden sm:inline">Архив</span>
         </Button>
+        {onToggleHidden && (
+          <Button
+            variant={showHidden ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => { onToggleHidden(!showHidden); if (showArchived) onToggleArchived(false); if (!showHidden) onViewModeChange('list'); }}
+            className="flex items-center gap-2"
+          >
+            <Icon name="EyeOff" size={16} />
+            <span className="hidden sm:inline">Скрытые</span>
+            {hiddenCount > 0 && (
+              <span className="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                {hiddenCount}
+              </span>
+            )}
+          </Button>
+        )}
       </div>
 
-      {viewMode === 'list' && !showArchived && (
+      {viewMode === 'list' && !showArchived && !showHidden && (
         <Button
           variant={bulkMode ? 'default' : 'outline'}
           size="sm"

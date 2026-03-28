@@ -48,7 +48,10 @@ const Tickets = () => {
     loadDictionaries,
     loadServices,
     showArchived,
+    showHidden,
+    hiddenCount,
     toggleArchived,
+    toggleHidden,
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
@@ -117,9 +120,12 @@ const Tickets = () => {
           onBulkModeToggle={handleBulkModeToggle}
           showArchived={showArchived}
           onToggleArchived={toggleArchived}
+          showHidden={showHidden}
+          onToggleHidden={toggleHidden}
+          hiddenCount={hiddenCount}
         />
 
-          {!showArchived && <div className="w-fit">
+          {!showArchived && !showHidden && <div className="w-fit">
             <TicketForm
               dialogOpen={dialogOpen}
               setDialogOpen={setDialogOpen}

@@ -109,6 +109,8 @@ export interface TicketStatus {
   order?: number;
   is_closed?: boolean;
   is_pending_confirmation?: boolean;
+  is_reopened?: boolean;
+  is_in_progress?: boolean;
 }
 
 export interface TicketPriority {

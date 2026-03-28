@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/layout/PageLayout';
 import TicketDetailsContent from '@/components/tickets/TicketDetailsContent';
 import TicketDetailsSidebar from '@/components/tickets/TicketDetailsSidebar';
+import ConfirmationOverlay from '@/components/tickets/ConfirmationOverlay';
 import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
 
@@ -80,6 +81,12 @@ const TicketDetails = () => {
     );
   }
 
+  const isPendingConfirmation = !!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation;
+  const isCreator = user?.id === ticket.created_by;
+  const isAssignee = user?.id === ticket.assigned_to;
+  const isReopened = !!statuses.find(s => s.id === ticket.status_id)?.is_reopened;
+  const showConfirmationOverlay = isPendingConfirmation && isCreator;
+
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen} forceCollapsed>
       <div className="flex items-center gap-2 mb-2">
@@ -91,13 +98,15 @@ const TicketDetails = () => {
         >
           <Icon name="Menu" size={24} />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate('/tickets')}
-        >
-          <Icon name="ArrowLeft" size={20} />
-        </Button>
+        {!showConfirmationOverlay && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/tickets')}
+          >
+            <Icon name="ArrowLeft" size={20} />
+          </Button>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto -mx-4 md:-mx-6 lg:-mx-[30px] px-4 md:px-6 lg:px-[30px] -mb-4 md:-mb-6 lg:-mb-[30px] pb-4 md:pb-6 lg:pb-[30px]">
@@ -206,6 +215,8 @@ const TicketDetails = () => {
             uploadingFile={uploadingFile}
             auditLogs={auditLogs}
             loadingHistory={loadingHistory}
+            commentsBlocked={isReopened && !!isAssignee}
+            commentsBlockedMessage="Заявка открыта повторно. Для работы с ней необходимо сначала принять её в работу, изменив статус."
           />
           </div>
         </div>
@@ -214,6 +225,13 @@ const TicketDetails = () => {
       <footer className="mt-auto pt-6 py-4 text-center text-xs text-muted-foreground border-t border-border/40">
         © 2026 Команда Мечты
       </footer>
+
+      {showConfirmationOverlay && (
+        <ConfirmationOverlay
+          ticket={ticket}
+          onChanged={() => { loadTicket(); }}
+        />
+      )}
     </PageLayout>
   );
 };

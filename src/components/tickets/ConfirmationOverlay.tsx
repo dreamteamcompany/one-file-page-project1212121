@@ -46,6 +46,7 @@ const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) =>
   const [rating, setRating] = useState(0);
   const [rejectionReason, setRejectionReason] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -60,13 +61,21 @@ const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) =>
   const handleConfirm = async () => {
     if (rating === 0) return;
     setLoading(true);
+    setError('');
     try {
       const res = await apiFetch(`${API_URL}?endpoint=ticket-confirmation`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
         body: JSON.stringify({ ticket_id: ticket.id, action: 'confirm', rating }),
       });
-      if (res.ok) onChanged();
+      if (res.ok) {
+        onChanged();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Не удалось подтвердить заявку');
+      }
+    } catch {
+      setError('Ошибка сети');
     } finally {
       setLoading(false);
     }
@@ -75,13 +84,21 @@ const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) =>
   const handleReject = async () => {
     if (!rejectionReason.trim()) return;
     setLoading(true);
+    setError('');
     try {
       const res = await apiFetch(`${API_URL}?endpoint=ticket-confirmation`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
         body: JSON.stringify({ ticket_id: ticket.id, action: 'reject', rejection_reason: rejectionReason }),
       });
-      if (res.ok) onChanged();
+      if (res.ok) {
+        onChanged();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Не удалось отклонить заявку');
+      }
+    } catch {
+      setError('Ошибка сети');
     } finally {
       setLoading(false);
     }
@@ -202,6 +219,12 @@ const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) =>
                   Вернуть в работу
                 </Button>
               </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-400 text-center">
+              {error}
             </div>
           )}
 
