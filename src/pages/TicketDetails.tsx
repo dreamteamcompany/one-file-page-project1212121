@@ -83,14 +83,20 @@ const TicketDetails = () => {
 
   useEffect(() => {
     if (!needsCreatorConfirmation) return;
+    let ready = false;
+    const timer = setTimeout(() => { ready = true; }, 300);
     const handlePopState = (e: PopStateEvent) => {
+      if (!ready) return;
       e.preventDefault();
       window.history.pushState(null, '', window.location.href);
       setShowExitConfirmation(true);
     };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [needsCreatorConfirmation]);
 
   if (!canViewTickets) {
