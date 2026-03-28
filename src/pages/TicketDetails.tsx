@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
@@ -17,6 +17,7 @@ const TicketDetails = () => {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { user, hasPermission } = useAuth();
 
@@ -52,14 +53,46 @@ const TicketDetails = () => {
     handleUpdateDueDate,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
 
+  const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
+
+  const isPendingConfirmation = useMemo(
+    () => !!statuses.find(s => s.id === ticket?.status_id)?.is_pending_confirmation,
+    [statuses, ticket?.status_id]
+  );
+  const isCreator = user?.id === ticket?.created_by;
+  const isAssignee = user?.id === ticket?.assigned_to;
+  const isReopened = useMemo(
+    () => !!statuses.find(s => s.id === ticket?.status_id)?.is_reopened,
+    [statuses, ticket?.status_id]
+  );
+  const needsCreatorConfirmation = isPendingConfirmation && isCreator;
+
+  const handleBack = useCallback(() => {
+    if (needsCreatorConfirmation) {
+      setShowExitConfirmation(true);
+    } else {
+      navigate('/tickets');
+    }
+  }, [needsCreatorConfirmation, navigate]);
+
   useEffect(() => {
-    const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
     if (!canViewTickets) {
       navigate('/tickets');
     }
-  }, [hasPermission, navigate]);
+  }, [canViewTickets, navigate]);
 
-  const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
+  useEffect(() => {
+    if (!needsCreatorConfirmation) return;
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState(null, '', window.location.href);
+      setShowExitConfirmation(true);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [needsCreatorConfirmation]);
+
   if (!canViewTickets) {
     return null;
   }
@@ -82,12 +115,6 @@ const TicketDetails = () => {
     );
   }
 
-  const isPendingConfirmation = !!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation;
-  const isCreator = user?.id === ticket.created_by;
-  const isAssignee = user?.id === ticket.assigned_to;
-  const isReopened = !!statuses.find(s => s.id === ticket.status_id)?.is_reopened;
-  const showConfirmationOverlay = isPendingConfirmation && isCreator;
-
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen} forceCollapsed>
       <div className="flex items-center gap-2 mb-2">
@@ -99,16 +126,51 @@ const TicketDetails = () => {
         >
           <Icon name="Menu" size={24} />
         </Button>
-        {!showConfirmationOverlay && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/tickets')}
-          >
-            <Icon name="ArrowLeft" size={20} />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleBack}
+        >
+          <Icon name="ArrowLeft" size={20} />
+        </Button>
       </div>
+
+      {needsCreatorConfirmation && (
+        <div className="mb-4 rounded-xl border-2 border-orange-500 bg-orange-500/10 p-4 relative overflow-hidden confirmation-banner-pulse">
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="shrink-0 w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center animate-bounce-slow">
+              <Icon name="ClipboardCheck" size={24} className="text-orange-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-orange-400 uppercase tracking-wide">
+                Требуется ваше решение
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Исполнитель сообщает, что работа выполнена. Подтвердите или отклоните результат.
+              </p>
+            </div>
+            <div className="shrink-0 flex gap-2 w-full sm:w-auto">
+              <Button
+                size="sm"
+                className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setShowExitConfirmation(true)}
+              >
+                <Icon name="CheckCircle" size={14} className="mr-1" />
+                Подтвердить
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 sm:flex-none border-red-500/40 text-red-400 hover:bg-red-500/10"
+                onClick={() => setShowExitConfirmation(true)}
+              >
+                <Icon name="XCircle" size={14} className="mr-1" />
+                Отклонить
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto -mx-4 md:-mx-6 lg:-mx-[30px] px-4 md:px-6 lg:px-[30px] -mb-4 md:-mb-6 lg:-mb-[30px] pb-4 md:pb-6 lg:pb-[30px]">
         <div className="w-full py-2">
@@ -235,10 +297,11 @@ const TicketDetails = () => {
         © 2026 Команда Мечты
       </footer>
 
-      {showConfirmationOverlay && (
+      {showExitConfirmation && (
         <ConfirmationOverlay
           ticket={ticket}
-          onChanged={() => { loadTicket(); }}
+          onChanged={() => { setShowExitConfirmation(false); loadTicket(); }}
+          onClose={() => setShowExitConfirmation(false)}
         />
       )}
     </PageLayout>

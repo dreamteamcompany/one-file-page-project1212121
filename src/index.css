@@ -96,3 +96,37 @@
       0 0 60px rgba(239, 68, 68, 0.3);
   }
 }
+
+@keyframes confirmation-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(249, 115, 22, 0.4),
+      0 0 20px rgba(249, 115, 22, 0.1);
+    border-color: rgba(249, 115, 22, 0.6);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(249, 115, 22, 0),
+      0 0 30px rgba(249, 115, 22, 0.2);
+    border-color: rgba(249, 115, 22, 1);
+  }
+}
+
+@keyframes bounce-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.confirmation-banner-pulse {
+  animation: confirmation-pulse 2s ease-in-out infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}

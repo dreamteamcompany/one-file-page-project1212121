@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
@@ -15,6 +15,7 @@ interface ConfirmationOverlayProps {
     assignee_name?: string;
   };
   onChanged: () => void;
+  onClose?: () => void;
 }
 
 const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
@@ -40,7 +41,7 @@ const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) 
 
 const RATING_LABELS = ['', 'Очень плохо', 'Плохо', 'Нормально', 'Хорошо', 'Отлично'];
 
-const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) => {
+const ConfirmationOverlay = ({ ticket, onChanged, onClose }: ConfirmationOverlayProps) => {
   const { token } = useAuth();
   const [mode, setMode] = useState<'choose' | 'confirm' | 'reject'>('choose');
   const [rating, setRating] = useState(0);
@@ -48,15 +49,7 @@ const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault();
-      window.history.pushState(null, '', window.location.href);
-    };
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+
 
   const handleConfirm = async () => {
     if (rating === 0) return;
@@ -228,8 +221,19 @@ const ConfirmationOverlay = ({ ticket, onChanged }: ConfirmationOverlayProps) =>
             </div>
           )}
 
+          {onClose && mode === 'choose' && (
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground hover:text-foreground"
+              onClick={onClose}
+            >
+              <Icon name="ArrowLeft" size={16} className="mr-2" />
+              Вернуться к заявке
+            </Button>
+          )}
+
           <p className="text-xs text-center text-muted-foreground/60">
-            Для продолжения работы необходимо подтвердить или отклонить заявку
+            Для выхода необходимо подтвердить или отклонить заявку
           </p>
         </div>
       </div>
