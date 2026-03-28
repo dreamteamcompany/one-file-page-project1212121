@@ -1,10 +1,71 @@
-"""API для управления обучением AI — примеры заявок и правила классификации"""
+"""API для управления обучением AI — примеры заявок, правила и генерация эмбеддингов"""
 import json
+import os
+import time
+import uuid
+import requests
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_query_param, SCHEMA
+
+GIGACHAT_AUTH_KEY = os.environ.get('GIGACHAT_AUTH_KEY')
+
+_token_cache = {'token': None, 'expires_at': 0}
+
+
+def get_gigachat_token():
+    now = time.time()
+    if _token_cache['token'] and _token_cache['expires_at'] > now + 60:
+        return _token_cache['token']
+
+    resp = requests.post(
+        'https://ngw.devices.sberbank.ru:9443/api/v2/oauth',
+        headers={
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+            'RqUID': str(uuid.uuid4()),
+            'Authorization': f'Basic {GIGACHAT_AUTH_KEY}',
+        },
+        data={'scope': 'GIGACHAT_API_PERS'},
+        verify=False,
+        timeout=(3, 5),
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    _token_cache['token'] = data['access_token']
+    _token_cache['expires_at'] = data.get('expires_at', now + 1800) / 1000 if data.get('expires_at', 0) > 1000000000000 else data.get('expires_at', now + 1800)
+    return _token_cache['token']
+
+
+def generate_embedding(text):
+    token = get_gigachat_token()
+    resp = requests.post(
+        'https://gigachat.devices.sberbank.ru/api/v1/embeddings',
+        headers={
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {token}',
+        },
+        json={
+            'model': 'Embeddings',
+            'input': [text[:512]],
+        },
+        verify=False,
+        timeout=(3, 8),
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data['data'][0]['embedding']
+
+
+def safe_generate_embedding(text):
+    try:
+        return generate_embedding(text), None
+    except BaseException as e:
+        print(f'[ai-training] Embedding error: {e}')
+        return None, str(e)
 
 
 def handler(event, context):
-    """CRUD для примеров и правил обучения AI-классификатора"""
+    """CRUD для примеров и правил обучения AI-классификатора с генерацией эмбеддингов"""
     if event.get('httpMethod') == 'OPTIONS':
         return handle_options()
 
@@ -27,8 +88,10 @@ def handler(event, context):
             return handle_stats(cur)
         elif endpoint == 'logs':
             return handle_logs(method, event, cur, conn)
+        elif endpoint == 'reindex':
+            return handle_reindex(cur, conn)
         else:
-            return response(400, {'error': 'Укажите endpoint: examples, rules, stats или logs'})
+            return response(400, {'error': 'Укажите endpoint: examples, rules, stats, logs или reindex'})
     finally:
         cur.close()
         conn.close()
@@ -39,7 +102,8 @@ def handle_examples(method, event, cur, conn):
         cur.execute(f"""
             SELECT e.id, e.description, e.ticket_service_id, e.service_ids,
                    e.created_at, e.updated_at,
-                   ts.name as ticket_service_name
+                   ts.name as ticket_service_name,
+                   CASE WHEN e.embedding IS NOT NULL THEN true ELSE false END as has_embedding
             FROM {SCHEMA}.ai_training_examples e
             LEFT JOIN {SCHEMA}.ticket_services ts ON ts.id = e.ticket_service_id
             ORDER BY e.created_at DESC
@@ -72,13 +136,20 @@ def handle_examples(method, event, cur, conn):
         if not description or not ticket_service_id:
             return response(400, {'error': 'description и ticket_service_id обязательны'})
 
+        embedding, emb_error = safe_generate_embedding(description)
+        embedding_json = json.dumps(embedding) if embedding else None
+
         cur.execute(f"""
-            INSERT INTO {SCHEMA}.ai_training_examples (description, ticket_service_id, service_ids)
-            VALUES (%s, %s, %s)
+            INSERT INTO {SCHEMA}.ai_training_examples (description, ticket_service_id, service_ids, embedding)
+            VALUES (%s, %s, %s, %s::jsonb)
             RETURNING id, description, ticket_service_id, service_ids, created_at
-        """, (description, ticket_service_id, service_ids))
+        """, (description, ticket_service_id, service_ids, embedding_json))
         conn.commit()
-        return response(201, dict(cur.fetchone()))
+        result = dict(cur.fetchone())
+        result['has_embedding'] = embedding is not None
+        if emb_error:
+            result['embedding_error'] = emb_error
+        return response(201, result)
 
     elif method == 'PUT':
         body = json.loads(event.get('body', '{}'))
@@ -88,9 +159,12 @@ def handle_examples(method, event, cur, conn):
 
         fields = []
         values = []
+        need_reembed = False
+
         if 'description' in body:
             fields.append('description = %s')
             values.append(body['description'].strip())
+            need_reembed = True
         if 'ticket_service_id' in body:
             fields.append('ticket_service_id = %s')
             values.append(body['ticket_service_id'])
@@ -100,6 +174,13 @@ def handle_examples(method, event, cur, conn):
 
         if not fields:
             return response(400, {'error': 'Нет полей для обновления'})
+
+        if need_reembed:
+            new_desc = body.get('description', '').strip()
+            embedding, emb_error = safe_generate_embedding(new_desc)
+            embedding_json = json.dumps(embedding) if embedding else None
+            fields.append('embedding = %s::jsonb')
+            values.append(embedding_json)
 
         fields.append('updated_at = NOW()')
         values.append(example_id)
@@ -114,7 +195,9 @@ def handle_examples(method, event, cur, conn):
         row = cur.fetchone()
         if not row:
             return response(404, {'error': 'Пример не найден'})
-        return response(200, dict(row))
+        result = dict(row)
+        result['has_embedding'] = need_reembed and embedding is not None
+        return response(200, result)
 
     elif method == 'DELETE':
         body = json.loads(event.get('body', '{}'))
@@ -130,6 +213,36 @@ def handle_examples(method, event, cur, conn):
         return response(200, {'deleted': True, 'id': row['id']})
 
     return response(405, {'error': 'Method not allowed'})
+
+
+def handle_reindex(cur, conn):
+    cur.execute(f"""
+        SELECT id, description FROM {SCHEMA}.ai_training_examples
+        ORDER BY id
+    """)
+    examples = [dict(r) for r in cur.fetchall()]
+
+    if not examples:
+        return response(200, {'reindexed': 0, 'errors': 0})
+
+    reindexed = 0
+    errors = 0
+
+    for ex in examples:
+        embedding, emb_error = safe_generate_embedding(ex['description'])
+        if embedding:
+            embedding_json = json.dumps(embedding)
+            cur.execute(f"""
+                UPDATE {SCHEMA}.ai_training_examples
+                SET embedding = %s::jsonb
+                WHERE id = %s
+            """, (embedding_json, ex['id']))
+            conn.commit()
+            reindexed += 1
+        else:
+            errors += 1
+            print(f'[ai-training] Reindex failed for id={ex["id"]}: {emb_error}')
+    return response(200, {'reindexed': reindexed, 'errors': errors, 'total': len(examples)})
 
 
 def handle_rules(method, event, cur, conn):
@@ -212,9 +325,13 @@ def handle_stats(cur):
     cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_training_rules WHERE is_active = true")
     rules_count = cur.fetchone()['count']
 
+    cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_training_examples WHERE embedding IS NOT NULL")
+    indexed_count = cur.fetchone()['count']
+
     return response(200, {
         'examples_count': examples_count,
         'active_rules_count': rules_count,
+        'indexed_count': indexed_count,
     })
 
 
@@ -236,15 +353,16 @@ def handle_logs(method, event, cur, conn):
     if method != 'GET':
         return response(405, {'error': 'Method not allowed'})
 
-    limit = int(get_query_param(event, 'limit', '50'))
+    limit = int(get_query_param(event, 'limit', '20'))
     offset = int(get_query_param(event, 'offset', '0'))
-    success_filter = get_query_param(event, 'success', '')
+    success_filter = get_query_param(event, 'success', None)
 
-    where = ''
-    if success_filter == 'true':
-        where = 'WHERE success = true'
-    elif success_filter == 'false':
-        where = 'WHERE success = false'
+    where_clause = ''
+    if success_filter is not None:
+        where_clause = f"WHERE success = {'true' if success_filter == 'true' else 'false'}"
+
+    cur.execute(f"SELECT COUNT(*) as total FROM {SCHEMA}.ai_classification_logs {where_clause}")
+    total = cur.fetchone()['total']
 
     cur.execute(f"""
         SELECT id, description, ticket_service_id, ticket_service_name,
@@ -252,28 +370,26 @@ def handle_logs(method, event, cur, conn):
                raw_response, examples_used, rules_used, duration_ms,
                test_mode, created_at
         FROM {SCHEMA}.ai_classification_logs
-        {where}
+        {where_clause}
         ORDER BY created_at DESC
-        LIMIT %s OFFSET %s
-    """, (limit, offset))
+        LIMIT {limit} OFFSET {offset}
+    """)
     logs = [dict(r) for r in cur.fetchall()]
-
-    cur.execute(f"SELECT COUNT(*) as total FROM {SCHEMA}.ai_classification_logs {where}")
-    total = cur.fetchone()['total']
 
     cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_classification_logs WHERE success = true")
     success_count = cur.fetchone()['c']
 
     cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_classification_logs WHERE success = false")
-    fail_count = cur.fetchone()['c']
+    error_count = cur.fetchone()['c']
 
-    cur.execute(f"SELECT COALESCE(AVG(confidence), 0) as avg FROM {SCHEMA}.ai_classification_logs WHERE success = true AND confidence IS NOT NULL")
-    avg_confidence = round(cur.fetchone()['avg'])
+    cur.execute(f"SELECT AVG(confidence) as avg FROM {SCHEMA}.ai_classification_logs WHERE success = true AND confidence IS NOT NULL")
+    avg_row = cur.fetchone()
+    avg_confidence = round(avg_row['avg']) if avg_row['avg'] else 0
 
     return response(200, {
         'logs': logs,
         'total': total,
         'success_count': success_count,
-        'fail_count': fail_count,
+        'fail_count': error_count,
         'avg_confidence': avg_confidence,
     })

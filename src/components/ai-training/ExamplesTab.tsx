@@ -32,6 +32,7 @@ export interface TrainingExample {
   service_ids: number[];
   ticket_service_name: string;
   service_names: string[];
+  has_embedding?: boolean;
   created_at: string;
 }
 
@@ -167,6 +168,17 @@ const ExamplesTab = ({ examples, ticketServices, services, onReload }: ExamplesT
                             {name}
                           </Badge>
                         ))}
+                        {ex.has_embedding ? (
+                          <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                            <Icon name="Brain" size={10} className="mr-1" />
+                            Индексирован
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                            <Icon name="AlertCircle" size={10} className="mr-1" />
+                            Не индексирован
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">

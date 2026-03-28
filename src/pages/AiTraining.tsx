@@ -13,20 +13,23 @@ import TestTab from '@/components/ai-training/TestTab';
 import LogsTab from '@/components/ai-training/LogsTab';
 import type { TrainingExample, TicketService, Service } from '@/components/ai-training/ExamplesTab';
 import type { TrainingRule } from '@/components/ai-training/RulesTab';
+import { useToast } from '@/hooks/use-toast';
 
 const AI_TRAINING_URL = func2url['api-ai-training'];
 
 const AiTraining = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [tab, setTab] = useState<'examples' | 'rules' | 'test' | 'logs'>('examples');
   const [examples, setExamples] = useState<TrainingExample[]>([]);
   const [rules, setRules] = useState<TrainingRule[]>([]);
   const [ticketServices, setTicketServices] = useState<TicketService[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [stats, setStats] = useState({ examples_count: 0, active_rules_count: 0 });
+  const [stats, setStats] = useState({ examples_count: 0, active_rules_count: 0, indexed_count: 0 });
   const [loading, setLoading] = useState(true);
+  const [reindexing, setReindexing] = useState(false);
 
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
@@ -65,6 +68,24 @@ const AiTraining = () => {
     }
   };
 
+  const reindexExamples = async () => {
+    setReindexing(true);
+    try {
+      const res = await apiFetch(`${AI_TRAINING_URL}?endpoint=reindex`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        toast({ title: `Индексация завершена: ${data.reindexed} из ${data.total}` });
+        loadData();
+      } else {
+        toast({ title: 'Ошибка индексации', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка индексации', variant: 'destructive' });
+    } finally {
+      setReindexing(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageLayout>
@@ -91,7 +112,7 @@ const AiTraining = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
@@ -116,6 +137,35 @@ const AiTraining = () => {
                 <p className="text-xs text-muted-foreground">Активных правил</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                <Icon name="Brain" size={20} className="text-green-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.indexed_count}/{stats.examples_count}</p>
+                <p className="text-xs text-muted-foreground">Индексировано</p>
+              </div>
+            </div>
+            {stats.indexed_count < stats.examples_count && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 w-full gap-1 text-xs"
+                onClick={reindexExamples}
+                disabled={reindexing}
+              >
+                {reindexing ? (
+                  <Icon name="Loader2" size={12} className="animate-spin" />
+                ) : (
+                  <Icon name="RefreshCw" size={12} />
+                )}
+                {reindexing ? 'Индексация...' : 'Переиндексировать'}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
