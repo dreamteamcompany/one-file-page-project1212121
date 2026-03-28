@@ -86,7 +86,7 @@ def get_gigachat_token():
         },
         data={'scope': 'GIGACHAT_API_PERS'},
         verify=False,
-        timeout=(5, 10),
+        timeout=(3, 5),
     )
     resp.raise_for_status()
     data = resp.json()
@@ -242,7 +242,7 @@ def call_gigachat(prompt):
             'max_tokens': 100,
         },
         verify=False,
-        timeout=(5, 25),
+        timeout=(3, 8),
     )
     resp.raise_for_status()
     return resp.json()['choices'][0]['message']['content'].strip()
@@ -258,32 +258,26 @@ FALLBACK_RESULT = {
 }
 
 
-def safe_call_gigachat(prompt, max_retries=3):
-    last_error = None
-    for attempt in range(1, max_retries + 1):
-        try:
-            result = call_gigachat(prompt)
-            return result, None
-        except requests.exceptions.HTTPError as e:
-            status = e.response.status_code if e.response is not None else 0
-            last_error = f'HTTP {status}'
-            print(f'[classify] GigaChat attempt {attempt}/{max_retries} failed: {last_error}')
-            if status == 401:
-                _token_cache['token'] = None
-                _token_cache['expires_at'] = 0
-            if attempt < max_retries:
-                time.sleep(1.5 * attempt)
-        except requests.exceptions.Timeout as e:
-            last_error = str(e)
-            print(f'[classify] GigaChat attempt {attempt}/{max_retries} timeout: {last_error}')
-            if attempt < max_retries:
-                time.sleep(1)
-        except BaseException as e:
-            last_error = str(e)
-            print(f'[classify] GigaChat attempt {attempt}/{max_retries} failed: {last_error}')
-            if attempt < max_retries:
-                time.sleep(1)
-    return None, last_error
+def safe_call_gigachat(prompt):
+    try:
+        result = call_gigachat(prompt)
+        return result, None
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code if e.response is not None else 0
+        error = f'HTTP {status}'
+        print(f'[classify] GigaChat failed: {error}')
+        if status == 401:
+            _token_cache['token'] = None
+            _token_cache['expires_at'] = 0
+        return None, error
+    except requests.exceptions.Timeout as e:
+        error = str(e)
+        print(f'[classify] GigaChat timeout: {error}')
+        return None, error
+    except BaseException as e:
+        error = str(e)
+        print(f'[classify] GigaChat error: {error}')
+        return None, error
 
 
 def classify_by_keywords(description, services_map):
