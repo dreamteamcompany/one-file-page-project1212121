@@ -21,6 +21,38 @@ CORS_HEADERS = {
     'Access-Control-Max-Age': '86400',
 }
 
+_token_cache = {'token': None, 'expires_at': 0}
+
+SERVICE_KEYWORDS = {
+    2: ['1с', '1c', 'база', 'базу', 'базы', 'rdp', 'удалён', 'удален', 'терминал', 'рабочий стол', 'stoma', 'ireland', 'мис'],
+    3: ['битрикс', 'bitrix', 'crm', 'портал', 'б24'],
+    9: ['почт', 'email', 'mail', 'письм', 'outlook', 'аутлук'],
+    10: ['телефон', 'звонок', 'звонк', 'атс', 'гарнитур', 'номер телефон'],
+    11: ['отчёт', 'отчет', 'дашборд', 'аналитик', 'статистик', 'bi '],
+}
+
+TICKET_TYPE_KEYWORDS = {
+    9: ['не могу', 'не работает', 'ошибк', 'сломал', 'проблем', 'не открыва', 'не запуска', 'не подключ', 'зависа', 'тормоз', 'вылетае', 'падает', 'не грузит', 'не загруж'],
+    1: ['доступ', 'подключ', 'создать', 'учётк', 'учетк', 'добавить', 'предоставить', 'нужен логин', 'дать права'],
+    6: ['заблокир', 'отключить', 'удалить доступ', 'закрыть доступ', 'убрать доступ', 'снять права'],
+    10: ['вопрос', 'предложени', 'жалоб', 'как сделать', 'подскажите', 'помогите'],
+}
+
+SERVICE_NAMES = {
+    2: '1С и удалённый рабочий стол',
+    3: 'Битрикс24',
+    9: 'Корпоративная почта',
+    10: 'Телефония',
+    11: 'Аналитика',
+}
+
+TICKET_SERVICE_NAMES = {
+    1: 'Предоставить доступ',
+    6: 'Заблокировать доступ',
+    9: 'Сообщить о проблеме',
+    10: 'Спросить | Предложить | Жалоба | Иное',
+}
+
 
 def response(status_code, body):
     return {
@@ -40,6 +72,10 @@ def get_db_connection():
 
 
 def get_gigachat_token():
+    now = time.time()
+    if _token_cache['token'] and _token_cache['expires_at'] > now + 60:
+        return _token_cache['token']
+
     resp = requests.post(
         'https://ngw.devices.sberbank.ru:9443/api/v2/oauth',
         headers={
@@ -50,10 +86,13 @@ def get_gigachat_token():
         },
         data={'scope': 'GIGACHAT_API_PERS'},
         verify=False,
-        timeout=(3, 7),
+        timeout=(5, 10),
     )
     resp.raise_for_status()
-    return resp.json()['access_token']
+    data = resp.json()
+    _token_cache['token'] = data['access_token']
+    _token_cache['expires_at'] = data.get('expires_at', now + 1800) / 1000 if data.get('expires_at', 0) > 1000000000000 else data.get('expires_at', now + 1800)
+    return _token_cache['token']
 
 
 def extract_json_from_text(text):
@@ -80,7 +119,6 @@ def extract_json_from_text(text):
 
 
 def build_training_context(cur):
-    """Подгружает примеры и правила из БД для обогащения промпта"""
     examples_text = ''
     cur.execute(f"""
         SELECT e.description, e.ticket_service_id, e.service_ids,
@@ -204,7 +242,7 @@ def call_gigachat(prompt):
             'max_tokens': 100,
         },
         verify=False,
-        timeout=(5, 30),
+        timeout=(5, 25),
     )
     resp.raise_for_status()
     return resp.json()['choices'][0]['message']['content'].strip()
@@ -220,18 +258,86 @@ FALLBACK_RESULT = {
 }
 
 
-def safe_call_gigachat(prompt, max_retries=2):
+def safe_call_gigachat(prompt, max_retries=3):
     last_error = None
     for attempt in range(1, max_retries + 1):
         try:
             result = call_gigachat(prompt)
             return result, None
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else 0
+            last_error = f'HTTP {status}'
+            print(f'[classify] GigaChat attempt {attempt}/{max_retries} failed: {last_error}')
+            if status == 401:
+                _token_cache['token'] = None
+                _token_cache['expires_at'] = 0
+            if attempt < max_retries:
+                time.sleep(1.5 * attempt)
+        except requests.exceptions.Timeout as e:
+            last_error = str(e)
+            print(f'[classify] GigaChat attempt {attempt}/{max_retries} timeout: {last_error}')
+            if attempt < max_retries:
+                time.sleep(1)
         except BaseException as e:
             last_error = str(e)
             print(f'[classify] GigaChat attempt {attempt}/{max_retries} failed: {last_error}')
             if attempt < max_retries:
                 time.sleep(1)
     return None, last_error
+
+
+def classify_by_keywords(description, services_map):
+    desc_lower = description.lower()
+
+    detected_service_ids = []
+    for svc_id, keywords in SERVICE_KEYWORDS.items():
+        for kw in keywords:
+            if kw in desc_lower:
+                if svc_id not in detected_service_ids:
+                    detected_service_ids.append(svc_id)
+                break
+
+    detected_ts_id = None
+    best_priority = 999
+    priority_order = {9: 1, 1: 2, 6: 3, 10: 4}
+    for ts_id, keywords in TICKET_TYPE_KEYWORDS.items():
+        for kw in keywords:
+            if kw in desc_lower:
+                p = priority_order.get(ts_id, 99)
+                if p < best_priority:
+                    best_priority = p
+                    detected_ts_id = ts_id
+                break
+
+    if not detected_ts_id:
+        detected_ts_id = 9
+
+    valid_svc_ids = [s['id'] for s in services_map.get(detected_ts_id, {}).get('services', [])]
+    detected_service_ids = [sid for sid in detected_service_ids if sid in valid_svc_ids]
+
+    if not detected_service_ids and valid_svc_ids:
+        detected_service_ids = [valid_svc_ids[0]]
+
+    confidence = 0
+    if detected_service_ids:
+        confidence = 55
+    if len(detected_service_ids) == 1:
+        confidence = 65
+
+    service_names = [SERVICE_NAMES.get(sid, '') for sid in detected_service_ids]
+    ts_name = TICKET_SERVICE_NAMES.get(detected_ts_id, '')
+
+    result = {
+        'ticket_service_id': detected_ts_id,
+        'service_ids': detected_service_ids,
+        'ticket_service_name': ts_name,
+        'service_names': service_names,
+        'confidence': confidence,
+        'fallback': True,
+    }
+
+    print(f'[classify] Keyword fallback: ts={detected_ts_id} ({ts_name}), svcs={detected_service_ids}, conf={confidence}')
+    return result
 
 
 def validate_result(result, services_map):
@@ -277,8 +383,9 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
 
     raw_content, error = safe_call_gigachat(prompt)
     if error or not raw_content:
-        print(f'[classify] GigaChat error: {error}')
-        return None, error or 'Empty response'
+        print(f'[classify] GigaChat failed: {error}. Using keyword fallback.')
+        fallback = classify_by_keywords(description, services_map)
+        return fallback, None
 
     print(f'[classify] GigaChat raw: {raw_content}')
 
@@ -297,7 +404,19 @@ def classify_test_mode(description, ticket_services, services, mappings, example
 
     raw_content, error = safe_call_gigachat(prompt)
     if error or not raw_content:
-        return None, error or 'Empty response'
+        fallback = classify_by_keywords(description, services_map)
+        fallback_result = {
+            'result': fallback,
+            'debug': {
+                'prompt': prompt,
+                'raw_response': f'GigaChat unavailable: {error}. Used keyword fallback.',
+                'examples_count': examples_text.count('\n- ') if examples_text else 0,
+                'rules_count': rules_text.count('\n- ') if rules_text else 0,
+                'examples_text': examples_text.strip() if examples_text else '',
+                'rules_text': rules_text.strip() if rules_text else '',
+            },
+        }
+        return fallback_result, None
 
     content = extract_json_from_text(raw_content)
     result = json.loads(content)
@@ -366,15 +485,22 @@ def handler(event, context):
         return response(400, {'error': 'description is required'})
 
     if not GIGACHAT_AUTH_KEY:
-        fallback = {
-            'ticket_service_id': None,
-            'service_ids': [],
-            'ticket_service_name': '',
-            'service_names': [],
-            'confidence': 0,
-            'error': 'Не удалось определить сервис и услугу',
-        }
-        save_log(description, None, False, 'GIGACHAT_AUTH_KEY not configured', None, 0, 0, 0, test_mode)
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, name, description FROM ticket_services ORDER BY id')
+        ticket_services = [dict(r) for r in cur.fetchall()]
+        cur.execute('SELECT id, name, description FROM services ORDER BY id')
+        services = [dict(r) for r in cur.fetchall()]
+        cur.execute('SELECT ticket_service_id, service_id FROM ticket_service_mappings')
+        mappings = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+
+        services_map = build_services_map(ticket_services, services, mappings)
+        fallback = classify_by_keywords(description, services_map)
+        save_log(description, fallback, True, 'GIGACHAT_AUTH_KEY not configured, used keyword fallback', None, 0, 0, 0, test_mode)
+        if test_mode:
+            return response(200, {'result': fallback, 'debug': {'prompt': '', 'raw_response': 'Keyword fallback (no API key)', 'examples_count': 0, 'rules_count': 0}})
         return response(200, fallback)
 
     conn = get_db_connection()
@@ -404,7 +530,8 @@ def handler(event, context):
         if error or not test_result:
             save_log(description, None, False, error, None, examples_count, rules_count, duration_ms, True)
             return response(200, FALLBACK_RESULT)
-        save_log(description, test_result['result'], True, None, test_result['debug'].get('raw_response', ''), examples_count, rules_count, duration_ms, True)
+        is_fallback = test_result.get('result', {}).get('fallback', False)
+        save_log(description, test_result['result'], True, 'keyword fallback' if is_fallback else None, test_result['debug'].get('raw_response', ''), examples_count, rules_count, duration_ms, True)
         return response(200, test_result)
     else:
         result, error = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text)
@@ -412,5 +539,6 @@ def handler(event, context):
         if error or not result:
             save_log(description, None, False, error, None, examples_count, rules_count, duration_ms, False)
             return response(200, FALLBACK_RESULT)
-        save_log(description, result, True, None, None, examples_count, rules_count, duration_ms, False)
+        is_fallback = result.get('fallback', False)
+        save_log(description, result, True, 'keyword fallback' if is_fallback else None, None, examples_count, rules_count, duration_ms, False)
         return response(200, result)
