@@ -151,6 +151,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         created_by = query_params.get('created_by')
         service_id = query_params.get('service_id')
         is_archived = query_params.get('is_archived')
+        is_hidden = query_params.get('is_hidden')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
         page = max(1, int(query_params.get('page', 1)))
@@ -215,10 +216,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             where_clause += " AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsm2 WHERE tsm2.ticket_id = t.id AND tsm2.ticket_service_id = %s)".format(SCHEMA=SCHEMA)
             params.append(int(service_id))
         if not ticket_id_param:
-            if is_archived == 'true':
+            if is_hidden == 'true':
+                where_clause += f" AND t.is_archived = false AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses hs WHERE hs.id = t.status_id AND hs.is_pending_confirmation = true)"
+                where_clause += " AND t.assigned_to = %s"
+                params.append(user_id)
+            elif is_archived == 'true':
                 where_clause += " AND t.is_archived = true"
             else:
-                where_clause += " AND t.is_archived = false"
+                where_clause += f" AND t.is_archived = false AND NOT EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses hs WHERE hs.id = t.status_id AND hs.is_pending_confirmation = true AND t.assigned_to = %s)"
+                params.append(user_id)
         if from_date:
             where_clause += " AND t.created_at >= %s"
             params.append(from_date)
@@ -234,6 +240,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             SELECT DISTINCT t.id, t.title, t.description, t.status_id, t.priority_id,
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
                    t.department_id, t.due_date, t.executor_group_id,
+                   t.confirmation_sent_at, t.rating, t.rejection_reason,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,
