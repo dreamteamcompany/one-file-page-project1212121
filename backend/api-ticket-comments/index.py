@@ -93,10 +93,20 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     user_id = payload['user_id']
     cur = conn.cursor()
 
-    cur.execute(f"SELECT id FROM {SCHEMA}.tickets WHERE id = %s", (data.ticket_id,))
-    if not cur.fetchone():
+    cur.execute(f"""
+        SELECT t.id, t.assigned_to, t.status_id, ts.is_reopened
+        FROM {SCHEMA}.tickets t
+        JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
+        WHERE t.id = %s
+    """, (data.ticket_id,))
+    ticket = cur.fetchone()
+    if not ticket:
         cur.close()
         return response(404, {'error': 'Ticket not found'})
+
+    if ticket['is_reopened'] and ticket['assigned_to'] == user_id:
+        cur.close()
+        return response(403, {'error': 'Для добавления комментария необходимо сначала принять заявку в работу'})
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_comments 

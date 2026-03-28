@@ -1270,10 +1270,13 @@ def handle_ticket_confirmation(method: str, event: dict, conn) -> dict:
                 if not rejection_reason.strip():
                     return response(400, {'error': 'Причина отклонения обязательна'})
 
-                cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_open = TRUE LIMIT 1")
+                cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_reopened = TRUE LIMIT 1")
                 open_status = cur.fetchone()
                 if not open_status:
-                    return response(500, {'error': 'Открытый статус не найден'})
+                    cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_open = TRUE LIMIT 1")
+                    open_status = cur.fetchone()
+                if not open_status:
+                    return response(500, {'error': 'Статус для переоткрытой заявки не найден'})
 
                 cur.execute(f"""
                     UPDATE {SCHEMA}.tickets

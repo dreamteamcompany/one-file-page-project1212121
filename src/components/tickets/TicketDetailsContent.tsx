@@ -102,6 +102,8 @@ interface TicketDetailsContentProps {
   uploadingFile?: boolean;
   auditLogs?: AuditLog[];
   loadingHistory?: boolean;
+  commentsBlocked?: boolean;
+  commentsBlockedMessage?: string;
 }
 
 const TicketDetailsContent = ({
@@ -121,6 +123,8 @@ const TicketDetailsContent = ({
   uploadingFile,
   auditLogs = [],
   loadingHistory = false,
+  commentsBlocked = false,
+  commentsBlockedMessage,
 }: TicketDetailsContentProps) => {
   const { hasSystemRole } = useAuth();
   const canCallPhone = hasSystemRole('admin', 'executor');
@@ -376,6 +380,8 @@ const TicketDetailsContent = ({
             availableUsers={availableUsers}
             onFileUpload={onFileUpload}
             uploadingFile={uploadingFile}
+            commentsBlocked={commentsBlocked}
+            commentsBlockedMessage={commentsBlockedMessage}
           />
         )}
         

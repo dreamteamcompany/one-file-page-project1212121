@@ -52,6 +52,8 @@ interface TicketCommentsProps {
   availableUsers?: User[];
   onFileUpload?: (file: File) => Promise<void>;
   uploadingFile?: boolean;
+  commentsBlocked?: boolean;
+  commentsBlockedMessage?: string;
 }
 
 const AVATAR_COLORS = [
@@ -85,6 +87,8 @@ const TicketComments = ({
   availableUsers = [],
   onFileUpload,
   uploadingFile = false,
+  commentsBlocked = false,
+  commentsBlockedMessage,
 }: TicketCommentsProps) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
@@ -229,7 +233,18 @@ const TicketComments = ({
       </div>
 
       <div className="space-y-3 mb-6 pb-4 border-b">
-        {replyToComment && (
+        {commentsBlocked && (
+          <div className="rounded-lg border border-orange-500/40 bg-orange-500/10 p-4 flex items-start gap-3">
+            <Icon name="AlertTriangle" size={20} className="text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-orange-400">Комментирование заблокировано</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {commentsBlockedMessage || 'Для продолжения работы необходимо изменить статус заявки.'}
+              </p>
+            </div>
+          </div>
+        )}
+        {!commentsBlocked && replyToComment && (
           <div className="p-3 bg-primary/5 rounded-lg border border-primary">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
@@ -250,100 +265,104 @@ const TicketComments = ({
           </div>
         )}
         
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            placeholder="Напишите комментарий... (используйте @ для упоминания)"
-            value={newComment}
-            onChange={handleTextChange}
-            disabled={submittingComment}
-            className="min-h-[90px] lg:min-h-[120px] resize-none pr-10 text-sm"
-          />
-          
-          {showMentions && filteredUsers.length > 0 && (
-            <div 
-              ref={mentionsRef}
-              className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-popover border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto"
-            >
-              {filteredUsers.map(user => (
-                <button
-                  key={user.id}
-                  onClick={() => handleMention(user)}
-                  className="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex items-center gap-2"
+        {!commentsBlocked && (
+          <>
+            <div className="relative">
+              <Textarea
+                ref={textareaRef}
+                placeholder="Напишите комментарий... (используйте @ для упоминания)"
+                value={newComment}
+                onChange={handleTextChange}
+                disabled={submittingComment}
+                className="min-h-[90px] lg:min-h-[120px] resize-none pr-10 text-sm"
+              />
+              
+              {showMentions && filteredUsers.length > 0 && (
+                <div 
+                  ref={mentionsRef}
+                  className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-popover border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto"
                 >
-                  <Icon name="User" size={14} className="text-muted-foreground" />
-                  <div>
-                    <div className="text-sm font-medium">{user.name}</div>
-                    <div className="text-xs text-muted-foreground">{user.email}</div>
-                  </div>
-                </button>
-              ))}
+                  {filteredUsers.map(user => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleMention(user)}
+                      className="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <Icon name="User" size={14} className="text-muted-foreground" />
+                      <div>
+                        <div className="text-sm font-medium">{user.name}</div>
+                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
-        <div className="flex flex-wrap gap-2 items-center">
-          <Button
-            onClick={handleSubmit}
-            disabled={!newComment.trim() || submittingComment}
-            size="sm"
-            className="flex-1 min-w-[120px]"
-          >
-            {submittingComment ? (
-              <>
-                <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                Отправка...
-              </>
-            ) : (
-              <>
-                <Icon name="Send" size={16} className="mr-2" />
-                {replyToComment ? 'Ответить' : 'Отправить'}
-              </>
-            )}
-          </Button>
-          
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            disabled={uploadingFile}
-          />
-          
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingFile || submittingComment}
-            variant="ghost"
-            size="sm"
-            className="flex-shrink-0"
-            title="Прикрепить файл"
-          >
-            {uploadingFile ? (
-              <Icon name="Loader2" size={16} className="animate-spin" />
-            ) : (
-              <Icon name="Paperclip" size={16} />
-            )}
-          </Button>
-          
-          <div className="relative">
-            <Button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              disabled={submittingComment}
-              variant="ghost"
-              size="sm"
-              className="flex-shrink-0"
-              title="Добавить эмодзи"
-            >
-              <Icon name="Smile" size={16} />
-            </Button>
             
-            {showEmojiPicker && (
-              <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50">
-                <EmojiPicker onEmojiClick={handleEmojiClick} />
+            <div className="flex flex-wrap gap-2 items-center">
+              <Button
+                onClick={handleSubmit}
+                disabled={!newComment.trim() || submittingComment}
+                size="sm"
+                className="flex-1 min-w-[120px]"
+              >
+                {submittingComment ? (
+                  <>
+                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                    Отправка...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Send" size={16} className="mr-2" />
+                    {replyToComment ? 'Ответить' : 'Отправить'}
+                  </>
+                )}
+              </Button>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={uploadingFile}
+              />
+              
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFile || submittingComment}
+                variant="ghost"
+                size="sm"
+                className="flex-shrink-0"
+                title="Прикрепить файл"
+              >
+                {uploadingFile ? (
+                  <Icon name="Loader2" size={16} className="animate-spin" />
+                ) : (
+                  <Icon name="Paperclip" size={16} />
+                )}
+              </Button>
+              
+              <div className="relative">
+                <Button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  disabled={submittingComment}
+                  variant="ghost"
+                  size="sm"
+                  className="flex-shrink-0"
+                  title="Добавить эмодзи"
+                >
+                  <Icon name="Smile" size={16} />
+                </Button>
+                
+                {showEmojiPicker && (
+                  <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50">
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="space-y-3">
