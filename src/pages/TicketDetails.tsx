@@ -7,7 +7,6 @@ import PageLayout from '@/components/layout/PageLayout';
 import TicketDetailsContent from '@/components/tickets/TicketDetailsContent';
 import TicketDetailsSidebar from '@/components/tickets/TicketDetailsSidebar';
 import ConfirmationOverlay from '@/components/tickets/ConfirmationOverlay';
-import TicketConfirmationBlock from '@/components/tickets/TicketConfirmationBlock';
 import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
 
@@ -246,13 +245,7 @@ const TicketDetails = () => {
             </div>
           </div>
 
-          <div className="lg:hidden w-full">
-            <TicketConfirmationBlock
-              ticket={ticket}
-              isPendingConfirmation={isPendingConfirmation}
-              onChanged={loadTicket}
-            />
-          </div>
+
 
           <div className="lg:hidden w-full">
             <Button
