@@ -33,6 +33,7 @@ export interface TrainingExample {
   ticket_service_name: string;
   service_names: string[];
   has_embedding?: boolean;
+  is_auto?: boolean;
   created_at: string;
 }
 
@@ -160,6 +161,12 @@ const ExamplesTab = ({ examples, ticketServices, services, onReload }: ExamplesT
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium mb-1.5 line-clamp-2">{ex.description}</p>
                       <div className="flex flex-wrap gap-1.5">
+                        {ex.is_auto && (
+                          <Badge variant="outline" className="text-xs text-cyan-600 border-cyan-300 bg-cyan-50">
+                            <Icon name="Sparkles" size={10} className="mr-1" />
+                            Авто
+                          </Badge>
+                        )}
                         <Badge variant="secondary" className="text-xs">
                           {ex.ticket_service_name}
                         </Badge>

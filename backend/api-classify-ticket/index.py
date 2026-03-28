@@ -548,8 +548,8 @@ def auto_learn(description, result, query_embedding):
         embedding_json = json.dumps(query_embedding)
         cur.execute(f"""
             INSERT INTO {SCHEMA}.ai_training_examples
-            (description, ticket_service_id, service_ids, embedding)
-            VALUES (%s, %s, %s, %s::jsonb)
+            (description, ticket_service_id, service_ids, embedding, is_auto)
+            VALUES (%s, %s, %s, %s::jsonb, true)
         """, (description[:500], ts_id, svc_ids, embedding_json))
         conn.commit()
         cur.close()

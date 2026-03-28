@@ -101,7 +101,7 @@ def handle_examples(method, event, cur, conn):
     if method == 'GET':
         cur.execute(f"""
             SELECT e.id, e.description, e.ticket_service_id, e.service_ids,
-                   e.created_at, e.updated_at,
+                   e.created_at, e.updated_at, e.is_auto,
                    ts.name as ticket_service_name,
                    CASE WHEN e.embedding IS NOT NULL THEN true ELSE false END as has_embedding
             FROM {SCHEMA}.ai_training_examples e
@@ -328,10 +328,14 @@ def handle_stats(cur):
     cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_training_examples WHERE embedding IS NOT NULL")
     indexed_count = cur.fetchone()['count']
 
+    cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_training_examples WHERE is_auto = true")
+    auto_count = cur.fetchone()['count']
+
     return response(200, {
         'examples_count': examples_count,
         'active_rules_count': rules_count,
         'indexed_count': indexed_count,
+        'auto_count': auto_count,
     })
 
 
