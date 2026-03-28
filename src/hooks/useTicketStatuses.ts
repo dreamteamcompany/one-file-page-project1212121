@@ -15,6 +15,8 @@ export interface TicketStatus {
   is_waiting_response: boolean;
   is_awaiting_confirmation: boolean;
   count_for_distribution: boolean;
+  is_in_progress: boolean;
+  is_reopened: boolean;
 }
 
 export const useTicketStatuses = () => {
@@ -57,6 +59,8 @@ export const useTicketStatuses = () => {
       is_waiting_response: boolean;
       is_awaiting_confirmation: boolean;
       count_for_distribution: boolean;
+      is_in_progress: boolean;
+      is_reopened: boolean;
     },
     editingStatus: TicketStatus | null
   ) => {

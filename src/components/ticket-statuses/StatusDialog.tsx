@@ -54,6 +54,8 @@ interface StatusDialogProps {
       is_waiting_response: boolean;
       is_awaiting_confirmation: boolean;
       count_for_distribution: boolean;
+      is_in_progress: boolean;
+      is_reopened: boolean;
     },
     editingStatus: TicketStatus | null
   ) => Promise<boolean>;
@@ -85,6 +87,8 @@ const StatusDialog = ({
     is_waiting_response: false,
     is_awaiting_confirmation: false,
     count_for_distribution: false,
+    is_in_progress: false,
+    is_reopened: false,
   };
 
   const [formData, setFormData] = useState(defaultFormData);
@@ -102,6 +106,8 @@ const StatusDialog = ({
         is_waiting_response: editingStatus.is_waiting_response || false,
         is_awaiting_confirmation: editingStatus.is_awaiting_confirmation || false,
         count_for_distribution: editingStatus.count_for_distribution || false,
+        is_in_progress: editingStatus.is_in_progress || false,
+        is_reopened: editingStatus.is_reopened || false,
       });
     } else {
       setFormData(defaultFormData);
@@ -224,25 +230,69 @@ const StatusDialog = ({
             </RadioGroup>
           </div>
 
-          <div className="rounded-lg border border-border p-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="count_for_distribution"
-                checked={formData.count_for_distribution}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, count_for_distribution: checked as boolean })
-                }
-              />
-              <Label
-                htmlFor="count_for_distribution"
-                className="text-sm font-medium leading-none cursor-pointer"
-              >
-                Учитывать при распределении заявок
-              </Label>
+          <div className="space-y-2">
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="count_for_distribution"
+                  checked={formData.count_for_distribution}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, count_for_distribution: checked as boolean })
+                  }
+                />
+                <Label
+                  htmlFor="count_for_distribution"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Учитывать при распределении заявок
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+                Заявки в этом статусе учитываются при балансировке нагрузки между исполнителями
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5 ml-6">
-              Заявки в этом статусе учитываются при балансировке нагрузки между исполнителями
-            </p>
+
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_in_progress"
+                  checked={formData.is_in_progress}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_in_progress: checked as boolean })
+                  }
+                />
+                <Label
+                  htmlFor="is_in_progress"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  В работе
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+                Заявка с этим статусом считается взятой в работу
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_reopened"
+                  checked={formData.is_reopened}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_reopened: checked as boolean })
+                  }
+                />
+                <Label
+                  htmlFor="is_reopened"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Открыта повторно
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+                Заявка с этим статусом считается переоткрытой
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-2 pt-2">

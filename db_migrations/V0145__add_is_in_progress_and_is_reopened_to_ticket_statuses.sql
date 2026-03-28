@@ -1,0 +1,2 @@
+ALTER TABLE ticket_statuses ADD COLUMN IF NOT EXISTS is_in_progress BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ticket_statuses ADD COLUMN IF NOT EXISTS is_reopened BOOLEAN NOT NULL DEFAULT false;

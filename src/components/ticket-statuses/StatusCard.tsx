@@ -57,6 +57,18 @@ const StatusCard = ({ status, onEdit, onDelete }: StatusCardProps) => {
                   Закрытый статус
                 </p>
               )}
+              {status.is_in_progress && (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                  <Icon name="Hammer" size={12} className="inline mr-1" />
+                  В работе
+                </p>
+              )}
+              {status.is_reopened && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  <Icon name="RotateCcw" size={12} className="inline mr-1" />
+                  Открыта повторно
+                </p>
+              )}
               {status.count_for_distribution && (
                 <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-1">
                   <Icon name="Scale" size={12} className="inline mr-1" />
