@@ -56,6 +56,8 @@ TICKET_SERVICE_NAMES = {
 
 TOP_K_EXAMPLES = 5
 TOP_K_RULES = 5
+AUTO_LEARN_MIN_CONFIDENCE = 90
+AUTO_LEARN_DUPLICATE_THRESHOLD = 0.95
 
 
 def response(status_code, body):
@@ -510,6 +512,53 @@ def save_log(description, result_data, success, error_message, raw_resp, example
         print(f'[classify] Failed to save log: {e}')
 
 
+def auto_learn(description, result, query_embedding):
+    if not query_embedding:
+        return
+    confidence = result.get('confidence', 0)
+    if confidence < AUTO_LEARN_MIN_CONFIDENCE:
+        return
+    if result.get('fallback'):
+        return
+    ts_id = result.get('ticket_service_id')
+    svc_ids = result.get('service_ids', [])
+    if not ts_id or not svc_ids:
+        return
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute(f"""
+            SELECT id, embedding FROM {SCHEMA}.ai_training_examples
+            WHERE embedding IS NOT NULL
+        """)
+        existing = [dict(r) for r in cur.fetchall()]
+
+        for ex in existing:
+            emb = ex['embedding']
+            if isinstance(emb, str):
+                emb = json.loads(emb)
+            if emb and cosine_similarity(query_embedding, emb) > AUTO_LEARN_DUPLICATE_THRESHOLD:
+                print(f'[auto-learn] Duplicate found (id={ex["id"]}), skipping')
+                cur.close()
+                conn.close()
+                return
+
+        embedding_json = json.dumps(query_embedding)
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ai_training_examples
+            (description, ticket_service_id, service_ids, embedding)
+            VALUES (%s, %s, %s, %s::jsonb)
+        """, (description[:500], ts_id, svc_ids, embedding_json))
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f'[auto-learn] Saved: conf={confidence}, ts={ts_id}, svcs={svc_ids}')
+    except BaseException as e:
+        print(f'[auto-learn] Error: {e}')
+
+
 def handler(event, context):
     """Классификация заявки через GigaChat с семантическим поиском похожих примеров"""
     if event.get('httpMethod') == 'OPTIONS':
@@ -606,6 +655,7 @@ def handler(event, context):
             result, error = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text, examples_count)
             duration_ms = int((time.time() - start_time) * 1000)
             save_log(description, result, error is None, error, None, examples_count, rules_text.count('\n- ') if rules_text else 0, duration_ms, False)
+            auto_learn(description, result, query_embedding)
             return response(200, result)
     except json.JSONDecodeError as e:
         duration_ms = int((time.time() - start_time) * 1000)
