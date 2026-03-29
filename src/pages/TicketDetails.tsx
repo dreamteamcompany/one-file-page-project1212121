@@ -16,7 +16,7 @@ const TicketDetails = () => {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const [confirmationMode, setConfirmationMode] = useState<'confirm' | 'reject' | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { user, hasPermission } = useAuth();
 
@@ -68,7 +68,7 @@ const TicketDetails = () => {
 
   const handleBack = useCallback(() => {
     if (needsCreatorConfirmation) {
-      setShowExitConfirmation(true);
+      setConfirmationMode('confirm');
     } else {
       navigate('/tickets');
     }
@@ -88,7 +88,7 @@ const TicketDetails = () => {
       if (!ready) return;
       e.preventDefault();
       window.history.pushState(null, '', window.location.href);
-      setShowExitConfirmation(true);
+      setConfirmationMode('confirm');
     };
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
@@ -158,7 +158,7 @@ const TicketDetails = () => {
               <Button
                 size="sm"
                 className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => setShowExitConfirmation(true)}
+                onClick={() => setConfirmationMode('confirm')}
               >
                 <Icon name="CheckCircle" size={14} className="mr-1" />
                 Подтвердить
@@ -167,7 +167,7 @@ const TicketDetails = () => {
                 size="sm"
                 variant="outline"
                 className="flex-1 sm:flex-none border-red-500/40 text-red-400 hover:bg-red-500/10"
-                onClick={() => setShowExitConfirmation(true)}
+                onClick={() => setConfirmationMode('reject')}
               >
                 <Icon name="XCircle" size={14} className="mr-1" />
                 Отклонить
@@ -296,11 +296,12 @@ const TicketDetails = () => {
         © 2026 Команда Мечты
       </footer>
 
-      {showExitConfirmation && (
+      {confirmationMode && (
         <ConfirmationOverlay
           ticket={ticket}
-          onChanged={() => { setShowExitConfirmation(false); loadTicket(); }}
-          onClose={() => setShowExitConfirmation(false)}
+          initialMode={confirmationMode}
+          onChanged={() => { setConfirmationMode(null); loadTicket(); }}
+          onClose={() => setConfirmationMode(null)}
         />
       )}
     </PageLayout>

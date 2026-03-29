@@ -14,6 +14,7 @@ interface ConfirmationOverlayProps {
     assigned_to?: number;
     assignee_name?: string;
   };
+  initialMode?: 'confirm' | 'reject';
   onChanged: () => void;
   onClose?: () => void;
 }
@@ -41,9 +42,9 @@ const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) 
 
 const RATING_LABELS = ['', 'Очень плохо', 'Плохо', 'Нормально', 'Хорошо', 'Отлично'];
 
-const ConfirmationOverlay = ({ ticket, onChanged, onClose }: ConfirmationOverlayProps) => {
+const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: ConfirmationOverlayProps) => {
   const { token } = useAuth();
-  const [mode, setMode] = useState<'choose' | 'confirm' | 'reject'>('choose');
+  const [mode, setMode] = useState<'choose' | 'confirm' | 'reject'>(initialMode || 'choose');
   const [rating, setRating] = useState(0);
   const [rejectionReason, setRejectionReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -162,7 +163,7 @@ const ConfirmationOverlay = ({ ticket, onChanged, onClose }: ConfirmationOverlay
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => { setMode('choose'); setRating(0); }}
+                  onClick={() => { if (initialMode) { onClose?.(); } else { setMode('choose'); setRating(0); } }}
                   disabled={loading}
                 >
                   Назад
@@ -197,7 +198,7 @@ const ConfirmationOverlay = ({ ticket, onChanged, onClose }: ConfirmationOverlay
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => { setMode('choose'); setRejectionReason(''); }}
+                  onClick={() => { if (initialMode) { onClose?.(); } else { setMode('choose'); setRejectionReason(''); } }}
                   disabled={loading}
                 >
                   Назад
