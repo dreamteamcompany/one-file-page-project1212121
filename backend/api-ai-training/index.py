@@ -3,6 +3,7 @@ import json
 import os
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 import requests
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_query_param, SCHEMA
 
@@ -35,8 +36,9 @@ def get_gigachat_token():
     return _token_cache['token']
 
 
-def generate_embedding(text):
-    token = get_gigachat_token()
+def generate_embedding(text, token=None):
+    if not token:
+        token = get_gigachat_token()
     resp = requests.post(
         'https://gigachat.devices.sberbank.ru/api/v1/embeddings',
         headers={
@@ -49,16 +51,16 @@ def generate_embedding(text):
             'input': [text[:512]],
         },
         verify=False,
-        timeout=(3, 8),
+        timeout=(2, 6),
     )
     resp.raise_for_status()
     data = resp.json()
     return data['data'][0]['embedding']
 
 
-def safe_generate_embedding(text):
+def safe_generate_embedding(text, token=None):
     try:
-        return generate_embedding(text), None
+        return generate_embedding(text, token), None
     except BaseException as e:
         print(f'[ai-training] Embedding error: {e}')
         return None, str(e)
@@ -215,6 +217,11 @@ def handle_examples(method, event, cur, conn):
     return response(405, {'error': 'Method not allowed'})
 
 
+def _reindex_one(ex_id, description, token):
+    embedding, emb_error = safe_generate_embedding(description, token)
+    return ex_id, embedding, emb_error
+
+
 def handle_reindex(cur, conn):
     cur.execute(f"""
         SELECT id, description FROM {SCHEMA}.ai_training_examples
@@ -225,24 +232,49 @@ def handle_reindex(cur, conn):
     if not examples:
         return response(200, {'reindexed': 0, 'errors': 0})
 
+    try:
+        token = get_gigachat_token()
+    except BaseException as e:
+        print(f'[ai-training] Token error: {e}')
+        return response(200, {'reindexed': 0, 'errors': len(examples), 'total': len(examples), 'error': f'GigaChat token error: {e}'})
+
     reindexed = 0
     errors = 0
+    error_details = []
 
-    for ex in examples:
-        embedding, emb_error = safe_generate_embedding(ex['description'])
-        if embedding:
-            embedding_json = json.dumps(embedding)
-            cur.execute(f"""
-                UPDATE {SCHEMA}.ai_training_examples
-                SET embedding = %s::jsonb
-                WHERE id = %s
-            """, (embedding_json, ex['id']))
-            conn.commit()
-            reindexed += 1
-        else:
-            errors += 1
-            print(f'[ai-training] Reindex failed for id={ex["id"]}: {emb_error}')
-    return response(200, {'reindexed': reindexed, 'errors': errors, 'total': len(examples)})
+    workers = min(3, len(examples))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(_reindex_one, ex['id'], ex['description'], token): ex['id']
+            for ex in examples
+        }
+
+        for future in futures:
+            ex_id = futures[future]
+            try:
+                rid, embedding, emb_error = future.result(timeout=10)
+                if embedding:
+                    embedding_json = json.dumps(embedding)
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.ai_training_examples
+                        SET embedding = %s::jsonb
+                        WHERE id = %s
+                    """, (embedding_json, rid))
+                    conn.commit()
+                    reindexed += 1
+                else:
+                    errors += 1
+                    error_details.append(f'id={rid}: {emb_error}')
+                    print(f'[ai-training] Reindex failed for id={rid}: {emb_error}')
+            except BaseException as e:
+                errors += 1
+                error_details.append(f'id={ex_id}: {e}')
+                print(f'[ai-training] Reindex exception for id={ex_id}: {e}')
+
+    result = {'reindexed': reindexed, 'errors': errors, 'total': len(examples)}
+    if error_details:
+        result['error_details'] = error_details[:5]
+    return response(200, result)
 
 
 def handle_rules(method, event, cur, conn):
