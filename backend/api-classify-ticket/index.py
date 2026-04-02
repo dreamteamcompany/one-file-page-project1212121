@@ -1,10 +1,11 @@
-"""Классификация заявок через GigaChat с семантическим поиском похожих примеров"""
+"""Классификация заявок через GigaChat с семантическим поиском похожих примеров (оптимизированная версия)"""
 import json
 import math
 import os
 import re
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -59,6 +60,10 @@ TOP_K_RULES = 5
 AUTO_LEARN_MIN_CONFIDENCE = 90
 AUTO_LEARN_DUPLICATE_THRESHOLD = 0.95
 
+EMBEDDING_TIMEOUT = (2, 5)
+GIGACHAT_TIMEOUT = (2, 5)
+TOKEN_TIMEOUT = (2, 4)
+
 
 def response(status_code, body):
     return {
@@ -92,7 +97,7 @@ def get_gigachat_token():
         },
         data={'scope': 'GIGACHAT_API_PERS'},
         verify=False,
-        timeout=(3, 5),
+        timeout=TOKEN_TIMEOUT,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -101,8 +106,7 @@ def get_gigachat_token():
     return _token_cache['token']
 
 
-def get_embedding(text):
-    token = get_gigachat_token()
+def get_embedding_with_token(text, token):
     resp = requests.post(
         'https://gigachat.devices.sberbank.ru/api/v1/embeddings',
         headers={
@@ -115,7 +119,7 @@ def get_embedding(text):
             'input': [text[:512]],
         },
         verify=False,
-        timeout=(3, 8),
+        timeout=EMBEDDING_TIMEOUT,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -263,8 +267,7 @@ def build_services_map(ticket_services, services, mappings):
     return services_map
 
 
-def call_gigachat(prompt):
-    token = get_gigachat_token()
+def call_gigachat_with_token(prompt, token):
     resp = requests.post(
         'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
         headers={
@@ -282,7 +285,7 @@ def call_gigachat(prompt):
             'max_tokens': 100,
         },
         verify=False,
-        timeout=(3, 8),
+        timeout=GIGACHAT_TIMEOUT,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -299,9 +302,9 @@ FALLBACK_RESULT = {
 }
 
 
-def safe_call_gigachat(prompt):
+def safe_call_gigachat(prompt, token):
     try:
-        result = call_gigachat(prompt)
+        result = call_gigachat_with_token(prompt, token)
         return result, None
     except requests.exceptions.HTTPError as e:
         status = e.response.status_code if e.response is not None else 0
@@ -321,9 +324,9 @@ def safe_call_gigachat(prompt):
         return None, error
 
 
-def safe_get_embedding(text):
+def safe_get_embedding(text, token):
     try:
-        return get_embedding(text), None
+        return get_embedding_with_token(text, token), None
     except BaseException as e:
         print(f'[classify] Embedding error: {e}')
         return None, str(e)
@@ -417,14 +420,14 @@ def enrich_result(result, services_map, services):
     return result
 
 
-def classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text, examples_count):
+def classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text, examples_count, token):
     services_map = build_services_map(ticket_services, services, mappings)
     prompt, _, _ = build_prompt(description, services_map, rules_text, examples_text)
 
     print(f'[classify] Description: {description[:200]}')
     print(f'[classify] Prompt size: {len(prompt)} chars, {examples_count} similar examples')
 
-    raw_content, error = safe_call_gigachat(prompt)
+    raw_content, error = safe_call_gigachat(prompt, token)
     if error or not raw_content:
         print(f'[classify] GigaChat failed: {error}. Using keyword fallback.')
         fallback = classify_by_keywords(description, services_map)
@@ -441,11 +444,11 @@ def classify_with_gigachat(description, ticket_services, services, mappings, exa
     return result, None
 
 
-def classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text, examples_count):
+def classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text, examples_count, token):
     services_map = build_services_map(ticket_services, services, mappings)
     prompt, _, _ = build_prompt(description, services_map, rules_text, examples_text)
 
-    raw_content, error = safe_call_gigachat(prompt)
+    raw_content, error = safe_call_gigachat(prompt, token)
     if error or not raw_content:
         fallback = classify_by_keywords(description, services_map)
         fallback_result = {
@@ -559,6 +562,24 @@ def auto_learn(description, result, query_embedding):
         print(f'[auto-learn] Error: {e}')
 
 
+def fetch_catalog_data():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.ticket_services ORDER BY id")
+    ticket_services = [dict(r) for r in cur.fetchall()]
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.services ORDER BY id")
+    services = [dict(r) for r in cur.fetchall()]
+    cur.execute(f"SELECT ticket_service_id, service_id FROM {SCHEMA}.ticket_service_mappings ORDER BY id")
+    mappings = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return ticket_services, services, mappings
+
+
+def fetch_embedding(description, token):
+    return safe_get_embedding(description, token)
+
+
 def handler(event, context):
     """Классификация заявки через GigaChat с семантическим поиском похожих примеров"""
     if event.get('httpMethod') == 'OPTIONS':
@@ -576,83 +597,70 @@ def handler(event, context):
 
     start_time = time.time()
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    try:
+        token = get_gigachat_token()
+    except BaseException as e:
+        print(f'[classify] Token error: {e}. Using keyword-only fallback.')
+        token = None
 
-    cur.execute(f"SELECT id, name FROM {SCHEMA}.ticket_services ORDER BY id")
-    ticket_services = [dict(r) for r in cur.fetchall()]
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        catalog_future = executor.submit(fetch_catalog_data)
 
-    cur.execute(f"SELECT id, name FROM {SCHEMA}.services ORDER BY id")
-    services = [dict(r) for r in cur.fetchall()]
+        if token:
+            embedding_future = executor.submit(fetch_embedding, description, token)
+        else:
+            embedding_future = None
 
-    cur.execute(f"SELECT ticket_service_id, service_id FROM {SCHEMA}.ticket_service_mappings ORDER BY id")
-    mappings = [dict(r) for r in cur.fetchall()]
+        ticket_services, services, mappings = catalog_future.result()
 
-    query_embedding, emb_error = safe_get_embedding(description)
+        if embedding_future:
+            query_embedding, emb_error = embedding_future.result()
+        else:
+            query_embedding, emb_error = None, 'No token'
+
+    services_map = build_services_map(ticket_services, services, mappings)
+
+    if not token:
+        print(f'[classify] No GigaChat token. Using keyword fallback.')
+        fallback = classify_by_keywords(description, services_map)
+        duration_ms = int((time.time() - start_time) * 1000)
+        save_log(description, fallback, False, 'No GigaChat token', None, 0, 0, duration_ms, test_mode)
+        if test_mode:
+            return response(200, {'result': fallback, 'debug': {'error': 'No GigaChat token'}})
+        return response(200, fallback)
 
     if query_embedding:
+        conn = get_db_connection()
+        cur = conn.cursor()
         examples_text, rules_text, examples_count = build_training_context(cur, query_embedding)
+        cur.close()
+        conn.close()
+    elif emb_error:
+        print(f'[classify] Embedding failed: {emb_error}. Using keyword fallback (skipping GigaChat).')
+        fallback = classify_by_keywords(description, services_map)
+        duration_ms = int((time.time() - start_time) * 1000)
+        save_log(description, fallback, False, f'Embedding failed: {emb_error}', None, 0, 0, duration_ms, test_mode)
+        if test_mode:
+            return response(200, {'result': fallback, 'debug': {'error': f'Embedding failed: {emb_error}'}})
+        return response(200, fallback)
     else:
-        print(f'[classify] Embedding failed: {emb_error}. Using all examples as fallback.')
-        cur.execute(f"""
-            SELECT e.description, e.ticket_service_id, e.service_ids,
-                   ts.name as ts_name
-            FROM {SCHEMA}.ai_training_examples e
-            JOIN {SCHEMA}.ticket_services ts ON ts.id = e.ticket_service_id
-            ORDER BY e.created_at DESC
-            LIMIT {TOP_K_EXAMPLES}
-        """)
-        examples = [dict(r) for r in cur.fetchall()]
-
-        svc_ids = set()
-        for ex in examples:
-            if ex['service_ids']:
-                svc_ids.update(ex['service_ids'])
-
-        svc_names = {}
-        if svc_ids:
-            ids_str = ','.join(str(i) for i in svc_ids)
-            cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE id IN ({ids_str})")
-            for r in cur.fetchall():
-                svc_names[r['id']] = r['name']
-
         examples_text = ''
-        if examples:
-            examples_text = '\nПРИМЕРЫ КЛАССИФИКАЦИИ:\n'
-            for ex in examples:
-                svc_list = ', '.join([svc_names.get(sid, '?') for sid in (ex['service_ids'] or [])])
-                examples_text += f'- "{ex["description"]}" → услуга "{ex["ts_name"]}" (id={ex["ticket_service_id"]}), сервис: {svc_list} (ids={ex["service_ids"]})\n'
-        examples_count = len(examples)
-
+        examples_count = 0
         rules_text = ''
-        cur.execute(f"""
-            SELECT rule_text FROM {SCHEMA}.ai_training_rules
-            WHERE is_active = true
-            ORDER BY created_at DESC
-            LIMIT {TOP_K_RULES}
-        """)
-        rules = [dict(r) for r in cur.fetchall()]
-        if rules:
-            rules_text = '\nПРАВИЛА:\n'
-            for r in rules:
-                rules_text += f'- {r["rule_text"]}\n'
-
-    cur.close()
-    conn.close()
 
     error_message = None
     raw_resp = None
 
     try:
         if test_mode:
-            result, error = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text, examples_count)
+            result, error = classify_test_mode(description, ticket_services, services, mappings, examples_text, rules_text, examples_count, token)
             duration_ms = int((time.time() - start_time) * 1000)
             result_data = result.get('result', result)
             raw_resp = result.get('debug', {}).get('raw_response', '')
             save_log(description, result_data, True, None, raw_resp, examples_count, rules_text.count('\n- ') if rules_text else 0, duration_ms, True)
             return response(200, result)
         else:
-            result, error = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text, examples_count)
+            result, error = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text, examples_count, token)
             duration_ms = int((time.time() - start_time) * 1000)
             save_log(description, result, error is None, error, None, examples_count, rules_text.count('\n- ') if rules_text else 0, duration_ms, False)
             auto_learn(description, result, query_embedding)
@@ -661,7 +669,6 @@ def handler(event, context):
         duration_ms = int((time.time() - start_time) * 1000)
         error_message = f'JSON parse error: {e}'
         print(f'[classify] {error_message}')
-        services_map = build_services_map(ticket_services, services, mappings)
         fallback = classify_by_keywords(description, services_map)
         save_log(description, fallback, False, error_message, None, examples_count, 0, duration_ms, test_mode)
         if test_mode:
