@@ -1,0 +1,1 @@
+UPDATE ticket_priorities SET is_critical = true WHERE name = 'Критический';
