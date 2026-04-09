@@ -61,6 +61,22 @@ def generate_embedding(text, token=None):
 def safe_generate_embedding(text, token=None):
     try:
         return generate_embedding(text, token), None
+    except requests.exceptions.HTTPError as e:
+        code = e.response.status_code if e.response is not None else 0
+        if code == 402:
+            msg = 'Лимит GigaChat API исчерпан (402 Payment Required). Пополните баланс или дождитесь обновления лимита.'
+        elif code == 401:
+            msg = 'Ошибка авторизации GigaChat API (401). Проверьте GIGACHAT_AUTH_KEY.'
+        elif code == 429:
+            msg = 'Превышен лимит запросов GigaChat API (429). Попробуйте позже.'
+        else:
+            msg = f'Ошибка GigaChat API ({code}): {e}'
+        print(f'[ai-training] Embedding error: {msg}')
+        return None, msg
+    except requests.exceptions.Timeout:
+        msg = 'GigaChat API не отвечает (таймаут). Попробуйте позже.'
+        print(f'[ai-training] Embedding error: {msg}')
+        return None, msg
     except BaseException as e:
         print(f'[ai-training] Embedding error: {e}')
         return None, str(e)
@@ -234,9 +250,19 @@ def handle_reindex(cur, conn):
 
     try:
         token = get_gigachat_token()
+    except requests.exceptions.HTTPError as e:
+        code = e.response.status_code if e.response is not None else 0
+        if code == 402:
+            reason = 'Лимит GigaChat API исчерпан. Пополните баланс или дождитесь обновления лимита.'
+        elif code == 401:
+            reason = 'Ошибка авторизации GigaChat. Проверьте ключ GIGACHAT_AUTH_KEY.'
+        else:
+            reason = f'Ошибка GigaChat API при получении токена ({code}).'
+        print(f'[ai-training] Token error: {e}')
+        return response(200, {'reindexed': 0, 'errors': len(examples), 'total': len(examples), 'error_reason': reason})
     except BaseException as e:
         print(f'[ai-training] Token error: {e}')
-        return response(200, {'reindexed': 0, 'errors': len(examples), 'total': len(examples), 'error': f'GigaChat token error: {e}'})
+        return response(200, {'reindexed': 0, 'errors': len(examples), 'total': len(examples), 'error_reason': f'Не удалось подключиться к GigaChat: {e}'})
 
     reindexed = 0
     errors = 0
@@ -274,6 +300,17 @@ def handle_reindex(cur, conn):
     result = {'reindexed': reindexed, 'errors': errors, 'total': len(examples)}
     if error_details:
         result['error_details'] = error_details[:5]
+        first_error = error_details[0] if error_details else ''
+        if '402' in first_error or 'Payment Required' in first_error:
+            result['error_reason'] = 'Лимит GigaChat API исчерпан. Пополните баланс или дождитесь обновления лимита.'
+        elif '401' in first_error:
+            result['error_reason'] = 'Ошибка авторизации GigaChat. Проверьте ключ GIGACHAT_AUTH_KEY.'
+        elif '429' in first_error:
+            result['error_reason'] = 'Превышен лимит запросов GigaChat. Попробуйте через несколько минут.'
+        elif 'таймаут' in first_error.lower() or 'timed out' in first_error.lower() or 'timeout' in first_error.lower():
+            result['error_reason'] = 'GigaChat API не отвечает. Попробуйте позже.'
+        else:
+            result['error_reason'] = 'Ошибка при генерации эмбеддингов. Подробности в логах.'
     return response(200, result)
 
 

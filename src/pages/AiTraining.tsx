@@ -74,13 +74,27 @@ const AiTraining = () => {
       const res = await apiFetch(`${AI_TRAINING_URL}?endpoint=reindex`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        toast({ title: `Индексация завершена: ${data.reindexed} из ${data.total}` });
+        if (data.errors > 0 && data.error_reason) {
+          toast({
+            title: `Индексация: ${data.reindexed} из ${data.total}`,
+            description: data.error_reason,
+            variant: 'destructive',
+          });
+        } else if (data.errors > 0) {
+          toast({
+            title: `Индексация: ${data.reindexed} из ${data.total}`,
+            description: 'Часть примеров не удалось проиндексировать. Проверьте логи.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({ title: `Индексация завершена: ${data.reindexed} из ${data.total}` });
+        }
         loadData();
       } else {
-        toast({ title: 'Ошибка индексации', variant: 'destructive' });
+        toast({ title: 'Ошибка индексации', description: 'Сервер вернул ошибку. Попробуйте позже.', variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Ошибка индексации', variant: 'destructive' });
+      toast({ title: 'Ошибка индексации', description: 'Не удалось связаться с сервером.', variant: 'destructive' });
     } finally {
       setReindexing(false);
     }
