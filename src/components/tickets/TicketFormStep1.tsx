@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 interface TicketService {
   id: number;
@@ -25,6 +36,7 @@ interface Priority {
   name: string;
   color: string;
   description?: string;
+  is_critical?: boolean;
 }
 
 interface TicketFormStep1Props {
@@ -57,9 +69,35 @@ const TicketFormStep1 = ({
   onBack,
   isFirstStep,
 }: TicketFormStep1Props) => {
+  const [criticalConfirmOpen, setCriticalConfirmOpen] = useState(false);
+  const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
+
   const ticketTitle = selectedTicketService?.ticket_title || '';
 
   const canProceed = formData.description.trim().length > 0;
+
+  const handlePriorityChange = (value: string) => {
+    const selected = priorities.find((p) => p.id.toString() === value);
+    if (selected?.is_critical) {
+      setPendingPriorityId(value);
+      setCriticalConfirmOpen(true);
+    } else {
+      setFormData({ ...formData, priority_id: value });
+    }
+  };
+
+  const confirmCriticalPriority = () => {
+    if (pendingPriorityId) {
+      setFormData({ ...formData, priority_id: pendingPriorityId });
+    }
+    setPendingPriorityId(null);
+    setCriticalConfirmOpen(false);
+  };
+
+  const cancelCriticalPriority = () => {
+    setPendingPriorityId(null);
+    setCriticalConfirmOpen(false);
+  };
 
   return (
     <form onSubmit={onSubmit}>
@@ -99,9 +137,7 @@ const TicketFormStep1 = ({
           <Label htmlFor="priority_id">Приоритет</Label>
           <Select
             value={formData.priority_id}
-            onValueChange={(value) =>
-              setFormData({ ...formData, priority_id: value })
-            }
+            onValueChange={handlePriorityChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Выберите приоритет" />
@@ -176,6 +212,26 @@ const TicketFormStep1 = ({
           )}
         </div>
       </div>
+
+      <AlertDialog open={criticalConfirmOpen} onOpenChange={setCriticalConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Icon name="AlertTriangle" size={20} className="text-destructive" />
+              Подтверждение критичного приоритета
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              Критичный приоритет назначается только в особых случаях: полная остановка работы, угроза безопасности данных, блокировка ключевых бизнес-процессов. Вы уверены, что ситуация требует именно критичного приоритета?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelCriticalPriority}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCriticalPriority} className="bg-destructive hover:bg-destructive/90">
+              Да, подтверждаю
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 };
