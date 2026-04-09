@@ -1,0 +1,1 @@
+ALTER TABLE ticket_priorities ADD COLUMN IF NOT EXISTS is_critical BOOLEAN DEFAULT false;

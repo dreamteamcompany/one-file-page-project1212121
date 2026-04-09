@@ -119,6 +119,7 @@ export interface TicketPriority {
   level: number;
   color: string;
   description?: string;
+  is_critical?: boolean;
 }
 
 export interface TicketCategory {

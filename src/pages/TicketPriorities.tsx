@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 
 interface TicketPriority {
   id: number;
@@ -24,6 +25,7 @@ interface TicketPriority {
   level: number;
   color: string;
   description: string;
+  is_critical: boolean;
 }
 
 const predefinedColors = [
@@ -49,6 +51,7 @@ const TicketPriorities = () => {
     level: 1,
     color: '#3b82f6',
     description: '',
+    is_critical: false,
   });
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -122,7 +125,7 @@ const TicketPriorities = () => {
       if (response.ok) {
         setDialogOpen(false);
         setEditingPriority(null);
-        setFormData({ name: '', level: 1, color: '#3b82f6', description: '' });
+        setFormData({ name: '', level: 1, color: '#3b82f6', description: '', is_critical: false });
         loadPriorities();
       }
     } catch (err) {
@@ -142,6 +145,7 @@ const TicketPriorities = () => {
       level: priority.level,
       color: priority.color,
       description: priority.description || '',
+      is_critical: priority.is_critical || false,
     });
     setDialogOpen(true);
   };
@@ -181,7 +185,7 @@ const TicketPriorities = () => {
     setDialogOpen(open);
     if (!open) {
       setEditingPriority(null);
-      setFormData({ name: '', level: 1, color: '#3b82f6', description: '' });
+      setFormData({ name: '', level: 1, color: '#3b82f6', description: '', is_critical: false });
     }
   };
 
@@ -303,6 +307,17 @@ const TicketPriorities = () => {
                       ))}
                     </div>
                   </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <Label htmlFor="is_critical" className="cursor-pointer">Критично</Label>
+                      <p className="text-xs text-muted-foreground">Заявки с этим приоритетом будут помечены как критичные</p>
+                    </div>
+                    <Switch
+                      id="is_critical"
+                      checked={formData.is_critical}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_critical: checked })}
+                    />
+                  </div>
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                       Отмена
@@ -333,7 +348,14 @@ const TicketPriorities = () => {
                         style={{ backgroundColor: priority.color }}
                       />
                       <div>
-                        <h3 className="font-semibold text-lg">{priority.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">{priority.name}</h3>
+                          {priority.is_critical && (
+                            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">
+                              Критично
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">Уровень: {priority.level}</p>
                       </div>
                     </div>
