@@ -10,6 +10,7 @@ class GroupBudgetItem(BaseModel):
     resolution_minutes: int | None = Field(default=None, gt=0)
     response_minutes: int | None = Field(default=None, gt=0)
     sort_order: int = Field(default=0, ge=0)
+    priority_id: int | None = Field(default=None, gt=0)
 
 
 class GroupBudgetsBatchRequest(BaseModel):
@@ -36,21 +37,32 @@ def handle_sla_group_budgets(method: str, event: Dict[str, Any], conn) -> Dict[s
 def _get_budgets(event: Dict[str, Any], cur) -> Dict[str, Any]:
     params = event.get('queryStringParameters') or {}
     sla_id = params.get('sla_id')
+    priority_id = params.get('priority_id')
 
     query = f"""
         SELECT 
             gb.id, gb.sla_id, gb.executor_group_id,
             gb.resolution_minutes, gb.response_minutes,
-            gb.sort_order, gb.created_at, gb.updated_at,
-            eg.name AS group_name
+            gb.sort_order, gb.priority_id, gb.created_at, gb.updated_at,
+            eg.name AS group_name,
+            tp.name AS priority_name
         FROM {SCHEMA}.sla_group_budgets gb
         JOIN {SCHEMA}.executor_groups eg ON gb.executor_group_id = eg.id
+        LEFT JOIN {SCHEMA}.ticket_priorities tp ON gb.priority_id = tp.id
     """
+    conditions = []
     query_params = []
 
     if sla_id:
-        query += " WHERE gb.sla_id = %s"
+        conditions.append("gb.sla_id = %s")
         query_params.append(int(sla_id))
+
+    if priority_id:
+        conditions.append("gb.priority_id = %s")
+        query_params.append(int(priority_id))
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
 
     query += " ORDER BY gb.sort_order, eg.name"
 
@@ -82,15 +94,16 @@ def _save_budgets(event: Dict[str, Any], cur, conn) -> Dict[str, Any]:
     for budget in req.budgets:
         cur.execute(f"""
             INSERT INTO {SCHEMA}.sla_group_budgets
-                (sla_id, executor_group_id, resolution_minutes, response_minutes, sort_order)
-            VALUES (%s, %s, %s, %s, %s)
+                (sla_id, executor_group_id, resolution_minutes, response_minutes, sort_order, priority_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             req.sla_id,
             budget.executor_group_id,
             budget.resolution_minutes,
             budget.response_minutes,
-            budget.sort_order
+            budget.sort_order,
+            budget.priority_id
         ))
         created_ids.append(cur.fetchone()['id'])
 
@@ -102,12 +115,22 @@ def _save_budgets(event: Dict[str, Any], cur, conn) -> Dict[str, Any]:
     })
 
 
-def get_group_budget(cur, sla_id: int, executor_group_id: int) -> Dict[str, Any] | None:
-    """Получить бюджет конкретной группы для SLA"""
+def get_group_budget(cur, sla_id: int, executor_group_id: int, priority_id: int | None = None) -> Dict[str, Any] | None:
+    """Получить бюджет конкретной группы для SLA с учётом приоритета"""
+    if priority_id:
+        cur.execute(f"""
+            SELECT resolution_minutes, response_minutes
+            FROM {SCHEMA}.sla_group_budgets
+            WHERE sla_id = %s AND executor_group_id = %s AND priority_id = %s
+        """, (sla_id, executor_group_id, priority_id))
+        row = cur.fetchone()
+        if row:
+            return dict(row)
+
     cur.execute(f"""
         SELECT resolution_minutes, response_minutes
         FROM {SCHEMA}.sla_group_budgets
-        WHERE sla_id = %s AND executor_group_id = %s
+        WHERE sla_id = %s AND executor_group_id = %s AND priority_id IS NULL
     """, (sla_id, executor_group_id))
     row = cur.fetchone()
     return dict(row) if row else None

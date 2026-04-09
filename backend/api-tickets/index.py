@@ -6,7 +6,8 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
 from priorities_handler import handle_ticket_priorities
-from sla_handler import handle_sla
+from sla_handler import handle_sla, handle_sla_priority_times
+from sla_group_budgets_handler import handle_sla_group_budgets
 from sla_service_mappings_handler import handle_sla_service_mappings, resolve_sla_for_ticket
 from executor_assignment_resolver import resolve_executor, resolve_executor_group
 from bitrix_bot_notifier import notify_executor_assigned
@@ -61,6 +62,10 @@ def handler(event: dict, context) -> dict:
             return handle_sla(method, event, conn)
         elif endpoint == 'sla-service-mappings':
             return handle_sla_service_mappings(method, event, conn)
+        elif endpoint == 'sla-group-budgets':
+            return handle_sla_group_budgets(method, event, conn)
+        elif endpoint == 'sla-priority-times':
+            return handle_sla_priority_times(method, event, conn)
         elif endpoint == 'ticket-approvals':
             return handle_ticket_approvals(method, event, conn)
         elif endpoint == 'ticket_service_mappings':

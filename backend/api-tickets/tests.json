@@ -49,6 +49,36 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get SLA group budgets (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=sla-group-budgets",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get SLA priority times (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=sla-priority-times&sla_id=1",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Save SLA priority times (requires auth)",
+      "method": "PUT",
+      "path": "/?endpoint=sla-priority-times",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

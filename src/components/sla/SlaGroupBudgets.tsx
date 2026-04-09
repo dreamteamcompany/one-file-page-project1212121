@@ -23,6 +23,7 @@ export interface GroupBudgetItem {
   resolution_minutes: number | null;
   response_minutes: number | null;
   sort_order: number;
+  priority_id?: number | null;
 }
 
 interface Props {
