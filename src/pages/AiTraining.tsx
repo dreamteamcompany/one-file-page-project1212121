@@ -39,8 +39,8 @@ const AiTraining = () => {
     loadData();
   }, [hasPermission, navigate]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [exRes, rulesRes, statsRes, tsRes, svcRes] = await Promise.all([
         apiFetch(`${AI_TRAINING_URL}?endpoint=examples`),
@@ -64,7 +64,7 @@ const AiTraining = () => {
     } catch (err) {
       console.error('Failed to load AI training data:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -89,7 +89,7 @@ const AiTraining = () => {
         } else {
           toast({ title: `Индексация завершена: ${data.reindexed} из ${data.total}` });
         }
-        loadData();
+        loadData(true);
       } else {
         toast({ title: 'Ошибка индексации', description: 'Сервер вернул ошибку. Попробуйте позже.', variant: 'destructive' });
       }
