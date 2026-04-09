@@ -16,12 +16,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface TicketPriority {
   id: number;
   name: string;
   level: number;
   color: string;
+  description: string;
 }
 
 const predefinedColors = [
@@ -46,6 +48,7 @@ const TicketPriorities = () => {
     name: '',
     level: 1,
     color: '#3b82f6',
+    description: '',
   });
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -119,7 +122,7 @@ const TicketPriorities = () => {
       if (response.ok) {
         setDialogOpen(false);
         setEditingPriority(null);
-        setFormData({ name: '', level: 1, color: '#3b82f6' });
+        setFormData({ name: '', level: 1, color: '#3b82f6', description: '' });
         loadPriorities();
       }
     } catch (err) {
@@ -138,6 +141,7 @@ const TicketPriorities = () => {
       name: priority.name, 
       level: priority.level,
       color: priority.color,
+      description: priority.description || '',
     });
     setDialogOpen(true);
   };
@@ -177,7 +181,7 @@ const TicketPriorities = () => {
     setDialogOpen(open);
     if (!open) {
       setEditingPriority(null);
-      setFormData({ name: '', level: 1, color: '#3b82f6' });
+      setFormData({ name: '', level: 1, color: '#3b82f6', description: '' });
     }
   };
 
@@ -260,6 +264,16 @@ const TicketPriorities = () => {
                     />
                   </div>
                   <div>
+                    <Label htmlFor="description">Описание</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Краткое описание приоритета"
+                      rows={2}
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="level">Уровень (чем выше - тем важнее)</Label>
                     <Input
                       id="level"
@@ -324,6 +338,9 @@ const TicketPriorities = () => {
                       </div>
                     </div>
                   </div>
+                  {priority.description && (
+                    <p className="text-sm text-muted-foreground mb-4">{priority.description}</p>
+                  )}
                   <div className="flex gap-2">
                     {hasPermission('ticket_priorities', 'update') && (
                       <Button

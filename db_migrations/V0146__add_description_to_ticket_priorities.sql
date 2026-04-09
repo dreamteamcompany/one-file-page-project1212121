@@ -1,0 +1,1 @@
+ALTER TABLE ticket_priorities ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';

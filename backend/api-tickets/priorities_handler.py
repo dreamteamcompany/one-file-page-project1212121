@@ -10,7 +10,7 @@ def handle_ticket_priorities(method: str, event: Dict[str, Any], conn) -> Dict[s
     
     if method == 'GET':
         cur = conn.cursor()
-        cur.execute(f'SELECT id, name, level, color FROM {SCHEMA}.ticket_priorities ORDER BY level')
+        cur.execute(f"SELECT id, name, level, color, COALESCE(description, '') as description FROM {SCHEMA}.ticket_priorities ORDER BY level")
         priorities = [dict(row) for row in cur.fetchall()]
         cur.close()
         return response(200, priorities)
@@ -20,14 +20,15 @@ def handle_ticket_priorities(method: str, event: Dict[str, Any], conn) -> Dict[s
         name = body.get('name')
         level = body.get('level', 1)
         color = body.get('color', '#3b82f6')
+        description = body.get('description', '')
         
         if not name:
             return response(400, {'error': 'Name is required'})
         
         cur = conn.cursor()
         cur.execute(
-            f"INSERT INTO {SCHEMA}.ticket_priorities (name, level, color) VALUES (%s, %s, %s) RETURNING id, name, level, color",
-            (name, level, color)
+            f"INSERT INTO {SCHEMA}.ticket_priorities (name, level, color, description) VALUES (%s, %s, %s, %s) RETURNING id, name, level, color, description",
+            (name, level, color, description)
         )
         priority = dict(cur.fetchone())
         conn.commit()
@@ -40,14 +41,15 @@ def handle_ticket_priorities(method: str, event: Dict[str, Any], conn) -> Dict[s
         name = body.get('name')
         level = body.get('level', 1)
         color = body.get('color', '#3b82f6')
+        description = body.get('description', '')
         
         if not priority_id or not name:
             return response(400, {'error': 'ID and name are required'})
         
         cur = conn.cursor()
         cur.execute(
-            f"UPDATE {SCHEMA}.ticket_priorities SET name = %s, level = %s, color = %s WHERE id = %s RETURNING id, name, level, color",
-            (name, level, color, priority_id)
+            f"UPDATE {SCHEMA}.ticket_priorities SET name = %s, level = %s, color = %s, description = %s WHERE id = %s RETURNING id, name, level, color, description",
+            (name, level, color, description, priority_id)
         )
         priority = cur.fetchone()
         
