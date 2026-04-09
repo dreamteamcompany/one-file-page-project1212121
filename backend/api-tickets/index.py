@@ -736,7 +736,7 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
         cur.execute(f'SELECT id, name, icon FROM {SCHEMA}.ticket_categories ORDER BY name')
         categories = [dict(row) for row in cur.fetchall()]
         
-        cur.execute(f'SELECT id, name, level, color FROM {SCHEMA}.ticket_priorities ORDER BY level DESC')
+        cur.execute(f"SELECT id, name, level, color, COALESCE(description, '') as description FROM {SCHEMA}.ticket_priorities ORDER BY level DESC")
         priorities = [dict(row) for row in cur.fetchall()]
         
         cur.execute(f'SELECT id, name, color, is_closed, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation FROM {SCHEMA}.ticket_statuses ORDER BY id')

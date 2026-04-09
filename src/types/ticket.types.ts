@@ -118,6 +118,7 @@ export interface TicketPriority {
   name: string;
   level: number;
   color: string;
+  description?: string;
 }
 
 export interface TicketCategory {

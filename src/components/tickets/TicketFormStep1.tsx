@@ -24,6 +24,7 @@ interface Priority {
   id: number;
   name: string;
   color: string;
+  description?: string;
 }
 
 interface TicketFormStep1Props {
@@ -110,10 +111,15 @@ const TicketFormStep1 = ({
                 <SelectItem key={priority.id} value={priority.id.toString()}>
                   <div className="flex items-center gap-2">
                     <div
-                      className="w-2 h-2 rounded-full"
+                      className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: priority.color }}
                     />
-                    {priority.name}
+                    <div>
+                      <span>{priority.name}</span>
+                      {priority.description && (
+                        <p className="text-xs text-muted-foreground font-normal">{priority.description}</p>
+                      )}
+                    </div>
                   </div>
                 </SelectItem>
               ))}
