@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Collapsible,
   CollapsibleContent,
@@ -78,9 +79,9 @@ const formatTime = (minutes: number) => {
   return `${hours} ч ${mins} мин`;
 };
 
-const TimeInput = ({ label, value, onChange, description }: { 
-  label: string; 
-  value: number; 
+const TimeInput = ({ label, value, onChange, description }: {
+  label: string;
+  value: number;
   onChange: (minutes: number) => void;
   description?: string;
 }) => {
@@ -182,6 +183,7 @@ const SLA = () => {
   const [priorityTimes, setPriorityTimes] = useState<PriorityTime[]>([]);
   const [priorityTimesEnabled, setPriorityTimesEnabled] = useState(false);
   const [groupBudgets, setGroupBudgets] = useState<GroupBudgetItem[]>([]);
+  const [expandedSla, setExpandedSla] = useState<number | null>(null);
 
   useEffect(() => {
     if (!hasPermission('sla', 'read')) {
@@ -381,6 +383,10 @@ const SLA = () => {
   const usedPriorityIds = priorityTimes.map(pt => pt.priority_id);
   const availablePriorities = priorities.filter(p => !usedPriorityIds.includes(p.id));
 
+  const toggleExpand = (id: number) => {
+    setExpandedSla(expandedSla === id ? null : id);
+  };
+
   return (
     <PageLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -396,7 +402,7 @@ const SLA = () => {
           </div>
         </div>
         {hasPermission('sla', 'create') && (
-          <Button 
+          <Button
             onClick={() => { setEditingSla(null); setPriorityTimes([]); setPriorityTimesEnabled(false); setGroupBudgets([]); setDialogOpen(true); }}
             className="bg-gradient-to-r from-primary to-secondary hover:opacity-90"
           >
@@ -421,97 +427,19 @@ const SLA = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           {slas.map((sla) => (
-            <Card key={sla.id} className="bg-card/50 border-border hover:border-border/80 transition-all">
-              <CardContent className="p-4 md:p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                  <div className="flex-1 w-full">
-                    <div className="flex items-center gap-3 mb-4">
-                      <h3 className="text-lg font-semibold">{sla.name}</h3>
-                      <div className="flex gap-2">
-                        {sla.use_work_schedule && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-500/10 text-blue-500">
-                            <Icon name="Clock" size={12} />
-                            Рабочее время
-                          </span>
-                        )}
-                        {sla.priority_times && sla.priority_times.length > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-purple-500/10 text-purple-500">
-                            <Icon name="Layers" size={12} />
-                            По приоритетам
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-2">
-                          <Icon name="Timer" size={18} className="text-primary mt-0.5" />
-                          <div>
-                            <div className="text-sm font-medium">Время реакции (по умолчанию)</div>
-                            <div className="text-xs text-muted-foreground">{formatTime(sla.response_time_minutes)}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Icon name="Bell" size={18} className="text-yellow-500 mt-0.5" />
-                          <div>
-                            <div className="text-sm font-medium">Уведомление о сроке реакции</div>
-                            <div className="text-xs text-muted-foreground">Через {formatTime(sla.response_notification_minutes)}</div>
-                          </div>
-                        </div>
-                        {sla.no_response_minutes && (
-                          <div className="flex items-start gap-2">
-                            <Icon name="AlertTriangle" size={18} className="text-orange-500 mt-0.5" />
-                            <div>
-                              <div className="text-sm font-medium">При отсутствии ответа</div>
-                              <div className="text-xs text-muted-foreground">
-                                Через {formatTime(sla.no_response_minutes)} → {getStatusName(sla.no_response_status_id)}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-2">
-                          <Icon name="CheckCircle2" size={18} className="text-green-500 mt-0.5" />
-                          <div>
-                            <div className="text-sm font-medium">Время решения (по умолчанию)</div>
-                            <div className="text-xs text-muted-foreground">{formatTime(sla.resolution_time_minutes)}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Icon name="Bell" size={18} className="text-yellow-500 mt-0.5" />
-                          <div>
-                            <div className="text-sm font-medium">Уведомление о сроке решения</div>
-                            <div className="text-xs text-muted-foreground">Через {formatTime(sla.resolution_notification_minutes)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {sla.priority_times && sla.priority_times.length > 0 && (
-                      <PriorityTimesPreview priorityTimes={sla.priority_times} />
-                    )}
-
-                    <SlaGroupBudgetsPreview slaId={sla.id} />
-                  </div>
-                  <div className="flex gap-2">
-                    {hasPermission('sla', 'update') && (
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(sla)} className="hover:bg-accent/30">
-                        <Icon name="Pencil" size={18} />
-                      </Button>
-                    )}
-                    {hasPermission('sla', 'remove') && (
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(sla.id)} className="hover:bg-red-500/10 text-red-500">
-                        <Icon name="Trash2" size={18} />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <SlaCard
+              key={sla.id}
+              sla={sla}
+              expanded={expandedSla === sla.id}
+              onToggle={() => toggleExpand(sla.id)}
+              onEdit={() => handleEdit(sla)}
+              onDelete={() => handleDelete(sla.id)}
+              getStatusName={getStatusName}
+              canEdit={hasPermission('sla', 'update')}
+              canDelete={hasPermission('sla', 'remove')}
+            />
           ))}
         </div>
       )}
@@ -524,7 +452,7 @@ const SLA = () => {
               Настройте параметры соглашения об уровне обслуживания
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Название SLA</Label>
               <Input
@@ -536,187 +464,184 @@ const SLA = () => {
               />
             </div>
 
-            <div className="border-t border-border pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Icon name="Clock" size={18} className="text-blue-500" />
-                  Учёт рабочего времени
-                </h3>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="work-schedule-toggle" className="text-xs text-muted-foreground">
-                    {formData.use_work_schedule ? 'Включено' : 'Выключено'}
-                  </Label>
-                  <Switch
-                    id="work-schedule-toggle"
-                    checked={formData.use_work_schedule}
-                    onCheckedChange={(checked) => setFormData({ ...formData, use_work_schedule: checked })}
-                  />
+            <Tabs defaultValue="timing" className="w-full">
+              <TabsList className="w-full grid grid-cols-4">
+                <TabsTrigger value="timing" className="text-xs sm:text-sm">
+                  <Icon name="Timer" size={14} className="mr-1.5 hidden sm:inline" />
+                  Сроки
+                </TabsTrigger>
+                <TabsTrigger value="priorities" className="text-xs sm:text-sm">
+                  <Icon name="Layers" size={14} className="mr-1.5 hidden sm:inline" />
+                  Приоритеты
+                </TabsTrigger>
+                <TabsTrigger value="groups" className="text-xs sm:text-sm">
+                  <Icon name="Users" size={14} className="mr-1.5 hidden sm:inline" />
+                  Группы
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs sm:text-sm">
+                  <Icon name="Settings" size={14} className="mr-1.5 hidden sm:inline" />
+                  Настройки
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="timing" className="space-y-5 mt-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Icon name="Timer" size={16} className="text-primary" />
+                    Время реакции
+                  </h3>
+                  <div className="space-y-4 pl-6">
+                    <TimeInput
+                      label="Максимальное время реакции"
+                      value={formData.response_time_minutes}
+                      onChange={(minutes) => setFormData({ ...formData, response_time_minutes: minutes })}
+                      description="Максимальное время для первого ответа на заявку"
+                    />
+                    <TimeInput
+                      label="Уведомление о сроке реакции"
+                      value={formData.response_notification_minutes}
+                      onChange={(minutes) => setFormData({ ...formData, response_notification_minutes: minutes })}
+                      description="За сколько до окончания времени реакции отправить уведомление"
+                    />
+                  </div>
                 </div>
-              </div>
-              {formData.use_work_schedule && (
-                <p className="text-xs text-muted-foreground bg-blue-500/5 p-3 rounded-lg">
-                  SLA-таймеры будут считаться только в рабочее время согласно графикам работы групп исполнителей. Нерабочие часы и выходные не будут учитываться.
-                </p>
-              )}
-            </div>
 
-            <div className="border-t border-border pt-4">
-              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                <Icon name="Timer" size={18} className="text-primary" />
-                Время реакции (по умолчанию)
-              </h3>
-              <div className="space-y-4">
-                <TimeInput
-                  label="Время реакции"
-                  value={formData.response_time_minutes}
-                  onChange={(minutes) => setFormData({ ...formData, response_time_minutes: minutes })}
-                  description="Максимальное время для первого ответа на заявку"
-                />
-                <TimeInput
-                  label="Уведомление о сроке реакции"
-                  value={formData.response_notification_minutes}
-                  onChange={(minutes) => setFormData({ ...formData, response_notification_minutes: minutes })}
-                  description="За сколько до окончания времени реакции отправить уведомление"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-border pt-4">
-              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                <Icon name="AlertTriangle" size={18} className="text-orange-500" />
-                При отсутствии ответа
-              </h3>
-              <div className="space-y-4">
-                <TimeInput
-                  label="Время без ответа"
-                  value={formData.no_response_minutes}
-                  onChange={(minutes) => setFormData({ ...formData, no_response_minutes: minutes })}
-                  description="Если клиент не отвечает указанное время"
-                />
-                <div className="space-y-2">
-                  <Label htmlFor="no_response_status">Перевести в статус</Label>
-                  <Select
-                    value={formData.no_response_status_id?.toString() || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, no_response_status_id: value === 'none' ? undefined : parseInt(value) })}
-                  >
-                    <SelectTrigger id="no_response_status">
-                      <SelectValue placeholder="Выберите статус" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Не переводить</SelectItem>
-                      {statuses.map((status) => (
-                        <SelectItem key={status.id} value={status.id.toString()}>
-                          {status.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Icon name="CheckCircle2" size={16} className="text-green-500" />
+                    Время решения
+                  </h3>
+                  <div className="space-y-4 pl-6">
+                    <TimeInput
+                      label="Максимальное время решения"
+                      value={formData.resolution_time_minutes}
+                      onChange={(minutes) => setFormData({ ...formData, resolution_time_minutes: minutes })}
+                      description="Максимальное время для полного решения заявки"
+                    />
+                    <TimeInput
+                      label="Уведомление о сроке решения"
+                      value={formData.resolution_notification_minutes}
+                      onChange={(minutes) => setFormData({ ...formData, resolution_notification_minutes: minutes })}
+                      description="За сколько до окончания времени решения отправить уведомление"
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="border-t border-border pt-4">
-              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                <Icon name="CheckCircle2" size={18} className="text-green-500" />
-                Время решения (по умолчанию)
-              </h3>
-              <div className="space-y-4">
-                <TimeInput
-                  label="Время решения"
-                  value={formData.resolution_time_minutes}
-                  onChange={(minutes) => setFormData({ ...formData, resolution_time_minutes: minutes })}
-                  description="Максимальное время для полного решения заявки"
-                />
-                <TimeInput
-                  label="Уведомление о сроке решения"
-                  value={formData.resolution_notification_minutes}
-                  onChange={(minutes) => setFormData({ ...formData, resolution_notification_minutes: minutes })}
-                  description="За сколько до окончания времени решения отправить уведомление"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-border pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Icon name="Layers" size={18} className="text-purple-500" />
-                  Времена по приоритетам
-                </h3>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="priority-times-toggle" className="text-xs text-muted-foreground">
-                    {priorityTimesEnabled ? 'Включено' : 'Выключено'}
-                  </Label>
-                  <Switch
-                    id="priority-times-toggle"
-                    checked={priorityTimesEnabled}
-                    onCheckedChange={handlePriorityTimesToggle}
-                  />
-                </div>
-              </div>
-
-              {priorityTimesEnabled && (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Задайте индивидуальные времена реакции и решения для каждого приоритета. Если приоритет не указан, будут использоваться значения по умолчанию (выше).
-                  </p>
-
-                  {priorityTimes.map((pt) => {
-                    const priority = priorities.find(p => p.id === pt.priority_id);
-                    if (!priority) return null;
-
-                    return (
-                      <div
-                        key={pt.priority_id}
-                        className="p-4 rounded-lg bg-muted/30 border border-border space-y-3"
+                <div className="border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Icon name="AlertTriangle" size={16} className="text-orange-500" />
+                    При отсутствии ответа
+                  </h3>
+                  <div className="space-y-4 pl-6">
+                    <TimeInput
+                      label="Время без ответа"
+                      value={formData.no_response_minutes}
+                      onChange={(minutes) => setFormData({ ...formData, no_response_minutes: minutes })}
+                      description="Если клиент не отвечает указанное время"
+                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="no_response_status">Перевести в статус</Label>
+                      <Select
+                        value={formData.no_response_status_id?.toString() || 'none'}
+                        onValueChange={(value) => setFormData({ ...formData, no_response_status_id: value === 'none' ? undefined : parseInt(value) })}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: priority.color }}
-                            />
-                            <span className="text-sm font-medium">{priority.name}</span>
-                            <span className="text-xs text-muted-foreground">(уровень {priority.level})</span>
+                        <SelectTrigger id="no_response_status">
+                          <SelectValue placeholder="Выберите статус" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Не переводить</SelectItem>
+                          {statuses.map((status) => (
+                            <SelectItem key={status.id} value={status.id.toString()}>
+                              {status.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="priorities" className="mt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Icon name="Layers" size={16} className="text-purple-500" />
+                      Времена по приоритетам
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Индивидуальные сроки для каждого приоритета заявки
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="priority-times-toggle" className="text-xs text-muted-foreground">
+                      {priorityTimesEnabled ? 'Вкл' : 'Выкл'}
+                    </Label>
+                    <Switch
+                      id="priority-times-toggle"
+                      checked={priorityTimesEnabled}
+                      onCheckedChange={handlePriorityTimesToggle}
+                    />
+                  </div>
+                </div>
+
+                {!priorityTimesEnabled ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Icon name="Layers" size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Включите, чтобы задать разные сроки для каждого приоритета</p>
+                    <p className="text-xs mt-1">Сейчас используются общие значения со вкладки «Сроки»</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {priorityTimes.map((pt) => {
+                      const priority = priorities.find(p => p.id === pt.priority_id);
+                      if (!priority) return null;
+
+                      return (
+                        <div key={pt.priority_id} className="p-3 rounded-lg bg-muted/30 border border-border space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: priority.color }} />
+                              <span className="text-sm font-medium">{priority.name}</span>
+                              <span className="text-xs text-muted-foreground">(ур. {priority.level})</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-red-500 hover:bg-red-500/10"
+                              onClick={() => removePriorityTime(pt.priority_id)}
+                            >
+                              <Icon name="Trash2" size={14} />
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-red-500 hover:bg-red-500/10"
-                            onClick={() => removePriorityTime(pt.priority_id)}
-                          >
-                            <Icon name="Trash2" size={14} />
-                          </Button>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <CompactTimeInput
+                              label="Реакция"
+                              value={pt.response_time_minutes}
+                              onChange={(m) => updatePriorityTime(pt.priority_id, { response_time_minutes: m })}
+                            />
+                            <CompactTimeInput
+                              label="Уведом. реакции"
+                              value={pt.response_notification_minutes}
+                              onChange={(m) => updatePriorityTime(pt.priority_id, { response_notification_minutes: m })}
+                            />
+                            <CompactTimeInput
+                              label="Решение"
+                              value={pt.resolution_time_minutes}
+                              onChange={(m) => updatePriorityTime(pt.priority_id, { resolution_time_minutes: m })}
+                            />
+                            <CompactTimeInput
+                              label="Уведом. решения"
+                              value={pt.resolution_notification_minutes}
+                              onChange={(m) => updatePriorityTime(pt.priority_id, { resolution_notification_minutes: m })}
+                            />
+                          </div>
                         </div>
+                      );
+                    })}
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <CompactTimeInput
-                            label="Реакция"
-                            value={pt.response_time_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { response_time_minutes: m })}
-                          />
-                          <CompactTimeInput
-                            label="Уведом. реакции"
-                            value={pt.response_notification_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { response_notification_minutes: m })}
-                          />
-                          <CompactTimeInput
-                            label="Решение"
-                            value={pt.resolution_time_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { resolution_time_minutes: m })}
-                          />
-                          <CompactTimeInput
-                            label="Уведом. решения"
-                            value={pt.resolution_notification_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { resolution_notification_minutes: m })}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {availablePriorities.length > 0 && (
-                    <div className="flex items-center gap-2">
+                    {availablePriorities.length > 0 && (
                       <Select onValueChange={(val) => addPriorityTime(parseInt(val))}>
                         <SelectTrigger className="w-auto h-8 text-sm">
                           <SelectValue placeholder="Добавить приоритет..." />
@@ -732,19 +657,47 @@ const SLA = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="groups" className="mt-4">
+                <SlaGroupBudgets
+                  slaId={editingSla?.id}
+                  budgets={groupBudgets}
+                  onBudgetsChange={setGroupBudgets}
+                />
+              </TabsContent>
+
+              <TabsContent value="settings" className="mt-4 space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <Icon name="Clock" size={18} className="text-blue-500" />
                     </div>
-                  )}
+                    <div>
+                      <div className="text-sm font-medium">Учёт рабочего времени</div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        SLA-таймеры считаются только в рабочие часы
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.use_work_schedule}
+                    onCheckedChange={(checked) => setFormData({ ...formData, use_work_schedule: checked })}
+                  />
                 </div>
-              )}
-            </div>
 
-            <SlaGroupBudgets
-              slaId={editingSla?.id}
-              budgets={groupBudgets}
-              onBudgetsChange={setGroupBudgets}
-            />
+                {formData.use_work_schedule && (
+                  <div className="text-xs text-muted-foreground bg-blue-500/5 p-3 rounded-lg border border-blue-500/10">
+                    Нерабочие часы и выходные не будут учитываться при расчёте сроков. Графики берутся из настроек групп исполнителей.
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-3 pt-2 border-t border-border">
               <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                 Отмена
               </Button>
@@ -759,11 +712,125 @@ const SLA = () => {
   );
 };
 
+const SlaCard = ({
+  sla,
+  expanded,
+  onToggle,
+  onEdit,
+  onDelete,
+  getStatusName,
+  canEdit,
+  canDelete,
+}: {
+  sla: SLAItem;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  getStatusName: (id?: number) => string;
+  canEdit: boolean;
+  canDelete: boolean;
+}) => {
+  const hasPriorityTimes = sla.priority_times && sla.priority_times.length > 0;
+
+  return (
+    <Card className="bg-card/50 border-border hover:border-border/80 transition-all">
+      <CardContent className="p-0">
+        <div
+          className="flex items-center justify-between p-4 cursor-pointer select-none"
+          onClick={onToggle}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <Icon
+              name={expanded ? 'ChevronDown' : 'ChevronRight'}
+              size={16}
+              className="text-muted-foreground shrink-0"
+            />
+            <h3 className="text-base font-semibold truncate">{sla.name}</h3>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Icon name="Timer" size={12} className="text-primary" />
+                {formatTime(sla.response_time_minutes)}
+              </span>
+              <span className="text-border">|</span>
+              <span className="flex items-center gap-1">
+                <Icon name="CheckCircle2" size={12} className="text-green-500" />
+                {formatTime(sla.resolution_time_minutes)}
+              </span>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              {sla.use_work_schedule && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] bg-blue-500/10 text-blue-500">
+                  <Icon name="Clock" size={10} />
+                  <span className="hidden sm:inline">Раб. время</span>
+                </span>
+              )}
+              {hasPriorityTimes && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] bg-purple-500/10 text-purple-500">
+                  <Icon name="Layers" size={10} />
+                  <span className="hidden sm:inline">Приоритеты</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+            {canEdit && (
+              <Button variant="ghost" size="icon" onClick={onEdit} className="h-8 w-8 hover:bg-accent/30">
+                <Icon name="Pencil" size={16} />
+              </Button>
+            )}
+            {canDelete && (
+              <Button variant="ghost" size="icon" onClick={onDelete} className="h-8 w-8 hover:bg-red-500/10 text-red-500">
+                <Icon name="Trash2" size={16} />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {expanded && (
+          <div className="px-4 pb-4 pt-0 border-t border-border">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Реакция</div>
+                <InfoRow icon="Timer" iconColor="text-primary" label="Время реакции" value={formatTime(sla.response_time_minutes)} />
+                <InfoRow icon="Bell" iconColor="text-yellow-500" label="Уведомление" value={`через ${formatTime(sla.response_notification_minutes)}`} />
+                {sla.no_response_minutes && (
+                  <InfoRow icon="AlertTriangle" iconColor="text-orange-500" label="Без ответа" value={`${formatTime(sla.no_response_minutes)} → ${getStatusName(sla.no_response_status_id)}`} />
+                )}
+              </div>
+              <div className="space-y-2.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Решение</div>
+                <InfoRow icon="CheckCircle2" iconColor="text-green-500" label="Время решения" value={formatTime(sla.resolution_time_minutes)} />
+                <InfoRow icon="Bell" iconColor="text-yellow-500" label="Уведомление" value={`через ${formatTime(sla.resolution_notification_minutes)}`} />
+              </div>
+            </div>
+
+            {hasPriorityTimes && (
+              <PriorityTimesPreview priorityTimes={sla.priority_times!} />
+            )}
+
+            <SlaGroupBudgetsPreview slaId={sla.id} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const InfoRow = ({ icon, iconColor, label, value }: { icon: string; iconColor: string; label: string; value: string }) => (
+  <div className="flex items-center gap-2">
+    <Icon name={icon} size={14} className={`${iconColor} shrink-0`} />
+    <span className="text-xs text-muted-foreground">{label}:</span>
+    <span className="text-xs font-medium">{value}</span>
+  </div>
+);
+
 const PriorityTimesPreview = ({ priorityTimes }: { priorityTimes: PriorityTime[] }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-3">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-4">
       <CollapsibleTrigger asChild>
         <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
           <Icon name={isOpen ? 'ChevronDown' : 'ChevronRight'} size={14} />
@@ -773,23 +840,13 @@ const PriorityTimesPreview = ({ priorityTimes }: { priorityTimes: PriorityTime[]
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 ml-6 space-y-1.5">
         {priorityTimes.map((pt) => (
-          <div
-            key={pt.priority_id}
-            className="flex items-center gap-3 text-xs py-1.5 px-2 rounded bg-muted/20"
-          >
-            <div className="flex items-center gap-1.5 min-w-[100px]">
-              <div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: pt.priority_color || '#888' }}
-              />
+          <div key={pt.priority_id} className="flex items-center gap-3 text-xs py-1.5 px-2 rounded bg-muted/20">
+            <div className="flex items-center gap-1.5 min-w-[80px]">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: pt.priority_color || '#888' }} />
               <span className="font-medium">{pt.priority_name}</span>
             </div>
-            <span className="text-muted-foreground">
-              Реакция: {formatTime(pt.response_time_minutes)}
-            </span>
-            <span className="text-muted-foreground">
-              Решение: {formatTime(pt.resolution_time_minutes)}
-            </span>
+            <span className="text-muted-foreground">Реакция: {formatTime(pt.response_time_minutes)}</span>
+            <span className="text-muted-foreground">Решение: {formatTime(pt.resolution_time_minutes)}</span>
           </div>
         ))}
       </CollapsibleContent>
