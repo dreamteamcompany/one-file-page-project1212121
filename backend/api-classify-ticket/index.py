@@ -61,7 +61,8 @@ AUTO_LEARN_MIN_CONFIDENCE = 90
 AUTO_LEARN_DUPLICATE_THRESHOLD = 0.95
 
 EMBEDDING_TIMEOUT = (3, 20)
-GIGACHAT_TIMEOUT = (3, 20)
+GIGACHAT_TIMEOUT = (3, 30)
+GIGACHAT_MAX_RETRIES = 1
 TOKEN_TIMEOUT = (3, 10)
 
 USE_EMBEDDINGS = os.environ.get('USE_EMBEDDINGS', 'false').lower() == 'true'
@@ -382,25 +383,42 @@ FALLBACK_RESULT = {
 
 
 def safe_call_gigachat(prompt, token):
-    try:
-        result = call_gigachat_with_token(prompt, token)
-        return result, None
-    except requests.exceptions.HTTPError as e:
-        status = e.response.status_code if e.response is not None else 0
-        error = f'HTTP {status}'
-        print(f'[classify] GigaChat failed: {error}')
-        if status == 401:
-            _token_cache['token'] = None
-            _token_cache['expires_at'] = 0
-        return None, error
-    except requests.exceptions.Timeout as e:
-        error = str(e)
-        print(f'[classify] GigaChat timeout: {error}')
-        return None, error
-    except BaseException as e:
-        error = str(e)
-        print(f'[classify] GigaChat error: {error}')
-        return None, error
+    last_error = None
+    attempts = GIGACHAT_MAX_RETRIES + 1
+    current_token = token
+    for attempt in range(1, attempts + 1):
+        try:
+            result = call_gigachat_with_token(prompt, current_token)
+            if attempt > 1:
+                print(f'[classify] GigaChat succeeded on retry #{attempt - 1}')
+            return result, None
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else 0
+            last_error = f'HTTP {status}'
+            print(f'[classify] GigaChat HTTP error (attempt {attempt}/{attempts}): {last_error}')
+            if status == 401:
+                _token_cache['token'] = None
+                _token_cache['expires_at'] = 0
+                try:
+                    current_token = get_gigachat_token()
+                except BaseException as te:
+                    print(f'[classify] Token refresh failed: {te}')
+                    return None, last_error
+                continue
+            return None, last_error
+        except requests.exceptions.Timeout as e:
+            last_error = str(e)
+            print(f'[classify] GigaChat timeout (attempt {attempt}/{attempts}): {last_error}')
+            continue
+        except requests.exceptions.ConnectionError as e:
+            last_error = str(e)
+            print(f'[classify] GigaChat connection error (attempt {attempt}/{attempts}): {last_error}')
+            continue
+        except BaseException as e:
+            last_error = str(e)
+            print(f'[classify] GigaChat error (attempt {attempt}/{attempts}): {last_error}')
+            return None, last_error
+    return None, last_error
 
 
 def safe_get_embedding(text, token):
