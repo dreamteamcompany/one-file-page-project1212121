@@ -30,6 +30,7 @@ const AiTraining = () => {
   const [stats, setStats] = useState({ examples_count: 0, active_rules_count: 0, indexed_count: 0 });
   const [loading, setLoading] = useState(true);
   const [reindexing, setReindexing] = useState(false);
+  const [reindexProgress, setReindexProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
@@ -70,33 +71,77 @@ const AiTraining = () => {
 
   const reindexExamples = async () => {
     setReindexing(true);
+    setReindexProgress(null);
+
+    let totalReindexed = 0;
+    let totalErrors = 0;
+    let lastErrorReason: string | undefined;
+    let grandTotal = 0;
+    let safetyCounter = 0;
+    const MAX_BATCHES = 200;
+
     try {
-      const res = await apiFetch(`${AI_TRAINING_URL}?endpoint=reindex`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.errors > 0 && data.error_reason) {
+      while (safetyCounter < MAX_BATCHES) {
+        safetyCounter += 1;
+        const res = await apiFetch(`${AI_TRAINING_URL}?endpoint=reindex`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batch_size: 10 }),
+        });
+
+        if (!res.ok) {
           toast({
-            title: `Индексация: ${data.reindexed} из ${data.total}`,
-            description: data.error_reason,
+            title: 'Ошибка индексации',
+            description: 'Сервер вернул ошибку. Попробуйте позже.',
             variant: 'destructive',
           });
-        } else if (data.errors > 0) {
-          toast({
-            title: `Индексация: ${data.reindexed} из ${data.total}`,
-            description: 'Часть примеров не удалось проиндексировать. Проверьте логи.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({ title: `Индексация завершена: ${data.reindexed} из ${data.total}` });
+          return;
         }
-        loadData(true);
-      } else {
-        toast({ title: 'Ошибка индексации', description: 'Сервер вернул ошибку. Попробуйте позже.', variant: 'destructive' });
+
+        const data = await res.json();
+        totalReindexed += data.reindexed || 0;
+        totalErrors += data.errors || 0;
+        grandTotal = data.total || grandTotal;
+
+        const remaining = data.remaining || 0;
+        const done = grandTotal - remaining;
+        setReindexProgress({ done, total: grandTotal });
+
+        if (data.error_reason) {
+          lastErrorReason = data.error_reason;
+        }
+
+        if (data.done || remaining === 0 || (data.reindexed === 0 && data.errors > 0)) {
+          break;
+        }
       }
+
+      if (lastErrorReason) {
+        toast({
+          title: `Индексация: ${totalReindexed} из ${grandTotal}`,
+          description: lastErrorReason,
+          variant: 'destructive',
+        });
+      } else if (totalErrors > 0) {
+        toast({
+          title: `Индексация: ${totalReindexed} из ${grandTotal}`,
+          description: `Ошибок: ${totalErrors}. Подробности в логах.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: `Индексация завершена: ${totalReindexed} из ${grandTotal}` });
+      }
+
+      loadData(true);
     } catch {
-      toast({ title: 'Ошибка индексации', description: 'Не удалось связаться с сервером.', variant: 'destructive' });
+      toast({
+        title: 'Ошибка индексации',
+        description: 'Не удалось связаться с сервером.',
+        variant: 'destructive',
+      });
     } finally {
       setReindexing(false);
+      setReindexProgress(null);
     }
   };
 
@@ -177,7 +222,11 @@ const AiTraining = () => {
                 ) : (
                   <Icon name="RefreshCw" size={12} />
                 )}
-                {reindexing ? 'Индексация...' : 'Переиндексировать'}
+                {reindexing
+                  ? reindexProgress
+                    ? `Индексация ${reindexProgress.done}/${reindexProgress.total}`
+                    : 'Индексация...'
+                  : 'Переиндексировать'}
               </Button>
             )}
           </CardContent>

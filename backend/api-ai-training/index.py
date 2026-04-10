@@ -107,7 +107,7 @@ def handler(event, context):
         elif endpoint == 'logs':
             return handle_logs(method, event, cur, conn)
         elif endpoint == 'reindex':
-            return handle_reindex(cur, conn)
+            return handle_reindex(cur, conn, event)
         else:
             return response(400, {'error': 'Укажите endpoint: examples, rules, stats, logs или reindex'})
     finally:
@@ -238,15 +238,48 @@ def _reindex_one(ex_id, description, token):
     return ex_id, embedding, emb_error
 
 
-def handle_reindex(cur, conn):
+def handle_reindex(cur, conn, event):
+    body = {}
+    if event.get('body'):
+        try:
+            body = json.loads(event.get('body') or '{}')
+        except BaseException:
+            body = {}
+    batch_size = int(body.get('batch_size') or get_query_param(event, 'batch_size', '10'))
+    force = bool(body.get('force', False))
+
+    cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_training_examples")
+    total_all = cur.fetchone()['c']
+
+    if force:
+        where_clause = ''
+    else:
+        where_clause = 'WHERE embedding IS NULL'
+
     cur.execute(f"""
         SELECT id, description FROM {SCHEMA}.ai_training_examples
+        {where_clause}
         ORDER BY id
+        LIMIT {batch_size}
     """)
     examples = [dict(r) for r in cur.fetchall()]
 
     if not examples:
-        return response(200, {'reindexed': 0, 'errors': 0})
+        return response(200, {
+            'reindexed': 0,
+            'errors': 0,
+            'total': total_all,
+            'processed_in_batch': 0,
+            'remaining': 0,
+            'done': True,
+        })
+
+    if force:
+        cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_training_examples")
+        remaining_before = cur.fetchone()['c']
+    else:
+        cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_training_examples WHERE embedding IS NULL")
+        remaining_before = cur.fetchone()['c']
 
     try:
         token = get_gigachat_token()
@@ -259,10 +292,26 @@ def handle_reindex(cur, conn):
         else:
             reason = f'Ошибка GigaChat API при получении токена ({code}).'
         print(f'[ai-training] Token error: {e}')
-        return response(200, {'reindexed': 0, 'errors': len(examples), 'total': len(examples), 'error_reason': reason})
+        return response(200, {
+            'reindexed': 0,
+            'errors': len(examples),
+            'total': total_all,
+            'processed_in_batch': len(examples),
+            'remaining': remaining_before,
+            'done': True,
+            'error_reason': reason,
+        })
     except BaseException as e:
         print(f'[ai-training] Token error: {e}')
-        return response(200, {'reindexed': 0, 'errors': len(examples), 'total': len(examples), 'error_reason': f'Не удалось подключиться к GigaChat: {e}'})
+        return response(200, {
+            'reindexed': 0,
+            'errors': len(examples),
+            'total': total_all,
+            'processed_in_batch': len(examples),
+            'remaining': remaining_before,
+            'done': True,
+            'error_reason': f'Не удалось подключиться к GigaChat: {e}',
+        })
 
     reindexed = 0
     errors = 0
@@ -278,7 +327,7 @@ def handle_reindex(cur, conn):
         for future in futures:
             ex_id = futures[future]
             try:
-                rid, embedding, emb_error = future.result(timeout=10)
+                rid, embedding, emb_error = future.result(timeout=25)
                 if embedding:
                     embedding_json = json.dumps(embedding)
                     cur.execute(f"""
@@ -297,7 +346,17 @@ def handle_reindex(cur, conn):
                 error_details.append(f'id={ex_id}: {e}')
                 print(f'[ai-training] Reindex exception for id={ex_id}: {e}')
 
-    result = {'reindexed': reindexed, 'errors': errors, 'total': len(examples)}
+    cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_training_examples WHERE embedding IS NULL")
+    remaining_after = cur.fetchone()['c']
+
+    result = {
+        'reindexed': reindexed,
+        'errors': errors,
+        'total': total_all,
+        'processed_in_batch': len(examples),
+        'remaining': remaining_after,
+        'done': remaining_after == 0 or (errors == len(examples) and reindexed == 0),
+    }
     if error_details:
         result['error_details'] = error_details[:5]
         first_error = error_details[0] if error_details else ''
