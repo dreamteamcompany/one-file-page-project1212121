@@ -27,7 +27,7 @@ def get_gigachat_token():
         },
         data={'scope': 'GIGACHAT_API_PERS'},
         verify=False,
-        timeout=(3, 5),
+        timeout=(3, 10),
     )
     resp.raise_for_status()
     data = resp.json()
@@ -51,7 +51,7 @@ def generate_embedding(text, token=None):
             'input': [text[:512]],
         },
         verify=False,
-        timeout=(2, 6),
+        timeout=(3, 20),
     )
     resp.raise_for_status()
     data = resp.json()
