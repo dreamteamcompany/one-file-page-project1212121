@@ -64,6 +64,34 @@ EMBEDDING_TIMEOUT = (3, 20)
 GIGACHAT_TIMEOUT = (3, 20)
 TOKEN_TIMEOUT = (3, 10)
 
+USE_EMBEDDINGS = os.environ.get('USE_EMBEDDINGS', 'false').lower() == 'true'
+
+_STOP_WORDS = {
+    'и', 'в', 'во', 'не', 'что', 'он', 'на', 'я', 'с', 'со', 'как', 'а', 'то',
+    'все', 'она', 'так', 'его', 'но', 'да', 'ты', 'к', 'у', 'же', 'вы', 'за',
+    'бы', 'по', 'только', 'ее', 'мне', 'было', 'вот', 'от', 'меня', 'еще',
+    'нет', 'о', 'из', 'ему', 'теперь', 'когда', 'даже', 'ну', 'вдруг', 'ли',
+    'если', 'уже', 'или', 'ни', 'быть', 'был', 'него', 'до', 'вас', 'нибудь',
+    'вам', 'сказал', 'ведь', 'там', 'потом', 'себя', 'ничего', 'ей', 'может',
+    'они', 'тут', 'где', 'есть', 'надо', 'для', 'мы', 'тебя', 'их', 'чем',
+    'была', 'сам', 'чтоб', 'без', 'будто', 'чего', 'раз', 'тоже', 'себе',
+    'под', 'будет', 'ж', 'тогда', 'кто', 'этот', 'того', 'потому', 'этого',
+    'какой', 'совсем', 'ним', 'здесь', 'этом', 'один', 'почти', 'мой', 'тем',
+    'чтобы', 'нее', 'кажется', 'сейчас', 'были', 'куда', 'зачем', 'всех',
+    'никогда', 'можно', 'при', 'наконец', 'два', 'об', 'другой', 'хоть',
+    'после', 'над', 'больше', 'тот', 'через', 'эти', 'нас', 'про', 'всего',
+    'них', 'какая', 'много', 'разве', 'три', 'эту', 'моя', 'впрочем', 'хорошо',
+    'свою', 'этой', 'перед', 'иногда', 'лучше', 'чуть', 'том', 'нельзя',
+    'такой', 'им', 'более', 'всегда', 'конечно', 'всю', 'между', 'это', 'эта',
+    'не', 'нужно', 'нужен', 'нужна', 'нужны',
+}
+
+
+def tokenize_text(text):
+    text = text.lower()
+    tokens = re.findall(r'[\w]+', text, re.UNICODE)
+    return {t for t in tokens if len(t) >= 3 and t not in _STOP_WORDS}
+
 
 def response(status_code, body):
     return {
@@ -162,6 +190,41 @@ def find_similar_examples(cur, query_embedding, top_k=TOP_K_EXAMPLES):
     return scored[:top_k]
 
 
+def find_similar_examples_keyword(cur, query_text, top_k=TOP_K_EXAMPLES):
+    cur.execute(f"""
+        SELECT e.description, e.ticket_service_id, e.service_ids,
+               ts.name as ts_name
+        FROM {SCHEMA}.ai_training_examples e
+        JOIN {SCHEMA}.ticket_services ts ON ts.id = e.ticket_service_id
+    """)
+    examples = [dict(r) for r in cur.fetchall()]
+
+    if not examples:
+        return []
+
+    query_tokens = tokenize_text(query_text)
+    if not query_tokens:
+        return []
+
+    scored = []
+    for ex in examples:
+        ex_tokens = tokenize_text(ex['description'] or '')
+        if not ex_tokens:
+            continue
+        intersection = query_tokens & ex_tokens
+        union = query_tokens | ex_tokens
+        if not intersection or not union:
+            continue
+        jaccard = len(intersection) / len(union)
+        overlap_ratio = len(intersection) / len(query_tokens)
+        score = 0.6 * jaccard + 0.4 * overlap_ratio
+        if score > 0:
+            scored.append((score, ex))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[:top_k]
+
+
 def extract_json_from_text(text):
     text = text.strip()
     if text.startswith('```'):
@@ -185,28 +248,31 @@ def extract_json_from_text(text):
     return text
 
 
-def build_training_context(cur, query_embedding):
-    similar = find_similar_examples(cur, query_embedding)
-
+def _format_examples_text(cur, similar):
     examples_text = ''
-    if similar:
-        svc_ids = set()
-        for _, ex in similar:
-            if ex['service_ids']:
-                svc_ids.update(ex['service_ids'])
+    if not similar:
+        return examples_text
 
-        svc_names = {}
-        if svc_ids:
-            ids_str = ','.join(str(i) for i in svc_ids)
-            cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE id IN ({ids_str})")
-            for r in cur.fetchall():
-                svc_names[r['id']] = r['name']
+    svc_ids = set()
+    for _, ex in similar:
+        if ex['service_ids']:
+            svc_ids.update(ex['service_ids'])
 
-        examples_text = '\nПОХОЖИЕ ЗАЯВКИ:\n'
-        for sim_score, ex in similar:
-            svc_list = ', '.join([svc_names.get(sid, '?') for sid in (ex['service_ids'] or [])])
-            examples_text += f'- (схожесть {sim_score:.0%}) "{ex["description"]}" → услуга "{ex["ts_name"]}" (id={ex["ticket_service_id"]}), сервис: {svc_list} (ids={ex["service_ids"]})\n'
+    svc_names = {}
+    if svc_ids:
+        ids_str = ','.join(str(i) for i in svc_ids)
+        cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE id IN ({ids_str})")
+        for r in cur.fetchall():
+            svc_names[r['id']] = r['name']
 
+    examples_text = '\nПОХОЖИЕ ЗАЯВКИ:\n'
+    for sim_score, ex in similar:
+        svc_list = ', '.join([svc_names.get(sid, '?') for sid in (ex['service_ids'] or [])])
+        examples_text += f'- (схожесть {sim_score:.0%}) "{ex["description"]}" → услуга "{ex["ts_name"]}" (id={ex["ticket_service_id"]}), сервис: {svc_list} (ids={ex["service_ids"]})\n'
+    return examples_text
+
+
+def _fetch_rules_text(cur):
     rules_text = ''
     cur.execute(f"""
         SELECT rule_text FROM {SCHEMA}.ai_training_rules
@@ -220,7 +286,20 @@ def build_training_context(cur, query_embedding):
         rules_text = '\nПРАВИЛА:\n'
         for r in rules:
             rules_text += f'- {r["rule_text"]}\n'
+    return rules_text
 
+
+def build_training_context(cur, query_embedding):
+    similar = find_similar_examples(cur, query_embedding)
+    examples_text = _format_examples_text(cur, similar)
+    rules_text = _fetch_rules_text(cur)
+    return examples_text, rules_text, len(similar)
+
+
+def build_training_context_keyword(cur, query_text):
+    similar = find_similar_examples_keyword(cur, query_text)
+    examples_text = _format_examples_text(cur, similar)
+    rules_text = _fetch_rules_text(cur)
     return examples_text, rules_text, len(similar)
 
 
@@ -516,8 +595,6 @@ def save_log(description, result_data, success, error_message, raw_resp, example
 
 
 def auto_learn(description, result, query_embedding):
-    if not query_embedding:
-        return
     confidence = result.get('confidence', 0)
     if confidence < AUTO_LEARN_MIN_CONFIDENCE:
         return
@@ -532,28 +609,57 @@ def auto_learn(description, result, query_embedding):
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute(f"""
-            SELECT id, embedding FROM {SCHEMA}.ai_training_examples
-            WHERE embedding IS NOT NULL
-        """)
-        existing = [dict(r) for r in cur.fetchall()]
+        if USE_EMBEDDINGS and query_embedding:
+            cur.execute(f"""
+                SELECT id, embedding FROM {SCHEMA}.ai_training_examples
+                WHERE embedding IS NOT NULL
+            """)
+            existing = [dict(r) for r in cur.fetchall()]
 
-        for ex in existing:
-            emb = ex['embedding']
-            if isinstance(emb, str):
-                emb = json.loads(emb)
-            if emb and cosine_similarity(query_embedding, emb) > AUTO_LEARN_DUPLICATE_THRESHOLD:
-                print(f'[auto-learn] Duplicate found (id={ex["id"]}), skipping')
-                cur.close()
-                conn.close()
-                return
+            for ex in existing:
+                emb = ex['embedding']
+                if isinstance(emb, str):
+                    emb = json.loads(emb)
+                if emb and cosine_similarity(query_embedding, emb) > AUTO_LEARN_DUPLICATE_THRESHOLD:
+                    print(f'[auto-learn] Duplicate found (id={ex["id"]}), skipping')
+                    cur.close()
+                    conn.close()
+                    return
 
-        embedding_json = json.dumps(query_embedding)
-        cur.execute(f"""
-            INSERT INTO {SCHEMA}.ai_training_examples
-            (description, ticket_service_id, service_ids, embedding, is_auto)
-            VALUES (%s, %s, %s, %s::jsonb, true)
-        """, (description[:500], ts_id, svc_ids, embedding_json))
+            embedding_json = json.dumps(query_embedding)
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ai_training_examples
+                (description, ticket_service_id, service_ids, embedding, is_auto)
+                VALUES (%s, %s, %s, %s::jsonb, true)
+            """, (description[:500], ts_id, svc_ids, embedding_json))
+        else:
+            cur.execute(f"""
+                SELECT id, description FROM {SCHEMA}.ai_training_examples
+            """)
+            existing = [dict(r) for r in cur.fetchall()]
+
+            query_tokens = tokenize_text(description)
+            if query_tokens:
+                for ex in existing:
+                    ex_tokens = tokenize_text(ex['description'] or '')
+                    if not ex_tokens:
+                        continue
+                    union = query_tokens | ex_tokens
+                    if not union:
+                        continue
+                    jaccard = len(query_tokens & ex_tokens) / len(union)
+                    if jaccard > AUTO_LEARN_DUPLICATE_THRESHOLD:
+                        print(f'[auto-learn] Duplicate found (id={ex["id"]}), skipping')
+                        cur.close()
+                        conn.close()
+                        return
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ai_training_examples
+                (description, ticket_service_id, service_ids, is_auto)
+                VALUES (%s, %s, %s, true)
+            """, (description[:500], ts_id, svc_ids))
+
         conn.commit()
         cur.close()
         conn.close()
@@ -606,7 +712,7 @@ def handler(event, context):
     with ThreadPoolExecutor(max_workers=2) as executor:
         catalog_future = executor.submit(fetch_catalog_data)
 
-        if token:
+        if token and USE_EMBEDDINGS:
             embedding_future = executor.submit(fetch_embedding, description, token)
         else:
             embedding_future = None
@@ -616,7 +722,7 @@ def handler(event, context):
         if embedding_future:
             query_embedding, emb_error = embedding_future.result()
         else:
-            query_embedding, emb_error = None, 'No token'
+            query_embedding, emb_error = None, None
 
     services_map = build_services_map(ticket_services, services, mappings)
 
@@ -629,24 +735,25 @@ def handler(event, context):
             return response(200, {'result': fallback, 'debug': {'error': 'No GigaChat token'}})
         return response(200, fallback)
 
-    if query_embedding:
+    if USE_EMBEDDINGS and query_embedding:
         conn = get_db_connection()
         cur = conn.cursor()
         examples_text, rules_text, examples_count = build_training_context(cur, query_embedding)
         cur.close()
         conn.close()
-    elif emb_error:
-        print(f'[classify] Embedding failed: {emb_error}. Using keyword fallback (skipping GigaChat).')
-        fallback = classify_by_keywords(description, services_map)
-        duration_ms = int((time.time() - start_time) * 1000)
-        save_log(description, fallback, False, f'Embedding failed: {emb_error}', None, 0, 0, duration_ms, test_mode)
-        if test_mode:
-            return response(200, {'result': fallback, 'debug': {'error': f'Embedding failed: {emb_error}'}})
-        return response(200, fallback)
+    elif USE_EMBEDDINGS and emb_error:
+        print(f'[classify] Embedding failed: {emb_error}. Falling back to keyword context.')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        examples_text, rules_text, examples_count = build_training_context_keyword(cur, description)
+        cur.close()
+        conn.close()
     else:
-        examples_text = ''
-        examples_count = 0
-        rules_text = ''
+        conn = get_db_connection()
+        cur = conn.cursor()
+        examples_text, rules_text, examples_count = build_training_context_keyword(cur, description)
+        cur.close()
+        conn.close()
 
     error_message = None
     raw_resp = None

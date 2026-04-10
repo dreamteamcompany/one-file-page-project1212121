@@ -16,6 +16,7 @@ import type { TrainingRule } from '@/components/ai-training/RulesTab';
 import { useToast } from '@/hooks/use-toast';
 
 const AI_TRAINING_URL = func2url['api-ai-training'];
+const USE_EMBEDDINGS_UI = false;
 
 const AiTraining = () => {
   const { hasPermission } = useAuth();
@@ -171,7 +172,7 @@ const AiTraining = () => {
         </div>
       </header>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className={`grid ${USE_EMBEDDINGS_UI ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
@@ -198,39 +199,41 @@ const AiTraining = () => {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <Icon name="Brain" size={20} className="text-green-500" />
+        {USE_EMBEDDINGS_UI && (
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <Icon name="Brain" size={20} className="text-green-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.indexed_count}/{stats.examples_count}</p>
+                  <p className="text-xs text-muted-foreground">Индексировано</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.indexed_count}/{stats.examples_count}</p>
-                <p className="text-xs text-muted-foreground">Индексировано</p>
-              </div>
-            </div>
-            {stats.indexed_count < stats.examples_count && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-2 w-full gap-1 text-xs"
-                onClick={reindexExamples}
-                disabled={reindexing}
-              >
-                {reindexing ? (
-                  <Icon name="Loader2" size={12} className="animate-spin" />
-                ) : (
-                  <Icon name="RefreshCw" size={12} />
-                )}
-                {reindexing
-                  ? reindexProgress
-                    ? `Индексация ${reindexProgress.done}/${reindexProgress.total}`
-                    : 'Индексация...'
-                  : 'Переиндексировать'}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+              {stats.indexed_count < stats.examples_count && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 w-full gap-1 text-xs"
+                  onClick={reindexExamples}
+                  disabled={reindexing}
+                >
+                  {reindexing ? (
+                    <Icon name="Loader2" size={12} className="animate-spin" />
+                  ) : (
+                    <Icon name="RefreshCw" size={12} />
+                  )}
+                  {reindexing
+                    ? reindexProgress
+                      ? `Индексация ${reindexProgress.done}/${reindexProgress.total}`
+                      : 'Индексация...'
+                    : 'Переиндексировать'}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="flex gap-2 mb-4">

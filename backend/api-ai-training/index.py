@@ -8,6 +8,7 @@ import requests
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_query_param, SCHEMA
 
 GIGACHAT_AUTH_KEY = os.environ.get('GIGACHAT_AUTH_KEY')
+USE_EMBEDDINGS = os.environ.get('USE_EMBEDDINGS', 'false').lower() == 'true'
 
 _token_cache = {'token': None, 'expires_at': 0}
 
@@ -59,6 +60,8 @@ def generate_embedding(text, token=None):
 
 
 def safe_generate_embedding(text, token=None):
+    if not USE_EMBEDDINGS:
+        return None, None
     try:
         return generate_embedding(text, token), None
     except requests.exceptions.HTTPError as e:
@@ -250,6 +253,18 @@ def handle_reindex(cur, conn, event):
 
     cur.execute(f"SELECT COUNT(*) as c FROM {SCHEMA}.ai_training_examples")
     total_all = cur.fetchone()['c']
+
+    if not USE_EMBEDDINGS:
+        return response(200, {
+            'reindexed': 0,
+            'errors': 0,
+            'total': total_all,
+            'processed_in_batch': 0,
+            'remaining': 0,
+            'done': True,
+            'disabled': True,
+            'error_reason': 'Векторная индексация отключена (USE_EMBEDDINGS=false). Классификация работает через keyword-поиск.',
+        })
 
     if force:
         where_clause = ''
