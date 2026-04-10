@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,8 +12,10 @@ import ExamplesTab from '@/components/ai-training/ExamplesTab';
 import RulesTab from '@/components/ai-training/RulesTab';
 import TestTab from '@/components/ai-training/TestTab';
 import LogsTab from '@/components/ai-training/LogsTab';
+import PendingReviewsTab from '@/components/ai-training/PendingReviewsTab';
 import type { TrainingExample, TicketService, Service } from '@/components/ai-training/ExamplesTab';
 import type { TrainingRule } from '@/components/ai-training/RulesTab';
+import type { PendingReview } from '@/components/ai-training/PendingReviewsTab';
 import { useToast } from '@/hooks/use-toast';
 
 const AI_TRAINING_URL = func2url['api-ai-training'];
@@ -23,12 +26,13 @@ const AiTraining = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [tab, setTab] = useState<'examples' | 'rules' | 'test' | 'logs'>('examples');
+  const [tab, setTab] = useState<'pending_reviews' | 'examples' | 'rules' | 'test' | 'logs'>('pending_reviews');
   const [examples, setExamples] = useState<TrainingExample[]>([]);
   const [rules, setRules] = useState<TrainingRule[]>([]);
   const [ticketServices, setTicketServices] = useState<TicketService[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [stats, setStats] = useState({ examples_count: 0, active_rules_count: 0, indexed_count: 0 });
+  const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
+  const [stats, setStats] = useState({ examples_count: 0, active_rules_count: 0, indexed_count: 0, pending_reviews_count: 0 });
   const [loading, setLoading] = useState(true);
   const [reindexing, setReindexing] = useState(false);
   const [reindexProgress, setReindexProgress] = useState<{ done: number; total: number } | null>(null);
@@ -44,12 +48,13 @@ const AiTraining = () => {
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [exRes, rulesRes, statsRes, tsRes, svcRes] = await Promise.all([
+      const [exRes, rulesRes, statsRes, tsRes, svcRes, prRes] = await Promise.all([
         apiFetch(`${AI_TRAINING_URL}?endpoint=examples`),
         apiFetch(`${AI_TRAINING_URL}?endpoint=rules`),
         apiFetch(`${AI_TRAINING_URL}?endpoint=stats`),
         apiFetch('/ticket_services?endpoint=ticket_services'),
         apiFetch('/services?endpoint=services'),
+        apiFetch(`${AI_TRAINING_URL}?endpoint=pending_reviews`),
       ]);
 
       if (exRes.ok) setExamples(await exRes.json());
@@ -63,6 +68,7 @@ const AiTraining = () => {
         const svcData = await svcRes.json();
         setServices(Array.isArray(svcData) ? svcData : []);
       }
+      if (prRes.ok) setPendingReviews(await prRes.json());
     } catch (err) {
       console.error('Failed to load AI training data:', err);
     } finally {
@@ -172,7 +178,20 @@ const AiTraining = () => {
         </div>
       </header>
 
-      <div className={`grid ${USE_EMBEDDINGS_UI ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-6`}>
+      <div className={`grid ${USE_EMBEDDINGS_UI ? 'grid-cols-4' : 'grid-cols-3'} gap-4 mb-6`}>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <Icon name="Clock" size={20} className="text-orange-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.pending_reviews_count}</p>
+                <p className="text-xs text-muted-foreground">На проверку</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
@@ -238,6 +257,20 @@ const AiTraining = () => {
 
       <div className="flex gap-2 mb-4">
         <Button
+          variant={tab === 'pending_reviews' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTab('pending_reviews')}
+          className="gap-2"
+        >
+          <Icon name="Clock" size={16} />
+          На проверку
+          {stats.pending_reviews_count > 0 && (
+            <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 min-w-[20px] h-5">
+              {stats.pending_reviews_count}
+            </Badge>
+          )}
+        </Button>
+        <Button
           variant={tab === 'examples' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setTab('examples')}
@@ -274,6 +307,15 @@ const AiTraining = () => {
           Логирование
         </Button>
       </div>
+
+      {tab === 'pending_reviews' && (
+        <PendingReviewsTab
+          pendingReviews={pendingReviews}
+          ticketServices={ticketServices}
+          services={services}
+          onReload={loadData}
+        />
+      )}
 
       {tab === 'examples' && (
         <ExamplesTab

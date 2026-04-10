@@ -57,8 +57,7 @@ TICKET_SERVICE_NAMES = {
 
 TOP_K_EXAMPLES = 5
 TOP_K_RULES = 5
-AUTO_LEARN_MIN_CONFIDENCE = 90
-AUTO_LEARN_DUPLICATE_THRESHOLD = 0.95
+
 
 EMBEDDING_TIMEOUT = (3, 20)
 GIGACHAT_TIMEOUT = (3, 15)
@@ -613,78 +612,27 @@ def save_log(description, result_data, success, error_message, raw_resp, example
         print(f'[classify] Failed to save log: {e}')
 
 
-def auto_learn(description, result, query_embedding):
-    confidence = result.get('confidence', 0)
-    if confidence < AUTO_LEARN_MIN_CONFIDENCE:
-        return
-    if result.get('fallback'):
-        return
-    ts_id = result.get('ticket_service_id')
-    svc_ids = result.get('service_ids', [])
-    if not ts_id or not svc_ids:
-        return
-
+def save_pending_review(description, result):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-
-        if USE_EMBEDDINGS and query_embedding:
-            cur.execute(f"""
-                SELECT id, embedding FROM {SCHEMA}.ai_training_examples
-                WHERE embedding IS NOT NULL
-            """)
-            existing = [dict(r) for r in cur.fetchall()]
-
-            for ex in existing:
-                emb = ex['embedding']
-                if isinstance(emb, str):
-                    emb = json.loads(emb)
-                if emb and cosine_similarity(query_embedding, emb) > AUTO_LEARN_DUPLICATE_THRESHOLD:
-                    print(f'[auto-learn] Duplicate found (id={ex["id"]}), skipping')
-                    cur.close()
-                    conn.close()
-                    return
-
-            embedding_json = json.dumps(query_embedding)
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.ai_training_examples
-                (description, ticket_service_id, service_ids, embedding, is_auto)
-                VALUES (%s, %s, %s, %s::jsonb, true)
-            """, (description[:500], ts_id, svc_ids, embedding_json))
-        else:
-            cur.execute(f"""
-                SELECT id, description FROM {SCHEMA}.ai_training_examples
-            """)
-            existing = [dict(r) for r in cur.fetchall()]
-
-            query_tokens = tokenize_text(description)
-            if query_tokens:
-                for ex in existing:
-                    ex_tokens = tokenize_text(ex['description'] or '')
-                    if not ex_tokens:
-                        continue
-                    union = query_tokens | ex_tokens
-                    if not union:
-                        continue
-                    jaccard = len(query_tokens & ex_tokens) / len(union)
-                    if jaccard > AUTO_LEARN_DUPLICATE_THRESHOLD:
-                        print(f'[auto-learn] Duplicate found (id={ex["id"]}), skipping')
-                        cur.close()
-                        conn.close()
-                        return
-
-            cur.execute(f"""
-                INSERT INTO {SCHEMA}.ai_training_examples
-                (description, ticket_service_id, service_ids, is_auto)
-                VALUES (%s, %s, %s, true)
-            """, (description[:500], ts_id, svc_ids))
-
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ai_pending_reviews
+            (description, ticket_service_id, service_ids, ticket_service_name, service_names, confidence)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            description[:500],
+            result.get('ticket_service_id'),
+            result.get('service_ids', []),
+            result.get('ticket_service_name', ''),
+            result.get('service_names', []),
+            result.get('confidence', 0),
+        ))
         conn.commit()
         cur.close()
         conn.close()
-        print(f'[auto-learn] Saved: conf={confidence}, ts={ts_id}, svcs={svc_ids}')
     except BaseException as e:
-        print(f'[auto-learn] Error: {e}')
+        print(f'[classify] Failed to save pending review: {e}')
 
 
 def fetch_catalog_data():
@@ -759,6 +707,8 @@ def handler(event, context):
 
         duration_ms = int((time.time() - start_time) * 1000)
         save_log(description, result, True, None, 'GigaChat disabled', examples_count, rules_text.count('\n- ') if rules_text else 0, duration_ms, test_mode)
+        if not test_mode:
+            save_pending_review(description, result)
         if test_mode:
             return response(200, {'result': result, 'debug': {'mode': 'keyword_only', 'examples_count': examples_count, 'examples_text': examples_text.strip() if examples_text else '', 'rules_text': rules_text.strip() if rules_text else ''}})
         return response(200, result)
@@ -818,7 +768,7 @@ def handler(event, context):
             result, error = classify_with_gigachat(description, ticket_services, services, mappings, examples_text, rules_text, examples_count, token)
             duration_ms = int((time.time() - start_time) * 1000)
             save_log(description, result, error is None, error, None, examples_count, rules_text.count('\n- ') if rules_text else 0, duration_ms, False)
-            auto_learn(description, result, query_embedding)
+            save_pending_review(description, result)
             return response(200, result)
     except json.JSONDecodeError as e:
         duration_ms = int((time.time() - start_time) * 1000)

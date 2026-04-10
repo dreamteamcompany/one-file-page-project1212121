@@ -19,6 +19,12 @@
       "expectedStatus": 401
     },
     {
+      "name": "Get pending_reviews without auth",
+      "method": "GET",
+      "path": "/?endpoint=pending_reviews",
+      "expectedStatus": 401
+    },
+    {
       "name": "No endpoint",
       "method": "GET",
       "path": "/",

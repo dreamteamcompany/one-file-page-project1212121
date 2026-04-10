@@ -109,10 +109,12 @@ def handler(event, context):
             return handle_stats(cur)
         elif endpoint == 'logs':
             return handle_logs(method, event, cur, conn)
+        elif endpoint == 'pending_reviews':
+            return handle_pending_reviews(method, event, cur, conn)
         elif endpoint == 'reindex':
             return handle_reindex(cur, conn, event)
         else:
-            return response(400, {'error': 'Укажите endpoint: examples, rules, stats, logs или reindex'})
+            return response(400, {'error': 'Укажите endpoint: examples, rules, stats, logs, pending_reviews или reindex'})
     finally:
         cur.close()
         conn.close()
@@ -461,6 +463,149 @@ def handle_rules(method, event, cur, conn):
     return response(405, {'error': 'Method not allowed'})
 
 
+def handle_pending_reviews(method, event, cur, conn):
+    if method == 'GET':
+        cur.execute(f"""
+            SELECT pr.id, pr.description, pr.ticket_service_id, pr.service_ids,
+                   pr.ticket_service_name, pr.service_names, pr.confidence,
+                   pr.status, pr.created_at,
+                   ts.name as ts_name_joined
+            FROM {SCHEMA}.ai_pending_reviews pr
+            LEFT JOIN {SCHEMA}.ticket_services ts ON ts.id = pr.ticket_service_id
+            WHERE pr.status = 'pending'
+            ORDER BY pr.created_at DESC
+        """)
+        reviews = [dict(r) for r in cur.fetchall()]
+
+        svc_ids = set()
+        for rv in reviews:
+            if rv['service_ids']:
+                svc_ids.update(rv['service_ids'])
+
+        service_names_map = {}
+        if svc_ids:
+            ids_str = ','.join(str(i) for i in svc_ids)
+            cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE id IN ({ids_str})")
+            for r in cur.fetchall():
+                service_names_map[r['id']] = r['name']
+
+        for rv in reviews:
+            if rv['ts_name_joined']:
+                rv['ticket_service_name'] = rv['ts_name_joined']
+            del rv['ts_name_joined']
+            rv['service_names'] = [service_names_map.get(sid, '') for sid in (rv['service_ids'] or [])]
+
+        return response(200, reviews)
+
+    elif method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        action = body.get('action', '')
+        review_id = body.get('id')
+
+        if action == 'approve':
+            if not review_id:
+                return response(400, {'error': 'id обязателен'})
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.ai_pending_reviews
+                SET status = 'approved', reviewed_at = NOW()
+                WHERE id = %s AND status = 'pending'
+                RETURNING id, description, ticket_service_id, service_ids
+            """, (review_id,))
+            conn.commit()
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Запись не найдена или уже обработана'})
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ai_training_examples
+                (description, ticket_service_id, service_ids, is_auto)
+                VALUES (%s, %s, %s, true)
+            """, (row['description'], row['ticket_service_id'], row['service_ids']))
+            conn.commit()
+
+            return response(200, {'ok': True, 'id': row['id']})
+
+        elif action == 'correct':
+            if not review_id:
+                return response(400, {'error': 'id обязателен'})
+
+            ticket_service_id = body.get('ticket_service_id')
+            service_ids = body.get('service_ids', [])
+
+            if not ticket_service_id:
+                return response(400, {'error': 'ticket_service_id обязателен'})
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.ai_pending_reviews
+                SET status = 'corrected', reviewed_at = NOW(),
+                    ticket_service_id = %s, service_ids = %s
+                WHERE id = %s AND status = 'pending'
+                RETURNING id, description
+            """, (ticket_service_id, service_ids, review_id))
+            conn.commit()
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Запись не найдена или уже обработана'})
+
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ai_training_examples
+                (description, ticket_service_id, service_ids, is_auto)
+                VALUES (%s, %s, %s, true)
+            """, (row['description'], ticket_service_id, service_ids))
+            conn.commit()
+
+            return response(200, {'ok': True, 'id': row['id']})
+
+        elif action == 'reject':
+            if not review_id:
+                return response(400, {'error': 'id обязателен'})
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.ai_pending_reviews
+                SET status = 'rejected', reviewed_at = NOW()
+                WHERE id = %s AND status = 'pending'
+                RETURNING id
+            """, (review_id,))
+            conn.commit()
+            row = cur.fetchone()
+            if not row:
+                return response(404, {'error': 'Запись не найдена или уже обработана'})
+
+            return response(200, {'ok': True, 'id': row['id']})
+
+        elif action == 'approve_all':
+            cur.execute(f"""
+                SELECT id, description, ticket_service_id, service_ids
+                FROM {SCHEMA}.ai_pending_reviews
+                WHERE status = 'pending'
+            """)
+            pending = [dict(r) for r in cur.fetchall()]
+
+            if not pending:
+                return response(200, {'ok': True, 'count': 0})
+
+            for rv in pending:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ai_training_examples
+                    (description, ticket_service_id, service_ids, is_auto)
+                    VALUES (%s, %s, %s, true)
+                """, (rv['description'], rv['ticket_service_id'], rv['service_ids']))
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.ai_pending_reviews
+                SET status = 'approved', reviewed_at = NOW()
+                WHERE status = 'pending'
+            """)
+            conn.commit()
+
+            return response(200, {'ok': True, 'count': len(pending)})
+
+        return response(400, {'error': 'Неизвестный action. Допустимые: approve, correct, reject, approve_all'})
+
+    return response(405, {'error': 'Method not allowed'})
+
+
 def handle_stats(cur):
     cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_training_examples")
     examples_count = cur.fetchone()['count']
@@ -474,11 +619,15 @@ def handle_stats(cur):
     cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_training_examples WHERE is_auto = true")
     auto_count = cur.fetchone()['count']
 
+    cur.execute(f"SELECT COUNT(*) as count FROM {SCHEMA}.ai_pending_reviews WHERE status = 'pending'")
+    pending_reviews_count = cur.fetchone()['count']
+
     return response(200, {
         'examples_count': examples_count,
         'active_rules_count': rules_count,
         'indexed_count': indexed_count,
         'auto_count': auto_count,
+        'pending_reviews_count': pending_reviews_count,
     })
 
 
