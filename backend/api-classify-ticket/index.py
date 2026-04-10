@@ -66,6 +66,7 @@ GIGACHAT_MAX_RETRIES = 1
 TOKEN_TIMEOUT = (3, 10)
 
 USE_EMBEDDINGS = os.environ.get('USE_EMBEDDINGS', 'false').lower() == 'true'
+GIGACHAT_ENABLED = os.environ.get('GIGACHAT_ENABLED', 'false').lower() == 'true'
 
 _STOP_WORDS = {
     'и', 'в', 'во', 'не', 'что', 'он', 'на', 'я', 'с', 'со', 'как', 'а', 'то',
@@ -721,28 +722,57 @@ def handler(event, context):
 
     start_time = time.time()
 
+    ticket_services, services, mappings = fetch_catalog_data()
+    services_map = build_services_map(ticket_services, services, mappings)
+
+    if not GIGACHAT_ENABLED:
+        print(f'[classify] GigaChat disabled. Using keyword + training examples fallback.')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        examples_text, rules_text, examples_count = build_training_context_keyword(cur, description)
+        cur.close()
+        conn.close()
+
+        if examples_count > 0:
+            conn2 = get_db_connection()
+            cur2 = conn2.cursor()
+            similar = find_similar_examples_keyword(cur2, description)
+            cur2.close()
+            conn2.close()
+            if similar and similar[0][0] > 0.3:
+                best_score, best_ex = similar[0]
+                result = {
+                    'ticket_service_id': best_ex['ticket_service_id'],
+                    'service_ids': best_ex['service_ids'] or [],
+                    'ticket_service_name': best_ex.get('ts_name', ''),
+                    'service_names': [],
+                    'confidence': int(best_score * 100),
+                    'fallback': True,
+                }
+                result = validate_result(result, services_map)
+                result = enrich_result(result, services_map, services)
+                print(f'[classify] Training match: ts={result["ticket_service_id"]}, svcs={result["service_ids"]}, conf={result["confidence"]}, score={best_score:.2f}')
+            else:
+                result = classify_by_keywords(description, services_map)
+        else:
+            result = classify_by_keywords(description, services_map)
+
+        duration_ms = int((time.time() - start_time) * 1000)
+        save_log(description, result, True, None, 'GigaChat disabled', examples_count, rules_text.count('\n- ') if rules_text else 0, duration_ms, test_mode)
+        if test_mode:
+            return response(200, {'result': result, 'debug': {'mode': 'keyword_only', 'examples_count': examples_count, 'examples_text': examples_text.strip() if examples_text else '', 'rules_text': rules_text.strip() if rules_text else ''}})
+        return response(200, result)
+
     try:
         token = get_gigachat_token()
     except BaseException as e:
         print(f'[classify] Token error: {e}. Using keyword-only fallback.')
         token = None
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        catalog_future = executor.submit(fetch_catalog_data)
-
-        if token and USE_EMBEDDINGS:
-            embedding_future = executor.submit(fetch_embedding, description, token)
-        else:
-            embedding_future = None
-
-        ticket_services, services, mappings = catalog_future.result()
-
-        if embedding_future:
-            query_embedding, emb_error = embedding_future.result()
-        else:
-            query_embedding, emb_error = None, None
-
-    services_map = build_services_map(ticket_services, services, mappings)
+    query_embedding = None
+    emb_error = None
+    if token and USE_EMBEDDINGS:
+        query_embedding, emb_error = safe_get_embedding(description, token)
 
     if not token:
         print(f'[classify] No GigaChat token. Using keyword fallback.')
