@@ -86,7 +86,7 @@ const AiTraining = () => {
         const res = await apiFetch(`${AI_TRAINING_URL}?endpoint=reindex`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ batch_size: 10 }),
+          body: JSON.stringify({ batch_size: 3 }),
         });
 
         if (!res.ok) {
