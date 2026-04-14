@@ -4,9 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { apiFetch } from '@/utils/api';
+import { useToast } from '@/hooks/use-toast';
 import func2url from '../../backend/func2url.json';
 
 const API_URL = func2url['bitrix-inactive-users'];
@@ -28,13 +45,24 @@ interface ApiResponse {
   users: InactiveUser[];
 }
 
+type DeactivateMode = 'all' | 'never_logged' | 'long_inactive';
+
+const MODE_LABELS: Record<DeactivateMode, string> = {
+  all: 'Всех неактивных',
+  never_logged: 'Кто никогда не заходил',
+  long_inactive: 'Кто долго не заходил',
+};
+
 const BitrixInactiveUsers = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deactivating, setDeactivating] = useState(false);
   const [error, setError] = useState('');
   const [days, setDays] = useState(30);
   const [search, setSearch] = useState('');
+  const [confirmMode, setConfirmMode] = useState<DeactivateMode | null>(null);
 
   const loadData = async (d: number) => {
     setLoading(true);
@@ -60,6 +88,41 @@ const BitrixInactiveUsers = () => {
 
   const handleSearch = () => {
     loadData(days);
+  };
+
+  const neverLoggedCount = data?.users.filter(u => u.days_inactive === null).length || 0;
+  const longInactiveCount = data?.users.filter(u => u.days_inactive !== null).length || 0;
+
+  const getConfirmCount = (mode: DeactivateMode) => {
+    if (mode === 'all') return data?.inactive_count || 0;
+    if (mode === 'never_logged') return neverLoggedCount;
+    return longInactiveCount;
+  };
+
+  const handleDeactivate = async () => {
+    if (!confirmMode) return;
+    setDeactivating(true);
+    try {
+      const res = await apiFetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ mode: confirmMode, days }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        toast({ title: `Деактивировано: ${result.deactivated} из ${result.total_requested}` });
+        if (result.errors?.length > 0) {
+          toast({ title: `Ошибки: ${result.errors.length}`, variant: 'destructive' });
+        }
+        loadData(days);
+      } else {
+        toast({ title: 'Ошибка деактивации', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Не удалось подключиться к серверу', variant: 'destructive' });
+    } finally {
+      setDeactivating(false);
+      setConfirmMode(null);
+    }
   };
 
   const filtered = data?.users.filter(u => {
@@ -95,7 +158,72 @@ const BitrixInactiveUsers = () => {
             </p>
           </div>
         </div>
+        {data && data.inactive_count > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="destructive" size="sm" className="gap-2" disabled={deactivating}>
+                {deactivating ? (
+                  <Icon name="Loader2" size={16} className="animate-spin" />
+                ) : (
+                  <Icon name="UserMinus" size={16} />
+                )}
+                Уволить
+                <Icon name="ChevronDown" size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setConfirmMode('all')} className="gap-2">
+                <Icon name="Users" size={14} />
+                Всех ({data.inactive_count})
+              </DropdownMenuItem>
+              {neverLoggedCount > 0 && (
+                <DropdownMenuItem onClick={() => setConfirmMode('never_logged')} className="gap-2">
+                  <Icon name="UserX" size={14} />
+                  Никогда не заходили ({neverLoggedCount})
+                </DropdownMenuItem>
+              )}
+              {longInactiveCount > 0 && (
+                <DropdownMenuItem onClick={() => setConfirmMode('long_inactive')} className="gap-2">
+                  <Icon name="Clock" size={14} />
+                  Долго не заходили ({longInactiveCount})
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </header>
+
+      <AlertDialog open={confirmMode !== null} onOpenChange={(open) => { if (!open) setConfirmMode(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Подтвердите деактивацию</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmMode && (
+                <>
+                  Будет деактивировано <strong>{getConfirmCount(confirmMode)}</strong> пользователей
+                  ({MODE_LABELS[confirmMode].toLowerCase()}).
+                  <br /><br />
+                  Учётные записи будут отключены в Битрикс24. Это действие можно отменить вручную через админку Битрикса.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deactivating}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivate}
+              disabled={deactivating}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deactivating ? (
+                <><Icon name="Loader2" size={16} className="animate-spin mr-2" />Деактивация...</>
+              ) : (
+                'Деактивировать'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-2">

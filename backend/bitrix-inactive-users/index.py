@@ -1,4 +1,4 @@
-"""Получение списка пользователей Bitrix24, не заходивших более N дней"""
+"""Получение списка и деактивация пользователей Bitrix24, не заходивших более N дней"""
 import json
 import os
 import jwt
@@ -11,7 +11,7 @@ BITRIX_WEBHOOK_URL = os.environ.get('BITRIX24_WEBHOOK_URL', '').rstrip('/')
 CORS_HEADERS = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, Authorization',
     'Access-Control-Max-Age': '86400',
 }
@@ -68,25 +68,21 @@ def fetch_all_users():
     return all_users
 
 
-def handler(event, context):
-    """Список пользователей Битрикс24, не заходивших более N дней"""
-    if event.get('httpMethod') == 'OPTIONS':
-        return resp(200, {})
+def deactivate_user(user_id):
+    r = requests.post(
+        f"{BITRIX_WEBHOOK_URL}/user.update",
+        json={'ID': user_id, 'ACTIVE': False},
+        headers={'Content-Type': 'application/json'},
+        timeout=15,
+    )
+    r.raise_for_status()
+    return r.json()
 
-    payload = verify_token(event)
-    if not payload:
-        return resp(401, {'error': 'Требуется авторизация'})
 
-    if event.get('httpMethod') != 'GET':
-        return resp(405, {'error': 'Method not allowed'})
-
-    qs = event.get('queryStringParameters') or {}
-    days = int(qs.get('days', '30'))
-
-    users = fetch_all_users()
+def classify_users(users, days):
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-
     inactive = []
+
     for u in users:
         last_login = u.get('LAST_LOGIN') or u.get('LAST_ACTIVITY_DATE')
         name = f"{u.get('NAME', '')} {u.get('LAST_NAME', '')}".strip()
@@ -116,10 +112,76 @@ def handler(event, context):
             inactive.append(user_info)
 
     inactive.sort(key=lambda x: (x['days_inactive'] is None, -(x['days_inactive'] or 0)))
+    return inactive
 
-    return resp(200, {
-        'total_active_users': len(users),
-        'inactive_count': len(inactive),
-        'days_threshold': days,
-        'users': inactive,
-    })
+
+def handler(event, context):
+    """Список и массовая деактивация пользователей Битрикс24"""
+    if event.get('httpMethod') == 'OPTIONS':
+        return resp(200, {})
+
+    payload = verify_token(event)
+    if not payload:
+        return resp(401, {'error': 'Требуется авторизация'})
+
+    method = event.get('httpMethod', 'GET')
+
+    if method == 'GET':
+        qs = event.get('queryStringParameters') or {}
+        days = int(qs.get('days', '30'))
+
+        users = fetch_all_users()
+        inactive = classify_users(users, days)
+
+        return resp(200, {
+            'total_active_users': len(users),
+            'inactive_count': len(inactive),
+            'days_threshold': days,
+            'users': inactive,
+        })
+
+    elif method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        mode = body.get('mode')
+        user_ids = body.get('user_ids', [])
+
+        if mode == 'by_ids' and user_ids:
+            targets = user_ids
+        elif mode in ('all', 'never_logged', 'long_inactive'):
+            days = int(body.get('days', 30))
+            users = fetch_all_users()
+            inactive = classify_users(users, days)
+
+            if mode == 'all':
+                targets = [u['id'] for u in inactive]
+            elif mode == 'never_logged':
+                targets = [u['id'] for u in inactive if u['days_inactive'] is None]
+            elif mode == 'long_inactive':
+                targets = [u['id'] for u in inactive if u['days_inactive'] is not None]
+            else:
+                targets = []
+        else:
+            return resp(400, {'error': 'Укажите mode: all, never_logged, long_inactive или by_ids'})
+
+        if not targets:
+            return resp(200, {'deactivated': 0, 'errors': []})
+
+        deactivated = 0
+        errors = []
+        for uid in targets:
+            try:
+                result = deactivate_user(uid)
+                if result.get('result'):
+                    deactivated += 1
+                else:
+                    errors.append({'id': uid, 'error': str(result)})
+            except BaseException as e:
+                errors.append({'id': uid, 'error': str(e)})
+
+        return resp(200, {
+            'deactivated': deactivated,
+            'total_requested': len(targets),
+            'errors': errors[:20],
+        })
+
+    return resp(405, {'error': 'Method not allowed'})
