@@ -115,6 +115,14 @@ const Settings = () => {
       permission: { resource: 'settings', action: 'read' },
     },
     {
+      title: 'Неактивные в Битрикс',
+      description: 'Пользователи, которые не заходили в Битрикс24',
+      icon: 'UserX',
+      color: 'hsl(25, 80%, 55%)',
+      path: '/bitrix-inactive-users',
+      permission: { resource: 'settings', action: 'read' },
+    },
+    {
       title: 'Анализатор логов',
       description: 'Просмотр и анализ системных логов',
       icon: 'FileText',
