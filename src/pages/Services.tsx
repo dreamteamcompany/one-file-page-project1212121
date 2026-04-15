@@ -86,6 +86,7 @@ const Services = () => {
             users={users}
             departments={departments}
             categories={categories}
+            allUsers={users}
             onSave={saveService}
             onReset={handleReset}
           />

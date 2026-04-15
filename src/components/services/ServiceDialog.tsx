@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
+import UserVisibilitySelector from '@/components/ui/UserVisibilitySelector';
 import type { Service, User, CustomerDepartment, Category } from '@/hooks/useServices';
 
 interface ServiceDialogProps {
@@ -28,6 +29,7 @@ interface ServiceDialogProps {
   users: User[];
   departments: CustomerDepartment[];
   categories: Category[];
+  allUsers: { id: number; full_name: string }[];
   onSave: (
     formData: {
       name: string;
@@ -36,7 +38,8 @@ interface ServiceDialogProps {
       customer_department_id: string;
       category_id: string;
     },
-    editingService: Service | null
+    editingService: Service | null,
+    visibleToUserIds: number[]
   ) => Promise<boolean>;
   onReset: () => void;
 }
@@ -48,6 +51,7 @@ const ServiceDialog = ({
   users,
   departments,
   categories,
+  allUsers,
   onSave,
   onReset,
 }: ServiceDialogProps) => {
@@ -58,6 +62,7 @@ const ServiceDialog = ({
     customer_department_id: '',
     category_id: '',
   });
+  const [selectedVisibleUserIds, setSelectedVisibleUserIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (editingService) {
@@ -68,6 +73,7 @@ const ServiceDialog = ({
         customer_department_id: editingService.customer_department_id ? editingService.customer_department_id.toString() : '',
         category_id: editingService.category_id ? editingService.category_id.toString() : '',
       });
+      setSelectedVisibleUserIds(editingService.visible_to_user_ids || []);
     } else {
       setFormData({
         name: '',
@@ -76,12 +82,13 @@ const ServiceDialog = ({
         customer_department_id: '',
         category_id: '',
       });
+      setSelectedVisibleUserIds([]);
     }
   }, [editingService]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await onSave(formData, editingService);
+    const success = await onSave(formData, editingService, selectedVisibleUserIds);
     if (success) {
       onOpenChange(false);
       resetForm();
@@ -96,6 +103,7 @@ const ServiceDialog = ({
       customer_department_id: '',
       category_id: '',
     });
+    setSelectedVisibleUserIds([]);
     onReset();
   };
 
@@ -114,7 +122,7 @@ const ServiceDialog = ({
           Создать сервис
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingService ? 'Редактировать сервис' : 'Создать сервис'}
@@ -212,6 +220,12 @@ const ServiceDialog = ({
               </SelectContent>
             </Select>
           </div>
+
+          <UserVisibilitySelector
+            users={allUsers}
+            selectedUserIds={selectedVisibleUserIds}
+            onChange={setSelectedVisibleUserIds}
+          />
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>

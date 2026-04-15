@@ -11,6 +11,7 @@ export interface TicketService {
   category_name?: string;
   created_at: string;
   service_ids?: number[];
+  visible_to_user_ids?: number[];
 }
 
 export interface Service {
@@ -89,7 +90,8 @@ export const useTicketServices = () => {
       category_id: string;
     },
     selectedServiceIds: number[],
-    editingService: TicketService | null
+    editingService: TicketService | null,
+    visibleToUserIds: number[] = []
   ) => {
     if (!formData.name) {
       toast({
@@ -106,6 +108,7 @@ export const useTicketServices = () => {
       ticket_title: formData.ticket_title,
       category_id: formData.category_id ? parseInt(formData.category_id) : null,
       service_ids: selectedServiceIds,
+      visible_to_user_ids: visibleToUserIds,
     };
     
     console.log('Saving ticket service with payload:', payload);

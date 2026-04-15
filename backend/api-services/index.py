@@ -46,7 +46,12 @@ def handler(event, context):
                 ORDER BY s.name
             """)
             
-            services = [dict(row) for row in cur.fetchall()]
+            services = []
+            for row in cur.fetchall():
+                svc = dict(row)
+                cur.execute(f"SELECT user_id FROM {SCHEMA}.service_visible_users WHERE service_id = %s", (svc['id'],))
+                svc['visible_to_user_ids'] = [r['user_id'] for r in cur.fetchall()]
+                services.append(svc)
             cur.close()
             
             return response(200, services)
@@ -82,6 +87,10 @@ def handler(event, context):
             """, (name, description, intermediate_approver_id, final_approver_id, customer_department_id, category_id))
             
             new_service = dict(cur.fetchone())
+            visible_to_user_ids = body.get('visible_to_user_ids', [])
+            for uid in visible_to_user_ids:
+                cur.execute(f"INSERT INTO {SCHEMA}.service_visible_users (service_id, user_id) VALUES (%s, %s)", (new_service['id'], uid))
+            new_service['visible_to_user_ids'] = visible_to_user_ids
             conn.commit()
             cur.close()
             
@@ -125,10 +134,17 @@ def handler(event, context):
                 cur.close()
                 return response(404, {'error': 'Сервис не найден'})
             
+            visible_to_user_ids = body.get('visible_to_user_ids', [])
+            cur.execute(f"DELETE FROM {SCHEMA}.service_visible_users WHERE service_id = %s", (service_id,))
+            for uid in visible_to_user_ids:
+                cur.execute(f"INSERT INTO {SCHEMA}.service_visible_users (service_id, user_id) VALUES (%s, %s)", (service_id, uid))
+            
+            result = dict(updated)
+            result['visible_to_user_ids'] = visible_to_user_ids
             conn.commit()
             cur.close()
             
-            return response(200, dict(updated))
+            return response(200, result)
         
         elif method == 'DELETE':
             service_id = event.get('queryStringParameters', {}).get('id')

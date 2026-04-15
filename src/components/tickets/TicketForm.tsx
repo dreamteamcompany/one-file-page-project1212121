@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, CLASSIFY_TICKET_URL, apiFetch, getApiUrl } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 import func2url from '../../../backend/func2url.json';
 import {
   Dialog,
@@ -58,6 +59,7 @@ interface Service {
   category_id?: number;
   category_name?: string;
   service_ids?: number[];
+  visible_to_user_ids?: number[];
 }
 
 interface ClassificationResult {
@@ -111,12 +113,29 @@ const TicketForm = ({
   onDialogOpen,
   canCreate = true,
 }: TicketFormProps) => {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<number[]>([]);
   const [classifying, setClassifying] = useState(false);
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
   const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
   const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
+
+  const userFilteredTicketServices = useMemo(() => {
+    if (!user) return ticketServices;
+    return ticketServices.filter(ts => {
+      if (!ts.visible_to_user_ids || ts.visible_to_user_ids.length === 0) return true;
+      return ts.visible_to_user_ids.includes(user.id);
+    });
+  }, [ticketServices, user]);
+
+  const userFilteredServices = useMemo(() => {
+    if (!user) return services;
+    return services.filter(s => {
+      if (!s.visible_to_user_ids || s.visible_to_user_ids.length === 0) return true;
+      return s.visible_to_user_ids.includes(user.id);
+    });
+  }, [services, user]);
 
   useEffect(() => {
     const loadMode = async () => {
@@ -152,7 +171,7 @@ const TicketForm = ({
   );
 
   const filteredServices = selectedTicketService?.service_ids
-    ? services.filter(service => selectedTicketService.service_ids?.includes(service.id))
+    ? userFilteredServices.filter(service => selectedTicketService.service_ids?.includes(service.id))
     : [];
 
   const AI_TRAINING_URL = func2url['api-ai-training'];
@@ -354,7 +373,7 @@ const TicketForm = ({
     loadVisibleFields();
   }, [loadVisibleFields]);
 
-  const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
+  const availableTicketServices = userFilteredTicketServices.length > 0 ? userFilteredTicketServices : userFilteredServices;
 
   const getStepLabels = () => {
     if (classificationMode === 'manual') {

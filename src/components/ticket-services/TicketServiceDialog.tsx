@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
+import UserVisibilitySelector from '@/components/ui/UserVisibilitySelector';
 import type { TicketService, Service, Category } from '@/hooks/useTicketServices';
 
 interface TicketServiceDialogProps {
@@ -28,6 +29,7 @@ interface TicketServiceDialogProps {
   editingService: TicketService | null;
   services: Service[];
   categories: Category[];
+  users: { id: number; full_name: string }[];
   onSave: (
     formData: {
       name: string;
@@ -36,7 +38,8 @@ interface TicketServiceDialogProps {
       category_id: string;
     },
     selectedServiceIds: number[],
-    editingService: TicketService | null
+    editingService: TicketService | null,
+    visibleToUserIds: number[]
   ) => Promise<boolean>;
   onReset: () => void;
 }
@@ -47,6 +50,7 @@ const TicketServiceDialog = ({
   editingService,
   services,
   categories,
+  users,
   onSave,
   onReset,
 }: TicketServiceDialogProps) => {
@@ -57,6 +61,7 @@ const TicketServiceDialog = ({
     category_id: '',
   });
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+  const [selectedVisibleUserIds, setSelectedVisibleUserIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (editingService) {
@@ -69,6 +74,7 @@ const TicketServiceDialog = ({
         category_id: editingService.category_id ? editingService.category_id.toString() : '',
       });
       setSelectedServiceIds(editingService.service_ids || []);
+      setSelectedVisibleUserIds(editingService.visible_to_user_ids || []);
     } else {
       setFormData({
         name: '',
@@ -77,12 +83,13 @@ const TicketServiceDialog = ({
         category_id: '',
       });
       setSelectedServiceIds([]);
+      setSelectedVisibleUserIds([]);
     }
   }, [editingService]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await onSave(formData, selectedServiceIds, editingService);
+    const success = await onSave(formData, selectedServiceIds, editingService, selectedVisibleUserIds);
     if (success) {
       onOpenChange(false);
       resetForm();
@@ -97,6 +104,7 @@ const TicketServiceDialog = ({
       category_id: '',
     });
     setSelectedServiceIds([]);
+    setSelectedVisibleUserIds([]);
     onReset();
   };
 
@@ -253,6 +261,12 @@ const TicketServiceDialog = ({
               </div>
             )}
           </div>
+
+          <UserVisibilitySelector
+            users={users}
+            selectedUserIds={selectedVisibleUserIds}
+            onChange={setSelectedVisibleUserIds}
+          />
 
           <div className="flex justify-end gap-2 pt-4">
             <Button

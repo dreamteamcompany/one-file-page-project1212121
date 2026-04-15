@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import TicketServicesTable from '@/components/ticket-services/TicketServicesTable';
 import TicketServiceDialog from '@/components/ticket-services/TicketServiceDialog';
 import { useTicketServices, type TicketService } from '@/hooks/useTicketServices';
+import { apiFetch, API_URL } from '@/utils/api';
 
 const TicketServicesManagement = () => {
   const {
@@ -21,6 +22,21 @@ const TicketServicesManagement = () => {
   const [dictionariesOpen, setDictionariesOpen] = useState(true);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+  const [allUsers, setAllUsers] = useState<{ id: number; full_name: string }[]>([]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const response = await apiFetch(`${API_URL}?endpoint=users`);
+        const data = await response.json();
+        setAllUsers(Array.isArray(data) ? data : data.users || []);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        setAllUsers([]);
+      }
+    };
+    loadUsers();
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
@@ -104,6 +120,7 @@ const TicketServicesManagement = () => {
               editingService={editingService}
               services={services}
               categories={categories}
+              users={allUsers}
               onSave={saveTicketService}
               onReset={handleReset}
             />

@@ -33,6 +33,7 @@ export interface Service {
   category_id?: number;
   category_name?: string;
   category_icon?: string;
+  visible_to_user_ids?: number[];
   created_at: string;
 }
 
@@ -115,7 +116,8 @@ export const useServices = () => {
       customer_department_id: string;
       category_id: string;
     },
-    editingService: Service | null
+    editingService: Service | null,
+    visibleToUserIds: number[] = []
   ) => {
     if (!formData.name || !formData.final_approver_id) {
       toast({
@@ -141,6 +143,7 @@ export const useServices = () => {
           final_approver_id: parseInt(formData.final_approver_id),
           customer_department_id: formData.customer_department_id ? parseInt(formData.customer_department_id) : null,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
+          visible_to_user_ids: visibleToUserIds,
         }),
       });
 

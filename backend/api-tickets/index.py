@@ -914,6 +914,13 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                 ''', (row['id'],))
                 service_ids = [r['service_id'] for r in cur.fetchall()]
                 
+                cur.execute(f'''
+                    SELECT user_id 
+                    FROM {SCHEMA}.ticket_service_visible_users 
+                    WHERE ticket_service_id = %s
+                ''', (row['id'],))
+                visible_to_user_ids = [r['user_id'] for r in cur.fetchall()]
+                
                 ticket_services.append({
                     'id': row['id'],
                     'name': row['name'],
@@ -922,7 +929,8 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                     'category_id': row['category_id'],
                     'category_name': row['category_name'],
                     'created_at': row['created_at'].isoformat() if row['created_at'] else None,
-                    'service_ids': service_ids
+                    'service_ids': service_ids,
+                    'visible_to_user_ids': visible_to_user_ids
                 })
             return response(200, ticket_services)
         
@@ -933,6 +941,7 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             ticket_title = body.get('ticket_title', '')
             category_id = body.get('category_id')
             service_ids = body.get('service_ids', [])
+            visible_to_user_ids = body.get('visible_to_user_ids', [])
             
             if not name:
                 return response(400, {'error': 'Name is required'})
@@ -950,6 +959,12 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                     (ticket_service_id, service_id)
                 )
             
+            for uid in visible_to_user_ids:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.ticket_service_visible_users (ticket_service_id, user_id) VALUES (%s, %s)",
+                    (ticket_service_id, uid)
+                )
+            
             conn.commit()
             
             return response(201, {
@@ -959,7 +974,8 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                 'ticket_title': row['ticket_title'],
                 'category_id': row['category_id'],
                 'created_at': row['created_at'].isoformat() if row['created_at'] else None,
-                'service_ids': service_ids
+                'service_ids': service_ids,
+                'visible_to_user_ids': visible_to_user_ids
             })
         
         elif method == 'PUT':
@@ -971,6 +987,7 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             ticket_title = body.get('ticket_title', '')
             category_id = body.get('category_id')
             service_ids = body.get('service_ids', [])
+            visible_to_user_ids = body.get('visible_to_user_ids', [])
             
             if not ticket_service_id or not name:
                 return response(400, {'error': 'ID and name are required'})
@@ -995,6 +1012,17 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                     (ticket_service_id, service_id)
                 )
             
+            cur.execute(
+                f"DELETE FROM {SCHEMA}.ticket_service_visible_users WHERE ticket_service_id = %s",
+                (ticket_service_id,)
+            )
+            
+            for uid in visible_to_user_ids:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.ticket_service_visible_users (ticket_service_id, user_id) VALUES (%s, %s)",
+                    (ticket_service_id, uid)
+                )
+            
             conn.commit()
             
             return response(200, {
@@ -1004,7 +1032,8 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
                 'ticket_title': row['ticket_title'],
                 'category_id': row['category_id'],
                 'created_at': row['created_at'].isoformat() if row['created_at'] else None,
-                'service_ids': service_ids
+                'service_ids': service_ids,
+                'visible_to_user_ids': visible_to_user_ids
             })
         
         elif method == 'DELETE':
