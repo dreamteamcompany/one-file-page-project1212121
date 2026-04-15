@@ -131,7 +131,7 @@ const TicketServiceDialog = ({
             {editingService ? 'Редактировать услугу заявки' : 'Создать услугу заявки'}
           </DialogTitle>
           <DialogDescription>
-            Услуга заявки — это набор услуг (работ), которые будут добавлены к заявке
+            Услуга заявки — это набор сервисов, которые будут доступны при создании заявки
           </DialogDescription>
         </DialogHeader>
 
@@ -207,18 +207,18 @@ const TicketServiceDialog = ({
 
           <div className="space-y-3 pt-4 border-t">
             <div className="flex items-center justify-between">
-              <Label className="text-base">Включенные услуги</Label>
+              <Label className="text-base">Включенные сервисы</Label>
               <span className="text-sm text-muted-foreground">
                 Выбрано: {selectedServiceIds.length}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Выберите услуги (работы), которые будут добавлены к заявке при выборе этой услуги заявки
+              Выберите сервисы, которые будут доступны при выборе этой услуги заявки
             </p>
 
             {filteredServices.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
-                Нет доступных услуг
+                Нет доступных сервисов
               </div>
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-md p-3">
