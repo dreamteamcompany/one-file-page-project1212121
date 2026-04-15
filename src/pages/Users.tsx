@@ -13,6 +13,8 @@ interface User {
   username: string;
   full_name: string;
   position: string;
+  email?: string;
+  bitrix_user_id?: string;
   is_active: boolean;
   created_at: string;
   last_login: string | null;
@@ -47,6 +49,8 @@ const Users = () => {
     position: '',
     role_ids: [] as number[],
     photo_url: '',
+    email: '',
+    bitrix_user_id: '',
   });
 
   const loadUsers = async () => {
@@ -138,11 +142,13 @@ const Users = () => {
       
       const method = editingUser ? 'PUT' : 'POST';
       
-      const body: any = {
+      const body: Record<string, string | number[] | boolean> = {
         username: formData.username,
         full_name: formData.full_name,
         position: formData.position,
         role_ids: formData.role_ids,
+        email: formData.email,
+        bitrix_user_id: formData.bitrix_user_id,
       };
       
       if (formData.password) {
@@ -172,6 +178,8 @@ const Users = () => {
           position: '',
           role_ids: [],
           photo_url: '',
+          email: '',
+          bitrix_user_id: '',
         });
         loadUsers();
       } else {
@@ -270,6 +278,7 @@ const Users = () => {
     }
     
     setEditingUser(user);
+    const emailVal = user.email && !user.email.includes('@placeholder.local') ? user.email : '';
     setFormData({
       username: user.username,
       full_name: user.full_name,
@@ -277,6 +286,8 @@ const Users = () => {
       password: '',
       role_ids: user.roles?.map(r => r.id).filter(id => id !== undefined) || [],
       photo_url: user.photo_url || '',
+      email: emailVal,
+      bitrix_user_id: user.bitrix_user_id || '',
     });
     setDialogOpen(true);
   };

@@ -8,6 +8,7 @@ class UserRequest(BaseModel):
     role_ids: list[int] = Field(default=[])
     photo_url: str = Field(default='')
     email: str = Field(default='')
+    bitrix_user_id: str = Field(default='')
 
 class RoleRequest(BaseModel):
     name: str = Field(..., min_length=1)

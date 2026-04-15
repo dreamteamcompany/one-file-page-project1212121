@@ -19,6 +19,8 @@ interface User {
   username: string;
   full_name: string;
   position: string;
+  email?: string;
+  bitrix_user_id?: string;
   is_active: boolean;
   created_at: string;
   last_login: string | null;
@@ -45,9 +47,11 @@ interface UserFormDialogProps {
     position: string;
     role_ids: number[];
     photo_url: string;
+    email: string;
+    bitrix_user_id: string;
     is_active?: boolean;
   };
-  setFormData: (data: any) => void;
+  setFormData: (data: Record<string, string | number[] | boolean>) => void;
   roles: Role[];
   handleSubmit: (e: React.FormEvent) => void;
   canCreate?: boolean;
@@ -147,6 +151,8 @@ const UserFormDialog = ({
           position: '',
           role_ids: [],
           photo_url: '',
+          email: '',
+          bitrix_user_id: '',
         });
       }
     }}>
@@ -225,6 +231,31 @@ const UserFormDialog = ({
               onChange={(e) => setFormData({ ...formData, position: e.target.value })}
               placeholder="Менеджер"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="user@company.ru"
+            />
+            <p className="text-xs text-muted-foreground">
+              Используется для привязки к аккаунту Битрикс24
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bitrix_user_id">Битрикс ID</Label>
+            <Input
+              id="bitrix_user_id"
+              value={formData.bitrix_user_id}
+              onChange={(e) => setFormData({ ...formData, bitrix_user_id: e.target.value })}
+              placeholder="12345"
+            />
+            <p className="text-xs text-muted-foreground">
+              ID пользователя в Битрикс24 (приоритетнее email при входе)
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">{editingUser ? 'Новый пароль (оставьте пустым, чтобы не менять)' : 'Пароль'}</Label>
