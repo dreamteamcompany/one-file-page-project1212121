@@ -32,26 +32,6 @@ const TicketsViewToggle = ({
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Button
-          variant={viewMode === 'list' && !showArchived && !showHidden ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => { onViewModeChange('list'); if (showArchived) onToggleArchived(false); if (showHidden && onToggleHidden) onToggleHidden(false); }}
-          className="flex items-center gap-2"
-        >
-          <Icon name="List" size={16} className="hidden sm:inline" />
-          <span className="hidden sm:inline">Список</span>
-          <Icon name="List" size={16} className="sm:hidden" />
-        </Button>
-        <Button
-          variant={viewMode === 'kanban' && !showArchived && !showHidden ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => { onViewModeChange('kanban'); if (showArchived) onToggleArchived(false); if (showHidden && onToggleHidden) onToggleHidden(false); }}
-          className="flex items-center gap-2"
-        >
-          <Icon name="LayoutGrid" size={16} className="hidden sm:inline" />
-          <span className="hidden sm:inline">Канбан</span>
-          <Icon name="LayoutGrid" size={16} className="sm:hidden" />
-        </Button>
-        <Button
           variant={showArchived ? 'default' : 'outline'}
           size="sm"
           onClick={() => { onToggleArchived(!showArchived); if (showHidden && onToggleHidden) onToggleHidden(false); if (!showArchived) onViewModeChange('list'); }}
