@@ -25,6 +25,7 @@ import {
 import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
+import UserVisibilitySelector from '@/components/ui/UserVisibilitySelector';
 import { useToast } from '@/hooks/use-toast';
 import { API_URL as BACKEND_URL } from '@/utils/api';
 
@@ -35,6 +36,12 @@ interface Service {
   intermediate_approver_id: number;
   final_approver_id: number;
   created_at: string;
+  visible_to_user_ids?: number[];
+}
+
+interface SimpleUser {
+  id: number;
+  full_name: string;
 }
 
 const TicketServices = () => {
@@ -54,6 +61,8 @@ const TicketServices = () => {
     name: '',
     description: '',
   });
+  const [allUsers, setAllUsers] = useState<SimpleUser[]>([]);
+  const [selectedVisibleUserIds, setSelectedVisibleUserIds] = useState<number[]>([]);
 
   const loadServices = async () => {
     try {
@@ -73,12 +82,23 @@ const TicketServices = () => {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const res = await apiFetch(`${BACKEND_URL}?endpoint=users`);
+      if (res.ok) {
+        const data = await res.json();
+        setAllUsers(Array.isArray(data) ? data.map((u: { id: number; full_name: string }) => ({ id: u.id, full_name: u.full_name })) : []);
+      }
+    } catch (e) { console.error(e); }
+  };
+
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
       navigate('/tickets');
       return;
     }
     loadServices();
+    loadUsers();
   }, [hasPermission, navigate]);
 
   if (!hasPermission('settings', 'read')) {
@@ -135,6 +155,7 @@ const TicketServices = () => {
           intermediate_approver_id: 1,
           final_approver_id: 1,
           customer_department_id: null,
+          visible_to_user_ids: selectedVisibleUserIds,
         }),
       });
 
@@ -173,6 +194,7 @@ const TicketServices = () => {
       name: service.name,
       description: service.description || '',
     });
+    setSelectedVisibleUserIds(service.visible_to_user_ids || []);
     setDialogOpen(true);
   };
 
@@ -221,6 +243,7 @@ const TicketServices = () => {
       name: '',
       description: '',
     });
+    setSelectedVisibleUserIds([]);
     setEditingService(null);
   };
 
@@ -299,6 +322,11 @@ const TicketServices = () => {
                       rows={3}
                     />
                   </div>
+                  <UserVisibilitySelector
+                    users={allUsers}
+                    selectedUserIds={selectedVisibleUserIds}
+                    onChange={setSelectedVisibleUserIds}
+                  />
                   <div className="flex gap-2 justify-end">
                     <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
                       Отмена
