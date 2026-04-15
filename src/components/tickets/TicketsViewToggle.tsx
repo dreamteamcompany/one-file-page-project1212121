@@ -32,6 +32,15 @@ const TicketsViewToggle = ({
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Button
+          variant={!showArchived && !showHidden ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => { onViewModeChange('list'); if (showArchived) onToggleArchived(false); if (showHidden && onToggleHidden) onToggleHidden(false); }}
+          className="flex items-center gap-2"
+        >
+          <Icon name="List" size={16} />
+          <span className="hidden sm:inline">Мои заявки</span>
+        </Button>
+        <Button
           variant={showArchived ? 'default' : 'outline'}
           size="sm"
           onClick={() => { onToggleArchived(!showArchived); if (showHidden && onToggleHidden) onToggleHidden(false); if (!showArchived) onViewModeChange('list'); }}
