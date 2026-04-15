@@ -40,6 +40,16 @@ const TicketsViewToggle = ({
           <Icon name="Archive" size={16} />
           <span className="hidden sm:inline">Архив</span>
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {}}
+          className="flex items-center gap-2"
+        >
+          <Icon name="Users" size={16} />
+          <span className="hidden sm:inline">Заявки моих сотрудников</span>
+          <span className="sm:hidden">Мои сотр.</span>
+        </Button>
         {onToggleHidden && (
           <Button
             variant={showHidden ? 'default' : 'outline'}
