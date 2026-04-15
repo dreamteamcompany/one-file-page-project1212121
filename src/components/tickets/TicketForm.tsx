@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import TicketFormStep1 from './TicketFormStep1';
 import TicketFormStepClassify from './TicketFormStepClassify';
+import TicketFormStepService from './TicketFormStepService';
+import TicketFormStepServiceItems from './TicketFormStepServiceItems';
 import TicketFormStep4 from './TicketFormStep4';
 
 interface Category {
@@ -229,9 +231,29 @@ const TicketForm = ({
     );
   };
 
+  const getCustomFieldsStep = () => {
+    if (classificationMode === 'manual') {
+      return 4;
+    }
+    return 3;
+  };
+
   const handleNextFromClassify = () => {
     if (visibleCustomFields.length > 0) {
-      setStep(3);
+      setStep(getCustomFieldsStep());
+    } else {
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+      onSubmit(fakeEvent);
+    }
+  };
+
+  const handleNextFromManualService = () => {
+    setStep(3);
+  };
+
+  const handleNextFromManualServiceItems = () => {
+    if (visibleCustomFields.length > 0) {
+      setStep(4);
     } else {
       const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
       onSubmit(fakeEvent);
@@ -239,10 +261,20 @@ const TicketForm = ({
   };
 
   const handleBack = () => {
-    if (step === 3) {
-      setStep(2);
-    } else if (step === 2) {
-      setStep(1);
+    if (classificationMode === 'manual') {
+      if (step === 4) {
+        setStep(3);
+      } else if (step === 3) {
+        setStep(2);
+      } else if (step === 2) {
+        setStep(1);
+      }
+    } else {
+      if (step === 3) {
+        setStep(2);
+      } else if (step === 2) {
+        setStep(1);
+      }
     }
   };
 
@@ -324,10 +356,19 @@ const TicketForm = ({
 
   const availableTicketServices = ticketServices.length > 0 ? ticketServices : services;
 
-  const totalSteps = visibleCustomFields.length > 0 ? 3 : 2;
-  const stepLabels = totalSteps === 3
-    ? ['Описание', 'Категория', 'Доп. поля']
-    : ['Описание', 'Категория'];
+  const getStepLabels = () => {
+    if (classificationMode === 'manual') {
+      const labels = ['Описание', 'Услуга', 'Сервис'];
+      if (visibleCustomFields.length > 0) labels.push('Доп. поля');
+      return labels;
+    }
+    const labels = ['Описание', 'Категория'];
+    if (visibleCustomFields.length > 0) labels.push('Доп. поля');
+    return labels;
+  };
+
+  const stepLabels = getStepLabels();
+  const totalSteps = stepLabels.length;
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
@@ -346,9 +387,7 @@ const TicketForm = ({
             Новая заявка
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {step === 1 && 'Опишите вашу проблему или запрос'}
-            {step === 2 && (classificationMode === 'ai' ? 'Проверьте категорию заявки' : 'Выберите услугу и сервис')}
-            {step === 3 && 'Заполните дополнительные поля'}
+            {stepLabels[step - 1] && `Шаг ${step} из ${totalSteps}: ${stepLabels[step - 1]}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -407,7 +446,7 @@ const TicketForm = ({
           />
         )}
 
-        {!classifying && step === 2 && (
+        {!classifying && step === 2 && classificationMode === 'ai' && (
           <TicketFormStepClassify
             classification={classification || { ticket_service_id: 0, service_ids: [], ticket_service_name: '', service_names: [], confidence: 0 }}
             ticketServices={availableTicketServices}
@@ -423,7 +462,28 @@ const TicketForm = ({
           />
         )}
 
-        {!classifying && step === 3 && (
+        {!classifying && step === 2 && classificationMode === 'manual' && (
+          <TicketFormStepService
+            ticketServices={availableTicketServices}
+            selectedTicketServiceId={formData.service_id}
+            onChangeTicketService={handleChangeTicketService}
+            onNext={handleNextFromManualService}
+            onBack={handleBack}
+          />
+        )}
+
+        {!classifying && step === 3 && classificationMode === 'manual' && (
+          <TicketFormStepServiceItems
+            filteredServices={filteredServices}
+            allServices={services}
+            selectedServices={selectedServices}
+            onToggleService={toggleService}
+            onNext={handleNextFromManualServiceItems}
+            onBack={handleBack}
+          />
+        )}
+
+        {!classifying && step === getCustomFieldsStep() && visibleCustomFields.length > 0 && (
           <TicketFormStep4
             formData={formData}
             setFormData={setFormData}
