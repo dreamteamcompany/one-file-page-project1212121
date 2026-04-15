@@ -92,7 +92,7 @@ const Settings = () => {
     },
     {
       title: 'Управление заявками',
-      description: 'Услуги, категории, сервисы, статусы, приоритеты, группы и привязка исполнителей',
+      description: 'Услуги, категории, сервисы, статусы и приоритеты',
       icon: 'Ticket',
       color: 'hsl(var(--secondary))',
       items: [
@@ -101,6 +101,14 @@ const Settings = () => {
         { name: 'Сервисы услуг', path: '/ticket-services', icon: 'Building2', permission: { resource: 'ticket_services', action: 'read' } },
         { name: 'Статусы заявок', path: '/ticket-statuses', icon: 'CircleDot', permission: { resource: 'ticket_statuses', action: 'read' } },
         { name: 'Приоритеты заявок', path: '/ticket-priorities', icon: 'AlertCircle', permission: { resource: 'ticket_priorities', action: 'read' } },
+      ],
+    },
+    {
+      title: 'Управление исполнителями',
+      description: 'Группы, привязка исполнителей к услугам и графики работы',
+      icon: 'UsersRound',
+      color: 'hsl(var(--warning))',
+      items: [
         { name: 'Группы исполнителей', path: '/executor-groups', icon: 'UsersRound', permission: { resource: 'executor_groups', action: 'read' } },
         { name: 'Привязка исполнителей', path: '/executor-assignments', icon: 'UserCheck', permission: { resource: 'executor_groups', action: 'read' } },
         { name: 'Графики работы', path: '/work-schedules', icon: 'Calendar', permission: { resource: 'executor_groups', action: 'read' } },
