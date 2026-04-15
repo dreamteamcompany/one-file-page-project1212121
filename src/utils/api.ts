@@ -25,6 +25,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'contractors': GENERAL_API,
   'legal_entities': GENERAL_API,
   'customer_departments': GENERAL_API,
+  'system_settings': GENERAL_API,
   'tickets': TICKETS_API,
   'api-tickets': TICKETS_API,
   'service_categories': TICKETS_API,

@@ -23,6 +23,12 @@
       "method": "OPTIONS",
       "path": "/",
       "expectedStatus": 200
+    },
+    {
+      "name": "Get System Settings Unauthorized",
+      "method": "GET",
+      "path": "/?resource=system_settings",
+      "expectedStatus": 401
     }
   ]
 }

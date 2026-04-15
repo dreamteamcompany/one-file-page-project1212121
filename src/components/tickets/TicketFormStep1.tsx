@@ -56,6 +56,7 @@ interface TicketFormStep1Props {
   onSubmit: (e: React.FormEvent) => Promise<void>;
   onBack: () => void;
   isFirstStep?: boolean;
+  classificationMode?: 'ai' | 'manual';
 }
 
 const TicketFormStep1 = ({
@@ -68,6 +69,7 @@ const TicketFormStep1 = ({
   onSubmit,
   onBack,
   isFirstStep,
+  classificationMode = 'ai',
 }: TicketFormStep1Props) => {
   const [criticalConfirmOpen, setCriticalConfirmOpen] = useState(false);
   const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
@@ -128,7 +130,9 @@ const TicketFormStep1 = ({
           />
           {isFirstStep && (
             <p className="text-xs text-muted-foreground">
-              ИИ автоматически определит категорию заявки по вашему описанию
+              {classificationMode === 'ai'
+                ? 'ИИ автоматически определит категорию заявки по вашему описанию'
+                : 'На следующем шаге вы выберете услугу и сервис вручную'}
             </p>
           )}
         </div>
@@ -189,7 +193,7 @@ const TicketFormStep1 = ({
               onClick={onNext}
               disabled={!canProceed}
             >
-              <Icon name="Sparkles" size={18} />
+              <Icon name={classificationMode === 'ai' ? 'Sparkles' : 'ArrowRight'} size={18} />
               Далее
             </Button>
           ) : hasCustomFields && onNext ? (

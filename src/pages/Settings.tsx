@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch, getApiUrl } from '@/utils/api';
 import func2url from '../../backend/func2url.json';
 
 const Settings = () => {
@@ -12,6 +15,41 @@ const Settings = () => {
   const navigate = useNavigate();
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
+  const [classificationLoading, setClassificationLoading] = useState(false);
+
+  useEffect(() => {
+    const loadClassificationMode = async () => {
+      try {
+        const url = `${getApiUrl('system_settings')}?resource=system_settings&key=classification_mode`;
+        const res = await apiFetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value === 'manual' || data.value === 'ai') {
+            setClassificationMode(data.value);
+          }
+        }
+      } catch (e) { console.error(e); }
+    };
+    loadClassificationMode();
+  }, []);
+
+  const handleClassificationModeToggle = async (checked: boolean) => {
+    const newMode = checked ? 'ai' : 'manual';
+    setClassificationLoading(true);
+    try {
+      const url = `${getApiUrl('system_settings')}?resource=system_settings`;
+      const res = await apiFetch(url, {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'classification_mode', value: newMode }),
+      });
+      if (res.ok) {
+        setClassificationMode(newMode);
+      }
+    } catch (e) { console.error(e); } finally {
+      setClassificationLoading(false);
+    }
+  };
 
   const handleVsdeskSync = async () => {
     setSyncLoading(true);
@@ -185,6 +223,54 @@ const Settings = () => {
                   <Icon name={syncLoading ? 'Loader2' : 'RefreshCw'} size={14} className={syncLoading ? 'animate-spin' : ''} />
                   {syncLoading ? 'Синхронизация...' : 'Синхронизировать'}
                 </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasPermission('settings', 'read') && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-500/10">
+                <Icon name="Sparkles" size={20} className="text-purple-500" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Классификация заявок</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Выберите способ определения услуги и сервиса при создании заявки
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-md flex items-center justify-center ${classificationMode === 'ai' ? 'bg-purple-500/10' : 'bg-blue-500/10'}`}>
+                  <Icon name={classificationMode === 'ai' ? 'Sparkles' : 'ListChecks'} size={16} className={classificationMode === 'ai' ? 'text-purple-500' : 'text-blue-500'} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    {classificationMode === 'ai' ? 'AI-классификация' : 'Ручной выбор'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {classificationMode === 'ai'
+                      ? 'ИИ автоматически определяет услугу и сервис по описанию'
+                      : 'Пользователь сам выбирает услугу и сервис из списков'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Label htmlFor="classification-mode" className="text-xs text-muted-foreground">
+                  {classificationMode === 'ai' ? 'AI' : 'Ручной'}
+                </Label>
+                <Switch
+                  id="classification-mode"
+                  checked={classificationMode === 'ai'}
+                  onCheckedChange={handleClassificationModeToggle}
+                  disabled={classificationLoading}
+                />
               </div>
             </div>
           </CardContent>

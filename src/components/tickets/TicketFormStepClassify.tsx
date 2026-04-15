@@ -33,6 +33,7 @@ interface TicketFormStepClassifyProps {
   onNext: () => void;
   onBack: () => void;
   filteredServices: Service[];
+  classificationMode?: 'ai' | 'manual';
 }
 
 const TicketFormStepClassify = ({
@@ -46,8 +47,9 @@ const TicketFormStepClassify = ({
   onNext,
   onBack,
   filteredServices,
+  classificationMode = 'ai',
 }: TicketFormStepClassifyProps) => {
-  const [manualMode, setManualMode] = useState(classification.confidence === 0);
+  const [manualMode, setManualMode] = useState(classificationMode === 'manual' || classification.confidence === 0);
 
   const confidenceColor = classification.confidence >= 70
     ? 'text-green-600 bg-green-50 border-green-200'
@@ -63,7 +65,7 @@ const TicketFormStepClassify = ({
 
   return (
     <div className="space-y-4 mt-4">
-      {classification.confidence > 0 && (
+      {classificationMode === 'ai' && classification.confidence > 0 && (
         <div className={`p-4 rounded-lg border ${confidenceColor}`}>
           <div className="flex items-center gap-2 mb-2">
             <Icon name="Sparkles" size={18} />
@@ -80,13 +82,22 @@ const TicketFormStepClassify = ({
         </div>
       )}
 
-      {classification.confidence === 0 && (
+      {classificationMode === 'ai' && classification.confidence === 0 && (
         <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50 text-yellow-700">
           <div className="flex items-center gap-2 mb-2">
             <Icon name="AlertTriangle" size={18} />
             <span className="font-medium text-sm">Не удалось определить категорию автоматически</span>
           </div>
           <p className="text-sm">Выберите услугу и сервис вручную</p>
+        </div>
+      )}
+
+      {classificationMode === 'manual' && (
+        <div className="p-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
+          <div className="flex items-center gap-2">
+            <Icon name="ListChecks" size={18} />
+            <span className="font-medium text-sm">Выберите услугу и сервис</span>
+          </div>
         </div>
       )}
 

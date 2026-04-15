@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, CLASSIFY_TICKET_URL, apiFetch } from '@/utils/api';
+import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, CLASSIFY_TICKET_URL, apiFetch, getApiUrl } from '@/utils/api';
 import func2url from '../../../backend/func2url.json';
 import {
   Dialog,
@@ -114,6 +114,23 @@ const TicketForm = ({
   const [classifying, setClassifying] = useState(false);
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
   const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
+  const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
+
+  useEffect(() => {
+    const loadMode = async () => {
+      try {
+        const url = `${getApiUrl('system_settings')}?resource=system_settings&key=classification_mode`;
+        const res = await apiFetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value === 'manual' || data.value === 'ai') {
+            setClassificationMode(data.value);
+          }
+        }
+      } catch (e) { console.error(e); }
+    };
+    loadMode();
+  }, []);
 
   const handleDialogChange = (open: boolean) => {
     if (open) {
@@ -191,7 +208,12 @@ const TicketForm = ({
   };
 
   const handleNextFromDescription = () => {
-    classifyTicket();
+    if (classificationMode === 'manual') {
+      setClassification({ ticket_service_id: 0, service_ids: [], ticket_service_name: '', service_names: [], confidence: 0 });
+      setStep(2);
+    } else {
+      classifyTicket();
+    }
   };
 
   const handleChangeTicketService = (serviceId: number) => {
@@ -325,7 +347,7 @@ const TicketForm = ({
           </DialogTitle>
           <DialogDescription className="text-sm">
             {step === 1 && 'Опишите вашу проблему или запрос'}
-            {step === 2 && 'Проверьте категорию заявки'}
+            {step === 2 && (classificationMode === 'ai' ? 'Проверьте категорию заявки' : 'Выберите услугу и сервис')}
             {step === 3 && 'Заполните дополнительные поля'}
           </DialogDescription>
         </DialogHeader>
@@ -381,6 +403,7 @@ const TicketForm = ({
             onSubmit={async (e) => { e.preventDefault(); handleNextFromDescription(); }}
             onBack={() => handleDialogChange(false)}
             isFirstStep
+            classificationMode={classificationMode}
           />
         )}
 
@@ -396,6 +419,7 @@ const TicketForm = ({
             onNext={handleNextFromClassify}
             onBack={handleBack}
             filteredServices={filteredServices}
+            classificationMode={classificationMode}
           />
         )}
 
