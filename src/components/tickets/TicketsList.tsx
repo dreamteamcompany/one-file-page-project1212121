@@ -179,7 +179,10 @@ const TicketsList = ({
       <div className="grid gap-4">
         {sortedTickets.map((ticket) => {
         const isCritical = ticket.priority_name?.toLowerCase().includes('критич');
-        
+        const isAwaitingMe =
+          (ticket.awaiting_response_from === 'customer' && ticket.created_by === currentUserId) ||
+          (ticket.awaiting_response_from === 'executor' && ticket.assigned_to === currentUserId);
+
         return (
         <Card
           key={ticket.id}
@@ -187,6 +190,8 @@ const TicketsList = ({
             isCritical ? 'border-red-500 border-2' : ''
           } ${
             selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
+          } ${
+            isAwaitingMe && !isCritical ? 'border-l-4 border-l-amber-500 bg-amber-500/[0.04]' : ''
           }`}
           style={isCritical ? {
             boxShadow: '0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2)',
@@ -256,11 +261,13 @@ const TicketsList = ({
                         Есть ответ
                       </Badge>
                     )}
-                    {((ticket.awaiting_response_from === 'customer' && ticket.created_by === currentUserId) ||
-                      (ticket.awaiting_response_from === 'executor' && ticket.assigned_to === currentUserId)) && (
-                      <Badge variant="default" className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-xs animate-pulse">
+                    {isAwaitingMe && (
+                      <Badge
+                        variant="default"
+                        className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide bg-amber-500 hover:bg-amber-500 text-white border-0 shadow-[0_0_0_2px_rgba(245,158,11,0.25)] animate-pulse"
+                      >
                         <Icon name="Hand" size={12} />
-                        Ждёт твоего ответа
+                        Твой ход
                       </Badge>
                     )}
                     {ticket.unread_comments && ticket.unread_comments > 0 && (
