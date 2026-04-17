@@ -4,6 +4,7 @@ import { DndContext, DragEndEvent, DragOverlay, closestCorners, PointerSensor, u
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
+import { useAuth } from '@/contexts/AuthContext';
 import TicketKanbanCard from './TicketKanbanCard';
 
 interface Ticket {
@@ -25,6 +26,7 @@ interface Ticket {
   due_date?: string;
   created_at?: string;
   has_response?: boolean;
+  awaiting_response_from?: 'customer' | 'executor' | 'none';
 }
 
 interface Status {
@@ -43,6 +45,7 @@ interface TicketsKanbanProps {
 
 const TicketsKanban = ({ tickets, statuses, loading, onUpdateStatus }: TicketsKanbanProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeId, setActiveId] = useState<number | null>(null);
 
   const sensors = useSensors(
@@ -140,6 +143,7 @@ const TicketsKanban = ({ tickets, statuses, loading, onUpdateStatus }: TicketsKa
                     <TicketKanbanCard
                       key={ticket.id}
                       ticket={ticket}
+                      currentUserId={user?.id}
                       onClick={() => navigate(`/tickets/${ticket.id}`, { state: { ticket } })}
                     />
                   ))}
@@ -153,7 +157,7 @@ const TicketsKanban = ({ tickets, statuses, loading, onUpdateStatus }: TicketsKa
       <DragOverlay>
         {activeTicket && (
           <div className="opacity-80">
-            <TicketKanbanCard ticket={activeTicket} onClick={() => {}} isDragging />
+            <TicketKanbanCard ticket={activeTicket} onClick={() => {}} isDragging currentUserId={user?.id} />
           </div>
         )}
       </DragOverlay>

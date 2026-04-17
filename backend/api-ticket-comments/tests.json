@@ -23,6 +23,19 @@
         "error": "string"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Clear indication unauthorized",
+      "method": "POST",
+      "path": "/?action=clear_indication",
+      "body": {
+        "ticket_id": 1
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

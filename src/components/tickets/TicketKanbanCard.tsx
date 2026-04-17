@@ -21,15 +21,17 @@ interface Ticket {
   due_date?: string;
   created_at?: string;
   has_response?: boolean;
+  awaiting_response_from?: 'customer' | 'executor' | 'none';
 }
 
 interface TicketKanbanCardProps {
   ticket: Ticket;
   onClick: () => void;
   isDragging?: boolean;
+  currentUserId?: number;
 }
 
-const TicketKanbanCard = ({ ticket, onClick, isDragging = false }: TicketKanbanCardProps) => {
+const TicketKanbanCard = ({ ticket, onClick, isDragging = false, currentUserId }: TicketKanbanCardProps) => {
   const {
     attributes,
     listeners,
@@ -106,6 +108,14 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false }: TicketKanbanC
           <Badge variant="default" className="text-xs flex items-center gap-1 bg-blue-500">
             <Icon name="MessageSquareReply" size={12} />
             Ответ
+          </Badge>
+        )}
+
+        {((ticket.awaiting_response_from === 'customer' && ticket.created_by === currentUserId) ||
+          (ticket.awaiting_response_from === 'executor' && ticket.assigned_to === currentUserId)) && (
+          <Badge variant="default" className="text-xs flex items-center gap-1 bg-amber-500 animate-pulse">
+            <Icon name="Hand" size={12} />
+            Ждёт ответа
           </Badge>
         )}
       </div>

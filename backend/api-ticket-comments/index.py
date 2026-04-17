@@ -22,6 +22,11 @@ class CommentRequest(BaseModel):
     ticket_id: int = Field(..., gt=0)
     comment: str = Field(..., min_length=1)
     is_internal: bool = Field(default=False)
+    requires_response: bool = Field(default=True)
+
+
+class ClearIndicationRequest(BaseModel):
+    ticket_id: int = Field(..., gt=0)
 
 
 def handler(event: dict, context) -> dict:
@@ -40,6 +45,12 @@ def handler(event: dict, context) -> dict:
         return response(500, {'error': 'Database connection failed'})
 
     try:
+        params = event.get('queryStringParameters', {}) or {}
+        action = params.get('action')
+
+        if method == 'POST' and action == 'clear_indication':
+            return handle_clear_indication(event, conn, payload)
+
         if method == 'GET':
             return handle_get_comments(event, conn, payload)
         elif method == 'POST':
@@ -50,6 +61,40 @@ def handler(event: dict, context) -> dict:
             return response(405, {'error': 'Method not allowed'})
     finally:
         conn.close()
+
+
+def _resolve_author_side(cur, ticket_id: int, user_id: int) -> str:
+    """Определяет, кто автор сообщения: 'customer' | 'executor' | None
+    Возвращает сторону автора, чтобы поставить индикацию противоположной стороне.
+    """
+    cur.execute(f"""
+        SELECT created_by, assigned_to, executor_group_id FROM {SCHEMA}.tickets WHERE id = %s
+    """, (ticket_id,))
+    row = cur.fetchone()
+    if not row:
+        return None
+    if row['created_by'] == user_id:
+        return 'customer'
+    if row['assigned_to'] == user_id:
+        return 'executor'
+    if row.get('executor_group_id'):
+        cur.execute(f"""
+            SELECT 1 FROM {SCHEMA}.executor_group_members
+            WHERE group_id = %s AND user_id = %s
+            LIMIT 1
+        """, (row['executor_group_id'], user_id))
+        if cur.fetchone():
+            return 'executor'
+    cur.execute(f"""
+        SELECT r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (user_id,))
+    roles = [r['system_role'] for r in cur.fetchall() if r.get('system_role')]
+    if 'executor' in roles or 'admin' in roles:
+        return 'executor'
+    return 'customer'
 
 
 def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -65,7 +110,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
     cur.execute(f"""
         SELECT 
             tc.id, tc.ticket_id, tc.user_id, tc.comment,
-            tc.is_internal, tc.created_at, tc.is_read,
+            tc.is_internal, tc.created_at, tc.is_read, tc.requires_response,
             u.username as user_name,
             u.full_name as user_full_name,
             u.photo_url as user_photo_url
@@ -110,10 +155,10 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_comments 
-        (ticket_id, user_id, comment, is_internal, created_at)
-        VALUES (%s, %s, %s, %s, NOW())
-        RETURNING id, ticket_id, user_id, comment, is_internal, created_at, is_read
-    """, (data.ticket_id, user_id, data.comment, data.is_internal))
+        (ticket_id, user_id, comment, is_internal, requires_response, created_at)
+        VALUES (%s, %s, %s, %s, %s, NOW())
+        RETURNING id, ticket_id, user_id, comment, is_internal, requires_response, created_at, is_read
+    """, (data.ticket_id, user_id, data.comment, data.is_internal, data.requires_response))
 
     comment = dict(cur.fetchone())
 
@@ -123,12 +168,35 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         VALUES (%s, %s, 'comment', NULL, %s, NOW())
     """, (data.ticket_id, user_id, f'Добавлен комментарий: {data.comment[:50]}...'))
 
-    cur.execute(f"""
-        UPDATE {SCHEMA}.tickets 
-        SET updated_at = NOW(),
-            has_response = CASE WHEN has_response = false THEN true ELSE has_response END
-        WHERE id = %s
-    """, (data.ticket_id,))
+    author_side = _resolve_author_side(cur, data.ticket_id, user_id)
+    if data.is_internal:
+        awaiting = None
+    elif not data.requires_response:
+        awaiting = 'none'
+    elif author_side == 'customer':
+        awaiting = 'executor'
+    elif author_side == 'executor':
+        awaiting = 'customer'
+    else:
+        awaiting = None
+
+    if awaiting is not None:
+        cur.execute(f"""
+            UPDATE {SCHEMA}.tickets 
+            SET updated_at = NOW(),
+                has_response = CASE WHEN has_response = false THEN true ELSE has_response END,
+                awaiting_response_from = %s,
+                awaiting_since = CASE WHEN %s = 'none' THEN NULL ELSE NOW() END,
+                awaiting_cleared_by = CASE WHEN %s = 'none' THEN 'author_no_response' ELSE NULL END
+            WHERE id = %s
+        """, (awaiting, awaiting, awaiting, data.ticket_id))
+    else:
+        cur.execute(f"""
+            UPDATE {SCHEMA}.tickets 
+            SET updated_at = NOW(),
+                has_response = CASE WHEN has_response = false THEN true ELSE has_response END
+            WHERE id = %s
+        """, (data.ticket_id,))
 
     conn.commit()
 
@@ -155,6 +223,82 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 
     cur.close()
     return response(201, comment)
+
+
+def handle_clear_indication(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Ручное снятие индикации 'Ожидает ответа' получателем"""
+    body = json.loads(event.get('body', '{}'))
+
+    try:
+        data = ClearIndicationRequest(**body)
+    except Exception as e:
+        return response(400, {'error': f'Validation error: {str(e)}'})
+
+    user_id = payload['user_id']
+    cur = conn.cursor()
+
+    cur.execute(f"""
+        SELECT id, created_by, assigned_to, executor_group_id, awaiting_response_from
+        FROM {SCHEMA}.tickets WHERE id = %s
+    """, (data.ticket_id,))
+    ticket = cur.fetchone()
+    if not ticket:
+        cur.close()
+        return response(404, {'error': 'Ticket not found'})
+
+    current_side = ticket['awaiting_response_from']
+    if current_side in (None, 'none'):
+        cur.close()
+        return response(200, {'message': 'Индикация уже снята', 'awaiting_response_from': 'none'})
+
+    is_customer = ticket['created_by'] == user_id
+    is_executor = ticket['assigned_to'] == user_id
+
+    if not is_executor and ticket.get('executor_group_id'):
+        cur.execute(f"""
+            SELECT 1 FROM {SCHEMA}.executor_group_members
+            WHERE group_id = %s AND user_id = %s
+            LIMIT 1
+        """, (ticket['executor_group_id'], user_id))
+        if cur.fetchone():
+            is_executor = True
+
+    cur.execute(f"""
+        SELECT r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (user_id,))
+    roles = [r['system_role'] for r in cur.fetchall() if r.get('system_role')]
+    is_admin = 'admin' in roles
+
+    allowed = (
+        (current_side == 'customer' and is_customer) or
+        (current_side == 'executor' and is_executor) or
+        is_admin
+    )
+    if not allowed:
+        cur.close()
+        return response(403, {'error': 'Снять индикацию может только получатель или администратор'})
+
+    cur.execute(f"""
+        UPDATE {SCHEMA}.tickets
+        SET awaiting_response_from = 'none',
+            awaiting_since = NULL,
+            awaiting_cleared_by = 'manual',
+            updated_at = NOW()
+        WHERE id = %s
+    """, (data.ticket_id,))
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.ticket_history
+        (ticket_id, user_id, field_name, old_value, new_value, created_at)
+        VALUES (%s, %s, 'indication', %s, 'none', NOW())
+    """, (data.ticket_id, user_id, current_side))
+
+    conn.commit()
+    cur.close()
+    return response(200, {'message': 'Индикация снята', 'awaiting_response_from': 'none'})
 
 
 def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:

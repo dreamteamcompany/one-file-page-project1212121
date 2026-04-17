@@ -33,6 +33,7 @@ interface Ticket {
   created_by: number;
   creator_name?: string;
   creator_email?: string;
+  creator_photo_url?: string;
   assigned_to?: number;
   assignee_name?: string;
   assignee_email?: string;
@@ -40,6 +41,7 @@ interface Ticket {
   created_at?: string;
   updated_at?: string;
   closed_at?: string;
+  awaiting_response_from?: 'customer' | 'executor' | 'none';
   custom_fields?: CustomField[];
   ticket_service?: {
     id: number;
@@ -94,9 +96,10 @@ interface TicketDetailsContentProps {
   sendingPing: boolean;
   userId?: number;
   onCommentChange: (value: string) => void;
-  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[]) => void;
+  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[], requiresResponse?: boolean) => void;
   onSendPing: () => void;
   onReaction: (commentId: number, emoji: string) => void;
+  onClearIndication?: () => void;
   availableUsers?: Array<{id: number; name: string; email: string}>;
   onFileUpload?: (file: File) => Promise<void>;
   uploadingFile?: boolean;
@@ -118,6 +121,7 @@ const TicketDetailsContent = ({
   onSubmitComment,
   onSendPing,
   onReaction,
+  onClearIndication,
   availableUsers,
   onFileUpload,
   uploadingFile,
@@ -189,6 +193,31 @@ const TicketDetailsContent = ({
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
             </h1>
+
+            {ticket.awaiting_response_from && ticket.awaiting_response_from !== 'none' && (() => {
+              const side = ticket.awaiting_response_from;
+              const isRecipient =
+                (side === 'customer' && ticket.created_by === userId) ||
+                (side === 'executor' && ticket.assigned_to === userId);
+              const label = side === 'customer' ? 'Ожидает ответа от заказчика' : 'Ожидает ответа от исполнителя';
+              const myTurn = isRecipient;
+              return (
+                <div className={`mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${myTurn ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/40' : 'bg-muted text-muted-foreground border'}`}>
+                  <Icon name={myTurn ? 'Hand' : 'Clock'} size={14} />
+                  <span>{myTurn ? 'Ждёт твоего ответа' : label}</span>
+                  {myTurn && onClearIndication && (
+                    <button
+                      onClick={onClearIndication}
+                      className="ml-2 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-background/60 hover:bg-background border text-foreground/80 hover:text-foreground transition-colors"
+                      title="Снять индикацию — ответ не требуется"
+                    >
+                      <Icon name="Check" size={12} />
+                      Снять индикацию
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             
             <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-4 md:mb-6 text-sm">
               {ticket.due_date && deadlineInfo && (

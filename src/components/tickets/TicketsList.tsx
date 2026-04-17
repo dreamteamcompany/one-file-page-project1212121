@@ -48,6 +48,7 @@ interface Ticket {
   created_by?: number;
   unread_comments?: number;
   has_response?: boolean;
+  awaiting_response_from?: 'customer' | 'executor' | 'none';
   ticket_service?: TicketService;
   services?: Service[];
 }
@@ -253,6 +254,13 @@ const TicketsList = ({
                       <Badge variant="default" className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-xs">
                         <Icon name="MessageSquareReply" size={12} />
                         Есть ответ
+                      </Badge>
+                    )}
+                    {((ticket.awaiting_response_from === 'customer' && ticket.created_by === currentUserId) ||
+                      (ticket.awaiting_response_from === 'executor' && ticket.assigned_to === currentUserId)) && (
+                      <Badge variant="default" className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-xs animate-pulse">
+                        <Icon name="Hand" size={12} />
+                        Ждёт твоего ответа
                       </Badge>
                     )}
                     {ticket.unread_comments && ticket.unread_comments > 0 && (

@@ -139,6 +139,39 @@ def resolve_custom_field_values(fields: list, cur) -> list:
     return resolved
 
 
+def _handle_awaiting_count(conn, user_id: int) -> Dict[str, Any]:
+    """Сколько активных тикетов ждут ответа от текущего пользователя"""
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (user_id,))
+    roles = [r['system_role'] for r in cur.fetchall() if r.get('system_role')]
+    is_executor = 'executor' in roles or 'admin' in roles
+
+    cur.execute(f"""
+        SELECT COUNT(*) AS cnt
+        FROM {SCHEMA}.tickets t
+        LEFT JOIN {SCHEMA}.ticket_statuses s ON s.id = t.status_id
+        WHERE t.is_archived = false
+          AND COALESCE(s.is_closed, false) = false
+          AND (
+            (t.awaiting_response_from = 'customer' AND t.created_by = %s)
+            OR (t.awaiting_response_from = 'executor' AND t.assigned_to = %s)
+            OR (t.awaiting_response_from = 'executor' AND t.assigned_to IS NULL AND t.executor_group_id IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 FROM {SCHEMA}.executor_group_members egm
+                    WHERE egm.group_id = t.executor_group_id AND egm.user_id = %s
+                ))
+          )
+    """, (user_id, user_id, user_id))
+    count = cur.fetchone()['cnt']
+    cur.close()
+    return response(200, {'count': count, 'is_executor': is_executor})
+
+
 def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
     payload = verify_token(event)
     if not payload:
@@ -148,7 +181,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
     if method == 'GET':
         query_params = event.get('queryStringParameters', {}) or {}
-        
+
+        if query_params.get('action') == 'awaiting_count':
+            return _handle_awaiting_count(conn, user_id)
+
         ticket_id_param = query_params.get('ticket_id')
         status_id = query_params.get('status_id')
         priority_id = query_params.get('priority_id')
@@ -246,6 +282,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
                    t.department_id, t.due_date, t.executor_group_id,
                    t.confirmation_sent_at, t.rating, t.rejection_reason,
+                   t.has_response, t.awaiting_response_from, t.awaiting_since,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,

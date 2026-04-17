@@ -15,7 +15,11 @@ export const useTicketActions = (
   const [sendingPing, setSendingPing] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  const handleSubmitComment = async (parentCommentId?: number, mentionedUserIds?: number[]) => {
+  const handleSubmitComment = async (
+    parentCommentId?: number,
+    mentionedUserIds?: number[],
+    requiresResponse: boolean = true
+  ) => {
     if (!newComment.trim()) return;
     
     try {
@@ -30,18 +34,39 @@ export const useTicketActions = (
         body: JSON.stringify({ 
           ticket_id: ticketId, 
           comment: newComment, 
-          is_internal: false
+          is_internal: false,
+          requires_response: requiresResponse,
         }),
       });
       
       if (response.ok) {
         setNewComment('');
         loadComments();
+        loadTicket(false);
       }
     } catch (error) {
       console.error('Error submitting comment:', error);
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleClearIndication = async () => {
+    try {
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3?action=clear_indication';
+      const response = await apiFetch(commentsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token,
+        },
+        body: JSON.stringify({ ticket_id: Number(ticketId) }),
+      });
+      if (response.ok) {
+        loadTicket(false);
+      }
+    } catch (error) {
+      console.error('Error clearing indication:', error);
     }
   };
 
@@ -193,6 +218,7 @@ export const useTicketActions = (
     sendingPing,
     uploadingFile,
     handleSubmitComment,
+    handleClearIndication,
     handleUpdateStatus,
     handleSendPing,
     handleReaction,
