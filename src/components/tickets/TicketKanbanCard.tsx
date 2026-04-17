@@ -22,6 +22,7 @@ interface Ticket {
   created_at?: string;
   has_response?: boolean;
   awaiting_response_from?: 'customer' | 'executor' | 'none';
+  is_awaiting_me?: boolean;
 }
 
 interface TicketKanbanCardProps {
@@ -69,9 +70,7 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false, currentUserId }
   };
 
   const dueDateInfo = getDueDateInfo(ticket.due_date);
-  const isAwaitingMe =
-    (ticket.awaiting_response_from === 'customer' && ticket.created_by === currentUserId) ||
-    (ticket.awaiting_response_from === 'executor' && ticket.assigned_to === currentUserId);
+  const isAwaitingMe = !!ticket.is_awaiting_me;
 
   return (
     <div

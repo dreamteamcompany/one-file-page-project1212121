@@ -49,6 +49,7 @@ interface Ticket {
   unread_comments?: number;
   has_response?: boolean;
   awaiting_response_from?: 'customer' | 'executor' | 'none';
+  is_awaiting_me?: boolean;
   ticket_service?: TicketService;
   services?: Service[];
 }
@@ -179,9 +180,7 @@ const TicketsList = ({
       <div className="grid gap-4">
         {sortedTickets.map((ticket) => {
         const isCritical = ticket.priority_name?.toLowerCase().includes('критич');
-        const isAwaitingMe =
-          (ticket.awaiting_response_from === 'customer' && ticket.created_by === currentUserId) ||
-          (ticket.awaiting_response_from === 'executor' && ticket.assigned_to === currentUserId);
+        const isAwaitingMe = !!ticket.is_awaiting_me;
 
         return (
         <Card

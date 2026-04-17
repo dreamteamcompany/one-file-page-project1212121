@@ -151,6 +151,7 @@ def _handle_awaiting_count(conn, user_id: int) -> Dict[str, Any]:
     roles = [r['system_role'] for r in cur.fetchall() if r.get('system_role')]
     is_executor = 'executor' in roles or 'admin' in roles
 
+    admin_branch = "OR (t.awaiting_response_from = 'executor' AND t.assigned_to IS NULL)" if 'admin' in roles else ""
     cur.execute(f"""
         SELECT COUNT(*) AS cnt
         FROM {SCHEMA}.tickets t
@@ -165,6 +166,7 @@ def _handle_awaiting_count(conn, user_id: int) -> Dict[str, Any]:
                     SELECT 1 FROM {SCHEMA}.executor_group_members egm
                     WHERE egm.group_id = t.executor_group_id AND egm.user_id = %s
                 ))
+            {admin_branch}
           )
     """, (user_id, user_id, user_id))
     count = cur.fetchone()['cnt']
@@ -277,6 +279,16 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         cur.execute(count_query, params)
         total = cur.fetchone()['total']
         
+        cur.execute(f"""
+            SELECT r.system_role
+            FROM {SCHEMA}.user_roles ur
+            JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+            WHERE ur.user_id = %s
+        """, (user_id,))
+        cur_roles = [r['system_role'] for r in cur.fetchall() if r.get('system_role')]
+        cur_is_admin = 'admin' in cur_roles
+        cur_is_executor_role = 'executor' in cur_roles or cur_is_admin
+
         main_query = f"""
             SELECT DISTINCT t.id, t.title, t.description, t.status_id, t.priority_id,
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
@@ -287,7 +299,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,
                    u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url,
-                   eg.name as executor_group_name
+                   eg.name as executor_group_name,
+                   CASE
+                       WHEN t.awaiting_response_from = 'customer' AND t.created_by = %s THEN true
+                       WHEN t.awaiting_response_from = 'executor' AND t.assigned_to = %s THEN true
+                       WHEN t.awaiting_response_from = 'executor' AND t.assigned_to IS NULL AND t.executor_group_id IS NOT NULL
+                            AND EXISTS (SELECT 1 FROM {SCHEMA}.executor_group_members egm WHERE egm.group_id = t.executor_group_id AND egm.user_id = %s) THEN true
+                       WHEN t.awaiting_response_from = 'executor' AND t.assigned_to IS NULL AND {('true' if cur_is_admin else 'false')} THEN true
+                       ELSE false
+                   END AS is_awaiting_me
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
@@ -298,7 +318,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             ORDER BY t.created_at DESC
             LIMIT %s OFFSET %s
         """
-        cur.execute(main_query, params + [limit, offset])
+        cur.execute(main_query, [user_id, user_id, user_id] + params + [limit, offset])
         tickets = [dict(row) for row in cur.fetchall()]
         
         if tickets:

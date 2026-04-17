@@ -48,6 +48,7 @@ export interface Ticket {
   has_response?: boolean;
   awaiting_response_from?: 'customer' | 'executor' | 'none';
   awaiting_since?: string;
+  is_awaiting_me?: boolean;
   response_due_date?: string;
   confirmation_sent_at?: string;
   rating?: number;
