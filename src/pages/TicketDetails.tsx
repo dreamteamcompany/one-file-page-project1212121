@@ -43,7 +43,6 @@ const TicketDetails = () => {
     sendingPing,
     uploadingFile,
     handleSubmitComment,
-    handleClearIndication,
     handleUpdateStatus,
     handleSendPing,
     handleReaction,
@@ -281,7 +280,6 @@ const TicketDetails = () => {
             onSubmitComment={handleSubmitComment}
             onSendPing={handleSendPing}
             onReaction={handleReaction}
-            onClearIndication={handleClearIndication}
             availableUsers={users}
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}

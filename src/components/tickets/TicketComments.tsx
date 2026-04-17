@@ -14,7 +14,6 @@ interface Comment {
   user_photo_url?: string;
   comment: string;
   is_internal: boolean;
-  requires_response?: boolean;
   created_at?: string;
   parent_comment_id?: number;
   mentioned_user_ids?: number[];
@@ -43,7 +42,7 @@ interface TicketCommentsProps {
   newComment: string;
   submittingComment: boolean;
   onCommentChange: (value: string) => void;
-  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[], requiresResponse?: boolean) => void;
+  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[]) => void;
   isCustomer: boolean;
   hasAssignee: boolean;
   sendingPing: boolean;
@@ -96,7 +95,6 @@ const TicketComments = ({
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionedUsers, setMentionedUsers] = useState<User[]>([]);
-  const [noResponseNeeded, setNoResponseNeeded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const mentionsRef = useRef<HTMLDivElement>(null);
@@ -190,10 +188,9 @@ const TicketComments = ({
 
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
-    onSubmitComment(replyToComment?.id, mentionedUserIds, !noResponseNeeded);
+    onSubmitComment(replyToComment?.id, mentionedUserIds);
     setReplyToComment(null);
     setMentionedUsers([]);
-    setNoResponseNeeded(false);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -302,17 +299,6 @@ const TicketComments = ({
               )}
             </div>
             
-            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={noResponseNeeded}
-                onChange={(e) => setNoResponseNeeded(e.target.checked)}
-                disabled={submittingComment}
-                className="h-4 w-4 rounded border-muted-foreground/40 cursor-pointer"
-              />
-              <span>Не требует ответа</span>
-            </label>
-
             <div className="flex flex-wrap gap-2 items-center">
               <Button
                 onClick={handleSubmit}

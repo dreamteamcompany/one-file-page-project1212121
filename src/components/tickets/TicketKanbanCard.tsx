@@ -21,18 +21,15 @@ interface Ticket {
   due_date?: string;
   created_at?: string;
   has_response?: boolean;
-  awaiting_response_from?: 'customer' | 'executor' | 'none';
-  is_awaiting_me?: boolean;
 }
 
 interface TicketKanbanCardProps {
   ticket: Ticket;
   onClick: () => void;
   isDragging?: boolean;
-  currentUserId?: number;
 }
 
-const TicketKanbanCard = ({ ticket, onClick, isDragging = false, currentUserId }: TicketKanbanCardProps) => {
+const TicketKanbanCard = ({ ticket, onClick, isDragging = false }: TicketKanbanCardProps) => {
   const {
     attributes,
     listeners,
@@ -70,7 +67,6 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false, currentUserId }
   };
 
   const dueDateInfo = getDueDateInfo(ticket.due_date);
-  const isAwaitingMe = !!ticket.is_awaiting_me;
 
   return (
     <div
@@ -80,8 +76,7 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false, currentUserId }
       {...listeners}
       onClick={onClick}
       className={`
-        bg-background rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer border
-        ${isAwaitingMe ? 'border-l-4 border-l-amber-500 border-border bg-amber-500/[0.05]' : 'border-border'}
+        bg-background rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer border border-border
         ${isDragging ? 'opacity-50' : ''}
       `}
     >
@@ -114,15 +109,6 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false, currentUserId }
           </Badge>
         )}
 
-        {isAwaitingMe && (
-          <Badge
-            variant="default"
-            className="text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 bg-amber-500 hover:bg-amber-500 text-white border-0 shadow-[0_0_0_2px_rgba(245,158,11,0.25)] animate-pulse"
-          >
-            <Icon name="Hand" size={12} />
-            Твой ход
-          </Badge>
-        )}
       </div>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">

@@ -46,9 +46,6 @@ export interface Ticket {
   executor_group_name?: string;
   unread_comments?: number;
   has_response?: boolean;
-  awaiting_response_from?: 'customer' | 'executor' | 'none';
-  awaiting_since?: string;
-  is_awaiting_me?: boolean;
   response_due_date?: string;
   confirmation_sent_at?: string;
   rating?: number;
@@ -70,7 +67,6 @@ export interface TicketComment {
   comment: string;
   is_internal: boolean;
   is_read?: boolean;
-  requires_response?: boolean;
   created_at?: string;
   attachments?: {
     id: number;

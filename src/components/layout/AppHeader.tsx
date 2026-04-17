@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import NotificationBell from '@/components/notifications/NotificationBell';
-import AwaitingResponseBadge from '@/components/tickets/AwaitingResponseBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,7 +41,6 @@ const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
       </div>
 
       <div className="flex items-center gap-3">
-        <AwaitingResponseBadge />
         <NotificationBell />
         <div className="flex items-center gap-2 text-foreground">
           <span className="text-sm">{user?.username || 'User'}</span>

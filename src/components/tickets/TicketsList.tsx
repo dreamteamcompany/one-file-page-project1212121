@@ -48,8 +48,6 @@ interface Ticket {
   created_by?: number;
   unread_comments?: number;
   has_response?: boolean;
-  awaiting_response_from?: 'customer' | 'executor' | 'none';
-  is_awaiting_me?: boolean;
   ticket_service?: TicketService;
   services?: Service[];
 }
@@ -180,7 +178,6 @@ const TicketsList = ({
       <div className="grid gap-4">
         {sortedTickets.map((ticket) => {
         const isCritical = ticket.priority_name?.toLowerCase().includes('критич');
-        const isAwaitingMe = !!ticket.is_awaiting_me;
 
         return (
         <Card
@@ -189,8 +186,6 @@ const TicketsList = ({
             isCritical ? 'border-red-500 border-2' : ''
           } ${
             selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
-          } ${
-            isAwaitingMe && !isCritical ? 'border-l-4 border-l-amber-500 bg-amber-500/[0.04]' : ''
           }`}
           style={isCritical ? {
             boxShadow: '0 0 20px rgba(239, 68, 68, 0.4), 0 0 40px rgba(239, 68, 68, 0.2)',
@@ -258,15 +253,6 @@ const TicketsList = ({
                       <Badge variant="default" className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-xs">
                         <Icon name="MessageSquareReply" size={12} />
                         Есть ответ
-                      </Badge>
-                    )}
-                    {isAwaitingMe && (
-                      <Badge
-                        variant="default"
-                        className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide bg-amber-500 hover:bg-amber-500 text-white border-0 shadow-[0_0_0_2px_rgba(245,158,11,0.25)] animate-pulse"
-                      >
-                        <Icon name="Hand" size={12} />
-                        Твой ход
                       </Badge>
                     )}
                     {ticket.unread_comments && ticket.unread_comments > 0 && (
