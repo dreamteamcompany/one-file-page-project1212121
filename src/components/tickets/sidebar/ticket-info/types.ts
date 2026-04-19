@@ -17,6 +17,8 @@ export interface Status {
   color: string;
   is_closed: boolean;
   is_approval?: boolean;
+  is_waiting_response?: boolean;
+  order?: number;
 }
 
 export interface Ticket {
@@ -31,6 +33,7 @@ export interface Ticket {
   status_id?: number;
   status_name?: string;
   status_color?: string;
+  previous_status_id?: number | null;
   department_name?: string;
   created_by: number;
   creator_name?: string;

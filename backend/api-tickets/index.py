@@ -249,6 +249,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
                    t.department_id, t.due_date, t.executor_group_id,
                    t.confirmation_sent_at, t.rating, t.rejection_reason,
+                   t.previous_status_id,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    s.is_waiting_response as status_is_waiting_response,
                    p.name as priority_name, p.color as priority_color,
