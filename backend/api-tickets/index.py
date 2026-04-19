@@ -158,6 +158,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         is_archived = query_params.get('is_archived')
         is_hidden = query_params.get('is_hidden')
         hide_waiting = query_params.get('hide_waiting')
+        needs_my_reply = query_params.get('needs_my_reply')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
         page = max(1, int(query_params.get('page', 1)))
@@ -239,6 +240,21 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             params.append(to_date)
         if hide_waiting == 'true':
             where_clause += f" AND NOT EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses wst WHERE wst.id = t.status_id AND wst.is_waiting_response = true)"
+        if needs_my_reply == 'true':
+            where_clause += f"""
+                AND t.assigned_to = %s
+                AND EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_comments tcnr
+                    WHERE tcnr.ticket_id = t.id
+                      AND tcnr.is_internal = false
+                      AND tcnr.user_id = t.created_by
+                      AND tcnr.created_at = (
+                          SELECT MAX(tcnr2.created_at) FROM {SCHEMA}.ticket_comments tcnr2
+                          WHERE tcnr2.ticket_id = t.id AND tcnr2.is_internal = false
+                      )
+                )
+            """
+            params.append(user_id)
         
         count_query = f"SELECT COUNT(DISTINCT t.id) AS total FROM {SCHEMA}.tickets t {where_clause}"
         cur.execute(count_query, params)
@@ -255,7 +271,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,
                    u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url,
-                   eg.name as executor_group_name
+                   eg.name as executor_group_name,
+                   (
+                       SELECT (tclast.user_id = t.created_by) FROM {SCHEMA}.ticket_comments tclast
+                       WHERE tclast.ticket_id = t.id AND tclast.is_internal = false
+                       ORDER BY tclast.created_at DESC LIMIT 1
+                   ) AS client_replied
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id

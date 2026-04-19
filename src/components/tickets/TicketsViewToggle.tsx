@@ -17,6 +17,9 @@ interface TicketsViewToggleProps {
   hiddenCount?: number;
   hideWaiting?: boolean;
   onToggleHideWaiting?: (value: boolean) => void;
+  needsMyReply?: boolean;
+  needsMyReplyCount?: number;
+  onToggleNeedsMyReply?: (value: boolean) => void;
 }
 
 const TicketsViewToggle = ({
@@ -31,6 +34,9 @@ const TicketsViewToggle = ({
   hiddenCount = 0,
   hideWaiting = true,
   onToggleHideWaiting,
+  needsMyReply = false,
+  needsMyReplyCount = 0,
+  onToggleNeedsMyReply,
 }: TicketsViewToggleProps) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -79,7 +85,7 @@ const TicketsViewToggle = ({
             )}
           </Button>
         )}
-        {onToggleHideWaiting && !showArchived && !showHidden && (
+        {onToggleHideWaiting && !showArchived && !showHidden && !needsMyReply && (
           <Button
             variant={hideWaiting ? 'default' : 'outline'}
             size="sm"
@@ -89,6 +95,23 @@ const TicketsViewToggle = ({
           >
             <Icon name={hideWaiting ? 'Filter' : 'FilterX'} size={16} />
             <span className="hidden sm:inline">{hideWaiting ? 'Скрыть ожидающие' : 'Показать все'}</span>
+          </Button>
+        )}
+        {onToggleNeedsMyReply && (
+          <Button
+            variant={needsMyReply ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => { onToggleNeedsMyReply(!needsMyReply); if (!needsMyReply) onViewModeChange('list'); }}
+            className={`flex items-center gap-2 ${needsMyReply ? '' : 'border-blue-500 text-blue-600 hover:bg-blue-50'}`}
+          >
+            <Icon name="MessageSquareReply" size={16} />
+            <span className="hidden sm:inline">Требуют моего ответа</span>
+            <span className="sm:hidden">Мой ответ</span>
+            {needsMyReplyCount > 0 && (
+              <span className="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                {needsMyReplyCount}
+              </span>
+            )}
           </Button>
         )}
       </div>

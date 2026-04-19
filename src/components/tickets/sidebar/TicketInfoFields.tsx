@@ -1,5 +1,4 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import {
   Select,
@@ -13,6 +12,7 @@ import { getDeadlineInfo } from './ticket-info/types';
 import type { Ticket, Status, User, ExecutorGroup } from './ticket-info/types';
 import DeadlineSection from './ticket-info/DeadlineSection';
 import AssignmentSection from './ticket-info/AssignmentSection';
+import WaitingToggleButton from './WaitingToggleButton';
 
 interface TicketInfoFieldsProps {
   ticket: Ticket;
@@ -39,36 +39,12 @@ const TicketInfoFields = ({
   onAssignGroup,
   onUpdateDueDate,
 }: TicketInfoFieldsProps) => {
-  const { user, hasPermission, hasSystemRole } = useAuth();
+  const { hasPermission, hasSystemRole } = useAuth();
   const canSeeGroup = hasSystemRole('admin', 'executor');
   const canAssignExecutor = hasPermission('tickets', 'assign_executor');
-  const canChangeStatus = hasPermission('tickets', 'update');
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
   const responseDeadlineInfo = getDeadlineInfo(ticket.response_due_date);
-
-  const currentStatus = statuses.find((s) => s.id === ticket.status_id);
-  const isWaiting = !!currentStatus?.is_waiting_response;
-  const waitingStatus = [...statuses]
-    .filter((s) => s.is_waiting_response)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id - b.id)[0];
-
-  const isExecutor = !isCustomer && ticket.assigned_to === user?.id;
-  const canToggleWaiting = canChangeStatus && isExecutor && !currentStatus?.is_closed;
-
-  const resumeStatusId =
-    ticket.previous_status_id ??
-    [...statuses]
-      .filter((s) => !s.is_waiting_response && !s.is_closed && !s.is_approval)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id - b.id)[0]?.id;
-
-  const handleToggleWaiting = () => {
-    if (isWaiting) {
-      if (resumeStatusId) onStatusChange(resumeStatusId.toString());
-    } else if (waitingStatus) {
-      onStatusChange(waitingStatus.id.toString());
-    }
-  };
 
   return (
     <div className="rounded-lg bg-card border divide-y">
@@ -121,17 +97,14 @@ const TicketInfoFields = ({
           </SelectContent>
         </Select>
 
-        {canToggleWaiting && (waitingStatus || isWaiting) && (
-          <Button
-            variant={isWaiting ? 'default' : 'outline'}
-            size="sm"
-            className="w-full mt-2 flex items-center gap-2"
-            onClick={handleToggleWaiting}
-            disabled={updating || (isWaiting && !resumeStatusId)}
-          >
-            <Icon name={isWaiting ? 'PlayCircle' : 'PauseCircle'} size={14} />
-            {isWaiting ? 'Вернуть в работу' : 'Ждать ответа клиента'}
-          </Button>
+        {!isCustomer && (
+          <WaitingToggleButton
+            ticket={ticket as unknown as { id: number; status_id?: number; previous_status_id?: number | null; created_by: number }}
+            statuses={statuses}
+            updating={updating}
+            onStatusChange={onStatusChange}
+            className="w-full mt-2"
+          />
         )}
       </div>
 

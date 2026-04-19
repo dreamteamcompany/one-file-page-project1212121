@@ -34,6 +34,8 @@ export const useTicketsData = () => {
     const saved = localStorage.getItem('tickets_hide_waiting');
     return saved === null ? true : saved === 'true';
   });
+  const [needsMyReply, setNeedsMyReply] = useState<boolean>(false);
+  const [needsMyReplyCount, setNeedsMyReplyCount] = useState(0);
 
   const loadHiddenCount = useCallback(async () => {
     if (!token) return;
@@ -51,17 +53,36 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
-  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean) => {
+  const loadNeedsMyReplyCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await apiFetch(
+        `${API_URL}?endpoint=tickets&page=1&limit=1&needs_my_reply=true`,
+        { headers: { 'X-Auth-Token': token } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setNeedsMyReplyCount(data.total || 0);
+      }
+    } catch {
+      // ignore
+    }
+  }, [token]);
+
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean) => {
     if (!token) return;
 
     const archived = isArchived !== undefined ? isArchived : showArchived;
     const hidden = isHidden !== undefined ? isHidden : showHidden;
     const skipWaiting = hideWaitingArg !== undefined ? hideWaitingArg : hideWaiting;
+    const onlyMyReply = needsMyReplyArg !== undefined ? needsMyReplyArg : needsMyReply;
     setLoading(true);
     try {
       let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`;
       if (hidden) {
         url += '&is_hidden=true';
+      } else if (onlyMyReply) {
+        url += `&is_archived=${archived}&needs_my_reply=true`;
       } else {
         url += `&is_archived=${archived}`;
         if (skipWaiting) {
@@ -86,7 +107,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, showArchived, showHidden, hideWaiting]);
+  }, [token, showArchived, showHidden, hideWaiting, needsMyReply]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -157,7 +178,8 @@ export const useTicketsData = () => {
         loadTickets(1),
         loadDictionaries(),
         loadServices(),
-        loadHiddenCount()
+        loadHiddenCount(),
+        loadNeedsMyReplyCount()
       ]).finally(() => setLoading(false));
     }
   }, [token]);
@@ -184,6 +206,14 @@ export const useTicketsData = () => {
     loadTickets(1, undefined, undefined, value);
   }, [loadTickets]);
 
+  const toggleNeedsMyReply = useCallback((value: boolean) => {
+    setNeedsMyReply(value);
+    setShowArchived(false);
+    setShowHidden(false);
+    setPage(1);
+    loadTickets(1, false, false, undefined, value);
+  }, [loadTickets]);
+
   return {
     tickets,
     categories,
@@ -201,12 +231,16 @@ export const useTicketsData = () => {
     showHidden,
     hiddenCount,
     hideWaiting,
+    needsMyReply,
+    needsMyReplyCount,
     loadTickets,
     loadDictionaries,
     loadServices,
     toggleArchived,
     toggleHidden,
     toggleHideWaiting,
+    toggleNeedsMyReply,
     loadHiddenCount,
+    loadNeedsMyReplyCount,
   };
 };

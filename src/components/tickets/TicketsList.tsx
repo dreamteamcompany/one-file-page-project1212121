@@ -47,6 +47,7 @@ interface Ticket {
   assigned_to?: number;
   created_by?: number;
   unread_comments?: number;
+  client_replied?: boolean;
   ticket_service?: TicketService;
   services?: Service[];
 }
@@ -252,6 +253,12 @@ const TicketsList = ({
                       <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
                         <Icon name="MessageCircle" size={12} />
                         {ticket.unread_comments}
+                      </Badge>
+                    )}
+                    {ticket.client_replied && ticket.assigned_to === currentUserId && (
+                      <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse">
+                        <Icon name="MessageSquareReply" size={12} />
+                        Клиент ответил
                       </Badge>
                     )}
                   </div>
