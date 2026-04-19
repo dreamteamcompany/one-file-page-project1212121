@@ -176,7 +176,7 @@ def _get_ticket_sla_info(cur, params: dict) -> Dict[str, Any]:
         return response(400, {'error': 'ticket_id обязателен'})
 
     cur.execute(f"""
-        SELECT t.due_date, t.response_due_date, t.has_response, t.created_at,
+        SELECT t.due_date, t.response_due_date, t.created_at,
                t.assigned_to, t.closed_at
         FROM {SCHEMA}.tickets t
         WHERE t.id = %s

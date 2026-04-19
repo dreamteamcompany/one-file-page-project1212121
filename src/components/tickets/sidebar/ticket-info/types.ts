@@ -41,7 +41,6 @@ export interface Ticket {
   assignee_photo_url?: string;
   due_date?: string;
   response_due_date?: string;
-  has_response?: boolean;
   created_at?: string;
   updated_at?: string;
   closed_at?: string;

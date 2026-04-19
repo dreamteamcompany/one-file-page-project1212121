@@ -157,6 +157,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         service_id = query_params.get('service_id')
         is_archived = query_params.get('is_archived')
         is_hidden = query_params.get('is_hidden')
+        hide_waiting = query_params.get('hide_waiting')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
         page = max(1, int(query_params.get('page', 1)))
@@ -236,6 +237,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if to_date:
             where_clause += " AND t.created_at <= %s"
             params.append(to_date)
+        if hide_waiting == 'true':
+            where_clause += f" AND NOT EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses wst WHERE wst.id = t.status_id AND wst.is_waiting_response = true)"
         
         count_query = f"SELECT COUNT(DISTINCT t.id) AS total FROM {SCHEMA}.tickets t {where_clause}"
         cur.execute(count_query, params)
@@ -247,6 +250,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    t.department_id, t.due_date, t.executor_group_id,
                    t.confirmation_sent_at, t.rating, t.rejection_reason,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
+                   s.is_waiting_response as status_is_waiting_response,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,
                    u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url,
@@ -493,9 +497,13 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         # Получаем текущее состояние заявки для логирования изменений
         cur.execute(f"""
-            SELECT title, description, status_id, priority_id, assigned_to, due_date, response_due_date, has_response
-            FROM {SCHEMA}.tickets 
-            WHERE id = %s
+            SELECT t.title, t.description, t.status_id, t.priority_id, t.assigned_to,
+                   t.due_date, t.response_due_date, t.executor_group_id,
+                   t.previous_status_id, t.sla_paused_at, t.sla_paused_total_seconds,
+                   ts.is_waiting_response AS current_is_waiting
+            FROM {SCHEMA}.tickets t
+            LEFT JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
+            WHERE t.id = %s
         """, (ticket_id,))
         row = cur.fetchone()
         if not row:
@@ -524,11 +532,45 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 history_entries.append(('status_id', str(old_ticket['status_id']), str(body['status_id'])))
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
-            cur.execute(f"SELECT is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s", (body['status_id'],))
+            cur.execute(
+                f"SELECT is_closed, is_waiting_response FROM {SCHEMA}.ticket_statuses WHERE id = %s",
+                (body['status_id'],),
+            )
             new_status = cur.fetchone()
             if new_status:
                 update_fields.append("is_archived = %s")
                 params.append(bool(new_status['is_closed']))
+
+                is_going_to_waiting = bool(new_status['is_waiting_response'])
+                was_in_waiting = bool(old_ticket.get('current_is_waiting'))
+
+                if is_going_to_waiting and not was_in_waiting:
+                    update_fields.append("previous_status_id = %s")
+                    params.append(old_ticket['status_id'])
+                    update_fields.append("sla_paused_at = NOW()")
+                    update_fields.append("waiting_reminder_sent_at = NULL")
+                elif (not is_going_to_waiting) and was_in_waiting:
+                    if old_ticket.get('sla_paused_at'):
+                        cur.execute(
+                            "SELECT EXTRACT(EPOCH FROM (NOW() - %s))::INTEGER AS sec",
+                            (old_ticket['sla_paused_at'],),
+                        )
+                        paused_sec = cur.fetchone()['sec'] or 0
+                        update_fields.append(
+                            "sla_paused_total_seconds = COALESCE(sla_paused_total_seconds, 0) + %s"
+                        )
+                        params.append(paused_sec)
+                        update_fields.append(
+                            "due_date = CASE WHEN due_date IS NOT NULL THEN due_date + (%s || ' seconds')::INTERVAL ELSE NULL END"
+                        )
+                        params.append(paused_sec)
+                        update_fields.append(
+                            "response_due_date = CASE WHEN response_due_date IS NOT NULL THEN response_due_date + (%s || ' seconds')::INTERVAL ELSE NULL END"
+                        )
+                        params.append(paused_sec)
+                    update_fields.append("sla_paused_at = NULL")
+                    update_fields.append("previous_status_id = NULL")
+                    update_fields.append("waiting_reminder_sent_at = NULL")
         
         if 'priority_id' in body:
             if body['priority_id'] != old_ticket['priority_id']:
@@ -569,7 +611,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             UPDATE {SCHEMA}.tickets 
             SET {', '.join(update_fields)}
             WHERE id = %s
-            RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, response_due_date, has_response, created_by, created_at, updated_at
+            RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, response_due_date, created_by, created_at, updated_at
         """, params)
         
         ticket = dict(cur.fetchone())

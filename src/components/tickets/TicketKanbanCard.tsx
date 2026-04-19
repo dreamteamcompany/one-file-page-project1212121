@@ -20,7 +20,6 @@ interface Ticket {
   created_by?: number;
   due_date?: string;
   created_at?: string;
-  has_response?: boolean;
 }
 
 interface TicketKanbanCardProps {
@@ -99,13 +98,6 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false }: TicketKanbanC
             className="text-xs border"
           >
             {ticket.priority_name}
-          </Badge>
-        )}
-
-        {ticket.has_response && (
-          <Badge variant="default" className="text-xs flex items-center gap-1 bg-blue-500">
-            <Icon name="MessageSquareReply" size={12} />
-            Ответ
           </Badge>
         )}
 

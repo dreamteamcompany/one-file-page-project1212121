@@ -15,6 +15,8 @@ interface TicketsViewToggleProps {
   showHidden?: boolean;
   onToggleHidden?: (hidden: boolean) => void;
   hiddenCount?: number;
+  hideWaiting?: boolean;
+  onToggleHideWaiting?: (value: boolean) => void;
 }
 
 const TicketsViewToggle = ({
@@ -27,6 +29,8 @@ const TicketsViewToggle = ({
   showHidden = false,
   onToggleHidden,
   hiddenCount = 0,
+  hideWaiting = true,
+  onToggleHideWaiting,
 }: TicketsViewToggleProps) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -73,6 +77,18 @@ const TicketsViewToggle = ({
                 {hiddenCount}
               </span>
             )}
+          </Button>
+        )}
+        {onToggleHideWaiting && !showArchived && !showHidden && (
+          <Button
+            variant={hideWaiting ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onToggleHideWaiting(!hideWaiting)}
+            className="flex items-center gap-2"
+            title={hideWaiting ? 'Ожидающие ответа скрыты' : 'Показаны все заявки'}
+          >
+            <Icon name={hideWaiting ? 'Filter' : 'FilterX'} size={16} />
+            <span className="hidden sm:inline">{hideWaiting ? 'Скрыть ожидающие' : 'Показать все'}</span>
           </Button>
         )}
       </div>

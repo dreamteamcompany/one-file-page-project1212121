@@ -47,7 +47,6 @@ interface Ticket {
   assigned_to?: number;
   created_by?: number;
   unread_comments?: number;
-  has_response?: boolean;
   ticket_service?: TicketService;
   services?: Service[];
 }
@@ -247,12 +246,6 @@ const TicketsList = ({
                       <Badge variant="destructive" className="text-xs font-bold uppercase flex items-center gap-1 animate-pulse">
                         <Icon name="AlertTriangle" size={12} />
                         Критично
-                      </Badge>
-                    )}
-                    {ticket.has_response && ticket.created_by === currentUserId && (
-                      <Badge variant="default" className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-xs">
-                        <Icon name="MessageSquareReply" size={12} />
-                        Есть ответ
                       </Badge>
                     )}
                     {ticket.unread_comments && ticket.unread_comments > 0 && (

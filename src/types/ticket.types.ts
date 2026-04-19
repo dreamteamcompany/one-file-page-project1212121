@@ -45,7 +45,6 @@ export interface Ticket {
   executor_group_id?: number;
   executor_group_name?: string;
   unread_comments?: number;
-  has_response?: boolean;
   response_due_date?: string;
   confirmation_sent_at?: string;
   rating?: number;

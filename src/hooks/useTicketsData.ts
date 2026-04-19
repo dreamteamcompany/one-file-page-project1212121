@@ -30,6 +30,10 @@ export const useTicketsData = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [hiddenCount, setHiddenCount] = useState(0);
+  const [hideWaiting, setHideWaiting] = useState<boolean>(() => {
+    const saved = localStorage.getItem('tickets_hide_waiting');
+    return saved === null ? true : saved === 'true';
+  });
 
   const loadHiddenCount = useCallback(async () => {
     if (!token) return;
@@ -47,11 +51,12 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
-  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean) => {
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean) => {
     if (!token) return;
 
     const archived = isArchived !== undefined ? isArchived : showArchived;
     const hidden = isHidden !== undefined ? isHidden : showHidden;
+    const skipWaiting = hideWaitingArg !== undefined ? hideWaitingArg : hideWaiting;
     setLoading(true);
     try {
       let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`;
@@ -59,6 +64,9 @@ export const useTicketsData = () => {
         url += '&is_hidden=true';
       } else {
         url += `&is_archived=${archived}`;
+        if (skipWaiting) {
+          url += '&hide_waiting=true';
+        }
       }
       const response = await apiFetch(url, { headers: { 'X-Auth-Token': token } });
 
@@ -78,7 +86,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, showArchived, showHidden]);
+  }, [token, showArchived, showHidden, hideWaiting]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -169,6 +177,13 @@ export const useTicketsData = () => {
     loadTickets(1, false, hidden);
   }, [loadTickets]);
 
+  const toggleHideWaiting = useCallback((value: boolean) => {
+    setHideWaiting(value);
+    localStorage.setItem('tickets_hide_waiting', String(value));
+    setPage(1);
+    loadTickets(1, undefined, undefined, value);
+  }, [loadTickets]);
+
   return {
     tickets,
     categories,
@@ -185,11 +200,13 @@ export const useTicketsData = () => {
     showArchived,
     showHidden,
     hiddenCount,
+    hideWaiting,
     loadTickets,
     loadDictionaries,
     loadServices,
     toggleArchived,
     toggleHidden,
+    toggleHideWaiting,
     loadHiddenCount,
   };
 };

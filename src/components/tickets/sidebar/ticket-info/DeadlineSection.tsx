@@ -34,20 +34,13 @@ const DeadlineSection = ({
     <>
       {ticket.response_due_date && (
         <div className="p-4" style={responseDeadlineInfo ? { 
-          backgroundColor: ticket.has_response ? '#22c55e08' : `${responseDeadlineInfo.color}08`
+          backgroundColor: `${responseDeadlineInfo.color}08`
         } : {}}>
           <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
             <Icon name="Timer" size={14} />
             Время реакции
           </h3>
-          {ticket.has_response ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-green-500/20">
-                <Icon name="CheckCircle2" size={16} className="text-green-500" />
-              </div>
-              <p className="font-medium text-sm text-green-500">Ответ получен</p>
-            </div>
-          ) : responseDeadlineInfo ? (
+          {responseDeadlineInfo ? (
             <div className="flex items-start gap-2">
               <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{
                 backgroundColor: `${responseDeadlineInfo.color}20`

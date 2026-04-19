@@ -145,9 +145,13 @@ def track_ticket_closed(cur, ticket_id: int, user_id: Optional[int] = None):
         return
 
     cur.execute(f"""
-        SELECT created_at, due_date, response_due_date, has_response
-        FROM {SCHEMA}.tickets
-        WHERE id = %s
+        SELECT t.created_at, t.due_date, t.response_due_date,
+               EXISTS(
+                   SELECT 1 FROM {SCHEMA}.ticket_comments tc
+                   WHERE tc.ticket_id = t.id
+               ) AS has_any_comment
+        FROM {SCHEMA}.tickets t
+        WHERE t.id = %s
     """, (ticket_id,))
     ticket = cur.fetchone()
     if not ticket:
@@ -177,7 +181,7 @@ def track_ticket_closed(cur, ticket_id: int, user_id: Optional[int] = None):
                 sla['id']
             ))
 
-    if ticket['response_due_date'] and not ticket['has_response']:
+    if ticket['response_due_date'] and not ticket['has_any_comment']:
         cur.execute(f"""
             SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_at)) / 60 AS actual,
                    EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - response_due_date)) / 60 AS overdue

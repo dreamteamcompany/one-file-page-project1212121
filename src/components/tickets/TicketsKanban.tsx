@@ -24,7 +24,6 @@ interface Ticket {
   created_by?: number;
   due_date?: string;
   created_at?: string;
-  has_response?: boolean;
 }
 
 interface Status {

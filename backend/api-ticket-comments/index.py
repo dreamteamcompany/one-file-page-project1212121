@@ -94,7 +94,9 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     cur = conn.cursor()
 
     cur.execute(f"""
-        SELECT t.id, t.assigned_to, t.status_id, ts.is_reopened
+        SELECT t.id, t.assigned_to, t.created_by, t.status_id,
+               t.previous_status_id, t.sla_paused_at, t.sla_paused_total_seconds,
+               ts.is_reopened, ts.is_waiting_response
         FROM {SCHEMA}.tickets t
         JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
         WHERE t.id = %s
@@ -123,12 +125,50 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         VALUES (%s, %s, 'comment', NULL, %s, NOW())
     """, (data.ticket_id, user_id, f'Добавлен комментарий: {data.comment[:50]}...'))
 
-    cur.execute(f"""
-        UPDATE {SCHEMA}.tickets 
-        SET updated_at = NOW(),
-            has_response = CASE WHEN has_response = false THEN true ELSE has_response END
-        WHERE id = %s
-    """, (data.ticket_id,))
+    is_author_creator = ticket['created_by'] == user_id
+    if (
+        ticket['is_waiting_response']
+        and is_author_creator
+        and not data.is_internal
+        and ticket['previous_status_id']
+    ):
+        paused_seconds_to_add = 0
+        if ticket['sla_paused_at']:
+            cur.execute(
+                "SELECT EXTRACT(EPOCH FROM (NOW() - %s))::INTEGER AS sec",
+                (ticket['sla_paused_at'],),
+            )
+            paused_seconds_to_add = cur.fetchone()['sec'] or 0
+
+        cur.execute(f"""
+            UPDATE {SCHEMA}.tickets
+            SET updated_at = NOW(),
+                status_id = %s,
+                previous_status_id = NULL,
+                sla_paused_at = NULL,
+                sla_paused_total_seconds = COALESCE(sla_paused_total_seconds, 0) + %s,
+                due_date = CASE WHEN due_date IS NOT NULL
+                                THEN due_date + (%s || ' seconds')::INTERVAL
+                                ELSE NULL END,
+                response_due_date = CASE WHEN response_due_date IS NOT NULL
+                                         THEN response_due_date + (%s || ' seconds')::INTERVAL
+                                         ELSE NULL END,
+                waiting_reminder_sent_at = NULL
+            WHERE id = %s
+        """, (ticket['previous_status_id'], paused_seconds_to_add,
+              paused_seconds_to_add, paused_seconds_to_add, data.ticket_id))
+
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ticket_history
+            (ticket_id, user_id, field_name, old_value, new_value, created_at)
+            VALUES (%s, %s, 'status_id', %s, %s, NOW())
+        """, (data.ticket_id, user_id, str(ticket['status_id']), str(ticket['previous_status_id'])))
+    else:
+        cur.execute(f"""
+            UPDATE {SCHEMA}.tickets
+            SET updated_at = NOW()
+            WHERE id = %s
+        """, (data.ticket_id,))
 
     conn.commit()
 

@@ -2968,7 +2968,6 @@ def handle_tickets_api(method: str, event: Dict[str, Any], conn, payload: Dict[s
                     t.created_by, u.username as creator_name, u.email as creator_email,
                     t.assigned_to, ua.username as assignee_name, ua.email as assignee_email,
                     t.created_at, t.updated_at,
-                    t.has_response,
                     COALESCE((
                         SELECT COUNT(*) 
                         FROM {SCHEMA}.ticket_comments tc 
@@ -3451,16 +3450,53 @@ def handle_ticket_comments_api(method: str, event: Dict[str, Any], conn, payload
             
             conn.commit()
             
-            # Обновляем has_response если комментарий от исполнителя (не от заказчика)
+            # Автовозврат из waiting при ответе клиента (создатель заявки) + возобновление SLA
             cur.execute(f"""
-                UPDATE {SCHEMA}.tickets 
-                SET updated_at = CURRENT_TIMESTAMP,
-                    has_response = CASE 
-                        WHEN assigned_to = %s AND created_by != %s THEN TRUE
-                        ELSE has_response
-                    END
-                WHERE id = %s
-            """, (user_id, user_id, ticket_id,))
+                SELECT t.created_by, t.status_id, t.previous_status_id,
+                       t.sla_paused_at, ts.is_waiting_response
+                FROM {SCHEMA}.tickets t
+                LEFT JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
+                WHERE t.id = %s
+            """, (ticket_id,))
+            t_info = cur.fetchone()
+
+            if (
+                t_info
+                and t_info['is_waiting_response']
+                and t_info['created_by'] == user_id
+                and not is_internal
+                and t_info['previous_status_id']
+            ):
+                paused_sec = 0
+                if t_info['sla_paused_at']:
+                    cur.execute(
+                        "SELECT EXTRACT(EPOCH FROM (NOW() - %s))::INTEGER AS sec",
+                        (t_info['sla_paused_at'],),
+                    )
+                    paused_sec = cur.fetchone()['sec'] or 0
+
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET updated_at = CURRENT_TIMESTAMP,
+                        status_id = %s,
+                        previous_status_id = NULL,
+                        sla_paused_at = NULL,
+                        sla_paused_total_seconds = COALESCE(sla_paused_total_seconds, 0) + %s,
+                        due_date = CASE WHEN due_date IS NOT NULL
+                                        THEN due_date + (%s || ' seconds')::INTERVAL
+                                        ELSE NULL END,
+                        response_due_date = CASE WHEN response_due_date IS NOT NULL
+                                                 THEN response_due_date + (%s || ' seconds')::INTERVAL
+                                                 ELSE NULL END,
+                        waiting_reminder_sent_at = NULL
+                    WHERE id = %s
+                """, (t_info['previous_status_id'], paused_sec, paused_sec, paused_sec, ticket_id))
+            else:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (ticket_id,))
             conn.commit()
             
             return response(201, {
