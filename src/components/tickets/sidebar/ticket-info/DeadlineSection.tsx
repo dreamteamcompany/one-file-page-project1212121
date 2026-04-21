@@ -10,6 +10,7 @@ interface DeadlineSectionProps {
   deadlineInfo: DeadlineInfo | null;
   responseDeadlineInfo: DeadlineInfo | null;
   isCustomer: boolean;
+  canEditDueDate?: boolean;
   onUpdateDueDate?: (dueDate: string | null) => void;
 }
 
@@ -18,8 +19,10 @@ const DeadlineSection = ({
   deadlineInfo,
   responseDeadlineInfo,
   isCustomer,
+  canEditDueDate = false,
   onUpdateDueDate,
 }: DeadlineSectionProps) => {
+  const canEdit = (isCustomer || canEditDueDate) && !!onUpdateDueDate;
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
   const [dueTimeValue, setDueTimeValue] = useState(() => {
@@ -76,7 +79,7 @@ const DeadlineSection = ({
         </div>
       )}
 
-      {(ticket.due_date || isCustomer) && (
+      {(ticket.due_date || canEdit) && (
         <div className="p-4" style={deadlineInfo ? { 
           backgroundColor: `${deadlineInfo.color}08`
         } : {}}>
@@ -85,7 +88,7 @@ const DeadlineSection = ({
               <Icon name="Calendar" size={14} />
               Дедлайн
             </h3>
-            {isCustomer && onUpdateDueDate && (
+            {canEdit && (
               <button
                 onClick={() => {
                   setIsEditingDueDate(!isEditingDueDate);

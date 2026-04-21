@@ -42,6 +42,7 @@ const TicketInfoFields = ({
   const { hasPermission, hasSystemRole } = useAuth();
   const canSeeGroup = hasSystemRole('admin', 'executor');
   const canAssignExecutor = hasPermission('tickets', 'assign_executor');
+  const canEditDueDate = hasPermission('tickets', 'update') || hasSystemRole('admin');
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
   const responseDeadlineInfo = getDeadlineInfo(ticket.response_due_date);
@@ -113,6 +114,7 @@ const TicketInfoFields = ({
         deadlineInfo={deadlineInfo}
         responseDeadlineInfo={responseDeadlineInfo}
         isCustomer={isCustomer}
+        canEditDueDate={canEditDueDate}
         onUpdateDueDate={onUpdateDueDate}
       />
 
