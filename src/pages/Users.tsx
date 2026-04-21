@@ -183,8 +183,8 @@ const Users = () => {
         });
         loadUsers();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Ошибка при сохранении пользователя');
+        const error = await response.json().catch(() => ({}));
+        alert(error.message || error.error || 'Ошибка при сохранении пользователя');
       }
     } catch (err) {
       console.error('Failed to save user:', err);

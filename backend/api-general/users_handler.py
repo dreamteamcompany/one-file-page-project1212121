@@ -75,7 +75,19 @@ def handle_users(method, event, conn, payload):
                 
                 email_value = req.email if req.email else f"no-email-{req.username}@placeholder.local"
                 bitrix_id_value = req.bitrix_user_id if req.bitrix_user_id else None
-                
+
+                cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE username = %s", (req.username,))
+                if cur.fetchone():
+                    return response(409, {'error': 'Username already taken', 'message': f'Логин "{req.username}" уже занят'})
+                if req.email:
+                    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email = %s", (req.email,))
+                    if cur.fetchone():
+                        return response(409, {'error': 'Email already taken', 'message': f'Email "{req.email}" уже используется'})
+                if bitrix_id_value:
+                    cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE bitrix_user_id = %s", (bitrix_id_value,))
+                    if cur.fetchone():
+                        return response(409, {'error': 'Bitrix ID already taken', 'message': f'Битрикс ID "{bitrix_id_value}" уже используется'})
+
                 insert_query = f"""
                     INSERT INTO {SCHEMA}.users 
                     (username, password_hash, full_name, position, email, photo_url, bitrix_user_id, is_active, created_at, updated_at)
@@ -106,8 +118,20 @@ def handle_users(method, event, conn, payload):
                 return response(201, {'id': new_user_id, 'message': 'User created'})
             except Exception as insert_error:
                 conn.rollback()
-                log(f"[CREATE USER] Insert error: {type(insert_error).__name__}: {str(insert_error)}")
-                return response(500, {'error': 'Failed to create user', 'details': str(insert_error)})
+                err_name = type(insert_error).__name__
+                err_str = str(insert_error)
+                log(f"[CREATE USER] Insert error: {err_name}: {err_str}")
+                if 'unique' in err_str.lower() or err_name in ('UniqueViolation', 'IntegrityError'):
+                    msg = 'Такой пользователь уже существует'
+                    low = err_str.lower()
+                    if 'username' in low:
+                        msg = f'Логин "{req.username}" уже занят'
+                    elif 'email' in low:
+                        msg = f'Email "{req.email}" уже используется'
+                    elif 'bitrix' in low:
+                        msg = 'Битрикс ID уже используется'
+                    return response(409, {'error': 'Duplicate user', 'message': msg})
+                return response(500, {'error': 'Failed to create user', 'details': err_str})
         
         elif method == 'PUT':
             # Проверка права на редактирование пользователей
