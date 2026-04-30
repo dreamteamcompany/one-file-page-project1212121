@@ -18,8 +18,6 @@ interface TicketsViewToggleProps {
   hideWaiting?: boolean;
   onToggleHideWaiting?: (value: boolean) => void;
   needsMyReply?: boolean;
-  needsMyReplyCount?: number;
-  onToggleNeedsMyReply?: (value: boolean) => void;
 }
 
 const TicketsViewToggle = ({
@@ -35,8 +33,6 @@ const TicketsViewToggle = ({
   hideWaiting = true,
   onToggleHideWaiting,
   needsMyReply = false,
-  needsMyReplyCount = 0,
-  onToggleNeedsMyReply,
 }: TicketsViewToggleProps) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -51,15 +47,6 @@ const TicketsViewToggle = ({
           <span className="hidden sm:inline">Мои заявки</span>
         </Button>
         <Button
-          variant={showArchived ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => { onToggleArchived(!showArchived); if (showHidden && onToggleHidden) onToggleHidden(false); if (!showArchived) onViewModeChange('list'); }}
-          className="flex items-center gap-2"
-        >
-          <Icon name="Archive" size={16} />
-          <span className="hidden sm:inline">Архив</span>
-        </Button>
-        <Button
           variant="outline"
           size="sm"
           onClick={() => {}}
@@ -68,6 +55,15 @@ const TicketsViewToggle = ({
           <Icon name="Users" size={16} />
           <span className="hidden sm:inline">Заявки моих сотрудников</span>
           <span className="sm:hidden">Мои сотр.</span>
+        </Button>
+        <Button
+          variant={showArchived ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => { onToggleArchived(!showArchived); if (showHidden && onToggleHidden) onToggleHidden(false); if (!showArchived) onViewModeChange('list'); }}
+          className="flex items-center gap-2"
+        >
+          <Icon name="Archive" size={16} />
+          <span className="hidden sm:inline">Архив</span>
         </Button>
         {onToggleHidden && (
           <Button
@@ -95,23 +91,6 @@ const TicketsViewToggle = ({
           >
             <Icon name={hideWaiting ? 'Filter' : 'FilterX'} size={16} />
             <span className="hidden sm:inline">{hideWaiting ? 'Скрыть ожидающие' : 'Показать все'}</span>
-          </Button>
-        )}
-        {onToggleNeedsMyReply && (
-          <Button
-            variant={needsMyReply ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => { onToggleNeedsMyReply(!needsMyReply); if (!needsMyReply) onViewModeChange('list'); }}
-            className={`flex items-center gap-2 ${needsMyReply ? '' : 'border-blue-500 text-blue-600 hover:bg-blue-50'}`}
-          >
-            <Icon name="MessageSquareReply" size={16} />
-            <span className="hidden sm:inline">Требуют моего ответа</span>
-            <span className="sm:hidden">Мой ответ</span>
-            {needsMyReplyCount > 0 && (
-              <span className="bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                {needsMyReplyCount}
-              </span>
-            )}
           </Button>
         )}
       </div>
