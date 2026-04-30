@@ -133,6 +133,159 @@ def remove_exception(bitrix_user_id):
         conn.close()
 
 
+def sql_str(value):
+    if value is None:
+        return 'NULL'
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def sql_int(value):
+    if value is None:
+        return 'NULL'
+    try:
+        return str(int(value))
+    except (ValueError, TypeError):
+        return 'NULL'
+
+
+def sql_ts(value):
+    if not value:
+        return 'NULL'
+    safe = str(value).replace("'", "''")
+    return f"'{safe}'"
+
+
+def create_report(started_by_user_id, started_by_name, mode, days_threshold):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO bitrix_block_reports "
+            f"(started_by_user_id, started_by_name, mode, days_threshold, "
+            f"total_requested, deactivated_count, errors_count, skipped_count) "
+            f"VALUES ({sql_int(started_by_user_id)}, {sql_str(started_by_name)}, "
+            f"{sql_str(mode)}, {sql_int(days_threshold)}, 0, 0, 0, 0) RETURNING id"
+        )
+        report_id = cur.fetchone()[0]
+        conn.commit()
+        return report_id
+    finally:
+        conn.close()
+
+
+def save_report_item(report_id, item):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"INSERT INTO bitrix_block_report_items "
+            f"(report_id, bitrix_user_id, full_name, email, position, "
+            f"last_login, days_inactive, status, error_text) "
+            f"VALUES ({sql_int(report_id)}, {sql_str(item.get('id'))}, "
+            f"{sql_str(item.get('name'))}, {sql_str(item.get('email'))}, "
+            f"{sql_str(item.get('position'))}, {sql_ts(item.get('last_login'))}, "
+            f"{sql_int(item.get('days_inactive'))}, {sql_str(item.get('status'))}, "
+            f"{sql_str(item.get('error_text'))})"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_report_counters(report_id, total_requested, deactivated, errors, skipped):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE bitrix_block_reports SET "
+            f"total_requested = {sql_int(total_requested)}, "
+            f"deactivated_count = {sql_int(deactivated)}, "
+            f"errors_count = {sql_int(errors)}, "
+            f"skipped_count = {sql_int(skipped)} "
+            f"WHERE id = {sql_int(report_id)}"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_reports():
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, started_by_user_id, started_by_name, started_at, mode, "
+            "days_threshold, total_requested, deactivated_count, errors_count, skipped_count "
+            "FROM bitrix_block_reports ORDER BY started_at DESC LIMIT 200"
+        )
+        rows = cur.fetchall()
+        return [
+            {
+                'id': r[0],
+                'started_by_user_id': r[1],
+                'started_by_name': r[2] or '',
+                'started_at': r[3].isoformat() if r[3] else None,
+                'mode': r[4],
+                'days_threshold': r[5],
+                'total_requested': r[6],
+                'deactivated_count': r[7],
+                'errors_count': r[8],
+                'skipped_count': r[9],
+            }
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
+def fetch_report_with_items(report_id):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT id, started_by_user_id, started_by_name, started_at, mode, "
+            f"days_threshold, total_requested, deactivated_count, errors_count, skipped_count "
+            f"FROM bitrix_block_reports WHERE id = {sql_int(report_id)}"
+        )
+        r = cur.fetchone()
+        if not r:
+            return None
+        report = {
+            'id': r[0],
+            'started_by_user_id': r[1],
+            'started_by_name': r[2] or '',
+            'started_at': r[3].isoformat() if r[3] else None,
+            'mode': r[4],
+            'days_threshold': r[5],
+            'total_requested': r[6],
+            'deactivated_count': r[7],
+            'errors_count': r[8],
+            'skipped_count': r[9],
+        }
+        cur.execute(
+            f"SELECT bitrix_user_id, full_name, email, position, last_login, "
+            f"days_inactive, status, error_text "
+            f"FROM bitrix_block_report_items WHERE report_id = {sql_int(report_id)} "
+            f"ORDER BY id ASC"
+        )
+        items = []
+        for row in cur.fetchall():
+            items.append({
+                'bitrix_user_id': row[0],
+                'full_name': row[1] or '',
+                'email': row[2] or '',
+                'position': row[3] or '',
+                'last_login': row[4].isoformat() if row[4] else None,
+                'days_inactive': row[5],
+                'status': row[6],
+                'error_text': row[7] or '',
+            })
+        report['items'] = items
+        return report
+    finally:
+        conn.close()
+
+
 def fetch_all_users():
     if not BITRIX_WEBHOOK_URL:
         raise ValueError('BITRIX24_WEBHOOK_URL не настроен')
@@ -279,6 +432,22 @@ def handler(event, context):
         except BaseException as e:
             return resp(500, {'error': str(e)})
 
+    if method == 'GET' and action == 'reports':
+        return resp(200, {'reports': fetch_reports()})
+
+    if method == 'GET' and action == 'report':
+        report_id = qs.get('id')
+        if not report_id:
+            return resp(400, {'error': 'id обязателен'})
+        try:
+            rid = int(report_id)
+        except (ValueError, TypeError):
+            return resp(400, {'error': 'id некорректен'})
+        report = fetch_report_with_items(rid)
+        if not report:
+            return resp(404, {'error': 'Отчёт не найден'})
+        return resp(200, {'report': report})
+
     if method == 'GET':
         days = int(qs.get('days', '30'))
         users = fetch_all_users()
@@ -325,15 +494,16 @@ def handler(event, context):
 
         mode = body.get('mode')
         user_ids = body.get('user_ids', [])
+        days_threshold = int(body.get('days', 30))
+
+        users = fetch_all_users()
+        exception_ids = fetch_exception_ids()
+        inactive = classify_users(users, days_threshold, exception_ids)
+        info_by_id = {str(u['id']): u for u in inactive}
 
         if mode == 'by_ids' and user_ids:
             targets = [str(x) for x in user_ids]
         elif mode in ('all', 'never_logged', 'long_inactive'):
-            days = int(body.get('days', 30))
-            users = fetch_all_users()
-            exception_ids = fetch_exception_ids()
-            inactive = classify_users(users, days, exception_ids)
-
             if mode == 'all':
                 targets = [u['id'] for u in inactive]
             elif mode == 'never_logged':
@@ -345,30 +515,99 @@ def handler(event, context):
         else:
             return resp(400, {'error': 'Укажите mode: all, never_logged, long_inactive или by_ids'})
 
-        exception_ids = fetch_exception_ids()
-        skipped = [t for t in targets if str(t) in exception_ids]
-        targets = [t for t in targets if str(t) not in exception_ids]
+        targets = [str(t) for t in targets]
+        skipped_targets = [t for t in targets if t in exception_ids]
+        active_targets = [t for t in targets if t not in exception_ids]
 
-        if not targets:
-            return resp(200, {'deactivated': 0, 'errors': [], 'skipped_excluded': len(skipped)})
+        started_by_user_id = payload.get('user_id') or payload.get('id')
+        started_by_name = payload.get('full_name') or payload.get('username') or ''
+        report_id = create_report(started_by_user_id, started_by_name, mode, days_threshold)
+        report_items = []
 
         deactivated = 0
         errors = []
-        for uid in targets:
+
+        for uid in active_targets:
+            info = info_by_id.get(uid, {})
+            base = {
+                'id': uid,
+                'name': info.get('name', ''),
+                'email': info.get('email', ''),
+                'position': info.get('position', ''),
+                'last_login': info.get('last_login'),
+                'days_inactive': info.get('days_inactive'),
+            }
             try:
                 result = deactivate_user(uid)
                 if result.get('result'):
                     deactivated += 1
+                    item = {**base, 'status': 'deactivated', 'error_text': ''}
                 else:
-                    errors.append({'id': uid, 'error': str(result)})
+                    err_text = str(result)
+                    errors.append({'id': uid, 'error': err_text})
+                    item = {**base, 'status': 'error', 'error_text': err_text}
             except BaseException as e:
-                errors.append({'id': uid, 'error': str(e)})
+                err_text = str(e)
+                errors.append({'id': uid, 'error': err_text})
+                item = {**base, 'status': 'error', 'error_text': err_text}
+            save_report_item(report_id, item)
+            report_items.append(item)
+
+        for uid in skipped_targets:
+            info = info_by_id.get(uid, {})
+            item = {
+                'id': uid,
+                'name': info.get('name', ''),
+                'email': info.get('email', ''),
+                'position': info.get('position', ''),
+                'last_login': info.get('last_login'),
+                'days_inactive': info.get('days_inactive'),
+                'status': 'skipped',
+                'error_text': 'В исключениях',
+            }
+            save_report_item(report_id, item)
+            report_items.append(item)
+
+        update_report_counters(
+            report_id,
+            total_requested=len(targets),
+            deactivated=deactivated,
+            errors=len(errors),
+            skipped=len(skipped_targets),
+        )
+
+        normalized_items = [
+            {
+                'bitrix_user_id': it['id'],
+                'full_name': it['name'],
+                'email': it['email'],
+                'position': it['position'],
+                'last_login': it['last_login'],
+                'days_inactive': it['days_inactive'],
+                'status': it['status'],
+                'error_text': it.get('error_text', ''),
+            }
+            for it in report_items
+        ]
 
         return resp(200, {
             'deactivated': deactivated,
             'total_requested': len(targets),
-            'skipped_excluded': len(skipped),
+            'skipped_excluded': len(skipped_targets),
             'errors': errors[:20],
+            'report_id': report_id,
+            'report': {
+                'id': report_id,
+                'started_by_name': started_by_name,
+                'started_at': datetime.now(timezone.utc).isoformat(),
+                'mode': mode,
+                'days_threshold': days_threshold,
+                'total_requested': len(targets),
+                'deactivated_count': deactivated,
+                'errors_count': len(errors),
+                'skipped_count': len(skipped_targets),
+                'items': normalized_items,
+            },
         })
 
     return resp(405, {'error': 'Method not allowed'})

@@ -36,6 +36,7 @@ import { apiFetch } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import func2url from '../../backend/func2url.json';
+import BlockReportModal, { BlockReport } from './bitrix-inactive-users/BlockReportModal';
 
 const API_URL = func2url['bitrix-inactive-users'];
 
@@ -92,7 +93,7 @@ const BitrixInactiveUsers = () => {
   const { hasSystemRole } = useAuth();
   const isAdmin = hasSystemRole('admin');
 
-  const [tab, setTab] = useState<'inactive' | 'exceptions'>('inactive');
+  const [tab, setTab] = useState<'inactive' | 'exceptions' | 'reports'>('inactive');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [deactivating, setDeactivating] = useState(false);
@@ -114,6 +115,49 @@ const BitrixInactiveUsers = () => {
   const [savingException, setSavingException] = useState(false);
 
   const [removeTarget, setRemoveTarget] = useState<ExceptionItem | null>(null);
+
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [activeReport, setActiveReport] = useState<BlockReport | null>(null);
+  const [reports, setReports] = useState<Array<{
+    id: number;
+    started_by_name: string;
+    started_at: string | null;
+    mode: string;
+    days_threshold: number | null;
+    total_requested: number;
+    deactivated_count: number;
+    errors_count: number;
+    skipped_count: number;
+  }>>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
+
+  const loadReports = async () => {
+    setReportsLoading(true);
+    try {
+      const res = await apiFetch(`${API_URL}?action=reports`);
+      if (res.ok) {
+        const json = await res.json();
+        setReports(json.reports || []);
+      }
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const openReportById = async (id: number) => {
+    try {
+      const res = await apiFetch(`${API_URL}?action=report&id=${id}`);
+      if (res.ok) {
+        const json = await res.json();
+        setActiveReport(json.report);
+        setReportModalOpen(true);
+      } else {
+        toast({ title: 'Не удалось загрузить отчёт', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Не удалось подключиться', variant: 'destructive' });
+    }
+  };
 
   const loadData = async (d: number) => {
     setLoading(true);
@@ -149,6 +193,7 @@ const BitrixInactiveUsers = () => {
   useEffect(() => {
     loadData(days);
     loadExceptions();
+    loadReports();
   }, []);
 
   const handleSearch = () => {
@@ -183,7 +228,12 @@ const BitrixInactiveUsers = () => {
         if (result.errors?.length > 0) {
           toast({ title: `Ошибки: ${result.errors.length}`, variant: 'destructive' });
         }
+        if (result.report) {
+          setActiveReport(result.report);
+          setReportModalOpen(true);
+        }
         loadData(days);
+        loadReports();
       } else {
         toast({ title: 'Ошибка деактивации', variant: 'destructive' });
       }
@@ -496,7 +546,7 @@ const BitrixInactiveUsers = () => {
         </DialogContent>
       </Dialog>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'inactive' | 'exceptions')} className="mb-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'inactive' | 'exceptions' | 'reports')} className="mb-4">
         <TabsList>
           <TabsTrigger value="inactive" className="gap-2">
             <Icon name="UserX" size={14} />
@@ -505,6 +555,10 @@ const BitrixInactiveUsers = () => {
           <TabsTrigger value="exceptions" className="gap-2">
             <Icon name="ShieldCheck" size={14} />
             Исключения ({exceptions.length})
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-2">
+            <Icon name="FileText" size={14} />
+            Отчёты ({reports.length})
           </TabsTrigger>
         </TabsList>
 
@@ -738,7 +792,72 @@ const BitrixInactiveUsers = () => {
             </Card>
           )}
         </TabsContent>
+
+        <TabsContent value="reports">
+          {reportsLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Icon name="Loader2" size={32} className="animate-spin text-primary" />
+            </div>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">История блокировок: {reports.length}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {reports.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Icon name="FileText" size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Отчётов пока нет</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {reports.map(r => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => openReportById(r.id)}
+                        className="w-full text-left p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors flex items-center justify-between gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">
+                            {r.started_at ? new Date(r.started_at).toLocaleString('ru-RU') : '—'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {r.started_by_name || '—'}
+                            {r.days_threshold ? ` · порог ${r.days_threshold} дн.` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge variant="outline" className="text-xs text-red-700 border-red-300 bg-red-50">
+                            {r.deactivated_count} забл.
+                          </Badge>
+                          {r.errors_count > 0 && (
+                            <Badge variant="outline" className="text-xs text-orange-700 border-orange-300 bg-orange-50">
+                              {r.errors_count} ош.
+                            </Badge>
+                          )}
+                          {r.skipped_count > 0 && (
+                            <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 bg-emerald-50">
+                              {r.skipped_count} пр.
+                            </Badge>
+                          )}
+                          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
+
+      <BlockReportModal
+        open={reportModalOpen}
+        onOpenChange={setReportModalOpen}
+        report={activeReport}
+      />
     </PageLayout>
   );
 };
