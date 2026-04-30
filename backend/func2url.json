@@ -1,4 +1,6 @@
 {
+  "tickets-counters": "https://functions.poehali.dev/bcc93198-ef8f-4b7f-b1b7-25ed7616922c",
+  "tickets-mark-read": "https://functions.poehali.dev/91bd6009-4bdd-4161-9e0d-ea3a03bf70c0",
   "bitrix-inactive-users": "https://functions.poehali.dev/7bf1dc65-32dd-447a-a33e-8b1a7bed5b07",
   "api-ai-training": "https://functions.poehali.dev/1c8f10ba-1def-440e-b5b8-b36840076c65",
   "api-classify-ticket": "https://functions.poehali.dev/b1d49417-fb02-4b11-9656-d30b68924b54",

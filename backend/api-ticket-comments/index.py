@@ -3,11 +3,72 @@ API для работы с комментариями к заявкам
 """
 import json
 import os
+import re
 import urllib.request
 import urllib.parse
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
+
+MENTION_RE = re.compile(r'@([a-zA-Z0-9_.\-]+)')
+
+
+def _participants(cur, ticket_id: int, ticket: Dict[str, Any]) -> Set[int]:
+    """Возвращает множество user_id всех участников заявки"""
+    ids: Set[int] = set()
+    if ticket.get('created_by'):
+        ids.add(ticket['created_by'])
+    if ticket.get('assigned_to'):
+        ids.add(ticket['assigned_to'])
+
+    cur.execute(f"SELECT user_id FROM {SCHEMA}.ticket_watchers WHERE ticket_id = %s", (ticket_id,))
+    ids.update(r['user_id'] for r in cur.fetchall())
+
+    cur.execute(f"SELECT approver_id FROM {SCHEMA}.ticket_approvers WHERE ticket_id = %s", (ticket_id,))
+    ids.update(r['approver_id'] for r in cur.fetchall())
+    return ids
+
+
+def _resolve_mentions(cur, comment: str) -> List[Dict[str, Any]]:
+    """Парсит @username из текста и возвращает [{user_id, username}] существующих юзеров"""
+    usernames = set(MENTION_RE.findall(comment or ''))
+    if not usernames:
+        return []
+    cur.execute(
+        f"SELECT id, username FROM {SCHEMA}.users WHERE username = ANY(%s) AND is_active = true",
+        (list(usernames),),
+    )
+    return [dict(row) for row in cur.fetchall()]
+
+
+def _add_watcher_if_missing(cur, ticket_id: int, user_id: int) -> bool:
+    """Добавляет юзера в наблюдатели если его там нет. True если добавили."""
+    cur.execute(
+        f"SELECT 1 FROM {SCHEMA}.ticket_watchers WHERE ticket_id = %s AND user_id = %s",
+        (ticket_id, user_id),
+    )
+    if cur.fetchone():
+        return False
+    cur.execute(
+        f"INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id, added_at) VALUES (%s, %s, NOW())",
+        (ticket_id, user_id),
+    )
+    return True
+
+
+def _create_notification(cur, user_id: int, ticket_id: int, event_type: str,
+                         actor_id: int, message: str, comment_id: int = None,
+                         payload: Dict[str, Any] = None) -> None:
+    """Создаёт запись в notifications для конкретного юзера"""
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.notifications
+        (user_id, ticket_id, type, message, is_read, event_type, actor_id, comment_id, payload, created_at)
+        VALUES (%s, %s, %s, %s, false, %s, %s, %s, %s, NOW())
+    """, (
+        user_id, ticket_id, event_type, message,
+        event_type, actor_id, comment_id,
+        json.dumps(payload) if payload else None,
+    ))
 
 BITRIX_PORTAL_URL = os.environ.get('BITRIX24_PORTAL_URL', '').rstrip('/')
 BITRIX_BOT_ID = os.environ.get('BITRIX_BOT_ID', '')
@@ -65,7 +126,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
     cur.execute(f"""
         SELECT 
             tc.id, tc.ticket_id, tc.user_id, tc.comment,
-            tc.is_internal, tc.created_at, tc.is_read,
+            tc.is_internal, tc.created_at,
             u.username as user_name,
             u.full_name as user_full_name,
             u.photo_url as user_photo_url
@@ -114,7 +175,7 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         INSERT INTO {SCHEMA}.ticket_comments 
         (ticket_id, user_id, comment, is_internal, created_at)
         VALUES (%s, %s, %s, %s, NOW())
-        RETURNING id, ticket_id, user_id, comment, is_internal, created_at, is_read
+        RETURNING id, ticket_id, user_id, comment, is_internal, created_at
     """, (data.ticket_id, user_id, data.comment, data.is_internal))
 
     comment = dict(cur.fetchone())
@@ -169,6 +230,43 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
             SET updated_at = NOW()
             WHERE id = %s
         """, (data.ticket_id,))
+
+    try:
+        comment_id = comment.get('id')
+        comment_text = data.comment or ''
+        preview = (comment_text[:120] + '...') if len(comment_text) > 120 else comment_text
+
+        mentioned = _resolve_mentions(cur, comment_text)
+        mentioned_ids = {m['id'] for m in mentioned if m['id'] != user_id}
+
+        for m_id in mentioned_ids:
+            _add_watcher_if_missing(cur, data.ticket_id, m_id)
+
+        if not data.is_internal:
+            participants = _participants(cur, data.ticket_id, ticket)
+            recipients = participants - {user_id} - mentioned_ids
+            for rid in recipients:
+                _create_notification(
+                    cur, rid, data.ticket_id, 'comment', user_id,
+                    f'Новый комментарий: {preview}',
+                    comment_id=comment_id,
+                )
+
+        for m_id in mentioned_ids:
+            _create_notification(
+                cur, m_id, data.ticket_id, 'mention', user_id,
+                f'Вас упомянули в комментарии: {preview}',
+                comment_id=comment_id,
+            )
+    except Exception as notify_err:
+        import traceback
+        print(f"[notifications] Error: {notify_err}\n{traceback.format_exc()}")
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.ticket_views (user_id, ticket_id, last_seen_at)
+        VALUES (%s, %s, NOW())
+        ON CONFLICT (user_id, ticket_id) DO UPDATE SET last_seen_at = NOW()
+    """, (user_id, data.ticket_id))
 
     conn.commit()
 

@@ -2,9 +2,44 @@
 API для работы с заявками (tickets) и категориями сервисов (service_categories)
 """
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Set, List
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
+
+
+def _ticket_participants(cur, ticket_id: int, created_by: Optional[int] = None,
+                          assigned_to: Optional[int] = None) -> Set[int]:
+    """Возвращает все user_id, которые участвуют в заявке"""
+    ids: Set[int] = set()
+    if created_by:
+        ids.add(created_by)
+    if assigned_to:
+        ids.add(assigned_to)
+
+    cur.execute(f"SELECT user_id FROM {SCHEMA}.ticket_watchers WHERE ticket_id = %s", (ticket_id,))
+    ids.update(r['user_id'] for r in cur.fetchall())
+
+    cur.execute(f"SELECT approver_id FROM {SCHEMA}.ticket_approvers WHERE ticket_id = %s", (ticket_id,))
+    ids.update(r['approver_id'] for r in cur.fetchall())
+    return ids
+
+
+def _notify(cur, recipients: Set[int], actor_id: int, ticket_id: int,
+            event_type: str, message: str, payload: Optional[dict] = None) -> None:
+    """Создаёт notifications для списка получателей (исключая актора)"""
+    targets = [uid for uid in recipients if uid and uid != actor_id]
+    if not targets:
+        return
+    payload_json = json.dumps(payload) if payload else None
+    for uid in targets:
+        try:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.notifications
+                (user_id, ticket_id, type, message, is_read, event_type, actor_id, payload, created_at)
+                VALUES (%s, %s, %s, %s, false, %s, %s, %s, NOW())
+            """, (uid, ticket_id, event_type, message, event_type, actor_id, payload_json))
+        except Exception as e:
+            print(f"[notify] failed for user {uid}: {e}")
 from priorities_handler import handle_ticket_priorities
 from sla_handler import handle_sla, handle_sla_priority_times
 from sla_group_budgets_handler import handle_sla_group_budgets
@@ -276,7 +311,16 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                        SELECT (tclast.user_id = t.created_by) FROM {SCHEMA}.ticket_comments tclast
                        WHERE tclast.ticket_id = t.id AND tclast.is_internal = false
                        ORDER BY tclast.created_at DESC LIMIT 1
-                   ) AS client_replied
+                   ) AS client_replied,
+                   (
+                       SELECT COUNT(*) FROM {SCHEMA}.notifications nu
+                       WHERE nu.ticket_id = t.id AND nu.user_id = {int(user_id)} AND nu.is_read = false
+                   ) AS unread_count,
+                   (
+                       SELECT COUNT(*) FROM {SCHEMA}.notifications nu2
+                       WHERE nu2.ticket_id = t.id AND nu2.user_id = {int(user_id)}
+                         AND nu2.is_read = false AND nu2.event_type = 'mention'
+                   ) AS unread_mentions
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id
@@ -465,7 +509,28 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 except Exception as e:
                     print(f"[TICKETS] Error saving custom field {field_id}: {e}")
                     # Продолжаем, не критично
-        
+
+        # Создатель «уже видел» свою заявку
+        try:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_views (user_id, ticket_id, last_seen_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (user_id, ticket_id) DO UPDATE SET last_seen_at = NOW()
+            """, (payload['user_id'], ticket['id']))
+        except Exception as e:
+            print(f"[TICKETS] ticket_views init error: {e}")
+
+        # Уведомляем назначенного исполнителя о новой заявке
+        try:
+            participants = _ticket_participants(cur, ticket['id'],
+                                                created_by=ticket.get('created_by'),
+                                                assigned_to=ticket.get('assigned_to'))
+            preview = (data.title or '')[:120]
+            _notify(cur, participants, payload['user_id'], ticket['id'],
+                    'assignment_change', f'Новая заявка: {preview}')
+        except Exception as e:
+            print(f"[TICKETS] notify on create error: {e}")
+
         conn.commit()
         
         # Загружаем связанные сервисы для ответа
@@ -670,7 +735,61 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     INSERT INTO {SCHEMA}.ticket_custom_field_values (ticket_id, field_id, value)
                     VALUES (%s, %s, %s)
                 """, (ticket_id, int(field_id), value))
-        
+
+        # === Уведомления об изменениях ===
+        try:
+            new_assigned_to = body.get('assigned_to', old_ticket.get('assigned_to'))
+            participants = _ticket_participants(
+                cur, ticket_id,
+                created_by=ticket.get('created_by'),
+                assigned_to=new_assigned_to,
+            )
+            actor_id = payload['user_id']
+            ticket_title = ticket.get('title') or ''
+            preview = ticket_title[:80]
+
+            for field_name, old_value, new_value in history_entries:
+                if field_name == 'status_id':
+                    cur.execute(
+                        f"SELECT name, is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s",
+                        (body.get('status_id'),),
+                    )
+                    new_st = cur.fetchone()
+                    new_st_name = new_st['name'] if new_st else new_value
+                    is_acceptance = bool(new_st and new_st.get('is_closed'))
+                    event_type = 'acceptance' if is_acceptance else 'status_change'
+                    msg = f'Статус «{new_st_name}» — {preview}'
+                    _notify(cur, participants, actor_id, ticket_id, event_type, msg,
+                            payload={'old': old_value, 'new': new_value})
+
+                elif field_name == 'due_date':
+                    _notify(cur, participants, actor_id, ticket_id,
+                            'deadline_change',
+                            f'Изменён срок выполнения — {preview}',
+                            payload={'old': old_value, 'new': new_value})
+
+                elif field_name == 'assigned_to':
+                    targets = participants.copy()
+                    if body.get('assigned_to'):
+                        targets.add(body['assigned_to'])
+                    _notify(cur, targets, actor_id, ticket_id,
+                            'assignment_change',
+                            f'Сменился ответственный — {preview}',
+                            payload={'old': old_value, 'new': new_value})
+        except Exception as notify_err:
+            import traceback
+            print(f"[TICKETS] notify on update error: {notify_err}\n{traceback.format_exc()}")
+
+        # Актор «увидел» изменение (его собственное)
+        try:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_views (user_id, ticket_id, last_seen_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (user_id, ticket_id) DO UPDATE SET last_seen_at = NOW()
+            """, (payload['user_id'], ticket_id))
+        except Exception as e:
+            print(f"[TICKETS] ticket_views update error: {e}")
+
         conn.commit()
         
         if 'assigned_to' in body and body['assigned_to'] and body['assigned_to'] != old_ticket.get('assigned_to'):
