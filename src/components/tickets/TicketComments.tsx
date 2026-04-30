@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useRef, useEffect } from 'react';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import { useMentionSearch } from '@/hooks/useMentionSearch';
 
 interface Comment {
   id: number;
@@ -181,10 +182,31 @@ const TicketComments = ({
     }
   };
 
-  const filteredUsers = availableUsers.filter(user =>
-    user.name.toLowerCase().includes(mentionSearch.toLowerCase()) &&
-    user.id !== currentUserId
+  const { users: searchedUsers, loading: searchingUsers } = useMentionSearch(
+    mentionSearch,
+    showMentions,
   );
+
+  const remoteAsLocal: User[] = searchedUsers
+    .filter((u) => u.id !== currentUserId)
+    .map((u) => ({
+      id: u.id,
+      name: u.full_name || u.username,
+      email: u.email || '',
+    }));
+
+  const localFiltered = availableUsers.filter(
+    (user) =>
+      user.name.toLowerCase().includes(mentionSearch.toLowerCase()) &&
+      user.id !== currentUserId,
+  );
+
+  const seen = new Set<number>();
+  const filteredUsers: User[] = [...remoteAsLocal, ...localFiltered].filter((u) => {
+    if (seen.has(u.id)) return false;
+    seen.add(u.id);
+    return true;
+  });
 
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
@@ -277,12 +299,23 @@ const TicketComments = ({
                 className="min-h-[90px] lg:min-h-[120px] resize-none pr-10 text-sm"
               />
               
-              {showMentions && filteredUsers.length > 0 && (
-                <div 
+              {showMentions && (
+                <div
                   ref={mentionsRef}
                   className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-popover border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto"
                 >
-                  {filteredUsers.map(user => (
+                  {searchingUsers && filteredUsers.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                      <Icon name="Loader2" size={14} className="animate-spin" />
+                      Поиск пользователей...
+                    </div>
+                  )}
+                  {!searchingUsers && filteredUsers.length === 0 && mentionSearch && (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      Никого не найдено
+                    </div>
+                  )}
+                  {filteredUsers.map((user) => (
                     <button
                       key={user.id}
                       onClick={() => handleMention(user)}

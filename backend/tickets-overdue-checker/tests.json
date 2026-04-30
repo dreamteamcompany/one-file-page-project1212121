@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Cron run returns 200",
+      "method": "POST",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

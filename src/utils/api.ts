@@ -14,6 +14,7 @@ const CLASSIFY_TICKET_API = 'https://functions.poehali.dev/b1d49417-fb02-4b11-96
 export const UPLOAD_FILE_URL = 'https://functions.poehali.dev/3d20e803-c39e-4d0f-84c2-6c5eb7bb1af7';
 export const TICKETS_COUNTERS_URL = 'https://functions.poehali.dev/bcc93198-ef8f-4b7f-b1b7-25ed7616922c';
 export const TICKETS_MARK_READ_URL = 'https://functions.poehali.dev/91bd6009-4bdd-4161-9e0d-ea3a03bf70c0';
+export const USERS_SEARCH_URL = 'https://functions.poehali.dev/f8b49a39-1f3e-4195-9d9f-521b0cfca73d';
 
 const ENDPOINT_MAP: Record<string, string> = {
   'login': AUTH_API,
