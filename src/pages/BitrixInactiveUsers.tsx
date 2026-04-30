@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,10 +21,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { apiFetch } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import func2url from '../../backend/func2url.json';
 
 const API_URL = func2url['bitrix-inactive-users'];
@@ -36,6 +47,7 @@ interface InactiveUser {
   position: string;
   last_login: string | null;
   days_inactive: number | null;
+  is_excluded?: boolean;
 }
 
 interface ApiResponse {
@@ -43,6 +55,27 @@ interface ApiResponse {
   inactive_count: number;
   days_threshold: number;
   users: InactiveUser[];
+  exceptions_count?: number;
+}
+
+interface ExceptionItem {
+  id: number;
+  bitrix_user_id: string;
+  full_name: string;
+  email: string;
+  position: string;
+  reason: string;
+  added_by_user_id: number | null;
+  added_by_name: string;
+  added_at: string | null;
+}
+
+interface BitrixSearchUser {
+  id: string;
+  name: string;
+  email: string;
+  position: string;
+  already_excluded: boolean;
 }
 
 type DeactivateMode = 'all' | 'never_logged' | 'long_inactive';
@@ -56,6 +89,10 @@ const MODE_LABELS: Record<DeactivateMode, string> = {
 const BitrixInactiveUsers = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasSystemRole } = useAuth();
+  const isAdmin = hasSystemRole('admin');
+
+  const [tab, setTab] = useState<'inactive' | 'exceptions'>('inactive');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [deactivating, setDeactivating] = useState(false);
@@ -63,6 +100,20 @@ const BitrixInactiveUsers = () => {
   const [days, setDays] = useState(30);
   const [search, setSearch] = useState('');
   const [confirmMode, setConfirmMode] = useState<DeactivateMode | null>(null);
+
+  const [exceptions, setExceptions] = useState<ExceptionItem[]>([]);
+  const [exceptionsLoading, setExceptionsLoading] = useState(false);
+  const [excSearch, setExcSearch] = useState('');
+
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [bxQuery, setBxQuery] = useState('');
+  const [bxResults, setBxResults] = useState<BitrixSearchUser[]>([]);
+  const [bxSearching, setBxSearching] = useState(false);
+  const [selectedBx, setSelectedBx] = useState<BitrixSearchUser | null>(null);
+  const [reason, setReason] = useState('');
+  const [savingException, setSavingException] = useState(false);
+
+  const [removeTarget, setRemoveTarget] = useState<ExceptionItem | null>(null);
 
   const loadData = async (d: number) => {
     setLoading(true);
@@ -82,19 +133,34 @@ const BitrixInactiveUsers = () => {
     }
   };
 
+  const loadExceptions = async () => {
+    setExceptionsLoading(true);
+    try {
+      const res = await apiFetch(`${API_URL}?action=exceptions`);
+      if (res.ok) {
+        const json = await res.json();
+        setExceptions(json.exceptions || []);
+      }
+    } finally {
+      setExceptionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadData(days);
+    loadExceptions();
   }, []);
 
   const handleSearch = () => {
     loadData(days);
   };
 
-  const neverLoggedCount = data?.users.filter(u => u.days_inactive === null).length || 0;
-  const longInactiveCount = data?.users.filter(u => u.days_inactive !== null).length || 0;
+  const neverLoggedCount = data?.users.filter(u => u.days_inactive === null && !u.is_excluded).length || 0;
+  const longInactiveCount = data?.users.filter(u => u.days_inactive !== null && !u.is_excluded).length || 0;
+  const visibleInactiveCount = data?.users.filter(u => !u.is_excluded).length || 0;
 
   const getConfirmCount = (mode: DeactivateMode) => {
-    if (mode === 'all') return data?.inactive_count || 0;
+    if (mode === 'all') return visibleInactiveCount;
     if (mode === 'never_logged') return neverLoggedCount;
     return longInactiveCount;
   };
@@ -109,7 +175,11 @@ const BitrixInactiveUsers = () => {
       });
       if (res.ok) {
         const result = await res.json();
-        toast({ title: `Деактивировано: ${result.deactivated} из ${result.total_requested}` });
+        let title = `Деактивировано: ${result.deactivated} из ${result.total_requested}`;
+        if (result.skipped_excluded) {
+          title += ` (пропущено из исключений: ${result.skipped_excluded})`;
+        }
+        toast({ title });
         if (result.errors?.length > 0) {
           toast({ title: `Ошибки: ${result.errors.length}`, variant: 'destructive' });
         }
@@ -125,11 +195,116 @@ const BitrixInactiveUsers = () => {
     }
   };
 
+  const handleAddToExceptions = async (user: InactiveUser) => {
+    try {
+      const res = await apiFetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'add_exception',
+          bitrix_user_id: user.id,
+          full_name: user.name,
+          email: user.email,
+          position: user.position,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Добавлен в исключения' });
+        loadData(days);
+        loadExceptions();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: err.error || 'Ошибка', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Не удалось подключиться', variant: 'destructive' });
+    }
+  };
+
+  const handleRemoveException = async () => {
+    if (!removeTarget) return;
+    try {
+      const res = await apiFetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'remove_exception',
+          bitrix_user_id: removeTarget.bitrix_user_id,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Удалено из исключений' });
+        loadExceptions();
+        loadData(days);
+      } else {
+        toast({ title: 'Ошибка', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Не удалось подключиться', variant: 'destructive' });
+    } finally {
+      setRemoveTarget(null);
+    }
+  };
+
+  const searchBitrix = async () => {
+    if (!bxQuery.trim()) return;
+    setBxSearching(true);
+    try {
+      const res = await apiFetch(`${API_URL}?action=search_bitrix&q=${encodeURIComponent(bxQuery)}`);
+      if (res.ok) {
+        const json = await res.json();
+        setBxResults(json.users || []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: err.error || 'Ошибка поиска', variant: 'destructive' });
+      }
+    } finally {
+      setBxSearching(false);
+    }
+  };
+
+  const handleSaveException = async () => {
+    if (!selectedBx) return;
+    setSavingException(true);
+    try {
+      const res = await apiFetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'add_exception',
+          bitrix_user_id: selectedBx.id,
+          full_name: selectedBx.name,
+          email: selectedBx.email,
+          position: selectedBx.position,
+          reason,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Добавлен в исключения' });
+        setAddModalOpen(false);
+        setBxQuery('');
+        setBxResults([]);
+        setSelectedBx(null);
+        setReason('');
+        loadExceptions();
+        loadData(days);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: err.error || 'Ошибка', variant: 'destructive' });
+      }
+    } finally {
+      setSavingException(false);
+    }
+  };
+
   const filtered = data?.users.filter(u => {
     if (!search) return true;
     const q = search.toLowerCase();
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.position || '').toLowerCase().includes(q);
   }) || [];
+
+  const filteredExceptions = exceptions.filter(e => {
+    if (!excSearch) return true;
+    const q = excSearch.toLowerCase();
+    return e.full_name.toLowerCase().includes(q) || (e.email || '').toLowerCase().includes(q) || (e.position || '').toLowerCase().includes(q);
+  });
 
   const getDaysBadge = (daysInactive: number | null) => {
     if (daysInactive === null) {
@@ -158,7 +333,7 @@ const BitrixInactiveUsers = () => {
             </p>
           </div>
         </div>
-        {data && data.inactive_count > 0 && (
+        {tab === 'inactive' && data && visibleInactiveCount > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="destructive" size="sm" className="gap-2" disabled={deactivating}>
@@ -174,7 +349,7 @@ const BitrixInactiveUsers = () => {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setConfirmMode('all')} className="gap-2">
                 <Icon name="Users" size={14} />
-                Всех ({data.inactive_count})
+                Всех ({visibleInactiveCount})
               </DropdownMenuItem>
               {neverLoggedCount > 0 && (
                 <DropdownMenuItem onClick={() => setConfirmMode('never_logged')} className="gap-2">
@@ -191,6 +366,12 @@ const BitrixInactiveUsers = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {tab === 'exceptions' && isAdmin && (
+          <Button size="sm" className="gap-2" onClick={() => setAddModalOpen(true)}>
+            <Icon name="Plus" size={16} />
+            Добавить в исключения
+          </Button>
+        )}
       </header>
 
       <AlertDialog open={confirmMode !== null} onOpenChange={(open) => { if (!open) setConfirmMode(null); }}>
@@ -202,6 +383,8 @@ const BitrixInactiveUsers = () => {
                 <>
                   Будет деактивировано <strong>{getConfirmCount(confirmMode)}</strong> пользователей
                   ({MODE_LABELS[confirmMode].toLowerCase()}).
+                  <br /><br />
+                  Пользователи из списка исключений будут пропущены.
                   <br /><br />
                   Учётные записи будут отключены в Битрикс24. Это действие можно отменить вручную через админку Битрикса.
                 </>
@@ -225,124 +408,337 @@ const BitrixInactiveUsers = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Не заходили более</span>
-          <Input
-            type="number"
-            value={days}
-            onChange={e => setDays(parseInt(e.target.value) || 30)}
-            className="w-20"
-            min={1}
-          />
-          <span className="text-sm text-muted-foreground">дней</span>
-          <Button size="sm" onClick={handleSearch} disabled={loading}>
-            {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Search" size={16} />}
-          </Button>
-        </div>
-        <Input
-          placeholder="Поиск по имени, email, должности..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-      </div>
+      <AlertDialog open={removeTarget !== null} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Убрать из исключений?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeTarget && (
+                <>Пользователь <strong>{removeTarget.full_name}</strong> снова сможет попасть под автоблокировку.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoveException}>Убрать</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {data && !loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Icon name="Users" size={20} className="text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{data.total_active_users}</p>
-                  <p className="text-xs text-muted-foreground">Всего активных</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                  <Icon name="UserX" size={20} className="text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{data.inactive_count}</p>
-                  <p className="text-xs text-muted-foreground">Неактивных ({data.days_threshold}+ дн.)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <Icon name="UserCheck" size={20} className="text-green-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{data.total_active_users - data.inactive_count}</p>
-                  <p className="text-xs text-muted-foreground">Активных</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Добавить в исключения</DialogTitle>
+            <DialogDescription>
+              Найдите сотрудника в Битрикс24 и добавьте его в список исключений.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Фамилия или имя..."
+                value={bxQuery}
+                onChange={e => setBxQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') searchBitrix(); }}
+              />
+              <Button onClick={searchBitrix} disabled={bxSearching || !bxQuery.trim()}>
+                {bxSearching ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Search" size={16} />}
+              </Button>
+            </div>
 
-      {error && (
-        <Card className="mb-6 border-destructive">
-          <CardContent className="pt-4 pb-4 text-destructive text-sm">{error}</CardContent>
-        </Card>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Icon name="Loader2" size={32} className="animate-spin text-primary" />
-        </div>
-      ) : (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              Найдено: {filtered.length}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filtered.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Icon name="CheckCircle" size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Все пользователи активны</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {filtered.map(u => (
-                  <div key={u.id} className="p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{u.name}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        {u.email && <span className="text-xs text-muted-foreground">{u.email}</span>}
-                        {u.position && (
-                          <Badge variant="secondary" className="text-xs">{u.position}</Badge>
-                        )}
-                      </div>
+            {bxResults.length > 0 && (
+              <div className="max-h-60 overflow-y-auto border rounded-md divide-y">
+                {bxResults.map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => !u.already_excluded && setSelectedBx(u)}
+                    disabled={u.already_excluded}
+                    className={`w-full text-left p-2 text-sm hover:bg-muted/50 transition-colors ${
+                      selectedBx?.id === u.id ? 'bg-primary/10' : ''
+                    } ${u.already_excluded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="font-medium">{u.name}</div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
+                      {u.email && <span>{u.email}</span>}
+                      {u.position && <span>· {u.position}</span>}
+                      {u.already_excluded && <Badge variant="secondary" className="text-xs">Уже в исключениях</Badge>}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {getDaysBadge(u.days_inactive)}
-                      {u.last_login && (
-                        <span className="text-xs text-muted-foreground hidden sm:inline">
-                          {new Date(u.last_login).toLocaleDateString('ru-RU')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
+
+            {selectedBx && (
+              <div className="p-3 rounded-md bg-muted/40 border">
+                <p className="text-xs text-muted-foreground mb-1">Выбран:</p>
+                <p className="font-medium text-sm">{selectedBx.name}</p>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Причина (необязательно)</label>
+              <Textarea
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder="Например: в декрете, удалённый сотрудник, директор..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>Отмена</Button>
+            <Button onClick={handleSaveException} disabled={!selectedBx || savingException}>
+              {savingException ? <Icon name="Loader2" size={16} className="animate-spin mr-2" /> : null}
+              Добавить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'inactive' | 'exceptions')} className="mb-4">
+        <TabsList>
+          <TabsTrigger value="inactive" className="gap-2">
+            <Icon name="UserX" size={14} />
+            Неактивные {data ? `(${data.inactive_count})` : ''}
+          </TabsTrigger>
+          <TabsTrigger value="exceptions" className="gap-2">
+            <Icon name="ShieldCheck" size={14} />
+            Исключения ({exceptions.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inactive">
+          <div className="flex flex-wrap gap-3 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Не заходили более</span>
+              <Input
+                type="number"
+                value={days}
+                onChange={e => setDays(parseInt(e.target.value) || 30)}
+                className="w-20"
+                min={1}
+              />
+              <span className="text-sm text-muted-foreground">дней</span>
+              <Button size="sm" onClick={handleSearch} disabled={loading}>
+                {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Search" size={16} />}
+              </Button>
+            </div>
+            <Input
+              placeholder="Поиск по имени, email, должности..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+
+          {data && !loading && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Icon name="Users" size={20} className="text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{data.total_active_users}</p>
+                      <p className="text-xs text-muted-foreground">Всего активных</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                      <Icon name="UserX" size={20} className="text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{data.inactive_count}</p>
+                      <p className="text-xs text-muted-foreground">Неактивных ({data.days_threshold}+ дн.)</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <Icon name="ShieldCheck" size={20} className="text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{exceptions.length}</p>
+                      <p className="text-xs text-muted-foreground">В исключениях</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <Icon name="UserCheck" size={20} className="text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{data.total_active_users - data.inactive_count}</p>
+                      <p className="text-xs text-muted-foreground">Активных</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {error && (
+            <Card className="mb-6 border-destructive">
+              <CardContent className="pt-4 pb-4 text-destructive text-sm">{error}</CardContent>
+            </Card>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Icon name="Loader2" size={32} className="animate-spin text-primary" />
+            </div>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  Найдено: {filtered.length}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {filtered.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Icon name="CheckCircle" size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Все пользователи активны</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filtered.map(u => (
+                      <div
+                        key={u.id}
+                        className={`p-3 rounded-lg border transition-colors flex items-center justify-between gap-3 ${
+                          u.is_excluded ? 'bg-emerald-50/40 border-emerald-200' : 'bg-muted/20 hover:bg-muted/40'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium">{u.name}</p>
+                            {u.is_excluded && (
+                              <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 bg-emerald-50 gap-1">
+                                <Icon name="ShieldCheck" size={12} />
+                                В исключениях
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {u.email && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                            {u.position && (
+                              <Badge variant="secondary" className="text-xs">{u.position}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {getDaysBadge(u.days_inactive)}
+                          {u.last_login && (
+                            <span className="text-xs text-muted-foreground hidden sm:inline">
+                              {new Date(u.last_login).toLocaleDateString('ru-RU')}
+                            </span>
+                          )}
+                          {isAdmin && !u.is_excluded && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => handleAddToExceptions(u)}
+                              title="Добавить в исключения"
+                            >
+                              <Icon name="ShieldCheck" size={14} />
+                              <span className="hidden md:inline">В исключения</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="exceptions">
+          <div className="flex flex-wrap gap-3 mb-6">
+            <Input
+              placeholder="Поиск по имени, email, должности..."
+              value={excSearch}
+              onChange={e => setExcSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+
+          {exceptionsLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Icon name="Loader2" size={32} className="animate-spin text-primary" />
+            </div>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  В списке: {filteredExceptions.length}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {filteredExceptions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Icon name="ShieldOff" size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Список исключений пуст</p>
+                    {isAdmin && (
+                      <Button size="sm" variant="outline" className="mt-3 gap-2" onClick={() => setAddModalOpen(true)}>
+                        <Icon name="Plus" size={14} />
+                        Добавить
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredExceptions.map(e => (
+                      <div key={e.id} className="p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{e.full_name}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {e.email && <span className="text-xs text-muted-foreground">{e.email}</span>}
+                            {e.position && (
+                              <Badge variant="secondary" className="text-xs">{e.position}</Badge>
+                            )}
+                          </div>
+                          {e.reason && (
+                            <p className="text-xs text-muted-foreground mt-1 italic">{e.reason}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Добавил: {e.added_by_name || '—'}
+                            {e.added_at && ` · ${new Date(e.added_at).toLocaleDateString('ru-RU')}`}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setRemoveTarget(e)}
+                          >
+                            <Icon name="Trash2" size={14} />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </PageLayout>
   );
 };
