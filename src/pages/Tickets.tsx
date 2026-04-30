@@ -19,6 +19,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
 import TicketsSearch from '@/components/tickets/TicketsSearch';
 import TicketsViewToggle from '@/components/tickets/TicketsViewToggle';
+import TicketCountersBar from '@/components/tickets/TicketCountersBar';
 import TicketForm from '@/components/tickets/TicketForm';
 import TicketsList from '@/components/tickets/TicketsList';
 import TicketsKanban from '@/components/tickets/TicketsKanban';
@@ -127,6 +128,8 @@ const Tickets = () => {
           hideWaiting={hideWaiting}
           onToggleHideWaiting={toggleHideWaiting}
         />
+
+          <TicketCountersBar />
 
           {!showArchived && !showHidden && <div className="w-fit">
             <TicketForm

@@ -42,11 +42,15 @@ interface Ticket {
   custom_fields?: CustomField[];
   customer_name?: string;
   creator_name?: string;
+  creator_photo_url?: string;
   assigned_to_name?: string;
   assignee_name?: string;
+  assignee_photo_url?: string;
   assigned_to?: number;
   created_by?: number;
   unread_comments?: number;
+  unread_count?: number;
+  unread_mentions?: number;
   client_replied?: boolean;
   ticket_service?: TicketService;
   services?: Service[];
@@ -249,10 +253,16 @@ const TicketsList = ({
                         Критично
                       </Badge>
                     )}
-                    {ticket.unread_comments && ticket.unread_comments > 0 && (
+                    {!!ticket.unread_mentions && ticket.unread_mentions > 0 && (
+                      <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-purple-500 hover:bg-purple-600 text-white animate-pulse">
+                        <Icon name="AtSign" size={12} />
+                        {ticket.unread_mentions}
+                      </Badge>
+                    )}
+                    {!!ticket.unread_count && ticket.unread_count > 0 && (
                       <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
-                        <Icon name="MessageCircle" size={12} />
-                        {ticket.unread_comments}
+                        <Icon name="Bell" size={12} />
+                        {ticket.unread_count}
                       </Badge>
                     )}
                     {ticket.client_replied && ticket.assigned_to === currentUserId && (

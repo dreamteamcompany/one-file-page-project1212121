@@ -37,6 +37,7 @@ interface Ticket {
   assigned_to?: number;
   assignee_name?: string;
   assignee_email?: string;
+  assignee_photo_url?: string;
   due_date?: string;
   created_at?: string;
   updated_at?: string;

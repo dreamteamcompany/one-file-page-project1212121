@@ -53,7 +53,12 @@ const NotificationBell = () => {
   useEffect(() => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
+    const onRefresh = () => loadNotifications();
+    window.addEventListener('notifications:refresh', onRefresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notifications:refresh', onRefresh);
+    };
   }, [token, user]);
 
   const handleMarkAsRead = async (notificationId: number) => {
@@ -123,7 +128,20 @@ const NotificationBell = () => {
       case 'approval_approved':
         return { name: 'CheckCircle', color: 'text-blue-500' };
       case 'comment_added':
+      case 'comment':
         return { name: 'MessageCircle', color: 'text-yellow-500' };
+      case 'mention':
+        return { name: 'AtSign', color: 'text-purple-500' };
+      case 'status_change':
+        return { name: 'Activity', color: 'text-blue-500' };
+      case 'deadline_change':
+        return { name: 'Clock', color: 'text-orange-500' };
+      case 'assignment_change':
+        return { name: 'UserCheck', color: 'text-cyan-500' };
+      case 'acceptance':
+        return { name: 'CheckCircle2', color: 'text-emerald-500' };
+      case 'overdue':
+        return { name: 'AlertTriangle', color: 'text-red-500' };
       default:
         return { name: 'Bell', color: 'text-gray-500' };
     }

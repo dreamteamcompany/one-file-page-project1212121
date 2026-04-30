@@ -10,6 +10,7 @@ import WaitingToggleButton from '@/components/tickets/sidebar/WaitingToggleButto
 import ConfirmationOverlay from '@/components/tickets/ConfirmationOverlay';
 import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
+import { useTicketMarkRead } from '@/hooks/useTicketMarkRead';
 
 const TicketDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -52,6 +53,17 @@ const TicketDetails = () => {
     handleAssignGroup,
     handleUpdateDueDate,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
+
+  const { markRead } = useTicketMarkRead();
+
+  useEffect(() => {
+    if (id) {
+      const tid = parseInt(id, 10);
+      if (!Number.isNaN(tid) && tid > 0) {
+        markRead(tid);
+      }
+    }
+  }, [id, markRead]);
 
   const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
 
