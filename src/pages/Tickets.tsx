@@ -52,11 +52,9 @@ const Tickets = () => {
     hiddenCount,
     hideWaiting,
     needsMyReply,
-    needsMyReplyCount,
     toggleArchived,
     toggleHidden,
     toggleHideWaiting,
-    toggleNeedsMyReply,
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
@@ -131,8 +129,6 @@ const Tickets = () => {
           hideWaiting={hideWaiting}
           onToggleHideWaiting={toggleHideWaiting}
           needsMyReply={needsMyReply}
-          needsMyReplyCount={needsMyReplyCount}
-          onToggleNeedsMyReply={toggleNeedsMyReply}
         />
 
           {!showArchived && !showHidden && <div className="w-fit">
