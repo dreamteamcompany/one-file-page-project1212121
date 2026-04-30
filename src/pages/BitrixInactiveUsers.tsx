@@ -294,22 +294,41 @@ const BitrixInactiveUsers = () => {
     }
   };
 
-  const searchBitrix = async () => {
-    if (!bxQuery.trim()) return;
-    setBxSearching(true);
-    try {
-      const res = await apiFetch(`${API_URL}?action=search_bitrix&q=${encodeURIComponent(bxQuery)}`);
-      if (res.ok) {
-        const json = await res.json();
-        setBxResults(json.users || []);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast({ title: err.error || 'Ошибка поиска', variant: 'destructive' });
-      }
-    } finally {
+  useEffect(() => {
+    if (!addModalOpen) return;
+    const q = bxQuery.trim();
+    if (q.length < 2) {
+      setBxResults([]);
       setBxSearching(false);
+      return;
     }
-  };
+
+    setBxSearching(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiFetch(
+          `${API_URL}?action=search_bitrix&q=${encodeURIComponent(q)}`,
+          { signal: controller.signal },
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setBxResults(json.users || []);
+        }
+      } catch (e) {
+        if ((e as { name?: string })?.name !== 'AbortError') {
+          toast({ title: 'Ошибка поиска', variant: 'destructive' });
+        }
+      } finally {
+        setBxSearching(false);
+      }
+    }, 400);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [bxQuery, addModalOpen]);
 
   const handleSaveException = async () => {
     if (!selectedBx) return;
@@ -475,7 +494,15 @@ const BitrixInactiveUsers = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+      <Dialog open={addModalOpen} onOpenChange={(open) => {
+        setAddModalOpen(open);
+        if (!open) {
+          setBxQuery('');
+          setBxResults([]);
+          setSelectedBx(null);
+          setReason('');
+        }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Добавить в исключения</DialogTitle>
@@ -484,40 +511,64 @@ const BitrixInactiveUsers = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="flex gap-2">
+            <div className="relative">
+              <Icon
+                name="Search"
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
               <Input
-                placeholder="Фамилия или имя..."
+                placeholder="Начните вводить фамилию, имя, email..."
                 value={bxQuery}
                 onChange={e => setBxQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') searchBitrix(); }}
+                className="pl-9 pr-9"
+                autoFocus
               />
-              <Button onClick={searchBitrix} disabled={bxSearching || !bxQuery.trim()}>
-                {bxSearching ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Search" size={16} />}
-              </Button>
+              {bxSearching && (
+                <Icon
+                  name="Loader2"
+                  size={16}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground"
+                />
+              )}
             </div>
 
-            {bxResults.length > 0 && (
-              <div className="max-h-60 overflow-y-auto border rounded-md divide-y">
-                {bxResults.map(u => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => !u.already_excluded && setSelectedBx(u)}
-                    disabled={u.already_excluded}
-                    className={`w-full text-left p-2 text-sm hover:bg-muted/50 transition-colors ${
-                      selectedBx?.id === u.id ? 'bg-primary/10' : ''
-                    } ${u.already_excluded ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <div className="font-medium">{u.name}</div>
-                    <div className="text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
-                      {u.email && <span>{u.email}</span>}
-                      {u.position && <span>· {u.position}</span>}
-                      {u.already_excluded && <Badge variant="secondary" className="text-xs">Уже в исключениях</Badge>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="max-h-60 overflow-y-auto border rounded-md min-h-[60px]">
+              {bxQuery.trim().length < 2 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Введите минимум 2 символа для поиска
+                </div>
+              ) : bxSearching && bxResults.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Идёт поиск...
+                </div>
+              ) : bxResults.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Никого не нашли
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {bxResults.map(u => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => !u.already_excluded && setSelectedBx(u)}
+                      disabled={u.already_excluded}
+                      className={`w-full text-left p-2 text-sm hover:bg-muted/50 transition-colors ${
+                        selectedBx?.id === u.id ? 'bg-primary/10' : ''
+                      } ${u.already_excluded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="font-medium">{u.name}</div>
+                      <div className="text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
+                        {u.email && <span>{u.email}</span>}
+                        {u.position && <span>· {u.position}</span>}
+                        {u.already_excluded && <Badge variant="secondary" className="text-xs">Уже в исключениях</Badge>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {selectedBx && (
               <div className="p-3 rounded-md bg-muted/40 border">
