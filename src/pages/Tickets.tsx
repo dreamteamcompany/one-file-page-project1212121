@@ -24,7 +24,6 @@ import TicketsList from '@/components/tickets/TicketsList';
 import TicketsKanban from '@/components/tickets/TicketsKanban';
 import BulkActionsBar from '@/components/tickets/BulkActionsBar';
 import { apiFetch } from '@/utils/api';
-import type { Ticket, CustomField } from '@/types';
 
 const Tickets = () => {
   const { user, hasPermission } = useAuth();
@@ -52,7 +51,6 @@ const Tickets = () => {
     showHidden,
     hiddenCount,
     hideWaiting,
-    needsMyReply,
     toggleArchived,
     toggleHidden,
     toggleHideWaiting,
@@ -80,7 +78,6 @@ const Tickets = () => {
   const {
     handleChangeStatus,
     handleChangePriority,
-    handleAssign,
     handleDelete,
   } = useBulkTicketOperations(selectedTicketIds, () => loadTickets(page), clearSelection);
   
@@ -129,7 +126,6 @@ const Tickets = () => {
           hiddenCount={hiddenCount}
           hideWaiting={hideWaiting}
           onToggleHideWaiting={toggleHideWaiting}
-          needsMyReply={needsMyReply}
         />
 
           {!showArchived && !showHidden && <div className="w-fit">
