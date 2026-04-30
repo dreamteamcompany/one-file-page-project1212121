@@ -341,27 +341,55 @@ def search_bitrix_users(query):
     q = (query or '').strip()
     if not q:
         return []
-    payload = {'FILTER': {'%NAME': q}}
-    r = requests.post(
-        f"{BITRIX_WEBHOOK_URL}/user.search",
-        json=payload,
-        headers={'Content-Type': 'application/json'},
-        timeout=15,
-    )
-    if not r.ok:
-        r2 = requests.post(
-            f"{BITRIX_WEBHOOK_URL}/user.get",
-            json={'FILTER': {'%LAST_NAME': q}},
-            headers={'Content-Type': 'application/json'},
-            timeout=15,
-        )
-        r2.raise_for_status()
-        users = r2.json().get('result', [])
-    else:
-        users = r.json().get('result', [])
+
+    parts = [p for p in q.split() if p]
+    found = {}
+
+    def add_users(users):
+        for u in users:
+            uid = u.get('ID')
+            if uid and uid not in found:
+                found[uid] = u
+
+    def fetch(filter_payload):
+        try:
+            r = requests.post(
+                f"{BITRIX_WEBHOOK_URL}/user.get",
+                json={'FILTER': filter_payload, 'ACTIVE': True},
+                headers={'Content-Type': 'application/json'},
+                timeout=15,
+            )
+            if r.ok:
+                return r.json().get('result', []) or []
+        except BaseException:
+            pass
+        return []
+
+    if len(parts) >= 2:
+        add_users(fetch({'%LAST_NAME': parts[0], '%NAME': parts[1]}))
+        add_users(fetch({'%LAST_NAME': parts[1], '%NAME': parts[0]}))
+
+    add_users(fetch({'%LAST_NAME': q}))
+    add_users(fetch({'%NAME': q}))
+    add_users(fetch({'%SECOND_NAME': q}))
+    add_users(fetch({'%EMAIL': q}))
+    add_users(fetch({'%WORK_POSITION': q}))
+
+    if not found:
+        try:
+            r = requests.post(
+                f"{BITRIX_WEBHOOK_URL}/user.search",
+                json={'FIND': q},
+                headers={'Content-Type': 'application/json'},
+                timeout=15,
+            )
+            if r.ok:
+                add_users(r.json().get('result', []) or [])
+        except BaseException:
+            pass
 
     out = []
-    for u in users[:30]:
+    for u in list(found.values())[:50]:
         name = f"{u.get('NAME', '')} {u.get('LAST_NAME', '')}".strip()
         out.append({
             'id': u.get('ID'),
