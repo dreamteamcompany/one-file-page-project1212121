@@ -52,7 +52,25 @@ def is_admin(payload):
     system_roles = payload.get('system_roles') or []
     if 'admin' in system_roles:
         return True
-    return False
+
+    user_id = payload.get('user_id') or payload.get('id')
+    if not user_id:
+        return False
+    try:
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                f"SELECT 1 FROM user_roles ur "
+                f"JOIN roles r ON r.id = ur.role_id "
+                f"WHERE ur.user_id = {int(user_id)} "
+                f"AND (r.system_role = 'admin' OR r.name = 'admin') LIMIT 1"
+            )
+            return cur.fetchone() is not None
+        finally:
+            conn.close()
+    except BaseException:
+        return False
 
 
 def get_db():
