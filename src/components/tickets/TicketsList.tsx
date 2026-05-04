@@ -241,7 +241,7 @@ const TicketsList = ({
                         aria-label="Новые сообщения"
                       >
                         <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-sky-400 opacity-60 animate-ping" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
                       </span>
                     )}
                     <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
