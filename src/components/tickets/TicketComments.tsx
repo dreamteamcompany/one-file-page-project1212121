@@ -1,7 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
 
@@ -456,7 +456,7 @@ const TicketComments = ({
             const readStatus = isOwn ? computeReadStatus(comment) : null;
 
             return (
-              <div key={comment.id} className="space-y-3">
+              <React.Fragment key={comment.id}>
               {showNewDivider && (
                 <div className="flex items-center gap-2 my-3 select-none">
                   <div className="flex-1 h-px bg-red-500/40" />
@@ -525,9 +525,9 @@ const TicketComments = ({
                   
                   {comment.reactions && comment.reactions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
-                      {comment.reactions.map((reaction, idx) => (
+                      {comment.reactions.map((reaction, rIdx) => (
                         <button
-                          key={idx}
+                          key={rIdx}
                           className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted hover:bg-accent transition-colors text-xs"
                         >
                           <span>{reaction.emoji}</span>
@@ -568,7 +568,7 @@ const TicketComments = ({
                   </div>
                 </div>
               </div>
-              </div>
+              </React.Fragment>
             );
           })
         )}
