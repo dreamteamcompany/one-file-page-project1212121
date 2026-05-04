@@ -51,6 +51,7 @@ interface Ticket {
   unread_comments?: number;
   unread_count?: number;
   unread_mentions?: number;
+  has_new?: boolean;
   client_replied?: boolean;
   ticket_service?: TicketService;
   services?: Service[];
@@ -259,11 +260,12 @@ const TicketsList = ({
                         {ticket.unread_mentions}
                       </Badge>
                     )}
-                    {!!ticket.unread_count && ticket.unread_count > 0 && (
-                      <Badge variant="destructive" className="flex items-center gap-1 animate-pulse text-xs">
-                        <Icon name="Bell" size={12} />
-                        {ticket.unread_count}
-                      </Badge>
+                    {ticket.has_new && (
+                      <span
+                        className="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse flex-shrink-0"
+                        title="Новые сообщения"
+                        aria-label="Новые сообщения"
+                      />
                     )}
                     {ticket.client_replied && ticket.assigned_to === currentUserId && (
                       <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse">

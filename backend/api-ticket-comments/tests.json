@@ -23,6 +23,19 @@
         "error": "string"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Mark read unauthorized",
+      "method": "POST",
+      "path": "/?action=mark-read",
+      "body": {
+        "comment_ids": [1, 2, 3]
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

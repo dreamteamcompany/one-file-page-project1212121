@@ -19,6 +19,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [myLastSeenAt, setMyLastSeenAt] = useState<string | null>(null);
 
   const loadTicket = async (showLoader = true) => {
     try {
@@ -113,11 +115,34 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       if (response.ok) {
         const data = await response.json();
         setComments(data.comments || []);
+        if (Array.isArray(data.participant_ids)) {
+          setParticipantIds(data.participant_ids);
+        }
+        if (typeof data.my_last_seen_at === 'string' || data.my_last_seen_at === null) {
+          setMyLastSeenAt(data.my_last_seen_at ?? null);
+        }
       }
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {
       setLoadingComments(false);
+    }
+  };
+
+  const markCommentsRead = async (commentIds: number[]) => {
+    if (!commentIds.length) return;
+    try {
+      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      await apiFetch(`${commentsUrl}?action=mark-read`, {
+        method: 'POST',
+        headers: {
+          'X-Auth-Token': token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comment_ids: commentIds }),
+      });
+    } catch (error) {
+      console.error('Error marking comments read:', error);
     }
   };
 
@@ -162,5 +187,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     loadTicket,
     loadComments,
     loadHistory,
+    participantIds,
+    myLastSeenAt,
+    markCommentsRead,
   };
 };

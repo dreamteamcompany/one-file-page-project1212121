@@ -106,6 +106,9 @@ interface TicketDetailsContentProps {
   loadingHistory?: boolean;
   commentsBlocked?: boolean;
   commentsBlockedMessage?: string;
+  participantIds?: number[];
+  myLastSeenAt?: string | null;
+  onMarkRead?: (commentIds: number[]) => void;
 }
 
 const TicketDetailsContent = ({
@@ -127,6 +130,9 @@ const TicketDetailsContent = ({
   loadingHistory = false,
   commentsBlocked = false,
   commentsBlockedMessage,
+  participantIds,
+  myLastSeenAt,
+  onMarkRead,
 }: TicketDetailsContentProps) => {
   const { hasSystemRole } = useAuth();
   const canCallPhone = hasSystemRole('admin', 'executor');
@@ -384,6 +390,9 @@ const TicketDetailsContent = ({
             uploadingFile={uploadingFile}
             commentsBlocked={commentsBlocked}
             commentsBlockedMessage={commentsBlockedMessage}
+            participantIds={participantIds}
+            myLastSeenAt={myLastSeenAt}
+            onMarkRead={onMarkRead}
           />
         )}
         

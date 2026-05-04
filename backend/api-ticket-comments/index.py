@@ -101,6 +101,12 @@ def handler(event: dict, context) -> dict:
         return response(500, {'error': 'Database connection failed'})
 
     try:
+        params = event.get('queryStringParameters') or {}
+        action = (params.get('action') or '').lower()
+
+        if method == 'POST' and action == 'mark-read':
+            return handle_mark_read(event, conn, payload)
+
         if method == 'GET':
             return handle_get_comments(event, conn, payload)
         elif method == 'POST':
@@ -111,6 +117,55 @@ def handler(event: dict, context) -> dict:
             return response(405, {'error': 'Method not allowed'})
     finally:
         conn.close()
+
+
+def handle_mark_read(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Отмечает комментарии как прочитанные текущим пользователем (батчем)"""
+    user_id = payload.get('user_id')
+    if not user_id:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except Exception:
+        return response(400, {'error': 'Invalid JSON'})
+
+    raw_ids = body.get('comment_ids') or []
+    if not isinstance(raw_ids, list):
+        return response(400, {'error': 'comment_ids must be a list'})
+
+    comment_ids: List[int] = []
+    for v in raw_ids:
+        try:
+            iv = int(v)
+            if iv > 0:
+                comment_ids.append(iv)
+        except (TypeError, ValueError):
+            continue
+
+    if not comment_ids:
+        return response(200, {'marked': 0})
+
+    cur = conn.cursor()
+    ids_csv = ','.join(str(i) for i in comment_ids)
+    cur.execute(f"""
+        SELECT id FROM {SCHEMA}.ticket_comments
+        WHERE id IN ({ids_csv}) AND user_id <> %s
+    """, (int(user_id),))
+    valid_ids = [r['id'] for r in cur.fetchall()]
+
+    marked = 0
+    for cid in valid_ids:
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ticket_comment_reads (comment_id, user_id, read_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (comment_id, user_id) DO NOTHING
+        """, (cid, int(user_id)))
+        marked += cur.rowcount or 0
+
+    conn.commit()
+    cur.close()
+    return response(200, {'marked': marked, 'total': len(valid_ids)})
 
 
 def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -139,6 +194,23 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
     """, (tid,))
 
     comments = [dict(row) for row in cur.fetchall()]
+
+    comment_ids = [c['id'] for c in comments]
+    reads_map: Dict[int, List[int]] = {cid: [] for cid in comment_ids}
+    if comment_ids:
+        ids_csv = ','.join(str(int(i)) for i in comment_ids)
+        cur.execute(f"""
+            SELECT comment_id, user_id FROM {SCHEMA}.ticket_comment_reads
+            WHERE comment_id IN ({ids_csv})
+        """)
+        for r in cur.fetchall():
+            reads_map.setdefault(r['comment_id'], []).append(r['user_id'])
+
+    for c in comments:
+        author = c['user_id']
+        explicit = set(reads_map.get(c['id'], []))
+        explicit.add(author)
+        c['read_by'] = sorted(explicit)
 
     my_last_seen_at = None
     if user_id:

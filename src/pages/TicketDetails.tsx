@@ -35,6 +35,9 @@ const TicketDetails = () => {
     loadTicket,
     loadComments,
     loadHistory,
+    participantIds,
+    myLastSeenAt,
+    markCommentsRead,
   } = useTicketData(id, location.state?.ticket || null);
 
   const {
@@ -309,6 +312,9 @@ const TicketDetails = () => {
             loadingHistory={loadingHistory}
             commentsBlocked={isReopened && !!isAssignee}
             commentsBlockedMessage="Заявка открыта повторно. Для работы с ней необходимо сначала принять её в работу, изменив статус."
+            participantIds={participantIds}
+            myLastSeenAt={myLastSeenAt}
+            onMarkRead={markCommentsRead}
           />
           </div>
         </div>

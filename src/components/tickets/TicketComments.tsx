@@ -18,6 +18,7 @@ interface Comment {
   created_at?: string;
   parent_comment_id?: number;
   mentioned_user_ids?: number[];
+  read_by?: number[];
   attachments?: {
     id: number;
     filename: string;
@@ -55,6 +56,9 @@ interface TicketCommentsProps {
   uploadingFile?: boolean;
   commentsBlocked?: boolean;
   commentsBlockedMessage?: string;
+  participantIds?: number[];
+  myLastSeenAt?: string | null;
+  onMarkRead?: (commentIds: number[]) => void;
 }
 
 const AVATAR_COLORS = [
@@ -90,6 +94,9 @@ const TicketComments = ({
   uploadingFile = false,
   commentsBlocked = false,
   commentsBlockedMessage,
+  participantIds = [],
+  myLastSeenAt = null,
+  onMarkRead,
 }: TicketCommentsProps) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
@@ -100,6 +107,103 @@ const TicketComments = ({
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const mentionsRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const frozenLastSeenRef = useRef<string | null | undefined>(undefined);
+  if (frozenLastSeenRef.current === undefined && !loadingComments) {
+    frozenLastSeenRef.current = myLastSeenAt ?? null;
+  }
+  const frozenLastSeen = frozenLastSeenRef.current;
+
+  const sortedAsc = [...comments].sort((a, b) => {
+    const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return ta - tb;
+  });
+  const firstNewIndex = (() => {
+    if (!frozenLastSeen || !currentUserId) return -1;
+    const cutoff = new Date(frozenLastSeen).getTime();
+    return sortedAsc.findIndex((c) => {
+      if (c.user_id === currentUserId) return false;
+      const t = c.created_at ? new Date(c.created_at).getTime() : 0;
+      return t > cutoff;
+    });
+  })();
+
+  const pendingReadRef = useRef<Set<number>>(new Set());
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markedRef = useRef<Set<number>>(new Set());
+  const onMarkReadRef = useRef(onMarkRead);
+  useEffect(() => {
+    onMarkReadRef.current = onMarkRead;
+  }, [onMarkRead]);
+
+  const flushReads = () => {
+    flushTimerRef.current = null;
+    const ids = Array.from(pendingReadRef.current);
+    pendingReadRef.current.clear();
+    if (ids.length && onMarkReadRef.current) {
+      ids.forEach((id) => markedRef.current.add(id));
+      onMarkReadRef.current(ids);
+    }
+  };
+
+  const scheduleFlush = () => {
+    if (flushTimerRef.current) return;
+    flushTimerRef.current = setTimeout(flushReads, 600);
+  };
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        let added = false;
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const idAttr = (entry.target as HTMLElement).dataset.commentId;
+          if (!idAttr) return;
+          const id = parseInt(idAttr, 10);
+          if (!id || markedRef.current.has(id)) return;
+          pendingReadRef.current.add(id);
+          markedRef.current.add(id);
+          added = true;
+          observerRef.current?.unobserve(entry.target);
+        });
+        if (added) scheduleFlush();
+      },
+      { threshold: 0.6 },
+    );
+    return () => {
+      observerRef.current?.disconnect();
+      if (flushTimerRef.current) {
+        clearTimeout(flushTimerRef.current);
+        flushReads();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const observeComment = (el: HTMLDivElement | null, comment: Comment) => {
+    if (!el || !observerRef.current) return;
+    if (!currentUserId || comment.user_id === currentUserId) return;
+    if (markedRef.current.has(comment.id)) return;
+    if (comment.read_by?.includes(currentUserId)) {
+      markedRef.current.add(comment.id);
+      return;
+    }
+    observerRef.current.observe(el);
+  };
+
+  const getReadStatus = (comment: Comment): 'sent' | 'delivered' | 'read' => {
+    if (!participantIds || participantIds.length === 0) return 'sent';
+    const others = participantIds.filter((id) => id !== comment.user_id);
+    if (others.length === 0) return 'sent';
+    const readBy = new Set(comment.read_by || []);
+    const readOthers = others.filter((id) => readBy.has(id));
+    if (readOthers.length === 0) return 'sent';
+    if (readOthers.length === others.length) return 'read';
+    return 'delivered';
+  };
   
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
@@ -409,17 +513,30 @@ const TicketComments = ({
             <p className="text-sm">Пока нет комментариев</p>
           </div>
         ) : (
-          comments.map((comment) => {
+          sortedAsc.map((comment, idx) => {
             const parentComment = getParentComment(comment.parent_comment_id);
             const isOwn = comment.user_id === currentUserId;
+            const showNewDivider = idx === firstNewIndex;
+            const status = isOwn ? getReadStatus(comment) : null;
 
             return (
-              <div
-                key={comment.id}
-                className={`flex items-start gap-2.5 ${isOwn ? 'flex-row-reverse' : ''} ${
-                  comment.parent_comment_id ? 'ml-4 lg:ml-8' : ''
-                }`}
-              >
+              <div key={comment.id}>
+                {showNewDivider && (
+                  <div className="flex items-center gap-2 my-3" aria-label="Новые сообщения">
+                    <div className="flex-1 h-px bg-red-500" />
+                    <span className="text-[11px] font-semibold text-red-500 uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/30">
+                      Новые сообщения
+                    </span>
+                    <div className="flex-1 h-px bg-red-500" />
+                  </div>
+                )}
+                <div
+                  ref={(el) => observeComment(el, comment)}
+                  data-comment-id={comment.id}
+                  className={`flex items-start gap-2.5 ${isOwn ? 'flex-row-reverse' : ''} ${
+                    comment.parent_comment_id ? 'ml-4 lg:ml-8' : ''
+                  }`}
+                >
                 {comment.user_photo_url ? (
                   <img src={comment.user_photo_url} alt={comment.user_full_name || comment.user_name || ''} className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
                 ) : (
@@ -494,7 +611,30 @@ const TicketComments = ({
                       <Icon name="Reply" size={12} />
                       Ответить
                     </button>
+                    {isOwn && status && (
+                      <span
+                        className="inline-flex items-center"
+                        title={
+                          status === 'read'
+                            ? 'Прочитано всеми участниками'
+                            : status === 'delivered'
+                            ? 'Кто-то увидел'
+                            : 'Отправлено'
+                        }
+                      >
+                        {status === 'sent' && (
+                          <Icon name="Check" size={14} className="text-muted-foreground" />
+                        )}
+                        {status === 'delivered' && (
+                          <Icon name="CheckCheck" size={14} className="text-muted-foreground" />
+                        )}
+                        {status === 'read' && (
+                          <Icon name="CheckCheck" size={14} className="text-sky-500" />
+                        )}
+                      </span>
+                    )}
                   </div>
+                </div>
                 </div>
               </div>
             );

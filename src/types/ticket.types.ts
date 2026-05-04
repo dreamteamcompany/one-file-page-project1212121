@@ -66,10 +66,14 @@ export interface TicketComment {
   user_id: number;
   user_name?: string;
   user_full_name?: string;
+  user_photo_url?: string;
   comment: string;
   is_internal: boolean;
   is_read?: boolean;
   created_at?: string;
+  parent_comment_id?: number;
+  mentioned_user_ids?: number[];
+  read_by?: number[];
   attachments?: {
     id: number;
     filename: string;
