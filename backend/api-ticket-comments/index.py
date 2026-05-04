@@ -121,6 +121,8 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
     if not ticket_id:
         return response(400, {'error': 'ticket_id parameter required'})
 
+    user_id = payload.get('user_id')
+    tid = int(ticket_id)
     cur = conn.cursor()
 
     cur.execute(f"""
@@ -134,12 +136,52 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
         LEFT JOIN {SCHEMA}.users u ON tc.user_id = u.id
         WHERE tc.ticket_id = %s
         ORDER BY tc.created_at DESC
-    """, (int(ticket_id),))
+    """, (tid,))
 
     comments = [dict(row) for row in cur.fetchall()]
+
+    my_last_seen_at = None
+    if user_id:
+        cur.execute(f"""
+            SELECT last_seen_at FROM {SCHEMA}.ticket_views
+            WHERE user_id = %s AND ticket_id = %s
+        """, (user_id, tid))
+        row = cur.fetchone()
+        if row:
+            my_last_seen_at = row['last_seen_at']
+
+    cur.execute(f"""
+        SELECT created_by, assigned_to FROM {SCHEMA}.tickets WHERE id = %s
+    """, (tid,))
+    t_row = cur.fetchone() or {}
+    participant_ids = set()
+    if t_row.get('created_by'):
+        participant_ids.add(t_row['created_by'])
+    if t_row.get('assigned_to'):
+        participant_ids.add(t_row['assigned_to'])
+    cur.execute(f"SELECT user_id FROM {SCHEMA}.ticket_watchers WHERE ticket_id = %s", (tid,))
+    participant_ids.update(r['user_id'] for r in cur.fetchall())
+    cur.execute(f"SELECT approver_id FROM {SCHEMA}.ticket_approvers WHERE ticket_id = %s", (tid,))
+    participant_ids.update(r['approver_id'] for r in cur.fetchall())
+
+    participants_seen = {}
+    if participant_ids:
+        ids_list = ','.join(str(int(i)) for i in participant_ids)
+        cur.execute(f"""
+            SELECT user_id, last_seen_at FROM {SCHEMA}.ticket_views
+            WHERE ticket_id = %s AND user_id IN ({ids_list})
+        """, (tid,))
+        for r in cur.fetchall():
+            participants_seen[r['user_id']] = r['last_seen_at'].isoformat() if r['last_seen_at'] else None
+
     cur.close()
 
-    return response(200, {'comments': comments})
+    return response(200, {
+        'comments': comments,
+        'my_last_seen_at': my_last_seen_at.isoformat() if my_last_seen_at else None,
+        'participants_seen': participants_seen,
+        'participant_ids': sorted(participant_ids),
+    })
 
 
 def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:

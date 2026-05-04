@@ -35,6 +35,9 @@ const TicketDetails = () => {
     loadTicket,
     loadComments,
     loadHistory,
+    myLastSeenAt,
+    participantsSeen,
+    participantIds,
   } = useTicketData(id, location.state?.ticket || null);
 
   const {
@@ -44,7 +47,7 @@ const TicketDetails = () => {
     updating,
     sendingPing,
     uploadingFile,
-    handleSubmitComment,
+    handleSubmitComment: rawSubmitComment,
     handleUpdateStatus,
     handleSendPing,
     handleReaction,
@@ -55,15 +58,63 @@ const TicketDetails = () => {
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
 
   const { markRead } = useTicketMarkRead();
+  const ticketIdNum = useMemo(() => {
+    const n = id ? parseInt(id, 10) : NaN;
+    return Number.isNaN(n) || n <= 0 ? null : n;
+  }, [id]);
 
   useEffect(() => {
-    if (id) {
-      const tid = parseInt(id, 10);
-      if (!Number.isNaN(tid) && tid > 0) {
-        markRead(tid);
-      }
+    if (ticketIdNum) {
+      markRead(ticketIdNum);
     }
-  }, [id, markRead]);
+  }, [ticketIdNum, markRead]);
+
+  const lastCommentsCountRef = useRef(0);
+  useEffect(() => {
+    if (!ticketIdNum) return;
+    const prev = lastCommentsCountRef.current;
+    if (comments.length > prev && prev > 0) {
+      markRead(ticketIdNum);
+      loadComments();
+    }
+    lastCommentsCountRef.current = comments.length;
+  }, [comments.length, ticketIdNum, markRead, loadComments]);
+
+  useEffect(() => {
+    if (!ticketIdNum) return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        markRead(ticketIdNum);
+        loadComments();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onVisibility);
+    };
+  }, [ticketIdNum, markRead, loadComments]);
+
+  useEffect(() => {
+    if (!ticketIdNum) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadComments();
+      }
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [ticketIdNum, loadComments]);
+
+  const handleSubmitComment = useCallback(
+    async (parentCommentId?: number, mentionedUserIds?: number[]) => {
+      await rawSubmitComment(parentCommentId, mentionedUserIds);
+      if (ticketIdNum) {
+        markRead(ticketIdNum);
+      }
+    },
+    [rawSubmitComment, ticketIdNum, markRead],
+  );
 
   const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
 
@@ -309,6 +360,9 @@ const TicketDetails = () => {
             loadingHistory={loadingHistory}
             commentsBlocked={isReopened && !!isAssignee}
             commentsBlockedMessage="Заявка открыта повторно. Для работы с ней необходимо сначала принять её в работу, изменив статус."
+            myLastSeenAt={myLastSeenAt}
+            participantsSeen={participantsSeen}
+            participantIds={participantIds}
           />
           </div>
         </div>

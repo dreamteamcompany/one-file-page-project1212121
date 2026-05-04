@@ -320,7 +320,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                        SELECT COUNT(*) FROM {SCHEMA}.notifications nu2
                        WHERE nu2.ticket_id = t.id AND nu2.user_id = {int(user_id)}
                          AND nu2.is_read = false AND nu2.event_type = 'mention'
-                   ) AS unread_mentions
+                   ) AS unread_mentions,
+                   (
+                       SELECT EXISTS(
+                           SELECT 1 FROM {SCHEMA}.ticket_comments tcnew
+                           WHERE tcnew.ticket_id = t.id
+                             AND tcnew.user_id <> {int(user_id)}
+                             AND tcnew.created_at > COALESCE(
+                                 (SELECT tv.last_seen_at FROM {SCHEMA}.ticket_views tv
+                                  WHERE tv.user_id = {int(user_id)} AND tv.ticket_id = t.id),
+                                 'epoch'::timestamp
+                             )
+                       )
+                   ) AS has_new
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses s ON t.status_id = s.id
             LEFT JOIN {SCHEMA}.ticket_priorities p ON t.priority_id = p.id

@@ -19,6 +19,9 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [myLastSeenAt, setMyLastSeenAt] = useState<string | null>(null);
+  const [participantsSeen, setParticipantsSeen] = useState<Record<number, string | null>>({});
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
 
   const loadTicket = async (showLoader = true) => {
     try {
@@ -113,6 +116,9 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       if (response.ok) {
         const data = await response.json();
         setComments(data.comments || []);
+        setMyLastSeenAt(data.my_last_seen_at || null);
+        setParticipantsSeen(data.participants_seen || {});
+        setParticipantIds(data.participant_ids || []);
       }
     } catch (error) {
       console.error('Error loading comments:', error);
@@ -162,5 +168,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     loadTicket,
     loadComments,
     loadHistory,
+    myLastSeenAt,
+    participantsSeen,
+    participantIds,
   };
 };
