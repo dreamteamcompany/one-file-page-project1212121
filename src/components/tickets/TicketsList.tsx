@@ -234,6 +234,16 @@ const TicketsList = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    {ticket.has_new && (
+                      <span
+                        className="relative inline-flex items-center justify-center flex-shrink-0"
+                        title="Новые сообщения"
+                        aria-label="Новые сообщения"
+                      >
+                        <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-sky-400 opacity-60 animate-ping" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-background shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
+                      </span>
+                    )}
                     <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
                     {ticket.status_name && (
                       <Badge
@@ -259,13 +269,6 @@ const TicketsList = ({
                         <Icon name="AtSign" size={12} />
                         {ticket.unread_mentions}
                       </Badge>
-                    )}
-                    {ticket.has_new && (
-                      <span
-                        className="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse flex-shrink-0"
-                        title="Новые сообщения"
-                        aria-label="Новые сообщения"
-                      />
                     )}
                     {ticket.client_replied && ticket.assigned_to === currentUserId && (
                       <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse">
