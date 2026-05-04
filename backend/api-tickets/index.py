@@ -308,9 +308,18 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url,
                    eg.name as executor_group_name,
                    (
-                       SELECT (tclast.user_id = t.created_by) FROM {SCHEMA}.ticket_comments tclast
-                       WHERE tclast.ticket_id = t.id AND tclast.is_internal = false
-                       ORDER BY tclast.created_at DESC LIMIT 1
+                       SELECT EXISTS(
+                           SELECT 1 FROM {SCHEMA}.ticket_comments tccr
+                           WHERE tccr.ticket_id = t.id
+                             AND tccr.is_internal = false
+                             AND tccr.user_id = t.created_by
+                             AND tccr.user_id <> {int(user_id)}
+                             AND tccr.created_at > COALESCE(
+                                 (SELECT tv2.last_seen_at FROM {SCHEMA}.ticket_views tv2
+                                  WHERE tv2.user_id = {int(user_id)} AND tv2.ticket_id = t.id),
+                                 'epoch'::timestamp
+                             )
+                       )
                    ) AS client_replied,
                    (
                        SELECT COUNT(*) FROM {SCHEMA}.notifications nu
