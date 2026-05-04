@@ -1,7 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
 
@@ -55,9 +55,6 @@ interface TicketCommentsProps {
   uploadingFile?: boolean;
   commentsBlocked?: boolean;
   commentsBlockedMessage?: string;
-  myLastSeenAt?: string | null;
-  participantsSeen?: Record<number, string | null>;
-  participantIds?: number[];
 }
 
 const AVATAR_COLORS = [
@@ -93,9 +90,6 @@ const TicketComments = ({
   uploadingFile = false,
   commentsBlocked = false,
   commentsBlockedMessage,
-  myLastSeenAt = null,
-  participantsSeen = {},
-  participantIds = [],
 }: TicketCommentsProps) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
@@ -234,40 +228,6 @@ const TicketComments = ({
   const getParentComment = (parentId?: number) => {
     if (!parentId) return null;
     return comments.find(c => c.id === parentId);
-  };
-
-  const lastSeenMs = myLastSeenAt ? new Date(myLastSeenAt).getTime() : 0;
-  const isUnread = (c: Comment) =>
-    !!c.created_at &&
-    c.user_id !== currentUserId &&
-    new Date(c.created_at).getTime() > lastSeenMs;
-  const lastUnreadIndex = (() => {
-    for (let i = comments.length - 1; i >= 0; i--) {
-      if (isUnread(comments[i])) return i;
-    }
-    return -1;
-  })();
-
-  const otherParticipantIds = participantIds.filter(
-    (uid) => uid !== currentUserId,
-  );
-  const computeReadStatus = (c: Comment): 'sent' | 'delivered' | 'read' => {
-    if (!c.created_at || otherParticipantIds.length === 0) return 'sent';
-    const createdMs = new Date(c.created_at).getTime();
-    let anySeen = false;
-    let allSeen = true;
-    for (const uid of otherParticipantIds) {
-      const seen = participantsSeen[uid];
-      const seenMs = seen ? new Date(seen).getTime() : 0;
-      if (seenMs >= createdMs) {
-        anySeen = true;
-      } else {
-        allSeen = false;
-      }
-    }
-    if (allSeen) return 'read';
-    if (anySeen) return 'delivered';
-    return 'sent';
   };
 
   const renderCommentText = (text: string, mentioned?: number[]) => {
@@ -449,24 +409,13 @@ const TicketComments = ({
             <p className="text-sm">Пока нет комментариев</p>
           </div>
         ) : (
-          comments.map((comment, idx) => {
+          comments.map((comment) => {
             const parentComment = getParentComment(comment.parent_comment_id);
             const isOwn = comment.user_id === currentUserId;
-            const showNewDivider = idx === lastUnreadIndex;
-            const readStatus = isOwn ? computeReadStatus(comment) : null;
 
             return (
-              <React.Fragment key={comment.id}>
-              {showNewDivider && (
-                <div className="flex items-center gap-2 my-3 select-none">
-                  <div className="flex-1 h-px bg-red-500/40" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-red-500">
-                    Новые сообщения
-                  </span>
-                  <div className="flex-1 h-px bg-red-500/40" />
-                </div>
-              )}
               <div
+                key={comment.id}
                 className={`flex items-start gap-2.5 ${isOwn ? 'flex-row-reverse' : ''} ${
                   comment.parent_comment_id ? 'ml-4 lg:ml-8' : ''
                 }`}
@@ -545,30 +494,9 @@ const TicketComments = ({
                       <Icon name="Reply" size={12} />
                       Ответить
                     </button>
-                    {isOwn && readStatus && (
-                      <span
-                        className="flex items-center"
-                        title={
-                          readStatus === 'read'
-                            ? 'Прочитано'
-                            : readStatus === 'delivered'
-                              ? 'Доставлено'
-                              : 'Отправлено'
-                        }
-                      >
-                        {readStatus === 'read' ? (
-                          <Icon name="CheckCheck" size={14} className="text-blue-500" />
-                        ) : readStatus === 'delivered' ? (
-                          <Icon name="CheckCheck" size={14} className="text-muted-foreground" />
-                        ) : (
-                          <Icon name="Check" size={14} className="text-muted-foreground" />
-                        )}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
-              </React.Fragment>
             );
           })
         )}
