@@ -270,7 +270,7 @@ const TicketsList = ({
                         {ticket.unread_mentions}
                       </Badge>
                     )}
-                    {ticket.client_replied && ticket.assigned_to === currentUserId && (
+                    {ticket.client_replied && (
                       <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse">
                         <Icon name="MessageSquareReply" size={12} />
                         Клиент ответил
