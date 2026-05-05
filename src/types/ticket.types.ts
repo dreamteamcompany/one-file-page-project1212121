@@ -48,6 +48,7 @@ export interface Ticket {
   unread_count?: number;
   unread_mentions?: number;
   client_replied?: boolean;
+  client_replied_at?: string;
   response_due_date?: string;
   confirmation_sent_at?: string;
   rating?: number;

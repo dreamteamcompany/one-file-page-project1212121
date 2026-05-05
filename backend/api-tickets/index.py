@@ -321,6 +321,17 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                        )
                    ) AS client_replied,
                    (
+                       SELECT MAX(tccrt.created_at) FROM {SCHEMA}.ticket_comments tccrt
+                       WHERE tccrt.ticket_id = t.id
+                         AND tccrt.user_id = t.created_by
+                         AND tccrt.user_id <> {int(user_id)}
+                         AND tccrt.created_at > COALESCE(
+                             (SELECT tv3.last_seen_at FROM {SCHEMA}.ticket_views tv3
+                              WHERE tv3.user_id = {int(user_id)} AND tv3.ticket_id = t.id),
+                             'epoch'::timestamp
+                         )
+                   ) AS client_replied_at,
+                   (
                        SELECT COUNT(*) FROM {SCHEMA}.notifications nu
                        WHERE nu.ticket_id = t.id AND nu.user_id = {int(user_id)} AND nu.is_read = false
                    ) AS unread_count,

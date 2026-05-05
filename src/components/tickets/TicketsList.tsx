@@ -53,6 +53,7 @@ interface Ticket {
   unread_mentions?: number;
   has_new?: boolean;
   client_replied?: boolean;
+  client_replied_at?: string;
   ticket_service?: TicketService;
   services?: Service[];
 }
@@ -271,9 +272,22 @@ const TicketsList = ({
                       </Badge>
                     )}
                     {ticket.client_replied && (
-                      <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse">
+                      <Badge
+                        className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse"
+                        title={
+                          ticket.client_replied_at
+                            ? `Последний ответ клиента: ${new Date(ticket.client_replied_at).toLocaleString('ru-RU', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}`
+                            : 'Клиент оставил новый комментарий'
+                        }
+                      >
                         <Icon name="MessageSquareReply" size={12} />
-                        Клиент ответил
+                        Новый комментарий
                       </Badge>
                     )}
                   </div>
