@@ -233,11 +233,17 @@ const TicketsList = ({
                 <span className="text-sm font-semibold truncate max-w-full" style={{ color: deadline.color }}>
                   {deadline.label}
                 </span>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full transition-all duration-300"
-                    style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }}
-                  />
+                <div className="h-3 w-full flex gap-0.5">
+                  {Array.from({ length: 20 }).map((_, i) => {
+                    const filled = i < Math.round((deadline.percent / 100) * 20);
+                    return (
+                      <div
+                        key={i}
+                        className="flex-1 h-full rounded-sm transition-colors duration-300"
+                        style={{ backgroundColor: filled ? deadline.color : 'rgba(255,255,255,0.08)' }}
+                      />
+                    );
+                  })}
                 </div>
                 <span className="text-xs text-muted-foreground truncate max-w-full">
                   {leftLabel}
