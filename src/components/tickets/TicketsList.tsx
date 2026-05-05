@@ -188,7 +188,7 @@ const TicketsList = ({
         return (
         <Card
           key={ticket.id}
-          className={`hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative w-full overflow-hidden ${
+          className={`p-4 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 relative w-full overflow-hidden ${
             isCritical ? 'border-red-500 border-2' : ''
           } ${
             selectedTicketIds.includes(ticket.id) ? 'ring-2 ring-primary' : ''
@@ -206,191 +206,214 @@ const TicketsList = ({
             }
           }}
         >
-          {/* Прогресс-бар дедлайна сверху */}
-          {ticket.due_date && (() => {
-            const deadline = getDeadlineProgress(ticket.due_date);
-            if (!deadline) return null;
-            return (
-              <div className="h-0.5 w-full" style={{ backgroundColor: `${deadline.color}30` }}>
-                <div className="h-full transition-all duration-300" style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }} />
-              </div>
-            );
-          })()}
-
-          <div className="flex items-stretch">
-            {/* ===== ЛЕВАЯ ЗОНА: основная информация ===== */}
-            <div className="flex-1 min-w-0 px-4 py-3.5">
-              {/* Зона А: ID / статус / алерты */}
-              <div className="flex items-center gap-2 mb-2">
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                 {bulkMode && onToggleTicket && (
                   <Checkbox
                     checked={selectedTicketIds.includes(ticket.id)}
-                    onCheckedChange={(e) => { if (e) onToggleTicket(ticket.id); }}
+                    onCheckedChange={(e) => {
+                      if (e) onToggleTicket(ticket.id);
+                    }}
                     onClick={(e) => e.stopPropagation()}
+                    className="mt-1"
                   />
                 )}
-                {ticket.category_icon && (
-                  <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Icon name={ticket.category_icon} size={14} className="text-primary" />
-                  </div>
-                )}
-                <span className="text-xs font-mono text-muted-foreground/70">#{ticket.id}</span>
-                {ticket.status_name && (
-                  <Badge
-                    variant="secondary"
-                    className="text-xs px-2 py-0 h-5"
-                    style={{ backgroundColor: `${ticket.status_color}20`, color: ticket.status_color }}
-                  >
-                    {ticket.status_name}
-                  </Badge>
-                )}
-                {isCritical && (
-                  <Badge variant="destructive" className="text-[10px] font-bold uppercase px-2 py-0 h-5 flex items-center gap-1 animate-pulse">
-                    <Icon name="AlertTriangle" size={10} />
-                    Критично
-                  </Badge>
-                )}
-                {ticket.client_replied && (
-                  <Badge className="text-[10px] font-bold uppercase px-2 py-0 h-5 flex items-center gap-1 bg-sky-500/15 text-sky-400 hover:bg-sky-500/20 animate-pulse">
-                    <Icon name="MessageSquareReply" size={10} />
-                    Ответ клиента
-                  </Badge>
-                )}
-                {ticket.has_new && !ticket.client_replied && (
-                  <span className="relative inline-flex h-2 w-2 flex-shrink-0" title="Новые сообщения">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-60 animate-ping" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
-                  </span>
-                )}
-                {!!ticket.unread_mentions && ticket.unread_mentions > 0 && (
-                  <Badge className="text-[10px] font-bold px-2 py-0 h-5 flex items-center gap-1 bg-purple-500/15 text-purple-400 hover:bg-purple-500/20">
-                    <Icon name="AtSign" size={10} />
-                    {ticket.unread_mentions}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Зона Б: заголовок + описание */}
-              <h3 className="font-semibold text-[15px] leading-snug line-clamp-1 mb-1">
-                {ticket.title}
-              </h3>
-              {ticket.description && (
-                <p className="text-sm text-muted-foreground line-clamp-1 mb-2.5">
-                  {ticket.description.replace(/<[^>]*>/g, '')}
-                </p>
-              )}
-
-              {/* Зона В: мета-теги (без дедлайна и исполнителя — они справа) */}
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                {(ticket.customer_name || ticket.creator_name) && (() => {
-                  const phone = getPhoneFromTicket(ticket);
-                  return (
-                    <>
-                      <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
-                        {ticket.creator_photo_url ? (
-                          <img src={ticket.creator_photo_url} alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
-                        ) : (
-                          <Icon name="User" size={11} />
-                        )}
-                        {ticket.customer_name || ticket.creator_name}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {(ticket.status_name === 'На согласовании' || ticket.status_name === 'Одобрена' || ticket.status_name === 'Отклонена') && (
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      ticket.status_name === 'На согласовании' ? 'bg-green-500' :
+                      ticket.status_name === 'Отклонена' ? 'bg-red-500' :
+                      'bg-blue-500'
+                    } animate-pulse`} />
+                  )}
+                  {ticket.category_icon && (
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Icon name={ticket.category_icon} size={16} className="text-primary sm:w-5 sm:h-5" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    {ticket.has_new && (
+                      <span
+                        className="relative inline-flex items-center justify-center flex-shrink-0 animate-pulse"
+                        title="Новые сообщения"
+                        aria-label="Новые сообщения"
+                      >
+                        <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-sky-400 opacity-60" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
                       </span>
-                      {canCallPhone && phone && (
-                        <a
-                          href={`tel:+${phone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          title={phoneDisplay(`+${phone}`) || phone}
-                          className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 hover:bg-green-500/25 transition-colors -ml-0.5"
-                        >
-                          <Icon name="Phone" size={11} className="text-green-500" />
-                        </a>
-                      )}
-                    </>
-                  );
-                })()}
-                {ticket.department_name && (
-                  <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
-                    <Icon name="Building" size={11} />
-                    {ticket.department_name}
-                  </span>
-                )}
-                {ticket.ticket_service && (
-                  <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
-                    <Icon name="Tag" size={11} />
-                    {ticket.ticket_service.name}
-                  </span>
-                )}
-                {ticket.services && ticket.services.length > 0 && (
-                  <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
-                    <Icon name="Wrench" size={11} />
-                    {ticket.services.map(s => s.name).join(', ')}
-                  </span>
-                )}
-                {ticket.priority_name && (
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium"
-                    style={{ backgroundColor: `${ticket.priority_color}15`, color: ticket.priority_color }}
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color }} />
-                    {ticket.priority_name}
-                  </span>
-                )}
+                    )}
+                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
+                    {ticket.status_name && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs"
+                        style={{ 
+                          backgroundColor: `${ticket.status_color}20`,
+                          color: ticket.status_color,
+                          borderColor: ticket.status_color
+                        }}
+                      >
+                        {ticket.status_name}
+                      </Badge>
+                    )}
+                    {isCritical && (
+                      <Badge variant="destructive" className="text-xs font-bold uppercase flex items-center gap-1 animate-pulse">
+                        <Icon name="AlertTriangle" size={12} />
+                        Критично
+                      </Badge>
+                    )}
+                    {!!ticket.unread_mentions && ticket.unread_mentions > 0 && (
+                      <Badge className="flex items-center gap-1 text-xs font-bold uppercase bg-purple-500 hover:bg-purple-600 text-white animate-pulse">
+                        <Icon name="AtSign" size={12} />
+                        {ticket.unread_mentions}
+                      </Badge>
+                    )}
+                    {ticket.client_replied && (
+                      <Badge
+                        className="flex items-center gap-1 text-xs font-bold uppercase bg-sky-500 hover:bg-sky-600 text-white animate-pulse"
+                        title={
+                          ticket.client_replied_at
+                            ? `Последний ответ клиента: ${new Date(ticket.client_replied_at).toLocaleString('ru-RU', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}`
+                            : 'Клиент оставил новый комментарий'
+                        }
+                      >
+                        <Icon name="MessageSquareReply" size={12} />
+                        Новый комментарий
+                      </Badge>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-base line-clamp-1">
+                    {ticket.status_name === 'На согласовании' && '🔔 '}
+                    {ticket.status_name === 'Отклонена' && '❌ '}
+                    {ticket.status_name === 'Одобрена' && '✅ '}
+                    {ticket.title}
+                  </h3>
+                  {ticket.description && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {ticket.description.replace(/<[^>]*>/g, '')}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* ===== РАЗДЕЛИТЕЛЬ ===== */}
-            <div className="hidden md:block w-px bg-border/60 my-3" />
-
-            {/* ===== ПРАВАЯ ЗОНА: Исполнитель / Дедлайн / Создано ===== */}
-            <div className="hidden md:flex flex-col justify-center gap-2.5 px-4 py-3.5 min-w-[210px] max-w-[240px]">
-              {/* Исполнитель */}
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mb-1">Исполнитель</div>
-                <div className={`flex items-center gap-1.5 text-xs ${(ticket.assigned_to_name || ticket.assignee_name) ? 'text-foreground' : 'text-orange-400'}`}>
-                  {ticket.assignee_photo_url ? (
-                    <img src={ticket.assignee_photo_url} alt="" className="w-5 h-5 rounded-full object-cover" />
-                  ) : (
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted' : 'bg-orange-500/15'}`}>
+            <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {(ticket.customer_name || ticket.creator_name) && (() => {
+                    const phone = getPhoneFromTicket(ticket);
+                    return (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
+                          {ticket.creator_photo_url ? (
+                            <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                          ) : (
+                            <Icon name="User" size={11} />
+                          )}
+                          {ticket.customer_name || ticket.creator_name}
+                        </span>
+                        {canCallPhone && phone && (
+                          <a
+                            href={`tel:+${phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            title={phoneDisplay(`+${phone}`) || phone}
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 hover:bg-green-500/25 active:bg-green-500/35 transition-colors -ml-0.5"
+                          >
+                            <Icon name="Phone" size={11} className="text-green-600" />
+                          </a>
+                        )}
+                      </>
+                    );
+                  })()}
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
+                    {ticket.assignee_photo_url ? (
+                      <img src={ticket.assignee_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
+                    ) : (
                       <Icon name={(ticket.assigned_to_name || ticket.assignee_name) ? "UserCheck" : "UserX"} size={11} />
-                    </div>
-                  )}
-                  <span className="truncate font-medium">
+                    )}
                     {ticket.assigned_to_name || ticket.assignee_name || 'Не назначен'}
                   </span>
+                  {ticket.department_name && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="Building" size={11} />
+                      {ticket.department_name}
+                    </span>
+                  )}
+                  {ticket.ticket_service && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="Tag" size={11} />
+                      {ticket.ticket_service.name}
+                    </span>
+                  )}
+                  {ticket.services && ticket.services.length > 0 && (
+                    <span className="inline-flex items-center gap-1.5 bg-muted/60 text-muted-foreground rounded-md px-2 py-1">
+                      <Icon name="Wrench" size={11} />
+                      {ticket.services.map(s => s.name).join(', ')}
+                    </span>
+                  )}
+                  {ticket.priority_name && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-medium"
+                      style={{
+                        backgroundColor: `${ticket.priority_color}15`,
+                        color: ticket.priority_color,
+                      }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color }} />
+                      {ticket.priority_name}
+                    </span>
+                  )}
+                  {ticket.created_at && (
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 ml-auto text-[11px]">
+                      <Icon name="Clock" size={11} />
+                      {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Дедлайн */}
               {ticket.due_date && (() => {
                 const deadline = getDeadlineProgress(ticket.due_date);
+                if (!deadline) return null;
+                
                 return (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mb-1">Дедлайн</div>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Icon name="Calendar" size={11} className="text-muted-foreground" />
-                      <span className="text-foreground font-medium">
-                        {new Date(ticket.due_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  <div className="space-y-1.5 mt-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <Icon name="Calendar" size={12} />
+                        Дедлайн: {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <span className="font-medium" style={{ color: deadline.color }}>
+                        {deadline.label}
                       </span>
                     </div>
-                    {deadline && (
-                      <div className="text-[11px] font-medium mt-0.5" style={{ color: deadline.color }}>
-                        {deadline.label}
-                      </div>
-                    )}
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full transition-all duration-300"
+                        style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }}
+                      />
+                    </div>
                   </div>
                 );
               })()}
-
-              {/* Создано */}
-              {ticket.created_at && (
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground/60 mb-1">Создано</div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Icon name="Clock" size={11} />
-                    {new Date(ticket.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </Card>
         );
