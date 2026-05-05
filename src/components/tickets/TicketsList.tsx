@@ -237,11 +237,11 @@ const TicketsList = ({
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     {ticket.has_new && (
                       <span
-                        className="relative inline-flex items-center justify-center flex-shrink-0"
+                        className="relative inline-flex items-center justify-center flex-shrink-0 animate-pulse"
                         title="Новые сообщения"
                         aria-label="Новые сообщения"
                       >
-                        <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-sky-400 opacity-60 animate-ping" />
+                        <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-sky-400 opacity-60" />
                         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
                       </span>
                     )}
@@ -273,7 +273,7 @@ const TicketsList = ({
                     )}
                     {ticket.client_replied && (
                       <Badge
-                        className="flex items-center gap-1 text-xs font-bold uppercase bg-blue-500 hover:bg-blue-600 text-white animate-pulse"
+                        className="flex items-center gap-1 text-xs font-bold uppercase bg-sky-500 hover:bg-sky-600 text-white animate-pulse"
                         title={
                           ticket.client_replied_at
                             ? `Последний ответ клиента: ${new Date(ticket.client_replied_at).toLocaleString('ru-RU', {
