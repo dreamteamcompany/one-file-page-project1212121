@@ -4,6 +4,12 @@
  */
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TicketsViewToggleProps {
   viewMode: 'list' | 'kanban';
@@ -18,6 +24,8 @@ interface TicketsViewToggleProps {
   hideWaiting?: boolean;
   onToggleHideWaiting?: (value: boolean) => void;
   needsMyReply?: boolean;
+  showAll?: boolean;
+  onToggleShowAll?: (value: boolean) => void;
 }
 
 const TicketsViewToggle = ({
@@ -33,19 +41,54 @@ const TicketsViewToggle = ({
   hideWaiting = true,
   onToggleHideWaiting,
   needsMyReply = false,
+  showAll = false,
+  onToggleShowAll,
 }: TicketsViewToggleProps) => {
+  const isOpenOrAllActive = !showArchived && !showHidden;
+  const currentLabel = showAll ? 'Все' : 'Открытые';
+
+  const handleSelectOpen = () => {
+    onViewModeChange('list');
+    if (showArchived) onToggleArchived(false);
+    if (showHidden && onToggleHidden) onToggleHidden(false);
+    if (showAll && onToggleShowAll) onToggleShowAll(false);
+  };
+
+  const handleSelectAll = () => {
+    onViewModeChange('list');
+    if (onToggleShowAll) onToggleShowAll(true);
+  };
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant={!showArchived && !showHidden ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => { onViewModeChange('list'); if (showArchived) onToggleArchived(false); if (showHidden && onToggleHidden) onToggleHidden(false); }}
-          className="flex items-center gap-2"
-        >
-          <Icon name="List" size={16} />
-          <span className="hidden sm:inline">Открытые</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isOpenOrAllActive ? 'default' : 'outline'}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Icon name="List" size={16} />
+              <span className="hidden sm:inline">{currentLabel}</span>
+              <Icon name="ChevronDown" size={14} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleSelectOpen}>
+              <Icon name="List" size={14} className="mr-2" />
+              Открытые
+              {isOpenOrAllActive && !showAll && (
+                <Icon name="Check" size={14} className="ml-auto" />
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSelectAll}>
+              <Icon name="LayoutList" size={14} className="mr-2" />
+              Все
+              {showAll && <Icon name="Check" size={14} className="ml-auto" />}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="outline"
           size="sm"

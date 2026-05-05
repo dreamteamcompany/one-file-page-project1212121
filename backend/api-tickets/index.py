@@ -193,6 +193,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         is_archived = query_params.get('is_archived')
         is_hidden = query_params.get('is_hidden')
         hide_waiting = query_params.get('hide_waiting')
+        show_all = query_params.get('show_all')
         needs_my_reply = query_params.get('needs_my_reply')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
@@ -257,7 +258,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if service_id:
             where_clause += " AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsm2 WHERE tsm2.ticket_id = t.id AND tsm2.ticket_service_id = %s)".format(SCHEMA=SCHEMA)
             params.append(int(service_id))
-        if not ticket_id_param:
+        if not ticket_id_param and show_all != 'true':
             if is_hidden == 'true':
                 where_clause += f" AND t.is_archived = false AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses hs WHERE hs.id = t.status_id AND hs.is_pending_confirmation = true)"
                 where_clause += " AND t.assigned_to = %s"
@@ -273,7 +274,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if to_date:
             where_clause += " AND t.created_at <= %s"
             params.append(to_date)
-        if hide_waiting == 'true':
+        if hide_waiting == 'true' and show_all != 'true':
             where_clause += f" AND NOT EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses wst WHERE wst.id = t.status_id AND wst.is_waiting_response = true)"
         if needs_my_reply == 'true':
             where_clause += f"""
