@@ -82,7 +82,7 @@ def handle_users(method, event, conn, payload):
                 if req.email:
                     cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE email = %s", (req.email,))
                     if cur.fetchone():
-                        return response(409, {'error': 'Email already taken', 'message': f'Email "{req.email}" уже используется'})
+                        return response(409, {'error': 'Email already taken', 'message': f'Пользователь с почтой "{req.email}" уже существует'})
                 if bitrix_id_value:
                     cur.execute(f"SELECT id FROM {SCHEMA}.users WHERE bitrix_user_id = %s", (bitrix_id_value,))
                     if cur.fetchone():
@@ -127,7 +127,7 @@ def handle_users(method, event, conn, payload):
                     if 'username' in low:
                         msg = f'Логин "{req.username}" уже занят'
                     elif 'email' in low:
-                        msg = f'Email "{req.email}" уже используется'
+                        msg = f'Пользователь с почтой "{req.email}" уже существует'
                     elif 'bitrix' in low:
                         msg = 'Битрикс ID уже используется'
                     return response(409, {'error': 'Duplicate user', 'message': msg})
@@ -161,31 +161,73 @@ def handle_users(method, event, conn, payload):
                 conn.commit()
                 return response(200, {'message': 'Bypass department head check updated'})
 
-            req = UserRequest(**body)
-            
+            try:
+                req = UserRequest(**body)
+            except Exception as validation_error:
+                log(f"[UPDATE USER] Validation error: {str(validation_error)}")
+                return response(400, {'error': 'Validation error', 'details': str(validation_error)})
+
             email_value = req.email if req.email else f"no-email-{target_user_id}@placeholder.local"
             bitrix_id_value = req.bitrix_user_id if req.bitrix_user_id else None
-            
-            if req.password:
-                password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                cur.execute(f"""
-                    UPDATE {SCHEMA}.users 
-                    SET username=%s, password_hash=%s, full_name=%s, position=%s, email=%s, photo_url=%s, bitrix_user_id=%s
-                    WHERE id=%s
-                """, (req.username, password_hash, req.full_name, req.position, email_value, req.photo_url, bitrix_id_value, target_user_id))
-            else:
-                cur.execute(f"""
-                    UPDATE {SCHEMA}.users 
-                    SET username=%s, full_name=%s, position=%s, email=%s, photo_url=%s, bitrix_user_id=%s
-                    WHERE id=%s
-                """, (req.username, req.full_name, req.position, email_value, req.photo_url, bitrix_id_value, target_user_id))
-            
-            cur.execute(f"DELETE FROM {SCHEMA}.user_roles WHERE user_id=%s", (target_user_id,))
-            for role_id in req.role_ids:
-                cur.execute(f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id) VALUES (%s, %s)", (target_user_id, role_id))
-            
-            conn.commit()
-            return response(200, {'message': 'User updated'})
+
+            try:
+                cur.execute(
+                    f"SELECT id FROM {SCHEMA}.users WHERE username = %s AND id <> %s",
+                    (req.username, target_user_id)
+                )
+                if cur.fetchone():
+                    return response(409, {'error': 'Username already taken', 'message': f'Логин "{req.username}" уже занят'})
+                if req.email:
+                    cur.execute(
+                        f"SELECT id FROM {SCHEMA}.users WHERE email = %s AND id <> %s",
+                        (req.email, target_user_id)
+                    )
+                    if cur.fetchone():
+                        return response(409, {'error': 'Email already taken', 'message': f'Пользователь с почтой "{req.email}" уже существует'})
+                if bitrix_id_value:
+                    cur.execute(
+                        f"SELECT id FROM {SCHEMA}.users WHERE bitrix_user_id = %s AND id <> %s",
+                        (bitrix_id_value, target_user_id)
+                    )
+                    if cur.fetchone():
+                        return response(409, {'error': 'Bitrix ID already taken', 'message': f'Битрикс ID "{bitrix_id_value}" уже используется'})
+
+                if req.password:
+                    password_hash = bcrypt.hashpw(req.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.users 
+                        SET username=%s, password_hash=%s, full_name=%s, position=%s, email=%s, photo_url=%s, bitrix_user_id=%s
+                        WHERE id=%s
+                    """, (req.username, password_hash, req.full_name, req.position, email_value, req.photo_url, bitrix_id_value, target_user_id))
+                else:
+                    cur.execute(f"""
+                        UPDATE {SCHEMA}.users 
+                        SET username=%s, full_name=%s, position=%s, email=%s, photo_url=%s, bitrix_user_id=%s
+                        WHERE id=%s
+                    """, (req.username, req.full_name, req.position, email_value, req.photo_url, bitrix_id_value, target_user_id))
+
+                cur.execute(f"DELETE FROM {SCHEMA}.user_roles WHERE user_id=%s", (target_user_id,))
+                for role_id in req.role_ids:
+                    cur.execute(f"INSERT INTO {SCHEMA}.user_roles (user_id, role_id) VALUES (%s, %s)", (target_user_id, role_id))
+
+                conn.commit()
+                return response(200, {'message': 'User updated'})
+            except Exception as update_error:
+                conn.rollback()
+                err_name = type(update_error).__name__
+                err_str = str(update_error)
+                log(f"[UPDATE USER] Update error: {err_name}: {err_str}")
+                if 'unique' in err_str.lower() or err_name in ('UniqueViolation', 'IntegrityError'):
+                    msg = 'Такой пользователь уже существует'
+                    low = err_str.lower()
+                    if 'username' in low:
+                        msg = f'Логин "{req.username}" уже занят'
+                    elif 'email' in low:
+                        msg = f'Пользователь с почтой "{req.email}" уже существует'
+                    elif 'bitrix' in low:
+                        msg = 'Битрикс ID уже используется'
+                    return response(409, {'error': 'Duplicate user', 'message': msg})
+                return response(500, {'error': 'Failed to update user', 'details': err_str})
         
         elif method == 'DELETE':
             # Проверка права на удаление пользователей
