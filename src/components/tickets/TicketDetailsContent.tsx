@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
+import TicketFiles from '@/components/tickets/TicketFiles';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,6 +60,8 @@ interface Comment {
   ticket_id: number;
   user_id: number;
   user_name?: string;
+  user_full_name?: string;
+  user_photo_url?: string;
   user_email?: string;
   comment: string;
   is_internal: boolean;
@@ -359,7 +362,7 @@ const TicketDetailsContent = ({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Файлы (0)
+            Файлы ({comments.reduce((s, c) => s + (c.attachments?.length || 0), 0)})
           </button>
           <button 
             onClick={() => setActiveTab('history')}
@@ -403,10 +406,7 @@ const TicketDetailsContent = ({
         )}
         
         {activeTab === 'files' && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Icon name="FileText" size={48} className="mx-auto mb-2 opacity-30" />
-            <p>Файлы пока не загружены</p>
-          </div>
+          <TicketFiles comments={comments} />
         )}
         
         {activeTab === 'history' && (
