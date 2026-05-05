@@ -210,6 +210,42 @@ const TicketsList = ({
           <div className="pointer-events-none absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
 
+          {ticket.due_date && (() => {
+            const deadline = getDeadlineProgress(ticket.due_date);
+            if (!deadline) return null;
+            const oneDay = 24 * 60 * 60 * 1000;
+            const oneHour = 60 * 60 * 1000;
+            const timeLeft = new Date(ticket.due_date).getTime() - new Date().getTime();
+            let leftLabel = '';
+            if (timeLeft < 0) {
+              leftLabel = 'Просрочено';
+            } else {
+              const daysLeft = Math.floor(timeLeft / oneDay);
+              const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
+              if (daysLeft === 0) {
+                leftLabel = `Осталось: ${hoursLeft} ч`;
+              } else {
+                leftLabel = `Осталось: ${daysLeft} д ${hoursLeft} ч`;
+              }
+            }
+            return (
+              <div className="absolute inset-y-3 left-[76%] right-0 z-20 flex flex-col items-start justify-center gap-1.5 px-4 pointer-events-none">
+                <span className="text-sm font-semibold truncate max-w-full" style={{ color: deadline.color }}>
+                  {deadline.label}
+                </span>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full transition-all duration-300"
+                    style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-full">
+                  {leftLabel}
+                </span>
+              </div>
+            );
+          })()}
+
           <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-start justify-center gap-2 px-4 pointer-events-none">
             {ticket.status_name && (
               <div className="flex flex-col items-start gap-0.5 max-w-full">
@@ -400,35 +436,7 @@ const TicketsList = ({
                 </div>
               </div>
 
-              {ticket.due_date && (() => {
-                const deadline = getDeadlineProgress(ticket.due_date);
-                if (!deadline) return null;
-                
-                return (
-                  <div className="space-y-1.5 mt-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1.5">
-                        <Icon name="Calendar" size={12} />
-                        Дедлайн: {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      <span className="font-medium" style={{ color: deadline.color }}>
-                        {deadline.label}
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full transition-all duration-300"
-                        style={{ width: `${deadline.percent}%`, backgroundColor: deadline.color }}
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
+
           </div>
         </Card>
         );
