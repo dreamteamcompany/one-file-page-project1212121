@@ -213,9 +213,9 @@ const TicketsList = ({
               aria-hidden="true"
             />
           )}
-          <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0.5 bg-white/10 z-0" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
+          <div className="pointer-events-none hidden md:block absolute inset-y-3 left-1/2 w-0.5 bg-white/10 z-0" aria-hidden="true" />
+          <div className="pointer-events-none hidden md:block absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
+          <div className="pointer-events-none hidden md:block absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
 
           {ticket.due_date && (() => {
             const deadline = getDeadlineProgress(ticket.due_date);
@@ -236,7 +236,7 @@ const TicketsList = ({
               }
             }
             return (
-              <div className="absolute inset-y-3 left-[76%] right-0 z-20 flex flex-col items-start justify-center gap-1.5 px-4 pointer-events-none">
+              <div className="hidden md:flex absolute inset-y-3 left-[76%] right-0 z-20 flex-col items-start justify-center gap-1.5 px-4 pointer-events-none">
                 <span className="text-sm font-semibold truncate max-w-full" style={{ color: deadline.color }}>
                   {deadline.label}
                 </span>
@@ -259,7 +259,7 @@ const TicketsList = ({
             );
           })()}
 
-          <div className="absolute inset-y-3 left-[63%] right-[24%] z-20 flex flex-col items-start justify-center gap-2 px-4 pointer-events-none">
+          <div className="hidden md:flex absolute inset-y-3 left-[63%] right-[24%] z-20 flex-col items-start justify-center gap-2 px-4 pointer-events-none">
             {ticket.created_at && (
               <div className="flex flex-col items-start gap-0.5 max-w-full">
                 <span className="text-xs text-muted-foreground">Дата создания</span>
@@ -296,7 +296,7 @@ const TicketsList = ({
             )}
           </div>
 
-          <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-start justify-center gap-2 px-4 pointer-events-none">
+          <div className="hidden md:flex absolute inset-y-3 left-[50%] right-[37%] z-20 flex-col items-start justify-center gap-2 px-4 pointer-events-none">
             {ticket.status_name && (
               <div className="flex flex-col items-start gap-0.5 max-w-full">
                 <span className="text-xs text-muted-foreground">Статус</span>
@@ -411,18 +411,98 @@ const TicketsList = ({
                       </Badge>
                     )}
                   </div>
-                  <h3 className="font-semibold text-base line-clamp-1 max-w-[calc(50%-1.5rem)] break-all">
+                  <h3 className="font-semibold text-base line-clamp-2 md:line-clamp-1 md:max-w-[calc(50%-1.5rem)] break-all">
                     {ticket.status_name === 'На согласовании' && '🔔 '}
                     {ticket.status_name === 'Отклонена' && '❌ '}
                     {ticket.status_name === 'Одобрена' && '✅ '}
                     {ticket.title}
                   </h3>
                   {ticket.description && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 max-w-[calc(50%-1.5rem)] break-all">
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 md:max-w-[calc(50%-1.5rem)] break-all">
                       {ticket.description.replace(/<[^>]*>/g, '')}
                     </p>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="md:hidden pt-2.5 mt-1 space-y-2 border-t border-white/10">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {ticket.status_name && (
+                  <Badge
+                    variant="secondary"
+                    className="text-xs max-w-full truncate"
+                    style={{
+                      backgroundColor: `${ticket.status_color}20`,
+                      color: ticket.status_color,
+                      borderColor: ticket.status_color,
+                    }}
+                  >
+                    {ticket.status_name}
+                  </Badge>
+                )}
+                {(ticket.customer_name || ticket.creator_name) && (
+                  <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1 text-xs max-w-full">
+                    {ticket.creator_photo_url ? (
+                      <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <Icon name="User" size={11} className="flex-shrink-0" />
+                    )}
+                    <span className="truncate">{ticket.customer_name || ticket.creator_name}</span>
+                  </span>
+                )}
+                <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs max-w-full ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
+                  {ticket.assignee_photo_url ? (
+                    <img src={ticket.assignee_photo_url} alt="" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <Icon name={(ticket.assigned_to_name || ticket.assignee_name) ? "UserCheck" : "UserX"} size={11} className="flex-shrink-0" />
+                  )}
+                  <span className="truncate">{ticket.assigned_to_name || ticket.assignee_name || 'Не назначен'}</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {ticket.created_at && (
+                  <span className="inline-flex items-center gap-1.5 bg-muted/60 text-white rounded-md px-2 py-1 text-xs">
+                    <Icon name="Clock" size={11} className="flex-shrink-0" />
+                    <span className="truncate">
+                      {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </span>
+                )}
+                {ticket.due_date && (
+                  <span className="inline-flex items-center gap-1.5 bg-muted/60 text-white rounded-md px-2 py-1 text-xs">
+                    <Icon name="Calendar" size={11} className="flex-shrink-0" />
+                    <span className="truncate">
+                      {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </span>
+                )}
+                {ticket.due_date && (() => {
+                  const deadline = getDeadlineProgress(ticket.due_date);
+                  if (!deadline) return null;
+                  return (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium"
+                      style={{
+                        backgroundColor: `${deadline.color}20`,
+                        color: deadline.color,
+                      }}
+                    >
+                      <Icon name="Timer" size={11} className="flex-shrink-0" />
+                      <span className="truncate">{deadline.label}</span>
+                    </span>
+                  );
+                })()}
               </div>
             </div>
 
