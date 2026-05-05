@@ -178,6 +178,14 @@ const TicketsList = ({
         const segments = 5;
         const filledSegments = deadline ? Math.max(1, Math.round((deadline.percent / 100) * segments)) : 0;
 
+        let hoursLeft: number | null = null;
+        if (ticket.due_date) {
+          const diff = new Date(ticket.due_date).getTime() - Date.now();
+          if (diff > 0) hoursLeft = Math.floor(diff / 3600000);
+        }
+        const isUrgent = hoursLeft !== null && hoursLeft < 24;
+        const showNewComment = !!(ticket.has_new || ticket.client_replied || (ticket.unread_comments && ticket.unread_comments > 0));
+
         return (
         <div
           key={ticket.id}
@@ -198,9 +206,9 @@ const TicketsList = ({
             }
           }}
         >
-          <div className="flex items-stretch gap-4 px-4 py-3">
+          <div className="flex items-start gap-6 px-5 py-4">
             {bulkMode && onToggleTicket && (
-              <div className="flex items-center">
+              <div className="flex items-center pt-1">
                 <Checkbox
                   checked={selectedTicketIds.includes(ticket.id)}
                   onCheckedChange={(e) => { if (e) onToggleTicket(ticket.id); }}
@@ -209,71 +217,63 @@ const TicketsList = ({
               </div>
             )}
 
-            {/* Левая часть: ID + бейджи + заголовок + описание + теги */}
+            {/* Левая часть: ID + бейджи / заголовок / описание / теги */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-mono text-slate-400">#{ticket.id}</span>
+                <span className="text-[12px] font-medium text-slate-400">#{ticket.id}</span>
                 {ticket.status_name && (
-                  <span
-                    className="inline-flex items-center text-[11px] font-medium rounded-md px-2 py-0.5"
-                    style={{
-                      backgroundColor: `${ticket.status_color || '#3b82f6'}26`,
-                      color: ticket.status_color || '#60a5fa',
-                    }}
-                  >
+                  <span className="inline-flex items-center text-[11px] font-medium rounded px-2 py-[3px] bg-slate-700/70 text-slate-200">
                     {ticket.status_name}
                   </span>
                 )}
-                {(ticket.has_new || ticket.client_replied || (ticket.unread_comments && ticket.unread_comments > 0)) && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide rounded-md px-2 py-0.5 bg-cyan-500/15 text-cyan-400">
+                {showNewComment && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide rounded px-2 py-[3px] bg-cyan-500/15 text-cyan-400">
                     <Icon name="MessageSquare" size={11} />
                     Новый комментарий
                   </span>
                 )}
                 {isCritical && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide rounded-md px-2 py-0.5 bg-red-500/20 text-red-400">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide rounded px-2 py-[3px] bg-red-500/20 text-red-400">
                     <Icon name="AlertTriangle" size={11} />
                     Критично
                   </span>
                 )}
                 {!!ticket.unread_mentions && ticket.unread_mentions > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide rounded-md px-2 py-0.5 bg-purple-500/20 text-purple-300">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide rounded px-2 py-[3px] bg-purple-500/20 text-purple-300">
                     <Icon name="AtSign" size={11} />
                     {ticket.unread_mentions}
                   </span>
                 )}
               </div>
 
-              <h3 className="mt-1.5 font-semibold text-[15px] text-white line-clamp-1">
+              <h3 className="mt-2 font-semibold text-[16px] text-white line-clamp-1 leading-tight">
                 {ticket.title}
               </h3>
               {ticket.description && (
-                <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
+                <p className="text-[13px] text-slate-400 mt-1 line-clamp-2 leading-snug">
                   {ticket.description.replace(/<[^>]*>/g, '')}
                 </p>
               )}
 
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <div className="flex items-center gap-3 mt-3 flex-wrap">
                 {ticket.category_name && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-300 bg-slate-700/40 rounded-md px-2 py-0.5">
-                    <Icon name={ticket.category_icon || 'Tag'} size={11} />
+                  <span className="inline-flex items-center gap-1.5 text-[12px] text-slate-300">
+                    <Icon name={ticket.category_icon || 'Tag'} size={12} className="text-slate-400" />
                     {ticket.category_name}
                   </span>
                 )}
                 {ticket.ticket_service && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-300 bg-slate-700/40 rounded-md px-2 py-0.5">
-                    <Icon name="Wrench" size={11} />
+                  <span className="inline-flex items-center gap-1.5 text-[12px] text-slate-300">
+                    <Icon name="Wrench" size={12} className="text-slate-400" />
                     {ticket.ticket_service.name}
                   </span>
                 )}
                 {ticket.priority_name && (
-                  <span className="inline-flex items-center gap-1 text-[11px] rounded-md px-2 py-0.5"
-                    style={{
-                      color: ticket.priority_color || '#94a3b8',
-                      backgroundColor: `${ticket.priority_color || '#475569'}1f`,
-                    }}
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[12px]"
+                    style={{ color: ticket.priority_color || '#60a5fa' }}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color || '#94a3b8' }} />
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ticket.priority_color || '#60a5fa' }} />
                     {ticket.priority_name}
                   </span>
                 )}
@@ -281,27 +281,42 @@ const TicketsList = ({
             </div>
 
             {/* Колонка: Исполнитель + Статус */}
-            <div className="hidden md:flex flex-col justify-center gap-2 min-w-[160px] max-w-[200px]">
+            <div className="hidden md:flex flex-col gap-3 min-w-[180px] max-w-[200px] pt-0.5">
               <div>
-                <div className="text-[11px] text-slate-400 mb-1">Исполнитель</div>
-                <div className="flex items-center gap-1.5 text-sm text-slate-100">
+                <div className="text-[12px] text-slate-400 mb-1.5">Исполнитель</div>
+                <div className="flex items-center gap-2 text-[14px] text-slate-100">
                   {ticket.assignee_photo_url ? (
-                    <img src={ticket.assignee_photo_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                    <img src={ticket.assignee_photo_url} alt="" className="w-6 h-6 rounded-full object-cover" />
                   ) : (
-                    <Icon name={(ticket.assigned_to_name || ticket.assignee_name) ? 'User' : 'UserX'} size={14} className="text-slate-400" />
+                    <div className="w-6 h-6 rounded-full bg-slate-600/60 flex items-center justify-center">
+                      <Icon name="User" size={12} className="text-slate-300" />
+                    </div>
                   )}
                   <span className="truncate">
                     {ticket.assigned_to_name || ticket.assignee_name || 'Не назначен'}
                   </span>
                 </div>
               </div>
+
+              <div>
+                <div className="text-[12px] text-slate-400 mb-1.5">Статус</div>
+                <div className="flex items-center gap-2 text-[14px]">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: (ticket.assigned_to_name || ticket.assignee_name) ? '#22c55e' : '#f59e0b' }}
+                  />
+                  <span className="text-slate-100 truncate">
+                    {(ticket.assigned_to_name || ticket.assignee_name) ? 'Назначен' : 'Не назначен'}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Колонка: Дедлайн */}
-            <div className="hidden md:flex flex-col justify-center gap-1 min-w-[140px]">
-              <div className="text-[11px] text-slate-400">Дедлайн</div>
+            <div className="hidden md:flex flex-col gap-1.5 min-w-[130px] pt-0.5">
+              <div className="text-[12px] text-slate-400">Дедлайн</div>
               {ticket.due_date ? (
-                <div className="flex items-center gap-1.5 text-sm text-slate-100">
+                <div className="flex items-center gap-2 text-[14px] text-slate-100">
                   <Icon name="Calendar" size={13} className="text-slate-400" />
                   <span>
                     {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
@@ -313,46 +328,48 @@ const TicketsList = ({
                   </span>
                 </div>
               ) : (
-                <span className="text-sm text-slate-500">—</span>
+                <span className="text-[14px] text-slate-500">—</span>
               )}
-              <div className="text-[11px] text-slate-400 mt-1">Статус</div>
-              <div className="flex items-center gap-1.5 text-sm">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: (ticket.assigned_to_name || ticket.assignee_name) ? '#22c55e' : '#f59e0b' }}
-                />
-                <span className="text-slate-100 truncate">
-                  {(ticket.assigned_to_name || ticket.assignee_name) ? 'Назначен' : 'Не назначен'}
-                </span>
-              </div>
             </div>
 
             {/* Колонка: Срочность */}
-            <div className="hidden lg:flex flex-col justify-center min-w-[180px]">
+            <div className="hidden lg:flex flex-col min-w-[200px] pt-0.5">
               {deadline ? (
                 <>
-                  <div className="text-sm font-semibold" style={{ color: deadline.color }}>
+                  <div className="text-[14px] font-bold" style={{ color: deadline.color }}>
                     {deadline.label}
                   </div>
-                  <div className="flex items-center gap-1 mt-1.5">
-                    {Array.from({ length: segments }).map((_, i) => (
+                  {isUrgent ? (
+                    <div className="mt-2 h-2.5 rounded-sm bg-slate-600/40 overflow-hidden">
                       <div
-                        key={i}
-                        className="h-2 flex-1 rounded-sm"
+                        className="h-full rounded-sm"
                         style={{
-                          backgroundColor: i < filledSegments ? deadline.color : 'rgba(148, 163, 184, 0.2)',
+                          width: '78%',
+                          backgroundColor: deadline.color,
                         }}
                       />
-                    ))}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-1.5">
-                    {deadline.label.startsWith('Менее') || deadline.label.startsWith('Остал')
-                      ? deadline.label.replace('Осталось', 'Осталось:').replace('Остался', 'Осталось:')
-                      : ''}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 mt-2">
+                      {Array.from({ length: segments }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="h-2.5 flex-1 rounded-sm"
+                          style={{
+                            backgroundColor: i < filledSegments ? deadline.color : 'rgba(100, 116, 139, 0.35)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {hoursLeft !== null && (
+                    <div className="text-[12px] text-slate-400 mt-2">
+                      Осталось: {hoursLeft} ч
+                    </div>
+                  )}
                 </>
               ) : (
-                <span className="text-xs text-slate-500">Без дедлайна</span>
+                <span className="text-[12px] text-slate-500">Без дедлайна</span>
               )}
             </div>
 
