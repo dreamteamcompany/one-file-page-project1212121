@@ -294,14 +294,14 @@ const TicketsList = ({
                       </Badge>
                     )}
                   </div>
-                  <h3 className="font-semibold text-base line-clamp-1">
+                  <h3 className="font-semibold text-base line-clamp-1 max-w-[calc(50%-1.5rem)] break-all">
                     {ticket.status_name === 'На согласовании' && '🔔 '}
                     {ticket.status_name === 'Отклонена' && '❌ '}
                     {ticket.status_name === 'Одобрена' && '✅ '}
                     {ticket.title}
                   </h3>
                   {ticket.description && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 max-w-[calc(50%-1.5rem)] break-all">
                       {ticket.description.replace(/<[^>]*>/g, '')}
                     </p>
                   )}
