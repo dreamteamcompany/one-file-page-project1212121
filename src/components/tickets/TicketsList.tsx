@@ -206,6 +206,13 @@ const TicketsList = ({
             }
           }}
         >
+          {ticket.priority_color && (
+            <div
+              className="pointer-events-none absolute left-0 top-0 bottom-0 w-1 rounded-l-lg z-10"
+              style={{ backgroundColor: ticket.priority_color }}
+              aria-hidden="true"
+            />
+          )}
           <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
