@@ -210,29 +210,35 @@ const TicketsList = ({
           <div className="pointer-events-none absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
 
-          <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-center justify-center gap-1.5 px-2 pointer-events-none">
+          <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-center justify-center gap-2 px-2 pointer-events-none">
             {ticket.status_name && (
-              <Badge
-                variant="secondary"
-                className="text-xs max-w-full truncate"
-                style={{
-                  backgroundColor: `${ticket.status_color}20`,
-                  color: ticket.status_color,
-                  borderColor: ticket.status_color,
-                }}
-              >
-                {ticket.status_name}
-              </Badge>
+              <div className="flex flex-col items-center gap-0.5 max-w-full">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Статус</span>
+                <Badge
+                  variant="secondary"
+                  className="text-xs max-w-full truncate"
+                  style={{
+                    backgroundColor: `${ticket.status_color}20`,
+                    color: ticket.status_color,
+                    borderColor: ticket.status_color,
+                  }}
+                >
+                  {ticket.status_name}
+                </Badge>
+              </div>
             )}
             {(ticket.customer_name || ticket.creator_name) && (
-              <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1 text-xs max-w-full">
-                {ticket.creator_photo_url ? (
-                  <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
-                ) : (
-                  <Icon name="User" size={11} className="flex-shrink-0" />
-                )}
-                <span className="truncate">{ticket.customer_name || ticket.creator_name}</span>
-              </span>
+              <div className="flex flex-col items-center gap-0.5 max-w-full">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Заказчик</span>
+                <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1 text-xs max-w-full">
+                  {ticket.creator_photo_url ? (
+                    <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <Icon name="User" size={11} className="flex-shrink-0" />
+                  )}
+                  <span className="truncate">{ticket.customer_name || ticket.creator_name}</span>
+                </span>
+              </div>
             )}
           </div>
 
