@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { FIELD_GROUPS_URL, SERVICE_FIELD_MAPPINGS_URL, CLASSIFY_TICKET_URL, apiFetch, getApiUrl } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFileUploader, UploadedAttachment } from '@/hooks/useFileUploader';
 import func2url from '../../../backend/func2url.json';
 import {
   Dialog,
@@ -92,7 +93,11 @@ interface TicketFormProps {
   customFields: CustomField[];
   services: Service[];
   ticketServices?: Service[];
-  handleSubmit: (e: React.FormEvent, overrideData?: Record<string, string | number | number[] | Record<string, string>>) => Promise<void>;
+  handleSubmit: (
+    e: React.FormEvent,
+    overrideData?: Record<string, string | number | number[] | Record<string, string>>,
+    attachments?: UploadedAttachment[],
+  ) => Promise<void>;
   onDialogOpen?: () => void;
   canCreate?: boolean;
 }
@@ -120,6 +125,7 @@ const TicketForm = ({
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
   const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
   const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
+  const fileUploader = useFileUploader('uploads/attachments');
 
   const userFilteredTicketServices = useMemo(() => {
     if (!user) return ticketServices;
@@ -159,6 +165,7 @@ const TicketForm = ({
       setSelectedServices([]);
       setClassification(null);
       setVisibleCustomFields([]);
+      fileUploader.clear();
       if (onDialogOpen) {
         onDialogOpen();
       }
@@ -310,10 +317,11 @@ const TicketForm = ({
       category_id: '',
     };
     setFormData(updatedFormData);
-    await handleSubmit(e, updatedFormData);
+    await handleSubmit(e, updatedFormData, fileUploader.successful);
     setStep(1);
     setSelectedServices([]);
     setClassification(null);
+    fileUploader.clear();
   };
 
   const loadVisibleFields = useCallback(async () => {
@@ -466,6 +474,10 @@ const TicketForm = ({
             onBack={() => handleDialogChange(false)}
             isFirstStep
             classificationMode={classificationMode}
+            attachments={fileUploader.attachments}
+            isUploadingFiles={fileUploader.isUploading}
+            onSelectFiles={fileUploader.uploadMany}
+            onRemoveAttachment={fileUploader.remove}
           />
         )}
 
@@ -518,6 +530,10 @@ const TicketForm = ({
             onSubmit={onSubmit}
             onBack={handleBack}
             classificationMode={classificationMode}
+            attachments={fileUploader.attachments}
+            isUploadingFiles={fileUploader.isUploading}
+            onSelectFiles={fileUploader.uploadMany}
+            onRemoveAttachment={fileUploader.remove}
           />
         )}
 

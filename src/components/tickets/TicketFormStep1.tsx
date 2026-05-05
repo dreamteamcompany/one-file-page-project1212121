@@ -20,6 +20,8 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
+import AttachmentUploader from '@/components/shared/AttachmentUploader';
+import { UploadedAttachment } from '@/hooks/useFileUploader';
 
 interface TicketService {
   id: number;
@@ -57,6 +59,10 @@ interface TicketFormStep1Props {
   onBack: () => void;
   isFirstStep?: boolean;
   classificationMode?: 'ai' | 'manual';
+  attachments?: UploadedAttachment[];
+  isUploadingFiles?: boolean;
+  onSelectFiles?: (files: FileList | File[]) => void;
+  onRemoveAttachment?: (id: string) => void;
 }
 
 const TicketFormStep1 = ({
@@ -70,6 +76,10 @@ const TicketFormStep1 = ({
   onBack,
   isFirstStep,
   classificationMode = 'ai',
+  attachments,
+  isUploadingFiles,
+  onSelectFiles,
+  onRemoveAttachment,
 }: TicketFormStep1Props) => {
   const [criticalConfirmOpen, setCriticalConfirmOpen] = useState(false);
   const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
@@ -137,6 +147,19 @@ const TicketFormStep1 = ({
           )}
         </div>
 
+        {onSelectFiles && onRemoveAttachment && (
+          <div className="space-y-2">
+            <Label>Вложения</Label>
+            <AttachmentUploader
+              attachments={attachments || []}
+              isUploading={!!isUploadingFiles}
+              onSelect={onSelectFiles}
+              onRemove={onRemoveAttachment}
+              hint="Можно прикрепить несколько файлов"
+            />
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="priority_id">Приоритет</Label>
           <Select
@@ -191,27 +214,29 @@ const TicketFormStep1 = ({
               type="button"
               className="flex-1 gap-2"
               onClick={onNext}
-              disabled={!canProceed}
+              disabled={!canProceed || isUploadingFiles}
             >
               <Icon name={classificationMode === 'ai' ? 'Sparkles' : 'ArrowRight'} size={18} />
-              Далее
+              {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Далее'}
             </Button>
           ) : hasCustomFields && onNext ? (
             <Button
               type="button"
               className="flex-1 gap-2"
               onClick={onNext}
+              disabled={isUploadingFiles}
             >
-              Далее
+              {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Далее'}
               <Icon name="ArrowRight" size={18} />
             </Button>
           ) : (
             <Button
               type="submit"
               className="flex-1 gap-2"
+              disabled={isUploadingFiles}
             >
               <Icon name="Send" size={18} />
-              Создать заявку
+              {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}
             </Button>
           )}
         </div>

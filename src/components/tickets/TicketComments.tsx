@@ -4,6 +4,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useRef, useEffect } from 'react';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
+import AttachmentUploader from '@/components/shared/AttachmentUploader';
+import { UploadedAttachment } from '@/hooks/useFileUploader';
 
 interface Comment {
   id: number;
@@ -52,8 +54,10 @@ interface TicketCommentsProps {
   currentUserId?: number;
   onReaction?: (commentId: number, emoji: string) => void;
   availableUsers?: User[];
-  onFileUpload?: (file: File) => Promise<void>;
+  onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
   uploadingFile?: boolean;
+  pendingAttachments?: UploadedAttachment[];
+  onRemoveAttachment?: (id: string) => void;
   commentsBlocked?: boolean;
   commentsBlockedMessage?: string;
   participantIds?: number[];
@@ -92,6 +96,8 @@ const TicketComments = ({
   availableUsers = [],
   onFileUpload,
   uploadingFile = false,
+  pendingAttachments = [],
+  onRemoveAttachment,
   commentsBlocked = false,
   commentsBlockedMessage,
   participantIds = [],
@@ -320,9 +326,9 @@ const TicketComments = ({
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onFileUpload) {
-      await onFileUpload(file);
+    const files = e.target.files;
+    if (files && files.length > 0 && onFileUpload) {
+      await onFileUpload(files);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -435,11 +441,25 @@ const TicketComments = ({
                 </div>
               )}
             </div>
-            
+
+            {pendingAttachments.length > 0 && onRemoveAttachment && (
+              <AttachmentUploader
+                attachments={pendingAttachments}
+                isUploading={uploadingFile}
+                onSelect={(files) => onFileUpload && onFileUpload(files)}
+                onRemove={onRemoveAttachment}
+                buttonLabel="Добавить ещё"
+              />
+            )}
+
             <div className="flex flex-wrap gap-2 items-center">
               <Button
                 onClick={handleSubmit}
-                disabled={!newComment.trim() || submittingComment}
+                disabled={
+                  (!newComment.trim() && pendingAttachments.filter((a) => a.status === 'done').length === 0) ||
+                  submittingComment ||
+                  uploadingFile
+                }
                 size="sm"
                 className="flex-1 min-w-[120px]"
               >
@@ -459,6 +479,7 @@ const TicketComments = ({
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 onChange={handleFileSelect}
                 className="hidden"
                 disabled={uploadingFile}

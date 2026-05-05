@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { API_URL, apiFetch } from '@/utils/api';
+import func2url from '../../backend/func2url.json';
+import { UploadedAttachment } from '@/hooks/useFileUploader';
 
 interface CustomField {
   id: number;
@@ -10,6 +12,8 @@ interface CustomField {
   field_type: string;
   is_required: boolean;
 }
+
+const COMMENTS_URL = (func2url as Record<string, string>)['api-ticket-comments'];
 
 export const useTicketForm = (customFields: CustomField[], loadTickets: () => void) => {
   const { token, hasPermission } = useAuth();
@@ -35,7 +39,11 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
     setFormData(initialFormData);
   };
 
-  const handleSubmit = async (e: React.FormEvent, overrideData?: typeof formData): Promise<void> => {
+  const handleSubmit = async (
+    e: React.FormEvent,
+    overrideData?: typeof formData,
+    attachments?: UploadedAttachment[],
+  ): Promise<void> => {
     e.preventDefault();
 
     if (!hasPermission('tickets', 'create')) {
@@ -85,6 +93,38 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
         const autoMsg = result.auto_assigned && assigneeName
           ? ` Исполнитель: ${assigneeName}`
           : '';
+
+        const ticketId = result.id;
+        const readyAttachments = (attachments || []).filter((a) => a.status === 'done' && a.url);
+        if (ticketId && readyAttachments.length > 0 && COMMENTS_URL) {
+          try {
+            await apiFetch(COMMENTS_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': token,
+              },
+              body: JSON.stringify({
+                ticket_id: ticketId,
+                comment: '',
+                is_internal: false,
+                attachments: readyAttachments.map((a) => ({
+                  filename: a.filename,
+                  url: a.url,
+                  size: a.size,
+                })),
+              }),
+            });
+          } catch (attachErr) {
+            console.error('Не удалось прикрепить файлы к заявке:', attachErr);
+            toast({
+              title: 'Предупреждение',
+              description: 'Заявка создана, но не удалось прикрепить часть файлов',
+              variant: 'destructive',
+            });
+          }
+        }
+
         toast({
           title: 'Успешно',
           description: `Заявка создана.${autoMsg}`,
@@ -92,8 +132,8 @@ export const useTicketForm = (customFields: CustomField[], loadTickets: () => vo
         setDialogOpen(false);
         setFormData(initialFormData);
         loadTickets();
-        if (result.id) {
-          navigate(`/tickets/${result.id}`);
+        if (ticketId) {
+          navigate(`/tickets/${ticketId}`);
         }
       } else {
         const error = await response.json();

@@ -100,8 +100,10 @@ interface TicketDetailsContentProps {
   onSendPing: () => void;
   onReaction: (commentId: number, emoji: string) => void;
   availableUsers?: Array<{id: number; name: string; email: string}>;
-  onFileUpload?: (file: File) => Promise<void>;
+  onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
   uploadingFile?: boolean;
+  pendingAttachments?: import('@/hooks/useFileUploader').UploadedAttachment[];
+  onRemoveAttachment?: (id: string) => void;
   auditLogs?: AuditLog[];
   loadingHistory?: boolean;
   commentsBlocked?: boolean;
@@ -126,6 +128,8 @@ const TicketDetailsContent = ({
   availableUsers,
   onFileUpload,
   uploadingFile,
+  pendingAttachments,
+  onRemoveAttachment,
   auditLogs = [],
   loadingHistory = false,
   commentsBlocked = false,
@@ -388,6 +392,8 @@ const TicketDetailsContent = ({
             availableUsers={availableUsers}
             onFileUpload={onFileUpload}
             uploadingFile={uploadingFile}
+            pendingAttachments={pendingAttachments}
+            onRemoveAttachment={onRemoveAttachment}
             commentsBlocked={commentsBlocked}
             commentsBlockedMessage={commentsBlockedMessage}
             participantIds={participantIds}

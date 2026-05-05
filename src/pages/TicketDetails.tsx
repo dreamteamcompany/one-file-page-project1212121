@@ -47,6 +47,8 @@ const TicketDetails = () => {
     updating,
     sendingPing,
     uploadingFile,
+    pendingAttachments,
+    removeAttachment,
     handleSubmitComment,
     handleUpdateStatus,
     handleSendPing,
@@ -308,6 +310,8 @@ const TicketDetails = () => {
             availableUsers={users}
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}
+            pendingAttachments={pendingAttachments}
+            onRemoveAttachment={removeAttachment}
             auditLogs={auditLogs}
             loadingHistory={loadingHistory}
             commentsBlocked={isReopened && !!isAssignee}

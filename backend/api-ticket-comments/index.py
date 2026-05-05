@@ -79,10 +79,17 @@ BITRIX_BOT_REFRESH_TOKEN = os.environ.get('BITRIX_BOT_REFRESH_TOKEN', '')
 _bot_access_token = None
 
 
+class AttachmentInput(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    url: str = Field(..., min_length=1, max_length=2000)
+    size: int = Field(default=0, ge=0)
+
+
 class CommentRequest(BaseModel):
     ticket_id: int = Field(..., gt=0)
-    comment: str = Field(..., min_length=1)
+    comment: str = Field(default='', max_length=20000)
     is_internal: bool = Field(default=False)
+    attachments: List[AttachmentInput] = Field(default_factory=list)
 
 
 def handler(event: dict, context) -> dict:
@@ -212,6 +219,25 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
         explicit.add(author)
         c['read_by'] = sorted(explicit)
 
+    attachments_map: Dict[int, List[Dict[str, Any]]] = {cid: [] for cid in comment_ids}
+    if comment_ids:
+        ids_csv = ','.join(str(int(i)) for i in comment_ids)
+        cur.execute(f"""
+            SELECT id, comment_id, filename, url, size
+            FROM {SCHEMA}.comment_attachments
+            WHERE comment_id IN ({ids_csv})
+            ORDER BY id ASC
+        """)
+        for r in cur.fetchall():
+            attachments_map.setdefault(r['comment_id'], []).append({
+                'id': r['id'],
+                'filename': r['filename'],
+                'url': r['url'],
+                'size': r['size'],
+            })
+    for c in comments:
+        c['attachments'] = attachments_map.get(c['id'], [])
+
     my_last_seen_at = None
     if user_id:
         cur.execute(f"""
@@ -265,6 +291,9 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     except Exception as e:
         return response(400, {'error': f'Validation error: {str(e)}'})
 
+    if not (data.comment or '').strip() and not data.attachments:
+        return response(400, {'error': 'Comment text or attachments are required'})
+
     user_id = payload['user_id']
     cur = conn.cursor()
 
@@ -290,9 +319,26 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         (ticket_id, user_id, comment, is_internal, created_at)
         VALUES (%s, %s, %s, %s, NOW())
         RETURNING id, ticket_id, user_id, comment, is_internal, created_at
-    """, (data.ticket_id, user_id, data.comment, data.is_internal))
+    """, (data.ticket_id, user_id, data.comment or '', data.is_internal))
 
     comment = dict(cur.fetchone())
+
+    saved_attachments: List[Dict[str, Any]] = []
+    for att in data.attachments:
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.comment_attachments (comment_id, filename, url, size, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
+            RETURNING id, filename, url, size
+        """, (comment['id'], att.filename, att.url, att.size))
+        row = cur.fetchone()
+        if row:
+            saved_attachments.append({
+                'id': row['id'],
+                'filename': row['filename'],
+                'url': row['url'],
+                'size': row['size'],
+            })
+    comment['attachments'] = saved_attachments
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_history 
