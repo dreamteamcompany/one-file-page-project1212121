@@ -267,10 +267,14 @@ const TicketForm = ({
   };
 
   const handleNextFromManualService = () => {
-    setStep(3);
+    setStep(2);
   };
 
   const handleNextFromManualServiceItems = () => {
+    setStep(3);
+  };
+
+  const handleNextFromManualDescription = () => {
     if (visibleCustomFields.length > 0) {
       setStep(4);
     } else {
@@ -377,7 +381,7 @@ const TicketForm = ({
 
   const getStepLabels = () => {
     if (classificationMode === 'manual') {
-      const labels = ['Описание', 'Услуга', 'Сервис'];
+      const labels = ['Услуга', 'Сервис', 'Описание'];
       if (visibleCustomFields.length > 0) labels.push('Доп. поля');
       return labels;
     }
@@ -450,7 +454,7 @@ const TicketForm = ({
           </div>
         )}
 
-        {!classifying && step === 1 && (
+        {!classifying && step === 1 && classificationMode === 'ai' && (
           <TicketFormStep1
             formData={formData}
             setFormData={setFormData}
@@ -462,6 +466,17 @@ const TicketForm = ({
             onBack={() => handleDialogChange(false)}
             isFirstStep
             classificationMode={classificationMode}
+          />
+        )}
+
+        {!classifying && step === 1 && classificationMode === 'manual' && (
+          <TicketFormStepService
+            ticketServices={availableTicketServices}
+            selectedTicketServiceId={formData.service_id}
+            onChangeTicketService={handleChangeTicketService}
+            onNext={handleNextFromManualService}
+            onBack={() => handleDialogChange(false)}
+            isFirstStep
           />
         )}
 
@@ -482,16 +497,6 @@ const TicketForm = ({
         )}
 
         {!classifying && step === 2 && classificationMode === 'manual' && (
-          <TicketFormStepService
-            ticketServices={availableTicketServices}
-            selectedTicketServiceId={formData.service_id}
-            onChangeTicketService={handleChangeTicketService}
-            onNext={handleNextFromManualService}
-            onBack={handleBack}
-          />
-        )}
-
-        {!classifying && step === 3 && classificationMode === 'manual' && (
           <TicketFormStepServiceItems
             filteredServices={filteredServices}
             allServices={services}
@@ -499,6 +504,20 @@ const TicketForm = ({
             onToggleService={toggleService}
             onNext={handleNextFromManualServiceItems}
             onBack={handleBack}
+          />
+        )}
+
+        {!classifying && step === 3 && classificationMode === 'manual' && (
+          <TicketFormStep1
+            formData={formData}
+            setFormData={setFormData}
+            priorities={priorities}
+            selectedTicketService={selectedTicketService}
+            hasCustomFields={visibleCustomFields.length > 0}
+            onNext={handleNextFromManualDescription}
+            onSubmit={onSubmit}
+            onBack={handleBack}
+            classificationMode={classificationMode}
           />
         )}
 

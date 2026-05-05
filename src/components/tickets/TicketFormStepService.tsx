@@ -16,6 +16,7 @@ interface TicketFormStepServiceProps {
   onChangeTicketService: (serviceId: number) => void;
   onNext: () => void;
   onBack: () => void;
+  isFirstStep?: boolean;
 }
 
 const TicketFormStepService = ({
@@ -24,6 +25,7 @@ const TicketFormStepService = ({
   onChangeTicketService,
   onNext,
   onBack,
+  isFirstStep,
 }: TicketFormStepServiceProps) => {
   return (
     <div className="space-y-4 mt-4">
@@ -71,8 +73,17 @@ const TicketFormStepService = ({
           onClick={onBack}
           className="gap-2"
         >
-          <Icon name="ArrowLeft" size={18} />
-          Назад
+          {isFirstStep ? (
+            <>
+              <Icon name="X" size={18} />
+              Отмена
+            </>
+          ) : (
+            <>
+              <Icon name="ArrowLeft" size={18} />
+              Назад
+            </>
+          )}
         </Button>
         <Button
           type="button"
