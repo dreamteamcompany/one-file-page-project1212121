@@ -209,6 +209,33 @@ const TicketsList = ({
           <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
+
+          <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-center justify-center gap-1.5 px-2 pointer-events-none">
+            {ticket.status_name && (
+              <Badge
+                variant="secondary"
+                className="text-xs max-w-full truncate"
+                style={{
+                  backgroundColor: `${ticket.status_color}20`,
+                  color: ticket.status_color,
+                  borderColor: ticket.status_color,
+                }}
+              >
+                {ticket.status_name}
+              </Badge>
+            )}
+            {(ticket.customer_name || ticket.creator_name) && (
+              <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1 text-xs max-w-full">
+                {ticket.creator_photo_url ? (
+                  <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <Icon name="User" size={11} className="flex-shrink-0" />
+                )}
+                <span className="truncate">{ticket.customer_name || ticket.creator_name}</span>
+              </span>
+            )}
+          </div>
+
           <div className="space-y-2 relative z-10">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
@@ -249,19 +276,6 @@ const TicketsList = ({
                       </span>
                     )}
                     <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
-                    {ticket.status_name && (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs"
-                        style={{ 
-                          backgroundColor: `${ticket.status_color}20`,
-                          color: ticket.status_color,
-                          borderColor: ticket.status_color
-                        }}
-                      >
-                        {ticket.status_name}
-                      </Badge>
-                    )}
                     {isCritical && (
                       <Badge variant="destructive" className="text-xs font-bold uppercase flex items-center gap-1 animate-pulse">
                         <Icon name="AlertTriangle" size={12} />
@@ -311,29 +325,18 @@ const TicketsList = ({
 
             <div className="pt-2.5 mt-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  {(ticket.customer_name || ticket.creator_name) && (() => {
+                  {(() => {
                     const phone = getPhoneFromTicket(ticket);
+                    if (!canCallPhone || !phone) return null;
                     return (
-                      <>
-                        <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1">
-                          {ticket.creator_photo_url ? (
-                            <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover" />
-                          ) : (
-                            <Icon name="User" size={11} />
-                          )}
-                          {ticket.customer_name || ticket.creator_name}
-                        </span>
-                        {canCallPhone && phone && (
-                          <a
-                            href={`tel:+${phone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            title={phoneDisplay(`+${phone}`) || phone}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 hover:bg-green-500/25 active:bg-green-500/35 transition-colors -ml-0.5"
-                          >
-                            <Icon name="Phone" size={11} className="text-green-600" />
-                          </a>
-                        )}
-                      </>
+                      <a
+                        href={`tel:+${phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        title={phoneDisplay(`+${phone}`) || phone}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/15 hover:bg-green-500/25 active:bg-green-500/35 transition-colors"
+                      >
+                        <Icon name="Phone" size={11} className="text-green-600" />
+                      </a>
                     );
                   })()}
                   <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${(ticket.assigned_to_name || ticket.assignee_name) ? 'bg-muted/60 text-muted-foreground' : 'bg-orange-500/10 text-orange-500'}`}>
