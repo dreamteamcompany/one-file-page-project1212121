@@ -21,6 +21,9 @@ interface Comment {
   parent_comment_id?: number;
   mentioned_user_ids?: number[];
   read_by?: number[];
+  is_pinned?: boolean;
+  pinned_at?: string;
+  pinned_by?: number;
   attachments?: {
     id: number;
     filename: string;
@@ -53,6 +56,7 @@ interface TicketCommentsProps {
   onSendPing: () => void;
   currentUserId?: number;
   onReaction?: (commentId: number, emoji: string) => void;
+  onTogglePin?: (commentId: number) => void;
   availableUsers?: User[];
   onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
   uploadingFile?: boolean;
@@ -93,6 +97,7 @@ const TicketComments = ({
   sendingPing,
   onSendPing,
   currentUserId,
+  onTogglePin,
   availableUsers = [],
   onFileUpload,
   uploadingFile = false,
@@ -109,6 +114,15 @@ const TicketComments = ({
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionedUsers, setMentionedUsers] = useState<User[]>([]);
+  const [pinnedExpanded, setPinnedExpanded] = useState(false);
+
+  const pinnedComments = [...comments]
+    .filter((c) => c.is_pinned)
+    .sort((a, b) => {
+      const ta = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+      const tb = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+      return tb - ta;
+    });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const mentionsRef = useRef<HTMLDivElement>(null);
@@ -523,6 +537,97 @@ const TicketComments = ({
         )}
       </div>
 
+      {pinnedComments.length > 0 && (
+        <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+          <button
+            type="button"
+            onClick={() => setPinnedExpanded((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-amber-500/10 transition-colors rounded-lg"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Icon name="Pin" size={14} className="text-amber-500 flex-shrink-0" />
+              <span className="text-xs font-semibold text-amber-500">
+                Закреплено ({pinnedComments.length})
+              </span>
+              {!pinnedExpanded && pinnedComments[0] && (
+                <span className="text-xs text-muted-foreground truncate">
+                  · {pinnedComments[0].comment.slice(0, 80)}
+                </span>
+              )}
+            </div>
+            <Icon
+              name="ChevronDown"
+              size={14}
+              className={`text-muted-foreground transition-transform ${pinnedExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {pinnedExpanded && (
+            <div className="px-3 pb-3 pt-1 space-y-2 border-t border-amber-500/20">
+              {pinnedComments.map((p) => (
+                <div
+                  key={`pinned-${p.id}`}
+                  className="rounded-md bg-card border px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {p.user_photo_url ? (
+                        <img
+                          src={p.user_photo_url}
+                          alt={p.user_full_name || p.user_name || ''}
+                          className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className={`w-5 h-5 rounded-full ${getAvatarColor(p.user_id)} flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold`}
+                        >
+                          {getInitials(p.user_full_name || p.user_name)}
+                        </div>
+                      )}
+                      <span className="text-xs font-medium truncate">
+                        {p.user_full_name || p.user_name || 'Пользователь'}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground flex-shrink-0">
+                        {formatDate(p.created_at)}
+                      </span>
+                    </div>
+                    {onTogglePin && (
+                      <button
+                        type="button"
+                        onClick={() => onTogglePin(p.id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                        title="Открепить"
+                      >
+                        <Icon name="X" size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap break-words text-foreground">
+                    {p.comment}
+                  </p>
+                  {p.attachments && p.attachments.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {p.attachments.map((file) => (
+                        <a
+                          key={file.id}
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted hover:bg-accent text-xs"
+                        >
+                          <Icon name="Paperclip" size={10} />
+                          <span className="truncate max-w-[160px]">{file.filename}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-3">
         {loadingComments ? (
           <div className="flex items-center justify-center py-8">
@@ -632,6 +737,20 @@ const TicketComments = ({
                       <Icon name="Reply" size={12} />
                       Ответить
                     </button>
+                    {onTogglePin && (
+                      <button
+                        onClick={() => onTogglePin(comment.id)}
+                        className={`text-xs transition-colors flex items-center gap-1 ${
+                          comment.is_pinned
+                            ? 'text-amber-500 hover:text-amber-600'
+                            : 'text-muted-foreground hover:text-primary'
+                        }`}
+                        title={comment.is_pinned ? 'Открепить' : 'Закрепить'}
+                      >
+                        <Icon name="Pin" size={12} />
+                        {comment.is_pinned ? 'Открепить' : 'Закрепить'}
+                      </button>
+                    )}
                     {isOwn && status && (
                       <span
                         className="inline-flex items-center"

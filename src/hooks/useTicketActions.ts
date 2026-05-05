@@ -111,6 +111,22 @@ export const useTicketActions = (
     console.log('Reactions feature not yet implemented');
   };
 
+  const handleTogglePin = async (commentId: number) => {
+    try {
+      const url = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3?action=toggle-pin';
+      const resp = await apiFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        body: JSON.stringify({ comment_id: commentId }),
+      });
+      if (resp.ok) {
+        loadComments();
+      }
+    } catch (err) {
+      console.error('Toggle pin failed:', err);
+    }
+  };
+
   const handleFileUpload = async (fileOrFiles: File | FileList | File[]) => {
     if (fileOrFiles instanceof File) {
       await commentUploader.upload(fileOrFiles);
@@ -212,6 +228,7 @@ export const useTicketActions = (
     handleUpdateStatus,
     handleSendPing,
     handleReaction,
+    handleTogglePin,
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,

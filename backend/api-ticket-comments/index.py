@@ -114,6 +114,9 @@ def handler(event: dict, context) -> dict:
         if method == 'POST' and action == 'mark-read':
             return handle_mark_read(event, conn, payload)
 
+        if method == 'POST' and action == 'toggle-pin':
+            return handle_toggle_pin(event, conn, payload)
+
         if method == 'GET':
             return handle_get_comments(event, conn, payload)
         elif method == 'POST':
@@ -175,6 +178,56 @@ def handle_mark_read(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Di
     return response(200, {'marked': marked, 'total': len(valid_ids)})
 
 
+def handle_toggle_pin(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Закрепить или открепить комментарий. Доступно любому авторизованному пользователю."""
+    user_id = payload.get('user_id')
+    if not user_id:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except Exception:
+        return response(400, {'error': 'Invalid JSON'})
+
+    try:
+        comment_id = int(body.get('comment_id'))
+    except (TypeError, ValueError):
+        return response(400, {'error': 'comment_id is required'})
+
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT id, ticket_id, is_pinned FROM {SCHEMA}.ticket_comments WHERE id = %s",
+        (comment_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        return response(404, {'error': 'Comment not found'})
+
+    new_state = not bool(row['is_pinned'])
+    if new_state:
+        cur.execute(
+            f"""UPDATE {SCHEMA}.ticket_comments
+                SET is_pinned = TRUE, pinned_at = NOW(), pinned_by = %s
+                WHERE id = %s""",
+            (int(user_id), comment_id),
+        )
+    else:
+        cur.execute(
+            f"""UPDATE {SCHEMA}.ticket_comments
+                SET is_pinned = FALSE, pinned_at = NULL, pinned_by = NULL
+                WHERE id = %s""",
+            (comment_id,),
+        )
+
+    conn.commit()
+    cur.close()
+    return response(200, {
+        'comment_id': comment_id,
+        'is_pinned': new_state,
+    })
+
+
 def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Получение комментариев к заявке"""
     params = event.get('queryStringParameters', {}) or {}
@@ -191,6 +244,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
         SELECT 
             tc.id, tc.ticket_id, tc.user_id, tc.comment,
             tc.is_internal, tc.created_at,
+            tc.is_pinned, tc.pinned_at, tc.pinned_by,
             u.username as user_name,
             u.full_name as user_full_name,
             u.photo_url as user_photo_url
