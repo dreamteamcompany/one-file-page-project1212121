@@ -213,7 +213,7 @@ const TicketsList = ({
           <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-start justify-center gap-2 px-2 pointer-events-none">
             {ticket.status_name && (
               <div className="flex flex-col items-start gap-0.5 max-w-full">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Статус</span>
+                <span className="text-xs text-muted-foreground">Статус</span>
                 <Badge
                   variant="secondary"
                   className="text-xs max-w-full truncate"
@@ -229,7 +229,7 @@ const TicketsList = ({
             )}
             {(ticket.customer_name || ticket.creator_name) && (
               <div className="flex flex-col items-start gap-0.5 max-w-full">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">Заказчик</span>
+                <span className="text-xs text-muted-foreground">Заказчик</span>
                 <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 rounded-md px-2 py-1 text-xs max-w-full">
                   {ticket.creator_photo_url ? (
                     <img src={ticket.creator_photo_url} alt="" className="w-4 h-4 rounded-full object-cover flex-shrink-0" />
