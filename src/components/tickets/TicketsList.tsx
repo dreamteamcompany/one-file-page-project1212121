@@ -306,7 +306,9 @@ const TicketsList = ({
               </div>
             </div>
 
-            <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2">
+            <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2 relative">
+              <div className="pointer-events-none absolute inset-y-2 left-1/2 w-px bg-border/60" aria-hidden="true" />
+              <div className="pointer-events-none absolute inset-y-2 right-[14%] w-px bg-border/60" aria-hidden="true" />
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   {(ticket.customer_name || ticket.creator_name) && (() => {
                     const phone = getPhoneFromTicket(ticket);
