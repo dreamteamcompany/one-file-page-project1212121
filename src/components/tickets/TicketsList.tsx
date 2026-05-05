@@ -206,7 +206,9 @@ const TicketsList = ({
             }
           }}
         >
-          <div className="space-y-2">
+          <div className="pointer-events-none absolute inset-y-3 left-1/2 w-px bg-white/10 z-0" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-y-3 right-[14%] w-px bg-white/10 z-0" aria-hidden="true" />
+          <div className="space-y-2 relative z-10">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                 {bulkMode && onToggleTicket && (
@@ -306,9 +308,7 @@ const TicketsList = ({
               </div>
             </div>
 
-            <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2 relative">
-              <div className="pointer-events-none absolute inset-y-2 left-1/2 w-px bg-border/60" aria-hidden="true" />
-              <div className="pointer-events-none absolute inset-y-2 right-[14%] w-px bg-border/60" aria-hidden="true" />
+            <div className="border-t border-white/5 pt-2.5 mt-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   {(ticket.customer_name || ticket.creator_name) && (() => {
                     const phone = getPhoneFromTicket(ticket);
