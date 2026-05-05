@@ -44,7 +44,7 @@ const TicketsViewToggle = ({
           className="flex items-center gap-2"
         >
           <Icon name="List" size={16} />
-          <span className="hidden sm:inline">Мои заявки</span>
+          <span className="hidden sm:inline">Открытые</span>
         </Button>
         <Button
           variant="outline"
