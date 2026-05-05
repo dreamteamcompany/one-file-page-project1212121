@@ -233,9 +233,9 @@ const TicketsList = ({
                 <span className="text-sm font-semibold truncate max-w-full" style={{ color: deadline.color }}>
                   {deadline.label}
                 </span>
-                <div className="h-3 w-full flex gap-0.5">
-                  {Array.from({ length: 20 }).map((_, i) => {
-                    const filled = i < Math.round((deadline.percent / 100) * 20);
+                <div className="h-3 w-full flex gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const filled = i < Math.round((deadline.percent / 100) * 5);
                     return (
                       <div
                         key={i}
