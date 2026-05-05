@@ -207,6 +207,7 @@ const TicketsList = ({
           }}
         >
           <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0.5 bg-white/10 z-0" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-y-3 left-[68%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 right-[14%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="space-y-2 relative z-10">
             <div className="flex items-start justify-between gap-3">
