@@ -311,7 +311,6 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                        SELECT EXISTS(
                            SELECT 1 FROM {SCHEMA}.ticket_comments tccr
                            WHERE tccr.ticket_id = t.id
-                             AND tccr.is_internal = false
                              AND tccr.user_id = t.created_by
                              AND tccr.user_id <> {int(user_id)}
                              AND tccr.created_at > COALESCE(
