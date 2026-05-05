@@ -210,7 +210,7 @@ const TicketsList = ({
           <div className="pointer-events-none absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
           <div className="pointer-events-none absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
 
-          <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-start justify-center gap-2 px-2 pointer-events-none">
+          <div className="absolute inset-y-3 left-[50%] right-[37%] z-20 flex flex-col items-start justify-center gap-2 px-4 pointer-events-none">
             {ticket.status_name && (
               <div className="flex flex-col items-start gap-0.5 max-w-full">
                 <span className="text-xs text-muted-foreground">Статус</span>
