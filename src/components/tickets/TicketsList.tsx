@@ -378,7 +378,7 @@ const TicketsList = ({
                         <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f97316', boxShadow: '0 0 0 2px #f97316, 0 0 8px rgba(249,115,22,0.8)' }} />
                       </span>
                     )}
-                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
+                    <span className="text-xs font-mono text-white bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
                     {isCritical && (
                       <Badge variant="destructive" className="text-xs font-bold uppercase flex items-center gap-1 animate-pulse">
                         <Icon name="AlertTriangle" size={12} />
