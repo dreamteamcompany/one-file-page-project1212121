@@ -374,8 +374,8 @@ const TicketsList = ({
                         title="Новые сообщения"
                         aria-label="Новые сообщения"
                       >
-                        <span className="absolute inline-flex h-3.5 w-3.5 rounded-full bg-sky-400 opacity-60" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)]" />
+                        <span className="absolute inline-flex h-3.5 w-3.5 rounded-full opacity-60" style={{ backgroundColor: '#ffc000' }} />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#ffc000', boxShadow: '0 0 0 2px #ffc000, 0 0 8px rgba(255,192,0,0.8)' }} />
                       </span>
                     )}
                     <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
@@ -393,7 +393,8 @@ const TicketsList = ({
                     )}
                     {ticket.client_replied && (
                       <Badge
-                        className="flex items-center gap-1 text-xs font-bold uppercase bg-sky-500 hover:bg-sky-600 text-white animate-pulse"
+                        className="flex items-center gap-1 text-xs font-bold uppercase text-black animate-pulse"
+                        style={{ backgroundColor: '#ffc000' }}
                         title={
                           ticket.client_replied_at
                             ? `Последний ответ клиента: ${new Date(ticket.client_replied_at).toLocaleString('ru-RU', {
