@@ -6,6 +6,16 @@ import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Comment {
   id: number;
@@ -57,6 +67,8 @@ interface TicketCommentsProps {
   currentUserId?: number;
   onReaction?: (commentId: number, emoji: string) => void;
   onTogglePin?: (commentId: number) => void;
+  onDeleteComment?: (commentId: number) => void | Promise<void | boolean>;
+  canDeleteComments?: boolean;
   availableUsers?: User[];
   onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
   uploadingFile?: boolean;
@@ -98,6 +110,8 @@ const TicketComments = ({
   onSendPing,
   currentUserId,
   onTogglePin,
+  onDeleteComment,
+  canDeleteComments = false,
   availableUsers = [],
   onFileUpload,
   uploadingFile = false,
@@ -115,6 +129,8 @@ const TicketComments = ({
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionedUsers, setMentionedUsers] = useState<User[]>([]);
   const [pinnedExpanded, setPinnedExpanded] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [deletingComment, setDeletingComment] = useState(false);
 
   const pinnedComments = [...comments]
     .filter((c) => c.is_pinned)
@@ -751,6 +767,16 @@ const TicketComments = ({
                         {comment.is_pinned ? 'Открепить' : 'Закрепить'}
                       </button>
                     )}
+                    {canDeleteComments && onDeleteComment && (
+                      <button
+                        onClick={() => setDeleteTargetId(comment.id)}
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                        title="Удалить комментарий"
+                      >
+                        <Icon name="Trash2" size={12} />
+                        Удалить
+                      </button>
+                    )}
                     {isOwn && status && (
                       <span
                         className="inline-flex items-center"
@@ -781,6 +807,42 @@ const TicketComments = ({
           })
         )}
       </div>
+
+      <AlertDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingComment) setDeleteTargetId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить комментарий?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Комментарий будет удалён без возможности восстановления.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingComment}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingComment}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (deleteTargetId === null || !onDeleteComment) return;
+                try {
+                  setDeletingComment(true);
+                  await onDeleteComment(deleteTargetId);
+                } finally {
+                  setDeletingComment(false);
+                  setDeleteTargetId(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingComment ? 'Удаление...' : 'Удалить'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

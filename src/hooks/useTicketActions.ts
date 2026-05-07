@@ -127,6 +127,27 @@ export const useTicketActions = (
     }
   };
 
+  const handleDeleteComment = async (commentId: number): Promise<boolean> => {
+    try {
+      const url = `https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3?id=${commentId}`;
+      const resp = await apiFetch(url, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        body: JSON.stringify({ id: commentId }),
+      });
+      if (resp.ok) {
+        await loadComments();
+        return true;
+      }
+      const data = await resp.json().catch(() => ({}));
+      console.error('Delete comment failed:', resp.status, data);
+      return false;
+    } catch (err) {
+      console.error('Delete comment failed:', err);
+      return false;
+    }
+  };
+
   const handleFileUpload = async (fileOrFiles: File | FileList | File[]) => {
     if (fileOrFiles instanceof File) {
       await commentUploader.upload(fileOrFiles);
@@ -229,6 +250,7 @@ export const useTicketActions = (
     handleSendPing,
     handleReaction,
     handleTogglePin,
+    handleDeleteComment,
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,

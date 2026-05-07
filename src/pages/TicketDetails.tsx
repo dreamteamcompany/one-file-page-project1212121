@@ -54,11 +54,20 @@ const TicketDetails = () => {
     handleSendPing,
     handleReaction,
     handleTogglePin,
+    handleDeleteComment,
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,
     handleUpdateDueDate,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
+
+  const isAdmin = !!user?.roles?.some(
+    (role) =>
+      role.name === 'Администратор' ||
+      role.name === 'Admin' ||
+      role.name === 'admin' ||
+      (role as { system_role?: string }).system_role === 'admin',
+  );
 
   const { markRead } = useTicketMarkRead();
 
@@ -309,6 +318,8 @@ const TicketDetails = () => {
             onSendPing={handleSendPing}
             onReaction={handleReaction}
             onTogglePin={handleTogglePin}
+            onDeleteComment={handleDeleteComment}
+            canDeleteComments={isAdmin}
             availableUsers={users}
             onFileUpload={handleFileUpload}
             uploadingFile={uploadingFile}

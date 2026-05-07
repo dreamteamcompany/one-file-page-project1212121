@@ -36,6 +36,19 @@
         "error": "string"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Delete comment unauthorized",
+      "method": "DELETE",
+      "path": "/",
+      "body": {
+        "id": 1
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

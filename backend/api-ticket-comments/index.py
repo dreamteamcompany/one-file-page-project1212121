@@ -509,16 +509,46 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     return response(201, comment)
 
 
-def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Удаление комментария"""
-    body = json.loads(event.get('body', '{}'))
-    comment_id = body.get('id')
+def _is_admin_user(cur, user_id: int) -> bool:
+    """Проверяет, является ли пользователь администратором по ролям из БД"""
+    cur.execute(f"""
+        SELECT r.name, r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (int(user_id),))
+    for row in cur.fetchall():
+        name = (row.get('name') or '').strip().lower()
+        system_role = (row.get('system_role') or '').strip().lower()
+        if system_role == 'admin' or name in ('admin', 'администратор'):
+            return True
+    return False
 
-    if not comment_id:
+
+def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Удаление комментария (только администратор)"""
+    body: Dict[str, Any] = {}
+    raw_body = event.get('body')
+    if raw_body:
+        try:
+            body = json.loads(raw_body)
+        except Exception:
+            body = {}
+
+    params = event.get('queryStringParameters') or {}
+    comment_id = body.get('id') or body.get('comment_id') or params.get('id') or params.get('comment_id')
+
+    try:
+        comment_id = int(comment_id)
+    except (TypeError, ValueError):
         return response(400, {'error': 'Comment ID required'})
 
     user_id = payload['user_id']
     cur = conn.cursor()
+
+    if not _is_admin_user(cur, user_id):
+        cur.close()
+        return response(403, {'error': 'Удалять комментарии может только администратор'})
 
     cur.execute(f"""
         SELECT user_id, ticket_id FROM {SCHEMA}.ticket_comments WHERE id = %s
@@ -529,10 +559,14 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         cur.close()
         return response(404, {'error': 'Comment not found'})
 
-    if comment['user_id'] != user_id:
-        cur.close()
-        return response(403, {'error': 'You can only delete your own comments'})
-
+    cur.execute(
+        f"DELETE FROM {SCHEMA}.ticket_comment_reads WHERE comment_id = %s",
+        (comment_id,),
+    )
+    cur.execute(
+        f"DELETE FROM {SCHEMA}.notifications WHERE comment_id = %s",
+        (comment_id,),
+    )
     cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE id = %s", (comment_id,))
 
     cur.execute(f"""
@@ -543,7 +577,7 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 
     conn.commit()
     cur.close()
-    return response(200, {'message': 'Комментарий удален'})
+    return response(200, {'message': 'Комментарий удален', 'id': comment_id})
 
 
 def _priority_emoji(priority_name: str) -> str:
