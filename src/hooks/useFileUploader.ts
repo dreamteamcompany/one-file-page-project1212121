@@ -14,55 +14,54 @@ export interface UploadedAttachment {
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-interface PresignResponse {
-  upload_url: string;
-  method: string;
-  headers: Record<string, string>;
+interface InlineUploadResponse {
+  url: string;
   cdn_url: string;
   key: string;
   filename: string;
   content_type: string;
+  size: number;
 }
 
-const requestPresign = async (
-  filename: string,
-  contentType: string,
+const fileToBase64 = (
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 50));
+      }
+    };
+    reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.includes(',') ? result.split(',')[1] : result;
+      onProgress(50);
+      resolve(base64);
+    };
+    reader.readAsDataURL(file);
+  });
+
+const uploadInline = async (
+  file: File,
   folder: string,
-): Promise<PresignResponse> => {
+  onProgress: (pct: number) => void,
+): Promise<InlineUploadResponse> => {
+  const base64 = await fileToBase64(file, onProgress);
+  onProgress(60);
   const resp = await apiFetch(UPLOAD_FILE_URL, {
     method: 'POST',
-    body: JSON.stringify({ action: 'presign', filename, content_type: contentType, folder }),
+    body: JSON.stringify({ file: base64, filename: file.name, folder }),
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
-    throw new Error(`Не удалось получить ссылку для загрузки: ${resp.status} ${text}`);
+    throw new Error(`Не удалось загрузить файл: ${resp.status} ${text}`);
   }
+  onProgress(100);
   return resp.json();
 };
-
-const putWithProgress = (
-  url: string,
-  file: File,
-  onProgress: (pct: number) => void,
-): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url, true);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error(`Ошибка загрузки в S3: ${xhr.status}`));
-      }
-    };
-    xhr.onerror = () => reject(new Error('Сетевая ошибка при загрузке файла'));
-    xhr.send(file);
-  });
 
 export const useFileUploader = (folder = 'uploads/attachments') => {
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
@@ -86,14 +85,13 @@ export const useFileUploader = (folder = 'uploads/attachments') => {
       setAttachments((prev) => [...prev, initial]);
 
       try {
-        const presign = await requestPresign(file.name, initial.contentType, folder);
-        await putWithProgress(presign.upload_url, file, (pct) =>
+        const result = await uploadInline(file, folder, (pct) =>
           update(id, { progress: pct }),
         );
         const done: UploadedAttachment = {
           ...initial,
-          url: presign.cdn_url,
-          contentType: presign.content_type,
+          url: result.cdn_url,
+          contentType: result.content_type,
           status: 'done',
           progress: 100,
         };
