@@ -516,8 +516,12 @@ const TicketComments = ({
                 <div
                   ref={(el) => observeComment(el, comment)}
                   data-comment-id={comment.id}
-                  className={`flex items-start gap-2.5 ${isOwn ? 'flex-row-reverse' : ''} ${
-                    comment.parent_comment_id ? 'ml-4 lg:ml-8' : ''
+                  className={`flex items-start gap-2.5 ${isOwn ? 'flex-row-reverse justify-start' : ''} ${
+                    comment.parent_comment_id
+                      ? isOwn
+                        ? 'mr-4 lg:mr-8'
+                        : 'ml-4 lg:ml-8'
+                      : ''
                   }`}
                 >
                 {comment.user_photo_url ? (
