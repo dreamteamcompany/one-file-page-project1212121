@@ -202,7 +202,7 @@ const TicketDetailsContent = ({
   const isShortDescription = !ticket.description || ticket.description.length < 500;
 
   return (
-    <div className="flex-1 min-w-0 lg:p-6 lg:pr-0">
+    <div className="flex-1 min-w-0 lg:p-6 lg:pr-0 lg:flex lg:flex-col lg:min-h-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
         <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
@@ -348,8 +348,8 @@ const TicketDetailsContent = ({
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
-      <div className="rounded-lg bg-card border mb-6">
-        <div className="flex gap-6 px-4 pt-3 border-b">
+      <div className="rounded-lg bg-card border mb-6 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+        <div className="flex gap-6 px-4 pt-3 border-b shrink-0">
           <button 
             onClick={() => setActiveTab('comments')}
             className={`pb-2 border-b-2 text-sm font-semibold transition-all ${
@@ -383,7 +383,7 @@ const TicketDetailsContent = ({
         </div>
 
       {/* Контент вкладок */}
-      <div className="p-4">
+      <div className="p-4 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
         {activeTab === 'comments' && (
           <TicketComments
             comments={comments}

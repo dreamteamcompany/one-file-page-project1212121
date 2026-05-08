@@ -387,8 +387,8 @@ const TicketComments = ({
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
+    <div className="lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
+      <div className="flex items-center gap-2 mb-4 shrink-0">
         <Icon name="MessageSquare" size={18} className="text-muted-foreground" />
         <h3 className="text-base font-semibold">Комментарии</h3>
         <span className="text-sm text-muted-foreground">({comments.length})</span>
@@ -485,7 +485,7 @@ const TicketComments = ({
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {loadingComments ? (
           <div className="flex items-center justify-center py-8">
             <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
@@ -649,7 +649,7 @@ const TicketComments = ({
         )}
       </div>
 
-      <div className="space-y-3 mt-6 pt-4 border-t">
+      <div className="space-y-3 mt-6 pt-4 border-t shrink-0">
         {commentsBlocked && (
           <div className="rounded-lg border border-orange-500/40 bg-orange-500/10 p-4 flex items-start gap-3">
             <Icon name="AlertTriangle" size={20} className="text-orange-500 flex-shrink-0 mt-0.5" />
