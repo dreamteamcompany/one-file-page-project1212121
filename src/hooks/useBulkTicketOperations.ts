@@ -11,8 +11,20 @@ export const useBulkTicketOperations = (
   onSuccess: () => void,
   onClearSelection: () => void
 ) => {
-  const { token, hasPermission } = useAuth();
+  const { token, hasPermission, hasSystemRole } = useAuth();
   const { toast } = useToast();
+
+  const requireAdmin = (): boolean => {
+    if (!hasSystemRole('admin')) {
+      toast({
+        title: 'Ошибка',
+        description: 'Действие доступно только администраторам',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    return true;
+  };
 
   const handleChangeStatus = async (statusId: number) => {
     if (!hasPermission('tickets', 'update')) {
@@ -130,10 +142,78 @@ export const useBulkTicketOperations = (
     }
   };
 
+  const handleChangeExecutor = async (userId: number | null) => {
+    if (!requireAdmin()) return;
+    try {
+      const result = await bulkTicketsService.changeExecutor(selectedTicketIds, userId, token!);
+      toast({
+        title: 'Исполнитель изменён',
+        description: `Обновлено ${result.successful} из ${result.total} заявок`,
+      });
+      onSuccess();
+      onClearSelection();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось сменить исполнителя',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleChangeExecutorGroup = async (groupId: number | null) => {
+    if (!requireAdmin()) return;
+    try {
+      const result = await bulkTicketsService.changeExecutorGroup(selectedTicketIds, groupId, token!);
+      toast({
+        title: 'Группа исполнителей изменена',
+        description: `Обновлено ${result.successful} из ${result.total} заявок`,
+      });
+      onSuccess();
+      onClearSelection();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось сменить группу исполнителей',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddWatchers = async (userIds: number[]) => {
+    if (!requireAdmin()) return;
+    if (!userIds.length) {
+      toast({
+        title: 'Ошибка',
+        description: 'Выберите хотя бы одного наблюдателя',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await bulkTicketsService.addWatchers(selectedTicketIds, userIds, token!);
+      toast({
+        title: 'Наблюдатели добавлены',
+        description: `Добавлено связей: ${result.inserted ?? 0}`,
+      });
+      onSuccess();
+      onClearSelection();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось добавить наблюдателей',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return {
     handleChangeStatus,
     handleChangePriority,
     handleAssign,
+    handleChangeExecutor,
+    handleChangeExecutorGroup,
+    handleAddWatchers,
     handleDelete,
   };
 };

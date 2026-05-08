@@ -81,6 +81,66 @@ export const bulkTicketsService = {
     return result;
   },
 
+  async changeExecutor(ticketIds: number[], userId: number | null, token: string): Promise<BulkActionResult> {
+    const response = await fetch(BULK_TICKETS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': token,
+      },
+      body: JSON.stringify({
+        ticket_ids: ticketIds,
+        action: 'change_executor',
+        user_id: userId,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || 'Ошибка смены исполнителя');
+    }
+    return result;
+  },
+
+  async changeExecutorGroup(ticketIds: number[], groupId: number | null, token: string): Promise<BulkActionResult> {
+    const response = await fetch(BULK_TICKETS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': token,
+      },
+      body: JSON.stringify({
+        ticket_ids: ticketIds,
+        action: 'change_executor_group',
+        group_id: groupId,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || 'Ошибка смены группы исполнителей');
+    }
+    return result;
+  },
+
+  async addWatchers(ticketIds: number[], userIds: number[], token: string): Promise<BulkActionResult & { inserted?: number }> {
+    const response = await fetch(BULK_TICKETS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-Token': token,
+      },
+      body: JSON.stringify({
+        ticket_ids: ticketIds,
+        action: 'add_watchers',
+        user_ids: userIds,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || 'Ошибка добавления наблюдателей');
+    }
+    return result;
+  },
+
   async deleteTickets(ticketIds: number[], token: string): Promise<BulkActionResult> {
     const response = await fetch(BULK_TICKETS_URL, {
       method: 'POST',

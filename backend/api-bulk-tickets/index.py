@@ -208,7 +208,72 @@ def handler(event, context):
                 'successful': successful,
                 'message': f'Обновлено {successful} заявок'
             })
-        
+
+        elif action == 'change_executor':
+            user_id = body.get('user_id')
+            placeholders = ','.join(['%s'] * len(ticket_ids))
+            cur.execute(f"""
+                UPDATE {SCHEMA}.tickets
+                SET assigned_to = %s, updated_at = NOW()
+                WHERE id IN ({placeholders})
+            """, [user_id if user_id else None] + ticket_ids)
+            successful = cur.rowcount
+            conn.commit()
+
+            return response(200, {
+                'total': len(ticket_ids),
+                'successful': successful,
+                'message': f'Обновлено {successful} заявок'
+            })
+
+        elif action == 'change_executor_group':
+            group_id = body.get('group_id')
+            placeholders = ','.join(['%s'] * len(ticket_ids))
+            cur.execute(f"""
+                UPDATE {SCHEMA}.tickets
+                SET executor_group_id = %s, updated_at = NOW()
+                WHERE id IN ({placeholders})
+            """, [group_id if group_id else None] + ticket_ids)
+            successful = cur.rowcount
+            conn.commit()
+
+            return response(200, {
+                'total': len(ticket_ids),
+                'successful': successful,
+                'message': f'Обновлено {successful} заявок'
+            })
+
+        elif action == 'add_watchers':
+            user_ids = body.get('user_ids', [])
+            if not user_ids:
+                return response(400, {'error': 'Не указаны пользователи-наблюдатели'})
+
+            inserted = 0
+            for tid in ticket_ids:
+                for uid in user_ids:
+                    try:
+                        cur.execute(
+                            f"INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id) "
+                            f"VALUES (%s, %s) ON CONFLICT (ticket_id, user_id) DO NOTHING",
+                            (tid, uid)
+                        )
+                        inserted += cur.rowcount
+                    except Exception as e:
+                        log(f"[BULK-TICKETS] watcher insert error t={tid} u={uid}: {e}")
+
+            cur.execute(
+                f"UPDATE {SCHEMA}.tickets SET updated_at = NOW() WHERE id IN ({','.join(['%s']*len(ticket_ids))})",
+                ticket_ids
+            )
+            conn.commit()
+
+            return response(200, {
+                'total': len(ticket_ids),
+                'successful': len(ticket_ids),
+                'inserted': inserted,
+                'message': f'Добавлено наблюдателей: {inserted}'
+            })
+
         else:
             return response(400, {'error': f'Неизвестное действие: {action}'})
     

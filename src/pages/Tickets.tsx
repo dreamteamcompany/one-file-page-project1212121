@@ -24,13 +24,29 @@ import TicketForm from '@/components/tickets/TicketForm';
 import TicketsList from '@/components/tickets/TicketsList';
 import TicketsKanban from '@/components/tickets/TicketsKanban';
 import BulkActionsBar from '@/components/tickets/BulkActionsBar';
-import { apiFetch } from '@/utils/api';
+import { API_URL, apiFetch } from '@/utils/api';
+
+interface BulkUser {
+  id: number;
+  full_name?: string;
+  username?: string;
+}
+
+interface BulkExecutorGroup {
+  id: number;
+  name: string;
+}
+
+const EXECUTOR_GROUPS_URL = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
 
 const Tickets = () => {
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, hasSystemRole, token } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [bulkUsers, setBulkUsers] = useState<BulkUser[]>([]);
+  const [bulkExecutorGroups, setBulkExecutorGroups] = useState<BulkExecutorGroup[]>([]);
+  const isAdmin = hasSystemRole('admin');
 
   const {
     tickets,
@@ -81,8 +97,33 @@ const Tickets = () => {
   const {
     handleChangeStatus,
     handleChangePriority,
+    handleChangeExecutor,
+    handleChangeExecutorGroup,
+    handleAddWatchers,
     handleDelete,
   } = useBulkTicketOperations(selectedTicketIds, () => loadTickets(page), clearSelection);
+
+  useEffect(() => {
+    if (!isAdmin || !token || !bulkMode) return;
+    if (bulkUsers.length === 0) {
+      apiFetch(`${API_URL}?endpoint=users`, { headers: { 'X-Auth-Token': token } })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+          if (Array.isArray(data)) setBulkUsers(data);
+        })
+        .catch(() => {});
+    }
+    if (bulkExecutorGroups.length === 0) {
+      apiFetch(EXECUTOR_GROUPS_URL, { headers: { 'X-Auth-Token': token } })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+          const list = Array.isArray(data) ? data : data?.groups || [];
+          setBulkExecutorGroups(list);
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, token, bulkMode]);
   
   useEffect(() => {
     // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
@@ -176,8 +217,14 @@ const Tickets = () => {
                   selectedCount={selectedCount}
                   statuses={statuses}
                   priorities={priorities}
+                  users={bulkUsers}
+                  executorGroups={bulkExecutorGroups}
+                  isAdmin={isAdmin}
                   onChangeStatus={handleChangeStatus}
                   onChangePriority={handleChangePriority}
+                  onChangeExecutor={handleChangeExecutor}
+                  onChangeExecutorGroup={handleChangeExecutorGroup}
+                  onAddWatchers={handleAddWatchers}
                   onDelete={handleDelete}
                   onCancel={() => {
                     clearSelection();
