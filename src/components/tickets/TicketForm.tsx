@@ -310,10 +310,14 @@ const TicketForm = ({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const finalTitle = (formData.title || '').trim()
+      || selectedTicketService?.ticket_title
+      || formData.description.slice(0, 100)
+      || 'Новая заявка';
     const updatedFormData = {
       ...formData,
       service_ids: selectedServices,
-      title: selectedTicketService?.ticket_title || formData.description.slice(0, 100) || 'Новая заявка',
+      title: finalTitle,
       category_id: '',
     };
     setFormData(updatedFormData);

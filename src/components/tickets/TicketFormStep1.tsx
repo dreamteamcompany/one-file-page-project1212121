@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -83,10 +84,24 @@ const TicketFormStep1 = ({
 }: TicketFormStep1Props) => {
   const [criticalConfirmOpen, setCriticalConfirmOpen] = useState(false);
   const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
+  const [titleEditedByUser, setTitleEditedByUser] = useState(false);
 
   const ticketTitle = selectedTicketService?.ticket_title || '';
+  const lastAutoTitleRef = useRef<string>('');
 
-  const canProceed = formData.description.trim().length > 0;
+  useEffect(() => {
+    if (titleEditedByUser) return;
+    if (!ticketTitle) return;
+    if (formData.title && formData.title !== lastAutoTitleRef.current) return;
+    if (formData.title === ticketTitle) return;
+    lastAutoTitleRef.current = ticketTitle;
+    setFormData({ ...formData, title: ticketTitle });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketTitle]);
+
+  const hasDescription = formData.description.trim().length > 0;
+  const hasTitle = (formData.title || '').trim().length > 0;
+  const canProceed = isFirstStep ? hasDescription : (hasDescription && hasTitle);
 
   const handlePriorityChange = (value: string) => {
     const selected = priorities.find((p) => p.id.toString() === value);
@@ -114,13 +129,36 @@ const TicketFormStep1 = ({
   return (
     <form onSubmit={onSubmit}>
       <div className="space-y-4 mt-4">
-        {ticketTitle && !isFirstStep && (
-          <div className="p-4 bg-accent/30 rounded-lg border">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon name="Tag" size={16} className="text-muted-foreground" />
-              <Label className="text-sm font-medium">Название заявки</Label>
-            </div>
-            <p className="text-base font-semibold">{ticketTitle}</p>
+        {!isFirstStep && (
+          <div className="space-y-2">
+            <Label htmlFor="title" className="flex items-center gap-2">
+              <Icon name="Tag" size={14} className="text-muted-foreground" />
+              Тема заявки *
+            </Label>
+            <Input
+              id="title"
+              value={formData.title || ''}
+              onChange={(e) => {
+                setTitleEditedByUser(true);
+                setFormData({ ...formData, title: e.target.value });
+              }}
+              placeholder="Краткая тема заявки"
+              maxLength={255}
+            />
+            {ticketTitle && (formData.title || '').trim() !== ticketTitle && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTitleEditedByUser(false);
+                  lastAutoTitleRef.current = ticketTitle;
+                  setFormData({ ...formData, title: ticketTitle });
+                }}
+                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <Icon name="RotateCcw" size={12} />
+                Подставить из услуги: «{ticketTitle}»
+              </button>
+            )}
           </div>
         )}
 
@@ -224,7 +262,7 @@ const TicketFormStep1 = ({
               type="button"
               className="flex-1 gap-2"
               onClick={onNext}
-              disabled={isUploadingFiles}
+              disabled={isUploadingFiles || !canProceed}
             >
               {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Далее'}
               <Icon name="ArrowRight" size={18} />
@@ -233,7 +271,7 @@ const TicketFormStep1 = ({
             <Button
               type="submit"
               className="flex-1 gap-2"
-              disabled={isUploadingFiles}
+              disabled={isUploadingFiles || !canProceed}
             >
               <Icon name="Send" size={18} />
               {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}
