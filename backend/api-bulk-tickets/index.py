@@ -172,7 +172,7 @@ def handler(event, context):
             
             cur.execute(f"SELECT is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s", (status_id,))
             status_row = cur.fetchone()
-            archive_val = bool(status_row['is_closed']) if status_row else False
+            archive_val = bool(status_row[0]) if status_row else False
             
             placeholders = ','.join(['%s'] * len(ticket_ids))
             cur.execute(f"""
