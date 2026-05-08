@@ -20,8 +20,6 @@ const TicketDetails = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [confirmationMode, setConfirmationMode] = useState<'confirm' | 'reject' | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const desktopSidebarRef = useRef<HTMLDivElement>(null);
-  const [desktopSidebarHeight, setDesktopSidebarHeight] = useState<number | null>(null);
   const { user, hasPermission } = useAuth();
 
   const {
@@ -109,19 +107,6 @@ const TicketDetails = () => {
       navigate('/tickets');
     }
   }, [canViewTickets, navigate]);
-
-  useEffect(() => {
-    const el = desktopSidebarRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const h = Math.round(entry.contentRect.height);
-        if (h > 0) setDesktopSidebarHeight(h);
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ticket?.id]);
 
   useEffect(() => {
     if (!needsCreatorConfirmation) return;
@@ -222,8 +207,8 @@ const TicketDetails = () => {
 
       <div className="flex-1 overflow-auto -mx-4 md:-mx-6 lg:-mx-[30px] px-4 md:px-6 lg:px-[30px] -mb-4 md:-mb-6 lg:-mb-[30px] pb-4 md:pb-6 lg:pb-[30px]">
         <div className="w-full py-2">
-          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
-          <div className="hidden lg:block" ref={desktopSidebarRef}>
+          <div className="flex flex-col lg:grid lg:[grid-template-columns:auto_1fr] gap-6 lg:items-stretch">
+          <div className="hidden lg:block">
             <TicketDetailsSidebar 
               ticket={ticket}
               statuses={statuses}
@@ -320,16 +305,8 @@ const TicketDetails = () => {
             </Button>
           </div>
 
-          <div
-            className="flex-1 min-w-0 lg:flex lg:flex-col"
-            style={
-              desktopSidebarHeight
-                ? ({ ['--sidebar-h' as string]: `${desktopSidebarHeight}px` } as React.CSSProperties)
-                : undefined
-            }
-          >
-            <div className="lg:h-[var(--sidebar-h,auto)] lg:flex lg:flex-col lg:min-h-0">
-              <TicketDetailsContent
+          <div className="min-w-0 lg:min-h-0 lg:flex lg:flex-col">
+            <TicketDetailsContent
                 ticket={ticket}
                 comments={comments}
                 loadingComments={loadingComments}
@@ -357,7 +334,6 @@ const TicketDetails = () => {
                 myLastSeenAt={myLastSeenAt}
                 onMarkRead={markCommentsRead}
               />
-            </div>
           </div>
           </div>
         </div>
