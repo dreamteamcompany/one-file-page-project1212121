@@ -8,11 +8,13 @@ import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, getApiUrl } from '@/utils/api';
+import { useToast } from '@/hooks/use-toast';
 import func2url from '../../backend/func2url.json';
 
 const Settings = () => {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
   const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
@@ -36,6 +38,8 @@ const Settings = () => {
 
   const handleClassificationModeToggle = async (checked: boolean) => {
     const newMode = checked ? 'ai' : 'manual';
+    const prevMode = classificationMode;
+    setClassificationMode(newMode);
     setClassificationLoading(true);
     try {
       const url = `${getApiUrl('system_settings')}?resource=system_settings`;
@@ -44,9 +48,22 @@ const Settings = () => {
         body: JSON.stringify({ key: 'classification_mode', value: newMode }),
       });
       if (res.ok) {
-        setClassificationMode(newMode);
+        toast({ title: `Режим классификации: ${newMode === 'ai' ? 'ИИ' : 'Ручной'}` });
+      } else {
+        setClassificationMode(prevMode);
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: res.status === 401
+            ? 'Необходима авторизация. Обновите страницу и войдите снова.'
+            : err.error || 'Не удалось сохранить настройку',
+          variant: 'destructive',
+        });
       }
-    } catch (e) { console.error(e); } finally {
+    } catch (e) {
+      console.error(e);
+      setClassificationMode(prevMode);
+      toast({ title: 'Ошибка соединения с сервером', variant: 'destructive' });
+    } finally {
       setClassificationLoading(false);
     }
   };
