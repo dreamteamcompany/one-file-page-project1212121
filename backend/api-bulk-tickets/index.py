@@ -105,6 +105,24 @@ def handler(event, context):
                 log(f"[BULK-TICKETS] Error deleting history: {e}")
             
             try:
+                cur.execute(f"""
+                    DELETE FROM {SCHEMA}.comment_attachments
+                    WHERE comment_id IN (SELECT id FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders}))
+                """, ticket_ids)
+                log(f"[BULK-TICKETS] Deleted comment attachments: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting comment attachments: {e}")
+            
+            try:
+                cur.execute(f"""
+                    DELETE FROM {SCHEMA}.comment_reactions
+                    WHERE comment_id IN (SELECT id FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders}))
+                """, ticket_ids)
+                log(f"[BULK-TICKETS] Deleted comment reactions: {cur.rowcount}")
+            except Exception as e:
+                log(f"[BULK-TICKETS] Error deleting comment reactions: {e}")
+            
+            try:
                 cur.execute(f"DELETE FROM {SCHEMA}.ticket_comments WHERE ticket_id IN ({placeholders})", ticket_ids)
                 log(f"[BULK-TICKETS] Deleted comments: {cur.rowcount}")
             except Exception as e:
