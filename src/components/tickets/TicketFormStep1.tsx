@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import { usePasteImage } from '@/hooks/usePasteImage';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -86,6 +87,29 @@ const TicketFormStep1 = ({
   const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
   const [titleEditedByUser, setTitleEditedByUser] = useState(false);
 
+  const descRef = useRef<HTMLTextAreaElement>(null);
+
+  const { handlePaste: handleDescPaste, uploadingPaste } = usePasteImage({
+    folder: 'uploads/inline-images',
+    onInsert: (markdown) => {
+      const ta = descRef.current;
+      const current = formData.description;
+      if (!ta) {
+        setFormData({ ...formData, description: current + markdown });
+        return;
+      }
+      const start = ta.selectionStart ?? current.length;
+      const end = ta.selectionEnd ?? current.length;
+      const next = current.slice(0, start) + markdown + current.slice(end);
+      setFormData({ ...formData, description: next });
+      requestAnimationFrame(() => {
+        const pos = start + markdown.length;
+        ta.setSelectionRange(pos, pos);
+        ta.focus();
+      });
+    },
+  });
+
   const ticketTitle = selectedTicketService?.ticket_title || '';
   const lastAutoTitleRef = useRef<string>('');
 
@@ -166,16 +190,26 @@ const TicketFormStep1 = ({
           <Label htmlFor="description">
             Описание проблемы или запроса *
           </Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            placeholder="Опишите подробно вашу проблему. Например: &laquo;Не могу списать процедуры в базе Stoma1C_Krasnodar&raquo;"
-            rows={5}
-            autoFocus
-          />
+          <div className="relative">
+            <Textarea
+              ref={descRef}
+              id="description"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              onPaste={handleDescPaste}
+              placeholder="Опишите подробно вашу проблему. Можно вставить скриншот через Ctrl+V"
+              rows={5}
+              autoFocus
+            />
+            {uploadingPaste && (
+              <div className="absolute inset-0 bg-background/60 rounded-md flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Icon name="Loader2" size={14} className="animate-spin" />
+                Загрузка изображения...
+              </div>
+            )}
+          </div>
           {isFirstStep && (
             <p className="text-xs text-muted-foreground">
               {classificationMode === 'ai'

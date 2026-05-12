@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
+import RichText from '@/components/shared/RichText';
 import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
 import TicketFiles from '@/components/tickets/TicketFiles';
@@ -255,7 +256,7 @@ const TicketDetailsContent = ({
             {ticket.description && (
               <div className="overflow-hidden">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
-                <p className="text-sm whitespace-pre-wrap break-all leading-relaxed text-foreground" style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}>{ticket.description}</p>
+                <RichText text={ticket.description} className="text-sm leading-relaxed text-foreground" />
               </div>
             )}
           </div>

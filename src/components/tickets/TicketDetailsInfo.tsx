@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
+import RichText from '@/components/shared/RichText';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 
@@ -76,7 +77,7 @@ const TicketDetailsInfo = ({ ticket }: TicketDetailsInfoProps) => {
             <Icon name="FileText" size={16} />
             Описание
           </h3>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{ticket.description}</p>
+          <RichText text={ticket.description} className="text-sm leading-relaxed" />
         </div>
       )}
 

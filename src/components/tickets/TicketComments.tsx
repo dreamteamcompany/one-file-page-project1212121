@@ -349,6 +349,7 @@ const TicketComments = ({
         mentionSearch={mentionSearch}
         textareaRef={textareaRef}
         onTextChange={handleTextChange}
+        onCommentChange={onCommentChange}
         onEmojiClick={handleEmojiClick}
         onMention={handleMention}
         onSubmit={handleSubmit}

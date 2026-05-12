@@ -5,6 +5,7 @@ import Icon from '@/components/ui/icon';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
+import { usePasteImage } from '@/hooks/usePasteImage';
 import { Comment, User } from './TicketCommentsTypes';
 
 interface TicketCommentsInputProps {
@@ -28,6 +29,7 @@ interface TicketCommentsInputProps {
   mentionSearch: string;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   onTextChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onCommentChange: (value: string) => void;
   onEmojiClick: (emojiData: EmojiClickData) => void;
   onMention: (user: User) => void;
   onSubmit: () => void;
@@ -58,11 +60,32 @@ const TicketCommentsInput = ({
   mentionSearch,
   textareaRef,
   onTextChange,
+  onCommentChange,
   onEmojiClick,
   onMention,
   onSubmit,
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { handlePaste, uploadingPaste } = usePasteImage({
+    folder: 'uploads/inline-images',
+    onInsert: (markdown) => {
+      const ta = textareaRef.current;
+      if (!ta) {
+        onCommentChange(newComment + markdown);
+        return;
+      }
+      const start = ta.selectionStart ?? newComment.length;
+      const end = ta.selectionEnd ?? newComment.length;
+      const next = newComment.slice(0, start) + markdown + newComment.slice(end);
+      onCommentChange(next);
+      requestAnimationFrame(() => {
+        const pos = start + markdown.length;
+        ta.setSelectionRange(pos, pos);
+        ta.focus();
+      });
+    },
+  });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -113,12 +136,19 @@ const TicketCommentsInput = ({
           <div className="relative">
             <Textarea
               ref={textareaRef}
-              placeholder="Напишите комментарий... (используйте @ для упоминания)"
+              placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
               value={newComment}
               onChange={onTextChange}
+              onPaste={handlePaste}
               disabled={submittingComment}
               className="min-h-[90px] lg:min-h-[120px] resize-none pr-10 text-sm"
             />
+            {uploadingPaste && (
+              <div className="absolute inset-0 bg-background/60 rounded-md flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Icon name="Loader2" size={14} className="animate-spin" />
+                Загрузка изображения...
+              </div>
+            )}
 
             {showMentions && (
               <div

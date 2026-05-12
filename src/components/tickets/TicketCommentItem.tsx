@@ -1,4 +1,5 @@
 import Icon from '@/components/ui/icon';
+import { renderRichText } from '@/components/shared/RichText';
 import { Comment, User, getAvatarColor, getInitials, formatDate } from './TicketCommentsTypes';
 
 interface TicketCommentItemProps {
@@ -23,18 +24,19 @@ interface TicketCommentItemProps {
 }
 
 const renderCommentText = (text: string, mentioned: number[] | undefined, availableUsers: User[]) => {
-  if (!mentioned || mentioned.length === 0) return text;
+  let result = renderRichText(text);
 
-  let result = text;
-  mentioned.forEach(userId => {
-    const user = availableUsers.find(u => u.id === userId);
-    if (user) {
-      result = result.replace(
-        new RegExp(`@${user.name}`, 'g'),
-        `<span class="text-primary font-semibold">@${user.name}</span>`,
-      );
-    }
-  });
+  if (mentioned && mentioned.length > 0) {
+    mentioned.forEach(userId => {
+      const user = availableUsers.find(u => u.id === userId);
+      if (user) {
+        result = result.replace(
+          new RegExp(`@${user.name}`, 'g'),
+          `<span class="text-primary font-semibold">@${user.name}</span>`,
+        );
+      }
+    });
+  }
 
   return <span dangerouslySetInnerHTML={{ __html: result }} />;
 };
