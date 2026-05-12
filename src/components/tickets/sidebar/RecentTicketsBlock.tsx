@@ -81,8 +81,8 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
       onClick={() => setIsOpen((v) => !v)}
       className="w-full flex items-center justify-between gap-2 text-left"
     >
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-        <Icon name="History" size={14} />
+      <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+        <Icon name="History" size={14} className="text-foreground" />
         Последние заявки заказчика
         {count !== undefined && count > 0 && (
           <span className="text-[10px] font-normal normal-case tracking-normal bg-muted px-1.5 py-0.5 rounded-full">
