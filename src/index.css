@@ -127,6 +127,17 @@
   animation: confirmation-pulse 2s ease-in-out infinite;
 }
 
+/* Плейсхолдер для contenteditable редактора */
+.empty-editor:empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  position: absolute;
+}
+.empty-editor:focus:empty::before {
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
 .animate-bounce-slow {
   animation: bounce-slow 2s ease-in-out infinite;
 }

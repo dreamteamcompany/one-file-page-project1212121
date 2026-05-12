@@ -1,12 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
-import { usePasteImage, PastedImage } from '@/hooks/usePasteImage';
 import { Comment, User } from './TicketCommentsTypes';
+
+const MAX_IMG_HEIGHT = 320;
 
 interface TicketCommentsInputProps {
   newComment: string;
@@ -37,9 +37,37 @@ interface TicketCommentsInputProps {
   hasAssignee: boolean;
   sendingPing: boolean;
   onSendPing: () => void;
-  pastedImages?: PastedImage[];
-  onPastedImage?: (dataUrl: string, cursorPos: number) => void;
-  onRemovePastedImage?: (id: string) => void;
+  /** Итоговый HTML для отправки — собирается внутри редактора */
+  onEditorChange?: (html: string, text: string) => void;
+}
+
+/** Конвертирует File в data URL */
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result as string);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+
+/** Сериализует contenteditable → plain-text + markdown изображений */
+function serializeEditor(el: HTMLElement): string {
+  let result = '';
+  el.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      result += node.textContent;
+    } else if (node.nodeName === 'BR') {
+      result += '\n';
+    } else if (node.nodeName === 'IMG') {
+      const src = (node as HTMLImageElement).src;
+      result += `\n![](${src})\n`;
+    } else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
+      result += '\n' + serializeEditor(node as HTMLElement);
+    } else {
+      result += serializeEditor(node as HTMLElement);
+    }
+  });
+  return result;
 }
 
 const TicketCommentsInput = ({
@@ -61,37 +89,148 @@ const TicketCommentsInput = ({
   filteredUsers,
   searchingUsers,
   mentionSearch,
-  textareaRef,
-  onTextChange,
   onCommentChange,
   onEmojiClick,
   onMention,
   onSubmit,
-  pastedImages = [],
-  onPastedImage,
-  onRemovePastedImage,
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
-  const { handlePaste, uploadingPaste } = usePasteImage({
-    onInsert: (dataUrl, cursorPos) => {
-      if (onPastedImage) onPastedImage(dataUrl, cursorPos);
-    },
-  });
+  const isEmpty = (el: HTMLElement) => {
+    const text = el.innerText.trim();
+    const hasImg = el.querySelector('img') !== null;
+    return text === '' && !hasImg;
+  };
+
+  const handleInput = useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const text = serializeEditor(el).trim();
+    onCommentChange(text);
+  }, [onCommentChange]);
+
+  const insertImageAtCursor = useCallback(async (file: File) => {
+    const dataUrl = await fileToDataUrl(file);
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = `${MAX_IMG_HEIGHT}px`;
+    img.style.borderRadius = '6px';
+    img.style.display = 'block';
+    img.style.margin = '4px 0';
+    img.style.cursor = 'pointer';
+    img.onclick = () => window.open(dataUrl, '_blank');
+
+    const sel = window.getSelection();
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    editor.focus();
+
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      // убеждаемся что курсор внутри редактора
+      if (editor.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        range.insertNode(img);
+        // ставим курсор после картинки
+        range.setStartAfter(img);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        editor.appendChild(img);
+      }
+    } else {
+      editor.appendChild(img);
+    }
+
+    handleInput();
+  }, [handleInput]);
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+    if (!imageItem) return;
+
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    await insertImageAtCursor(file);
+  }, [insertImageAtCursor]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSubmitWrapper();
+    }
+    // @ для упоминаний — просто пробрасываем через onCommentChange
+    if (e.key === '@') {
+      setTimeout(() => {
+        const el = editorRef.current;
+        if (el) onCommentChange(serializeEditor(el));
+      }, 0);
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0 && onFileUpload) {
       await onFileUpload(files);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const hasContent =
-    newComment.trim().length > 0 ||
-    pastedImages.length > 0 ||
+  const handleSubmitWrapper = () => {
+    const el = editorRef.current;
+    if (el) {
+      const text = serializeEditor(el).trim();
+      onCommentChange(text);
+    }
+    onSubmit();
+    // очищаем редактор после отправки
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+        onCommentChange('');
+      }
+    }, 100);
+  };
+
+  // Вставка эмодзи в позицию курсора
+  const handleEmojiClickLocal = (emojiData: EmojiClickData) => {
+    const editor = editorRef.current;
+    if (!editor) { onEmojiClick(emojiData); return; }
+    editor.focus();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        const textNode = document.createTextNode(emojiData.emoji);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        handleInput();
+        return;
+      }
+    }
+    onEmojiClick(emojiData);
+  };
+
+  // Синхронизируем очистку поля снаружи (после отправки)
+  useEffect(() => {
+    if (newComment === '' && editorRef.current) {
+      if (editorRef.current.innerHTML !== '') {
+        editorRef.current.innerHTML = '';
+      }
+    }
+  }, [newComment]);
+
+  const hasContent = newComment.trim().length > 0 ||
     pendingAttachments.filter((a) => a.status === 'done').length > 0;
 
   return (
@@ -107,6 +246,7 @@ const TicketCommentsInput = ({
           </div>
         </div>
       )}
+
       {!commentsBlocked && replyToComment && (
         <div className="p-3 bg-primary/5 rounded-lg border border-primary">
           <div className="flex items-start justify-between gap-2">
@@ -118,10 +258,7 @@ const TicketCommentsInput = ({
               </div>
               <p className="text-xs text-muted-foreground line-clamp-2">{replyToComment.comment}</p>
             </div>
-            <button
-              onClick={onCancelReply}
-              className="p-1 hover:bg-destructive/20 rounded transition-colors"
-            >
+            <button onClick={onCancelReply} className="p-1 hover:bg-destructive/20 rounded transition-colors">
               <Icon name="X" size={14} className="text-muted-foreground" />
             </button>
           </div>
@@ -131,21 +268,24 @@ const TicketCommentsInput = ({
       {!commentsBlocked && (
         <>
           <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
-              value={newComment}
-              onChange={onTextChange}
+            {/* contenteditable редактор */}
+            <div
+              ref={editorRef}
+              contentEditable={!submittingComment}
+              suppressContentEditableWarning
+              onInput={handleInput}
               onPaste={handlePaste}
-              disabled={submittingComment}
-              className="min-h-[90px] lg:min-h-[120px] resize-none pr-10 text-sm"
+              onKeyDown={handleKeyDown}
+              data-placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
+              className={[
+                'min-h-[90px] lg:min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
+                'overflow-y-auto max-h-[400px]',
+                submittingComment ? 'opacity-50 pointer-events-none' : '',
+                'empty-editor',
+              ].join(' ')}
+              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
             />
-            {uploadingPaste && (
-              <div className="absolute inset-0 bg-background/60 rounded-md flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <Icon name="Loader2" size={14} className="animate-spin" />
-                Обработка изображения...
-              </div>
-            )}
 
             {showMentions && (
               <div
@@ -159,9 +299,7 @@ const TicketCommentsInput = ({
                   </div>
                 )}
                 {!searchingUsers && filteredUsers.length === 0 && mentionSearch && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    Никого не найдено
-                  </div>
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Никого не найдено</div>
                 )}
                 {filteredUsers.map((user) => (
                   <button
@@ -180,31 +318,6 @@ const TicketCommentsInput = ({
             )}
           </div>
 
-          {pastedImages.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg border border-border/50">
-              <span className="w-full text-[10px] text-muted-foreground">Прикреплённые изображения (будут вставлены в позицию курсора):</span>
-              {[...pastedImages].sort((a, b) => a.afterPos - b.afterPos).map((img) => (
-                <div key={img.id} className="relative group">
-                  <img
-                    src={img.dataUrl}
-                    alt=""
-                    className="max-h-24 max-w-[160px] rounded-md border border-border object-cover cursor-pointer"
-                    onClick={() => window.open(img.dataUrl, '_blank')}
-                  />
-                  {onRemovePastedImage && (
-                    <button
-                      type="button"
-                      onClick={() => onRemovePastedImage(img.id)}
-                      className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
           {pendingAttachments.length > 0 && onRemoveAttachment && (
             <AttachmentUploader
               attachments={pendingAttachments}
@@ -217,7 +330,7 @@ const TicketCommentsInput = ({
 
           <div className="flex flex-wrap gap-2 items-center">
             <Button
-              onClick={onSubmit}
+              onClick={handleSubmitWrapper}
               disabled={!hasContent || submittingComment || uploadingFile}
               size="sm"
               className="flex-1 min-w-[120px]"
@@ -273,7 +386,7 @@ const TicketCommentsInput = ({
 
               {showEmojiPicker && (
                 <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50">
-                  <EmojiPicker onEmojiClick={onEmojiClick} />
+                  <EmojiPicker onEmojiClick={handleEmojiClickLocal} />
                 </div>
               )}
             </div>

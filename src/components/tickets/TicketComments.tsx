@@ -1,7 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { useState, useRef, useEffect } from 'react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
-import { buildFinalText, PastedImage } from '@/hooks/usePasteImage';
+
 
 import {
   AlertDialog,
@@ -47,7 +47,7 @@ const TicketComments = ({
   myLastSeenAt = null,
   onMarkRead,
 }: TicketCommentsProps) => {
-  const [pastedImages, setPastedImages] = useState<PastedImage[]>([]);
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -196,60 +196,59 @@ const TicketComments = ({
   };
 
   const handleMention = (user: User) => {
-    const cursorPos = textareaRef.current?.selectionStart || 0;
-    const beforeCursor = newComment.substring(0, cursorPos);
-    const afterCursor = newComment.substring(cursorPos);
-    const mentionText = `@${user.name} `;
-
-    const newText = beforeCursor.replace(/@\w*$/, mentionText) + afterCursor;
-    onCommentChange(newText);
-
     if (!mentionedUsers.find(u => u.id === user.id)) {
       setMentionedUsers([...mentionedUsers, user]);
     }
-
     setShowMentions(false);
     setMentionSearch('');
 
-    setTimeout(() => {
-      if (textareaRef.current) {
-        const newCursorPos = beforeCursor.replace(/@\w*$/, mentionText).length;
-        textareaRef.current.selectionStart = newCursorPos;
-        textareaRef.current.selectionEnd = newCursorPos;
-        textareaRef.current.focus();
+    // Вставляем @username в contenteditable через Selection API
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      // Заменяем @... перед курсором на полное имя
+      const node = range.startContainer;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || '';
+        const offset = range.startOffset;
+        const before = text.slice(0, offset);
+        const match = before.match(/@(\w*)$/);
+        if (match) {
+          const mentionText = `@${user.name} `;
+          const newBefore = before.slice(0, before.length - match[0].length) + mentionText;
+          node.textContent = newBefore + text.slice(offset);
+          const newOffset = newBefore.length;
+          range.setStart(node, newOffset);
+          range.setEnd(node, newOffset);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
       }
-    }, 0);
+    }
+    onCommentChange(newComment.replace(/@\w*$/, `@${user.name} `));
   };
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    const prevLen = newComment.length;
-    const delta = value.length - prevLen;
-    const cursorPos = e.target.selectionStart;
-
-    // Сдвигаем позиции картинок при редактировании текста перед ними
-    if (pastedImages.length > 0 && delta !== 0) {
-      const editPos = cursorPos - Math.max(0, delta);
-      setPastedImages((prev) =>
-        prev.map((img) =>
-          img.afterPos >= editPos
-            ? { ...img, afterPos: Math.max(0, img.afterPos + delta) }
-            : img
-        )
-      );
-    }
-
-    onCommentChange(value);
-
-    const textBeforeCursor = value.substring(0, cursorPos);
+  const detectMention = (value: string, cursorPos?: number) => {
+    const pos = cursorPos ?? value.length;
+    const textBeforeCursor = value.substring(0, pos);
     const match = textBeforeCursor.match(/@(\w*)$/);
-
     if (match) {
       setMentionSearch(match[1]);
       setShowMentions(true);
     } else {
       setShowMentions(false);
     }
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    onCommentChange(value);
+    detectMention(value, e.target.selectionStart);
+  };
+
+  const handleEditorChange = (text: string) => {
+    onCommentChange(text);
+    detectMention(text);
   };
 
   const { users: searchedUsers, loading: searchingUsers } = useMentionSearch(
@@ -280,13 +279,9 @@ const TicketComments = ({
 
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
-    const overrideText = pastedImages.length > 0
-      ? buildFinalText(newComment, pastedImages)
-      : undefined;
-    onSubmitComment(replyToComment?.id, mentionedUserIds, overrideText);
+    onSubmitComment(replyToComment?.id, mentionedUserIds);
     setReplyToComment(null);
     setMentionedUsers([]);
-    setPastedImages([]);
   };
 
   const getParentComment = (parentId?: number) => {
@@ -371,7 +366,7 @@ const TicketComments = ({
         mentionSearch={mentionSearch}
         textareaRef={textareaRef}
         onTextChange={handleTextChange}
-        onCommentChange={onCommentChange}
+        onCommentChange={handleEditorChange}
         onEmojiClick={handleEmojiClick}
         onMention={handleMention}
         onSubmit={handleSubmit}
@@ -379,16 +374,6 @@ const TicketComments = ({
         hasAssignee={hasAssignee}
         sendingPing={sendingPing}
         onSendPing={onSendPing}
-        pastedImages={pastedImages}
-        onPastedImage={(dataUrl, cursorPos) => {
-          setPastedImages((prev) => [
-            ...prev,
-            { id: `${Date.now()}-${Math.random()}`, dataUrl, afterPos: cursorPos },
-          ]);
-        }}
-        onRemovePastedImage={(id) => {
-          setPastedImages((prev) => prev.filter((img) => img.id !== id));
-        }}
       />
 
       <AlertDialog
