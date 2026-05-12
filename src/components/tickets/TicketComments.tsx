@@ -69,6 +69,8 @@ const TicketComments = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const mentionsRef = useRef<HTMLDivElement>(null);
+  const commentsEndRef = useRef<HTMLDivElement>(null);
+  const commentsListRef = useRef<HTMLDivElement>(null);
 
   const frozenLastSeenRef = useRef<string | null | undefined>(undefined);
   if (frozenLastSeenRef.current === undefined && !loadingComments) {
@@ -81,6 +83,13 @@ const TicketComments = ({
     const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
     return ta - tb;
   });
+
+  // Скролл вниз после загрузки комментариев
+  useEffect(() => {
+    if (!loadingComments && comments.length > 0) {
+      commentsEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    }
+  }, [loadingComments]);
 
   const firstNewIndex = (() => {
     if (!frozenLastSeen || !currentUserId) return -1;
@@ -304,7 +313,7 @@ const TicketComments = ({
         onTogglePin={onTogglePin}
       />
 
-      <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
+      <div ref={commentsListRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
         {loadingComments ? (
           <div className="flex items-center justify-center py-8">
             <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
@@ -343,6 +352,7 @@ const TicketComments = ({
             );
           })
         )}
+        <div ref={commentsEndRef} />
       </div>
 
       <TicketCommentsInput
