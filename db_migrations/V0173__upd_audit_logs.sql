@@ -1,0 +1,1 @@
+UPDATE t_p67567221_one_file_page_projec.audit_logs SET entity_id = 6650 WHERE entity_type = 'ticket' AND entity_id = 1321;
