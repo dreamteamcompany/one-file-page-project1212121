@@ -1,16 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { usePasteImage } from '@/hooks/usePasteImage';
-
-const INLINE_IMAGE_RE = /!\[[^\]]*\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g;
-function extractInlineImages(text: string): string[] {
-  const urls: string[] = [];
-  let match;
-  INLINE_IMAGE_RE.lastIndex = 0;
-  while ((match = INLINE_IMAGE_RE.exec(text)) !== null) urls.push(match[1]);
-  return urls;
-}
+import { usePasteImage, resolvePastedImages } from '@/hooks/usePasteImage';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -95,27 +86,26 @@ const TicketFormStep1 = ({
   const [criticalConfirmOpen, setCriticalConfirmOpen] = useState(false);
   const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
   const [titleEditedByUser, setTitleEditedByUser] = useState(false);
+  const [descPastedImages, setDescPastedImages] = useState<string[]>([]);
 
   const descRef = useRef<HTMLTextAreaElement>(null);
 
-  const descInlineImages = useMemo(() => extractInlineImages(formData.description), [formData.description]);
-
   const { handlePaste: handleDescPaste, uploadingPaste } = usePasteImage({
-    onInsert: (markdown) => {
-      const ta = descRef.current;
-      const current = formData.description;
-      if (!ta) {
-        setFormData({ ...formData, description: current + markdown });
-        return;
-      }
-      const start = ta.selectionStart ?? current.length;
-      const end = ta.selectionEnd ?? current.length;
-      const next = current.slice(0, start) + markdown + current.slice(end);
-      setFormData({ ...formData, description: next });
-      requestAnimationFrame(() => {
-        const pos = start + markdown.length;
-        ta.setSelectionRange(pos, pos);
-        ta.focus();
+    onInsert: (dataUrl) => {
+      setDescPastedImages((prev) => {
+        const idx = prev.length;
+        const placeholder = `![img:${idx}]`;
+        const current = formData.description;
+        const ta = descRef.current;
+        if (ta) {
+          const start = ta.selectionStart ?? current.length;
+          const end = ta.selectionEnd ?? current.length;
+          const next = current.slice(0, start) + placeholder + current.slice(end);
+          setFormData({ ...formData, description: next });
+        } else {
+          setFormData({ ...formData, description: current + placeholder });
+        }
+        return [...prev, dataUrl];
       });
     },
   });
@@ -204,7 +194,7 @@ const TicketFormStep1 = ({
             <Textarea
               ref={descRef}
               id="description"
-              value={formData.description}
+              value={formData.description.replace(/!\[img:\d+\]/g, '')}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
@@ -216,13 +206,13 @@ const TicketFormStep1 = ({
             {uploadingPaste && (
               <div className="absolute inset-0 bg-background/60 rounded-md flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Icon name="Loader2" size={14} className="animate-spin" />
-                Загрузка изображения...
+                Обработка изображения...
               </div>
             )}
           </div>
-          {descInlineImages.length > 0 && (
+          {descPastedImages.length > 0 && (
             <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg border border-border/50">
-              {descInlineImages.map((src, i) => (
+              {descPastedImages.map((src, i) => (
                 <div key={i} className="relative group">
                   <img
                     src={src}
@@ -233,10 +223,20 @@ const TicketFormStep1 = ({
                   <button
                     type="button"
                     onClick={() => {
-                      INLINE_IMAGE_RE.lastIndex = 0;
-                      let idx = 0;
-                      const next = formData.description.replace(INLINE_IMAGE_RE, (m) => idx++ === i ? '' : m);
-                      setFormData({ ...formData, description: next.replace(/\n{3,}/g, '\n\n') });
+                      setDescPastedImages((prev) => {
+                        const next = [...prev];
+                        next.splice(i, 1);
+                        const re = new RegExp(`!\\[img:${i}\\]`, 'g');
+                        let text = formData.description.replace(re, '');
+                        next.forEach((_, newIdx) => {
+                          const oldIdx = newIdx >= i ? newIdx + 1 : newIdx;
+                          if (oldIdx !== newIdx) {
+                            text = text.replace(new RegExp(`!\\[img:${oldIdx}\\]`, 'g'), `![img:${newIdx}]`);
+                          }
+                        });
+                        setFormData({ ...formData, description: text });
+                        return next;
+                      });
                     }}
                     className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -321,7 +321,13 @@ const TicketFormStep1 = ({
             <Button
               type="button"
               className="flex-1 gap-2"
-              onClick={onNext}
+              onClick={() => {
+                if (descPastedImages.length > 0) {
+                  setFormData({ ...formData, description: resolvePastedImages(formData.description, descPastedImages) });
+                  setDescPastedImages([]);
+                }
+                onNext?.();
+              }}
               disabled={!canProceed || isUploadingFiles}
             >
               <Icon name={classificationMode === 'ai' ? 'Sparkles' : 'ArrowRight'} size={18} />
@@ -331,7 +337,13 @@ const TicketFormStep1 = ({
             <Button
               type="button"
               className="flex-1 gap-2"
-              onClick={onNext}
+              onClick={() => {
+                if (descPastedImages.length > 0) {
+                  setFormData({ ...formData, description: resolvePastedImages(formData.description, descPastedImages) });
+                  setDescPastedImages([]);
+                }
+                onNext?.();
+              }}
               disabled={isUploadingFiles || !canProceed}
             >
               {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Далее'}
@@ -339,9 +351,18 @@ const TicketFormStep1 = ({
             </Button>
           ) : (
             <Button
-              type="submit"
+              type="button"
               className="flex-1 gap-2"
               disabled={isUploadingFiles || !canProceed}
+              onClick={(e) => {
+                if (descPastedImages.length > 0) {
+                  setFormData({ ...formData, description: resolvePastedImages(formData.description, descPastedImages) });
+                  setDescPastedImages([]);
+                  setTimeout(() => onSubmit(e as unknown as React.FormEvent), 0);
+                } else {
+                  onSubmit(e as unknown as React.FormEvent);
+                }
+              }}
             >
               <Icon name="Send" size={18} />
               {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}

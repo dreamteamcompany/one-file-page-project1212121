@@ -10,7 +10,7 @@ const fileToDataUrl = (file: File): Promise<string> =>
 
 interface UsePasteImageOptions {
   folder?: string;
-  onInsert: (markdown: string) => void;
+  onInsert: (dataUrl: string) => void;
 }
 
 export const usePasteImage = ({ onInsert }: UsePasteImageOptions) => {
@@ -28,9 +28,8 @@ export const usePasteImage = ({ onInsert }: UsePasteImageOptions) => {
       try {
         const file = imageItem.getAsFile();
         if (!file) return;
-
         const dataUrl = await fileToDataUrl(file);
-        onInsert(`![](${dataUrl})`);
+        onInsert(dataUrl);
       } catch {
         console.error('[usePasteImage] failed to read image');
       } finally {
@@ -42,3 +41,13 @@ export const usePasteImage = ({ onInsert }: UsePasteImageOptions) => {
 
   return { handlePaste, uploadingPaste };
 };
+
+/**
+ * Заменяет плейсхолдеры ![img:N] на реальные data URL перед сохранением/отправкой
+ */
+export function resolvePastedImages(text: string, images: string[]): string {
+  return text.replace(/!\[img:(\d+)\]/g, (_m, idx) => {
+    const src = images[Number(idx)];
+    return src ? `![](${src})` : '';
+  });
+}

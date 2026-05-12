@@ -16,8 +16,8 @@ export const useTicketActions = (
   const [sendingPing, setSendingPing] = useState(false);
   const commentUploader = useFileUploader('uploads/attachments');
 
-  const handleSubmitComment = async () => {
-    const text = newComment.trim();
+  const handleSubmitComment = async (parentCommentId?: number, mentionedUserIds?: number[], overrideText?: string) => {
+    const text = (overrideText ?? newComment).trim();
     const ready = commentUploader.successful;
     if (!text && ready.length === 0) return;
     if (commentUploader.isUploading) return;
@@ -35,6 +35,8 @@ export const useTicketActions = (
           ticket_id: ticketId,
           comment: text,
           is_internal: false,
+          parent_comment_id: parentCommentId,
+          mentioned_user_ids: mentionedUserIds,
           attachments: ready.map((a) => ({
             filename: a.filename,
             url: a.url,

@@ -1,6 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { useState, useRef, useEffect } from 'react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
+import { resolvePastedImages } from '@/hooks/usePasteImage';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,7 @@ const TicketComments = ({
   myLastSeenAt = null,
   onMarkRead,
 }: TicketCommentsProps) => {
+  const [pastedImages, setPastedImages] = useState<string[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -262,9 +264,13 @@ const TicketComments = ({
 
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
-    onSubmitComment(replyToComment?.id, mentionedUserIds);
+    const overrideText = pastedImages.length > 0
+      ? resolvePastedImages(newComment, pastedImages)
+      : undefined;
+    onSubmitComment(replyToComment?.id, mentionedUserIds, overrideText);
     setReplyToComment(null);
     setMentionedUsers([]);
+    setPastedImages([]);
   };
 
   const getParentComment = (parentId?: number) => {
@@ -357,6 +363,39 @@ const TicketComments = ({
         hasAssignee={hasAssignee}
         sendingPing={sendingPing}
         onSendPing={onSendPing}
+        pastedImages={pastedImages}
+        onPastedImage={(dataUrl) => {
+          setPastedImages((prev) => {
+            const idx = prev.length;
+            const placeholder = `![img:${idx}]`;
+            const ta = textareaRef.current;
+            if (ta) {
+              const start = ta.selectionStart ?? newComment.length;
+              const end = ta.selectionEnd ?? newComment.length;
+              const next = newComment.slice(0, start) + placeholder + newComment.slice(end);
+              onCommentChange(next);
+            } else {
+              onCommentChange(newComment + placeholder);
+            }
+            return [...prev, dataUrl];
+          });
+        }}
+        onRemovePastedImage={(idx) => {
+          setPastedImages((prev) => {
+            const next = [...prev];
+            next.splice(idx, 1);
+            const re = new RegExp(`!\\[img:${idx}\\]`, 'g');
+            let text = newComment.replace(re, '');
+            next.forEach((_, newIdx) => {
+              const oldIdx = newIdx >= idx ? newIdx + 1 : newIdx;
+              if (oldIdx !== newIdx) {
+                text = text.replace(new RegExp(`!\\[img:${oldIdx}\\]`, 'g'), `![img:${newIdx}]`);
+              }
+            });
+            onCommentChange(text);
+            return next;
+          });
+        }}
       />
 
       <AlertDialog

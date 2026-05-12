@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
@@ -7,18 +7,6 @@ import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
 import { usePasteImage } from '@/hooks/usePasteImage';
 import { Comment, User } from './TicketCommentsTypes';
-
-const INLINE_IMAGE_RE = /!\[[^\]]*\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g;
-
-function extractInlineImages(text: string): string[] {
-  const urls: string[] = [];
-  let match;
-  INLINE_IMAGE_RE.lastIndex = 0;
-  while ((match = INLINE_IMAGE_RE.exec(text)) !== null) {
-    urls.push(match[1]);
-  }
-  return urls;
-}
 
 interface TicketCommentsInputProps {
   newComment: string;
@@ -49,6 +37,9 @@ interface TicketCommentsInputProps {
   hasAssignee: boolean;
   sendingPing: boolean;
   onSendPing: () => void;
+  pastedImages?: string[];
+  onPastedImage?: (dataUrl: string) => void;
+  onRemovePastedImage?: (idx: number) => void;
 }
 
 const TicketCommentsInput = ({
@@ -76,27 +67,15 @@ const TicketCommentsInput = ({
   onEmojiClick,
   onMention,
   onSubmit,
+  pastedImages = [],
+  onPastedImage,
+  onRemovePastedImage,
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const inlineImages = useMemo(() => extractInlineImages(newComment), [newComment]);
-
   const { handlePaste, uploadingPaste } = usePasteImage({
-    onInsert: (markdown) => {
-      const ta = textareaRef.current;
-      if (!ta) {
-        onCommentChange(newComment + markdown);
-        return;
-      }
-      const start = ta.selectionStart ?? newComment.length;
-      const end = ta.selectionEnd ?? newComment.length;
-      const next = newComment.slice(0, start) + markdown + newComment.slice(end);
-      onCommentChange(next);
-      requestAnimationFrame(() => {
-        const pos = start + markdown.length;
-        ta.setSelectionRange(pos, pos);
-        ta.focus();
-      });
+    onInsert: (dataUrl) => {
+      if (onPastedImage) onPastedImage(dataUrl);
     },
   });
 
@@ -109,6 +88,11 @@ const TicketCommentsInput = ({
       }
     }
   };
+
+  const hasContent =
+    newComment.replace(/!\[img:\d+\]/g, '').trim().length > 0 ||
+    pastedImages.length > 0 ||
+    pendingAttachments.filter((a) => a.status === 'done').length > 0;
 
   return (
     <div className="space-y-3 mt-6 pt-4 border-t shrink-0">
@@ -150,7 +134,7 @@ const TicketCommentsInput = ({
             <Textarea
               ref={textareaRef}
               placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
-              value={newComment}
+              value={newComment.replace(/!\[img:\d+\]/g, '')}
               onChange={onTextChange}
               onPaste={handlePaste}
               disabled={submittingComment}
@@ -159,7 +143,7 @@ const TicketCommentsInput = ({
             {uploadingPaste && (
               <div className="absolute inset-0 bg-background/60 rounded-md flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Icon name="Loader2" size={14} className="animate-spin" />
-                Загрузка изображения...
+                Обработка изображения...
               </div>
             )}
 
@@ -196,9 +180,9 @@ const TicketCommentsInput = ({
             )}
           </div>
 
-          {inlineImages.length > 0 && (
+          {pastedImages.length > 0 && (
             <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg border border-border/50">
-              {inlineImages.map((src, i) => (
+              {pastedImages.map((src, i) => (
                 <div key={i} className="relative group">
                   <img
                     src={src}
@@ -206,20 +190,15 @@ const TicketCommentsInput = ({
                     className="max-h-24 max-w-[160px] rounded-md border border-border object-cover cursor-pointer"
                     onClick={() => window.open(src, '_blank')}
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      INLINE_IMAGE_RE.lastIndex = 0;
-                      let idx = 0;
-                      const next = newComment.replace(INLINE_IMAGE_RE, (m) => {
-                        return idx++ === i ? '' : m;
-                      });
-                      onCommentChange(next.replace(/\n{3,}/g, '\n\n'));
-                    }}
-                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
+                  {onRemovePastedImage && (
+                    <button
+                      type="button"
+                      onClick={() => onRemovePastedImage(i)}
+                      className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -238,11 +217,7 @@ const TicketCommentsInput = ({
           <div className="flex flex-wrap gap-2 items-center">
             <Button
               onClick={onSubmit}
-              disabled={
-                (!newComment.trim() && pendingAttachments.filter((a) => a.status === 'done').length === 0) ||
-                submittingComment ||
-                uploadingFile
-              }
+              disabled={!hasContent || submittingComment || uploadingFile}
               size="sm"
               className="flex-1 min-w-[120px]"
             >

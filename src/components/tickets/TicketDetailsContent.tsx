@@ -100,7 +100,7 @@ interface TicketDetailsContentProps {
   sendingPing: boolean;
   userId?: number;
   onCommentChange: (value: string) => void;
-  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[]) => void;
+  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[], overrideText?: string) => void;
   onSendPing: () => void;
   onReaction: (commentId: number, emoji: string) => void;
   onTogglePin?: (commentId: number) => void;

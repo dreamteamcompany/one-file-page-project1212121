@@ -44,7 +44,7 @@ export interface TicketCommentsProps {
   newComment: string;
   submittingComment: boolean;
   onCommentChange: (value: string) => void;
-  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[]) => void;
+  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[], overrideText?: string) => void;
   isCustomer: boolean;
   hasAssignee: boolean;
   sendingPing: boolean;
