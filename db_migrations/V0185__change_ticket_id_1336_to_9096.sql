@@ -1,0 +1,13 @@
+UPDATE t_p67567221_one_file_page_projec.ticket_comments SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_history SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_approvals SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_approvers SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_to_service_mappings SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_custom_field_values SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_group_log SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.sla_violations SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.notifications SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_watchers SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.ticket_views SET ticket_id = 9096 WHERE ticket_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.audit_logs SET entity_id = 9096 WHERE entity_type = 'ticket' AND entity_id = 1336;
+UPDATE t_p67567221_one_file_page_projec.tickets SET id = 9096 WHERE id = 1336;
