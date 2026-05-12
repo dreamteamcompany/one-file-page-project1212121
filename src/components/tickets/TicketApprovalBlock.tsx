@@ -208,11 +208,6 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
 
   return (
     <div className="p-4 space-y-4 flex flex-col justify-center">
-      <h3 className="font-semibold flex items-center gap-2">
-        <Icon name="FileCheck" size={20} />
-        Согласование
-      </h3>
-
       {canSubmit && approvalHistory.length === 0 && (
         <div className="space-y-3">
           <div>
