@@ -1,7 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { usePasteImage } from '@/hooks/usePasteImage';
+
+const INLINE_IMAGE_RE = /!\[[^\]]*\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g;
+function extractInlineImages(text: string): string[] {
+  const urls: string[] = [];
+  let match;
+  INLINE_IMAGE_RE.lastIndex = 0;
+  while ((match = INLINE_IMAGE_RE.exec(text)) !== null) urls.push(match[1]);
+  return urls;
+}
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -89,8 +98,9 @@ const TicketFormStep1 = ({
 
   const descRef = useRef<HTMLTextAreaElement>(null);
 
+  const descInlineImages = useMemo(() => extractInlineImages(formData.description), [formData.description]);
+
   const { handlePaste: handleDescPaste, uploadingPaste } = usePasteImage({
-    folder: 'uploads/inline-images',
     onInsert: (markdown) => {
       const ta = descRef.current;
       const current = formData.description;
@@ -210,6 +220,32 @@ const TicketFormStep1 = ({
               </div>
             )}
           </div>
+          {descInlineImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg border border-border/50">
+              {descInlineImages.map((src, i) => (
+                <div key={i} className="relative group">
+                  <img
+                    src={src}
+                    alt=""
+                    className="max-h-24 max-w-[160px] rounded-md border border-border object-cover cursor-pointer"
+                    onClick={() => window.open(src, '_blank')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      INLINE_IMAGE_RE.lastIndex = 0;
+                      let idx = 0;
+                      const next = formData.description.replace(INLINE_IMAGE_RE, (m) => idx++ === i ? '' : m);
+                      setFormData({ ...formData, description: next.replace(/\n{3,}/g, '\n\n') });
+                    }}
+                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {isFirstStep && (
             <p className="text-xs text-muted-foreground">
               {classificationMode === 'ai'

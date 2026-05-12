@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
@@ -7,6 +7,18 @@ import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
 import { usePasteImage } from '@/hooks/usePasteImage';
 import { Comment, User } from './TicketCommentsTypes';
+
+const INLINE_IMAGE_RE = /!\[[^\]]*\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g;
+
+function extractInlineImages(text: string): string[] {
+  const urls: string[] = [];
+  let match;
+  INLINE_IMAGE_RE.lastIndex = 0;
+  while ((match = INLINE_IMAGE_RE.exec(text)) !== null) {
+    urls.push(match[1]);
+  }
+  return urls;
+}
 
 interface TicketCommentsInputProps {
   newComment: string;
@@ -67,8 +79,9 @@ const TicketCommentsInput = ({
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const inlineImages = useMemo(() => extractInlineImages(newComment), [newComment]);
+
   const { handlePaste, uploadingPaste } = usePasteImage({
-    folder: 'uploads/inline-images',
     onInsert: (markdown) => {
       const ta = textareaRef.current;
       if (!ta) {
@@ -182,6 +195,35 @@ const TicketCommentsInput = ({
               </div>
             )}
           </div>
+
+          {inlineImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg border border-border/50">
+              {inlineImages.map((src, i) => (
+                <div key={i} className="relative group">
+                  <img
+                    src={src}
+                    alt=""
+                    className="max-h-24 max-w-[160px] rounded-md border border-border object-cover cursor-pointer"
+                    onClick={() => window.open(src, '_blank')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      INLINE_IMAGE_RE.lastIndex = 0;
+                      let idx = 0;
+                      const next = newComment.replace(INLINE_IMAGE_RE, (m) => {
+                        return idx++ === i ? '' : m;
+                      });
+                      onCommentChange(next.replace(/\n{3,}/g, '\n\n'));
+                    }}
+                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {pendingAttachments.length > 0 && onRemoveAttachment && (
             <AttachmentUploader
