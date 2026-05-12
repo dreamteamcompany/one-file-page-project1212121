@@ -176,6 +176,9 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const canApprove = pendingApprovals.some(a => a.approver_id === user?.id);
   const canRevoke = approvalHistory.some(a => a.approver_id === user?.id && a.status === 'approved');
 
+  const isEmpty = approvalHistory.length === 0 && !canSubmit && !canApprove;
+  const [isOpen, setIsOpen] = useState(!isEmpty);
+
   const getActionIcon = (action: string) => {
     switch (action) {
       case 'approved':
@@ -207,14 +210,31 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   };
 
   return (
-    <div className="p-4 space-y-4 flex flex-col justify-center">
+    <div className="p-4 space-y-4">
+      <button
+        onClick={() => setIsOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 text-left"
+      >
+        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+          <Icon name="UserCheck" size={14} />
+          Согласование
+          {approvalHistory.length > 0 && (
+            <span className="text-[10px] font-normal normal-case tracking-normal bg-muted px-1.5 py-0.5 rounded-full">
+              {approvalHistory.length}
+            </span>
+          )}
+        </h3>
+        <Icon
+          name="ChevronDown"
+          size={14}
+          className={`text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {isOpen && <>
       {canSubmit && approvalHistory.length === 0 && (
         <div className="space-y-3">
           <div>
-            <p className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-              <Icon name="UserCheck" size={14} />
-              Согласующие
-            </p>
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -467,8 +487,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
           </div>
         </div>
       )}
-
-
+      </>}
     </div>
   );
 };

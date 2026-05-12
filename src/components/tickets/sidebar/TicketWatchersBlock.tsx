@@ -34,6 +34,7 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
 
   const WATCHERS_URL = getApiUrl('ticket-watchers');
 
@@ -41,7 +42,9 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
     try {
       const res = await apiFetch(`${WATCHERS_URL}?endpoint=ticket-watchers&ticket_id=${ticketId}`);
       const data = await res.json();
-      setWatchers(data.watchers || []);
+      const list = data.watchers || [];
+      setWatchers(list);
+      setIsOpen(list.length > 0);
     } catch (e) {
       console.error('Failed to fetch watchers', e);
     } finally {
@@ -97,18 +100,33 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
   return (
     <div>
       <div className="p-4">
-        <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
-          <Icon name="Eye" size={14} />
-          Наблюдатели
-        </h3>
+        <button
+          onClick={() => setIsOpen(v => !v)}
+          className="w-full flex items-center justify-between gap-2 text-left"
+        >
+          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-2">
+            <Icon name="Eye" size={14} />
+            Наблюдатели
+            {!loading && watchers.length > 0 && (
+              <span className="text-[10px] font-normal normal-case tracking-normal bg-muted px-1.5 py-0.5 rounded-full">
+                {watchers.length}
+              </span>
+            )}
+          </h3>
+          <Icon
+            name="ChevronDown"
+            size={14}
+            className={`text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-        {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        {isOpen && (loading ? (
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mt-3">
             <Icon name="Loader2" size={14} className="animate-spin" />
             Загрузка...
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 mt-3">
             {watchers.length > 0 && (
               <div className="space-y-1.5">
                 {watchers.map(watcher => (
@@ -182,7 +200,7 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
               </PopoverContent>
             </Popover>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
