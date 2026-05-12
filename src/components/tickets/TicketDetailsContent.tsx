@@ -214,7 +214,7 @@ const TicketDetailsContent = ({
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
         <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row md:items-stretch'} gap-6`}>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col">
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
             </h1>
@@ -254,7 +254,7 @@ const TicketDetailsContent = ({
             </div>
             
             {ticket.description && (
-              <div className="overflow-hidden">
+              <div className="flex-1">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
                 <RichText text={ticket.description} className="text-sm leading-relaxed text-foreground" />
               </div>
@@ -351,11 +351,7 @@ const TicketDetailsContent = ({
                 })}
               </div>
 
-              {ticket.description && !isShortDescription && (
-                <div className="mt-4 flex-1 p-3 rounded-lg bg-muted/20 border border-border/50 overflow-auto">
-                  <RichText text={ticket.description} className="text-sm leading-relaxed text-foreground" />
-                </div>
-              )}
+
             </div>
           )}
         </div>
