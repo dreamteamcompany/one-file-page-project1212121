@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getDeadlineInfo } from './ticket-info/types';
 import type { Ticket, Status, User, ExecutorGroup } from './ticket-info/types';
 import DeadlineSection from './ticket-info/DeadlineSection';
-import WaitingToggleButton from './WaitingToggleButton';
+
 
 interface TicketInfoFieldsProps {
   ticket: Ticket;
@@ -95,15 +95,7 @@ const TicketInfoFields = ({
           </SelectContent>
         </Select>
 
-        {!isCustomer && (
-          <WaitingToggleButton
-            ticket={ticket as unknown as { id: number; status_id?: number; previous_status_id?: number | null; created_by: number }}
-            statuses={statuses}
-            updating={updating}
-            onStatusChange={onStatusChange}
-            className="w-full mt-2"
-          />
-        )}
+
       </div>
 
       <DeadlineSection
