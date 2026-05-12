@@ -48,6 +48,25 @@ const EditCommentDialog = ({
   );
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [quickInput, setQuickInput] = useState('');
+  const [quickError, setQuickError] = useState(false);
+
+  const handleQuickInput = (value: string) => {
+    setQuickInput(value);
+    // Парсим формат: дд.мм.гггг чч:мм
+    const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})$/);
+    if (match) {
+      const [, dd, mm, yyyy, hh, min] = match;
+      const parsed = new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min));
+      if (!isNaN(parsed.getTime())) {
+        setDate(parsed);
+        setTime(`${hh}:${min}`);
+        setQuickError(false);
+        return;
+      }
+    }
+    setQuickError(value.length > 0);
+  };
 
   useEffect(() => {
     if (open) {
@@ -107,6 +126,21 @@ const EditCommentDialog = ({
               className="min-h-[140px] resize-none"
               disabled={saving}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quick-input">Быстрый ввод</Label>
+            <Input
+              id="quick-input"
+              placeholder="16.04.2026 10:28"
+              value={quickInput}
+              onChange={(e) => handleQuickInput(e.target.value)}
+              disabled={saving}
+              className={quickError ? 'border-destructive focus-visible:ring-destructive' : ''}
+            />
+            {quickError && (
+              <p className="text-xs text-destructive">Формат: дд.мм.гггг чч:мм</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
