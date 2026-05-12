@@ -87,9 +87,11 @@ class AttachmentInput(BaseModel):
 
 class CommentRequest(BaseModel):
     ticket_id: int = Field(..., gt=0)
-    comment: str = Field(default='', max_length=20000)
+    comment: str = Field(default='', max_length=10_000_000)
     is_internal: bool = Field(default=False)
     attachments: List[AttachmentInput] = Field(default_factory=list)
+    parent_comment_id: int = Field(default=None)
+    mentioned_user_ids: List[int] = Field(default_factory=list)
 
 
 def handler(event: dict, context) -> dict:
