@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { usePasteImage, resolvePastedImages } from '@/hooks/usePasteImage';
+import { usePasteImage } from '@/hooks/usePasteImage';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -92,21 +92,7 @@ const TicketFormStep1 = ({
 
   const { handlePaste: handleDescPaste, uploadingPaste } = usePasteImage({
     onInsert: (dataUrl) => {
-      setDescPastedImages((prev) => {
-        const idx = prev.length;
-        const placeholder = `![img:${idx}]`;
-        const current = formData.description;
-        const ta = descRef.current;
-        if (ta) {
-          const start = ta.selectionStart ?? current.length;
-          const end = ta.selectionEnd ?? current.length;
-          const next = current.slice(0, start) + placeholder + current.slice(end);
-          setFormData({ ...formData, description: next });
-        } else {
-          setFormData({ ...formData, description: current + placeholder });
-        }
-        return [...prev, dataUrl];
-      });
+      setDescPastedImages((prev) => [...prev, dataUrl]);
     },
   });
 
@@ -150,8 +136,18 @@ const TicketFormStep1 = ({
     setCriticalConfirmOpen(false);
   };
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    if (descPastedImages.length > 0) {
+      const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
+      const base = formData.description.trim();
+      setFormData({ ...formData, description: base ? `${base}\n\n${imgs}` : imgs });
+      setDescPastedImages([]);
+    }
+    onSubmit(e);
+  };
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleFormSubmit}>
       <div className="space-y-4 mt-4">
         {!isFirstStep && (
           <div className="space-y-2">
@@ -194,7 +190,7 @@ const TicketFormStep1 = ({
             <Textarea
               ref={descRef}
               id="description"
-              value={formData.description.replace(/!\[img:\d+\]/g, '')}
+              value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
@@ -222,22 +218,7 @@ const TicketFormStep1 = ({
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      setDescPastedImages((prev) => {
-                        const next = [...prev];
-                        next.splice(i, 1);
-                        const re = new RegExp(`!\\[img:${i}\\]`, 'g');
-                        let text = formData.description.replace(re, '');
-                        next.forEach((_, newIdx) => {
-                          const oldIdx = newIdx >= i ? newIdx + 1 : newIdx;
-                          if (oldIdx !== newIdx) {
-                            text = text.replace(new RegExp(`!\\[img:${oldIdx}\\]`, 'g'), `![img:${newIdx}]`);
-                          }
-                        });
-                        setFormData({ ...formData, description: text });
-                        return next;
-                      });
-                    }}
+                    onClick={() => setDescPastedImages((prev) => prev.filter((_, j) => j !== i))}
                     className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     ×
@@ -323,7 +304,9 @@ const TicketFormStep1 = ({
               className="flex-1 gap-2"
               onClick={() => {
                 if (descPastedImages.length > 0) {
-                  setFormData({ ...formData, description: resolvePastedImages(formData.description, descPastedImages) });
+                  const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
+                  const base = formData.description.trim();
+                  setFormData({ ...formData, description: base ? `${base}\n\n${imgs}` : imgs });
                   setDescPastedImages([]);
                 }
                 onNext?.();
@@ -339,7 +322,9 @@ const TicketFormStep1 = ({
               className="flex-1 gap-2"
               onClick={() => {
                 if (descPastedImages.length > 0) {
-                  setFormData({ ...formData, description: resolvePastedImages(formData.description, descPastedImages) });
+                  const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
+                  const base = formData.description.trim();
+                  setFormData({ ...formData, description: base ? `${base}\n\n${imgs}` : imgs });
                   setDescPastedImages([]);
                 }
                 onNext?.();
@@ -351,18 +336,9 @@ const TicketFormStep1 = ({
             </Button>
           ) : (
             <Button
-              type="button"
+              type="submit"
               className="flex-1 gap-2"
               disabled={isUploadingFiles || !canProceed}
-              onClick={(e) => {
-                if (descPastedImages.length > 0) {
-                  setFormData({ ...formData, description: resolvePastedImages(formData.description, descPastedImages) });
-                  setDescPastedImages([]);
-                  setTimeout(() => onSubmit(e as unknown as React.FormEvent), 0);
-                } else {
-                  onSubmit(e as unknown as React.FormEvent);
-                }
-              }}
             >
               <Icon name="Send" size={18} />
               {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}

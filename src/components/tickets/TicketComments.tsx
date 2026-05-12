@@ -1,7 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { useState, useRef, useEffect } from 'react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
-import { resolvePastedImages } from '@/hooks/usePasteImage';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -264,9 +264,12 @@ const TicketComments = ({
 
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
-    const overrideText = pastedImages.length > 0
-      ? resolvePastedImages(newComment, pastedImages)
-      : undefined;
+    let overrideText: string | undefined;
+    if (pastedImages.length > 0) {
+      const imgMarkdown = pastedImages.map((src) => `![](${src})`).join('\n');
+      const base = newComment.trim();
+      overrideText = base ? `${base}\n\n${imgMarkdown}` : imgMarkdown;
+    }
     onSubmitComment(replyToComment?.id, mentionedUserIds, overrideText);
     setReplyToComment(null);
     setMentionedUsers([]);
@@ -365,36 +368,10 @@ const TicketComments = ({
         onSendPing={onSendPing}
         pastedImages={pastedImages}
         onPastedImage={(dataUrl) => {
-          setPastedImages((prev) => {
-            const idx = prev.length;
-            const placeholder = `![img:${idx}]`;
-            const ta = textareaRef.current;
-            if (ta) {
-              const start = ta.selectionStart ?? newComment.length;
-              const end = ta.selectionEnd ?? newComment.length;
-              const next = newComment.slice(0, start) + placeholder + newComment.slice(end);
-              onCommentChange(next);
-            } else {
-              onCommentChange(newComment + placeholder);
-            }
-            return [...prev, dataUrl];
-          });
+          setPastedImages((prev) => [...prev, dataUrl]);
         }}
         onRemovePastedImage={(idx) => {
-          setPastedImages((prev) => {
-            const next = [...prev];
-            next.splice(idx, 1);
-            const re = new RegExp(`!\\[img:${idx}\\]`, 'g');
-            let text = newComment.replace(re, '');
-            next.forEach((_, newIdx) => {
-              const oldIdx = newIdx >= idx ? newIdx + 1 : newIdx;
-              if (oldIdx !== newIdx) {
-                text = text.replace(new RegExp(`!\\[img:${oldIdx}\\]`, 'g'), `![img:${newIdx}]`);
-              }
-            });
-            onCommentChange(text);
-            return next;
-          });
+          setPastedImages((prev) => prev.filter((_, i) => i !== idx));
         }}
       />
 

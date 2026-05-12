@@ -90,7 +90,7 @@ const TicketCommentsInput = ({
   };
 
   const hasContent =
-    newComment.replace(/!\[img:\d+\]/g, '').trim().length > 0 ||
+    newComment.trim().length > 0 ||
     pastedImages.length > 0 ||
     pendingAttachments.filter((a) => a.status === 'done').length > 0;
 
@@ -134,7 +134,7 @@ const TicketCommentsInput = ({
             <Textarea
               ref={textareaRef}
               placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
-              value={newComment.replace(/!\[img:\d+\]/g, '')}
+              value={newComment}
               onChange={onTextChange}
               onPaste={handlePaste}
               disabled={submittingComment}
