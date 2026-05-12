@@ -5,7 +5,7 @@ import Icon from '@/components/ui/icon';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
-import { usePasteImage } from '@/hooks/usePasteImage';
+import { usePasteImage, PastedImage } from '@/hooks/usePasteImage';
 import { Comment, User } from './TicketCommentsTypes';
 
 interface TicketCommentsInputProps {
@@ -37,9 +37,9 @@ interface TicketCommentsInputProps {
   hasAssignee: boolean;
   sendingPing: boolean;
   onSendPing: () => void;
-  pastedImages?: string[];
-  onPastedImage?: (dataUrl: string) => void;
-  onRemovePastedImage?: (idx: number) => void;
+  pastedImages?: PastedImage[];
+  onPastedImage?: (dataUrl: string, cursorPos: number) => void;
+  onRemovePastedImage?: (id: string) => void;
 }
 
 const TicketCommentsInput = ({
@@ -74,8 +74,8 @@ const TicketCommentsInput = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { handlePaste, uploadingPaste } = usePasteImage({
-    onInsert: (dataUrl) => {
-      if (onPastedImage) onPastedImage(dataUrl);
+    onInsert: (dataUrl, cursorPos) => {
+      if (onPastedImage) onPastedImage(dataUrl, cursorPos);
     },
   });
 
@@ -182,18 +182,19 @@ const TicketCommentsInput = ({
 
           {pastedImages.length > 0 && (
             <div className="flex flex-wrap gap-2 p-2 bg-muted/30 rounded-lg border border-border/50">
-              {pastedImages.map((src, i) => (
-                <div key={i} className="relative group">
+              <span className="w-full text-[10px] text-muted-foreground">Прикреплённые изображения (будут вставлены в позицию курсора):</span>
+              {[...pastedImages].sort((a, b) => a.afterPos - b.afterPos).map((img) => (
+                <div key={img.id} className="relative group">
                   <img
-                    src={src}
+                    src={img.dataUrl}
                     alt=""
                     className="max-h-24 max-w-[160px] rounded-md border border-border object-cover cursor-pointer"
-                    onClick={() => window.open(src, '_blank')}
+                    onClick={() => window.open(img.dataUrl, '_blank')}
                   />
                   {onRemovePastedImage && (
                     <button
                       type="button"
-                      onClick={() => onRemovePastedImage(i)}
+                      onClick={() => onRemovePastedImage(img.id)}
                       className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       ×

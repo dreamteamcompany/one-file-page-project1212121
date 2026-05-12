@@ -1,6 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { useState, useRef, useEffect } from 'react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
+import { buildFinalText, PastedImage } from '@/hooks/usePasteImage';
 
 import {
   AlertDialog,
@@ -46,7 +47,7 @@ const TicketComments = ({
   myLastSeenAt = null,
   onMarkRead,
 }: TicketCommentsProps) => {
-  const [pastedImages, setPastedImages] = useState<string[]>([]);
+  const [pastedImages, setPastedImages] = useState<PastedImage[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyToComment, setReplyToComment] = useState<Comment | null>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -222,10 +223,25 @@ const TicketComments = ({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
+    const prevLen = newComment.length;
+    const delta = value.length - prevLen;
+    const cursorPos = e.target.selectionStart;
+
+    // Сдвигаем позиции картинок при редактировании текста перед ними
+    if (pastedImages.length > 0 && delta !== 0) {
+      const editPos = cursorPos - Math.max(0, delta);
+      setPastedImages((prev) =>
+        prev.map((img) =>
+          img.afterPos >= editPos
+            ? { ...img, afterPos: Math.max(0, img.afterPos + delta) }
+            : img
+        )
+      );
+    }
+
     onCommentChange(value);
 
-    const cursorPosition = e.target.selectionStart;
-    const textBeforeCursor = value.substring(0, cursorPosition);
+    const textBeforeCursor = value.substring(0, cursorPos);
     const match = textBeforeCursor.match(/@(\w*)$/);
 
     if (match) {
@@ -264,12 +280,9 @@ const TicketComments = ({
 
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
-    let overrideText: string | undefined;
-    if (pastedImages.length > 0) {
-      const imgMarkdown = pastedImages.map((src) => `![](${src})`).join('\n');
-      const base = newComment.trim();
-      overrideText = base ? `${base}\n\n${imgMarkdown}` : imgMarkdown;
-    }
+    const overrideText = pastedImages.length > 0
+      ? buildFinalText(newComment, pastedImages)
+      : undefined;
     onSubmitComment(replyToComment?.id, mentionedUserIds, overrideText);
     setReplyToComment(null);
     setMentionedUsers([]);
@@ -367,11 +380,14 @@ const TicketComments = ({
         sendingPing={sendingPing}
         onSendPing={onSendPing}
         pastedImages={pastedImages}
-        onPastedImage={(dataUrl) => {
-          setPastedImages((prev) => [...prev, dataUrl]);
+        onPastedImage={(dataUrl, cursorPos) => {
+          setPastedImages((prev) => [
+            ...prev,
+            { id: `${Date.now()}-${Math.random()}`, dataUrl, afterPos: cursorPos },
+          ]);
         }}
-        onRemovePastedImage={(idx) => {
-          setPastedImages((prev) => prev.filter((_, i) => i !== idx));
+        onRemovePastedImage={(id) => {
+          setPastedImages((prev) => prev.filter((img) => img.id !== id));
         }}
       />
 
