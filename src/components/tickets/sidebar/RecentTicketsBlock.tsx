@@ -23,6 +23,7 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<RecentTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const loadRecentTickets = async () => {
@@ -75,16 +76,37 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
     return null;
   };
 
+  const Header = ({ count }: { count?: number }) => (
+    <button
+      onClick={() => setIsOpen((v) => !v)}
+      className="w-full flex items-center justify-between gap-2 text-left"
+    >
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+        <Icon name="History" size={14} />
+        Последние заявки заказчика
+        {count !== undefined && count > 0 && (
+          <span className="text-[10px] font-normal normal-case tracking-normal bg-muted px-1.5 py-0.5 rounded-full">
+            {count}
+          </span>
+        )}
+      </h3>
+      <Icon
+        name="ChevronDown"
+        size={14}
+        className={`text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+      />
+    </button>
+  );
+
   if (loading) {
     return (
       <div className="rounded-lg bg-card border p-4">
-        <h3 className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-          <Icon name="History" size={14} />
-          Последние заявки заказчика
-        </h3>
-        <div className="flex items-center justify-center py-4">
-          <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
-        </div>
+        <Header />
+        {isOpen && (
+          <div className="flex items-center justify-center py-4 mt-3">
+            <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
     );
   }
@@ -92,69 +114,67 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
   if (tickets.length === 0) {
     return (
       <div className="rounded-lg bg-card border p-4">
-        <h3 className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-          <Icon name="History" size={14} />
-          Последние заявки заказчика
-        </h3>
-        <p className="text-xs text-muted-foreground">Нет других заявок</p>
+        <Header />
+        {isOpen && (
+          <p className="text-xs text-muted-foreground mt-3">Нет других заявок</p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="rounded-lg bg-card border p-4">
-      <h3 className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-        <Icon name="History" size={14} />
-        Последние заявки заказчика
-      </h3>
-      <div className="space-y-2">
-        {tickets.map((t) => {
-          const serviceName = getServiceName(t);
-          const categoryName = getCategoryName(t);
+      <Header count={tickets.length} />
+      {isOpen && (
+        <div className="space-y-2 mt-3">
+          {tickets.map((t) => {
+            const serviceName = getServiceName(t);
+            const categoryName = getCategoryName(t);
 
-          return (
-            <div
-              key={t.id}
-              onClick={() => navigate(`/tickets/${t.id}`)}
-              className="rounded-md border border-border/60 p-3 cursor-pointer hover:bg-accent/50 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-xs font-medium text-primary">#{t.id}</span>
-                <span className="text-[10px] text-muted-foreground">{formatDate(t.created_at)}</span>
+            return (
+              <div
+                key={t.id}
+                onClick={() => navigate(`/tickets/${t.id}`)}
+                className="rounded-md border border-border/60 p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-xs font-medium text-primary">#{t.id}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatDate(t.created_at)}</span>
+                </div>
+
+                <p className="text-xs font-medium text-foreground leading-snug mb-1.5 line-clamp-2">
+                  {t.title}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {t.status_name && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0 h-4 font-normal"
+                      style={{
+                        borderColor: t.status_color || undefined,
+                        color: t.status_color || undefined,
+                      }}
+                    >
+                      {t.status_name}
+                    </Badge>
+                  )}
+                  {categoryName && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                      {categoryName}
+                    </Badge>
+                  )}
+                  {serviceName && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                      {serviceName}
+                    </Badge>
+                  )}
+                </div>
               </div>
-
-              <p className="text-xs font-medium text-foreground leading-snug mb-1.5 line-clamp-2">
-                {t.title}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {t.status_name && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] px-1.5 py-0 h-4 font-normal"
-                    style={{
-                      borderColor: t.status_color || undefined,
-                      color: t.status_color || undefined,
-                    }}
-                  >
-                    {t.status_name}
-                  </Badge>
-                )}
-                {categoryName && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
-                    {categoryName}
-                  </Badge>
-                )}
-                {serviceName && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
-                    {serviceName}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
