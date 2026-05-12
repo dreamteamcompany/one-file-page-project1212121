@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import TicketApprovalBlock from './TicketApprovalBlock';
 import TicketConfirmationBlock from './TicketConfirmationBlock';
 import TicketTimerCard from './sidebar/TicketTimerCard';
 import TicketPingCard from './sidebar/TicketPingCard';
 import TicketInfoFields from './sidebar/TicketInfoFields';
 import TicketWatchersBlock from './sidebar/TicketWatchersBlock';
+import AssignmentSection from './sidebar/ticket-info/AssignmentSection';
+import type { Ticket as AssignTicket, User as AssignUser, ExecutorGroup as AssignGroup } from './sidebar/ticket-info/types';
 import ApprovalDialog from './sidebar/ApprovalDialog';
 import RecentTicketsBlock from './sidebar/RecentTicketsBlock';
 
@@ -50,6 +53,7 @@ interface Ticket {
   assigned_to?: number;
   assignee_name?: string;
   assignee_email?: string;
+  assignee_photo_url?: string;
   due_date?: string;
   created_at?: string;
   updated_at?: string;
@@ -105,6 +109,10 @@ const TicketDetailsSidebar = ({
   onUpdateDueDate,
   hidePing = false,
 }: TicketDetailsSidebarProps) => {
+  const { hasPermission, hasSystemRole } = useAuth();
+  const canSeeGroup = hasSystemRole('admin', 'executor');
+  const canAssignExecutor = hasPermission('tickets', 'assign_executor');
+
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [selectedApprovers, setSelectedApprovers] = useState<number[]>([]);
@@ -185,17 +193,29 @@ const TicketDetailsSidebar = ({
           onUpdateDueDate={onUpdateDueDate}
         />
 
-        <TicketWatchersBlock
-          ticketId={ticket.id}
-          availableUsers={users}
-        />
-
-        <TicketApprovalBlock
-          ticketId={ticket.id}
-          statusName={ticket.status_name || ''}
-          onStatusChange={onApprovalChange || (() => {})}
-          availableUsers={users}
-        />
+        {/* Объединённый блок: Группа исполнителей, Исполнитель, Наблюдатели, Согласующие */}
+        <div className="rounded-lg bg-card border divide-y">
+          <AssignmentSection
+            ticket={ticket as AssignTicket}
+            users={users as AssignUser[]}
+            updating={updating}
+            executorGroups={executorGroups as AssignGroup[]}
+            canSeeGroup={canSeeGroup}
+            canAssignExecutor={canAssignExecutor}
+            onAssignUser={onAssignUser}
+            onAssignGroup={onAssignGroup}
+          />
+          <TicketWatchersBlock
+            ticketId={ticket.id}
+            availableUsers={users}
+          />
+          <TicketApprovalBlock
+            ticketId={ticket.id}
+            statusName={ticket.status_name || ''}
+            onStatusChange={onApprovalChange || (() => {})}
+            availableUsers={users}
+          />
+        </div>
 
         <TicketConfirmationBlock
           ticket={ticket}

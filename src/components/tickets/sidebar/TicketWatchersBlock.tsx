@@ -95,7 +95,7 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
   };
 
   return (
-    <div className="rounded-lg bg-card border">
+    <div>
       <div className="p-4">
         <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
           <Icon name="Eye" size={14} />

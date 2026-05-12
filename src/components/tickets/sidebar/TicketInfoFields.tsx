@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getDeadlineInfo } from './ticket-info/types';
 import type { Ticket, Status, User, ExecutorGroup } from './ticket-info/types';
 import DeadlineSection from './ticket-info/DeadlineSection';
-import AssignmentSection from './ticket-info/AssignmentSection';
 import WaitingToggleButton from './WaitingToggleButton';
 
 interface TicketInfoFieldsProps {
@@ -40,8 +39,6 @@ const TicketInfoFields = ({
   onUpdateDueDate,
 }: TicketInfoFieldsProps) => {
   const { hasPermission, hasSystemRole } = useAuth();
-  const canSeeGroup = hasSystemRole('admin', 'executor');
-  const canAssignExecutor = hasPermission('tickets', 'assign_executor');
   const canEditDueDate = hasPermission('tickets', 'update') || hasSystemRole('admin');
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
@@ -116,17 +113,6 @@ const TicketInfoFields = ({
         isCustomer={isCustomer}
         canEditDueDate={canEditDueDate}
         onUpdateDueDate={onUpdateDueDate}
-      />
-
-      <AssignmentSection
-        ticket={ticket}
-        users={users}
-        updating={updating}
-        executorGroups={executorGroups}
-        canSeeGroup={canSeeGroup}
-        canAssignExecutor={canAssignExecutor}
-        onAssignUser={onAssignUser}
-        onAssignGroup={onAssignGroup}
       />
 
       {ticket.category_name && (
