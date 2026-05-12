@@ -176,8 +176,11 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
   const canApprove = pendingApprovals.some(a => a.approver_id === user?.id);
   const canRevoke = approvalHistory.some(a => a.approver_id === user?.id && a.status === 'approved');
 
-  const isEmpty = approvalHistory.length === 0 && !canSubmit && !canApprove;
-  const [isOpen, setIsOpen] = useState(!isEmpty);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (approvalHistory.length > 0) setIsOpen(true);
+  }, [approvalHistory.length]);
 
   const getActionIcon = (action: string) => {
     switch (action) {
