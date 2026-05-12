@@ -357,7 +357,7 @@ const TicketDetailsContent = ({
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
-      <div className="rounded-lg bg-card border mb-6 lg:mb-0 flex flex-col" style={{ height: '680px', minHeight: '400px', maxHeight: '80vh' }}>
+      <div className="rounded-lg bg-card border mb-6 lg:mb-0 flex flex-col" style={{ height: '820px', minHeight: '400px', maxHeight: '85vh' }}>
         <div className="flex gap-6 px-4 pt-3 border-b shrink-0">
           <button 
             onClick={() => setActiveTab('comments')}

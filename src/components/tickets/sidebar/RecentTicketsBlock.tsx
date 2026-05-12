@@ -23,7 +23,7 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<RecentTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
     const loadRecentTickets = async () => {

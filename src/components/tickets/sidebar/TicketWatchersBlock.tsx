@@ -34,7 +34,7 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const WATCHERS_URL = getApiUrl('ticket-watchers');
 
@@ -44,7 +44,7 @@ const TicketWatchersBlock = ({ ticketId, availableUsers }: TicketWatchersBlockPr
       const data = await res.json();
       const list = data.watchers || [];
       setWatchers(list);
-      setIsOpen(list.length > 0);
+
     } catch (e) {
       console.error('Failed to fetch watchers', e);
     } finally {
