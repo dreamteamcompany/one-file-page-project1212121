@@ -213,13 +213,14 @@ const TicketDetailsContent = ({
     <div className="flex-1 min-w-0 lg:pt-6 lg:pl-6 lg:flex lg:flex-col lg:min-h-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
-        <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row md:items-stretch'} gap-6`}>
-          <div className="flex-1 min-w-0 flex flex-col">
+        {/* Строка: заголовок + метаданные + дополнительные поля */}
+        <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
             </h1>
             
-            <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-4 md:mb-6 text-sm">
+            <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm">
               {ticket.due_date && deadlineInfo && (
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs text-muted-foreground uppercase tracking-wide">Дедлайн</span>
@@ -252,17 +253,10 @@ const TicketDetailsContent = ({
                 </div>
               )}
             </div>
-            
-            {ticket.description && (
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
-                <RichText text={ticket.description} className="text-sm leading-relaxed text-foreground" />
-              </div>
-            )}
           </div>
 
           {((ticket.custom_fields && ticket.custom_fields.length > 0) || ticket.ticket_service || (ticket.services && ticket.services.length > 0)) && (
-            <div className={`w-full ${isShortDescription ? '' : 'md:w-[420px]'} flex-shrink-0 flex flex-col`}>
+            <div className={`w-full ${isShortDescription ? '' : 'md:w-[420px]'} flex-shrink-0 flex flex-col self-stretch`}>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Icon name="Settings" size={16} className="text-muted-foreground" />
                 Дополнительные поля
@@ -350,11 +344,16 @@ const TicketDetailsContent = ({
                   );
                 })}
               </div>
-
-
             </div>
           )}
         </div>
+
+        {ticket.description && (
+          <div className="mt-6 pt-6 border-t">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
+            <RichText text={ticket.description} className="text-sm leading-relaxed text-foreground" />
+          </div>
+        )}
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
