@@ -104,7 +104,12 @@ interface TicketDetailsContentProps {
   onReaction: (commentId: number, emoji: string) => void;
   onTogglePin?: (commentId: number) => void;
   onDeleteComment?: (commentId: number) => void | Promise<void | boolean>;
+  onEditComment?: (
+    commentId: number,
+    data: { comment?: string; created_at?: string },
+  ) => Promise<boolean>;
   canDeleteComments?: boolean;
+  canEditComments?: boolean;
   availableUsers?: Array<{id: number; name: string; email: string}>;
   onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
   uploadingFile?: boolean;
@@ -133,7 +138,9 @@ const TicketDetailsContent = ({
   onReaction,
   onTogglePin,
   onDeleteComment,
+  onEditComment,
   canDeleteComments,
+  canEditComments,
   availableUsers,
   onFileUpload,
   uploadingFile,
@@ -400,7 +407,9 @@ const TicketDetailsContent = ({
             onReaction={onReaction}
             onTogglePin={onTogglePin}
             onDeleteComment={onDeleteComment}
+            onEditComment={onEditComment}
             canDeleteComments={canDeleteComments}
+            canEditComments={canEditComments}
             availableUsers={availableUsers}
             onFileUpload={onFileUpload}
             uploadingFile={uploadingFile}

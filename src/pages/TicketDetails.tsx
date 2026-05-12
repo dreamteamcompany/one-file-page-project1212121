@@ -55,6 +55,7 @@ const TicketDetails = () => {
     handleReaction,
     handleTogglePin,
     handleDeleteComment,
+    handleEditComment,
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,
@@ -320,7 +321,9 @@ const TicketDetails = () => {
                 onReaction={handleReaction}
                 onTogglePin={handleTogglePin}
                 onDeleteComment={handleDeleteComment}
+                onEditComment={handleEditComment}
                 canDeleteComments={isAdmin}
+                canEditComments={isAdmin}
                 availableUsers={users}
                 onFileUpload={handleFileUpload}
                 uploadingFile={uploadingFile}

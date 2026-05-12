@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import EditCommentDialog from '@/components/tickets/EditCommentDialog';
 
 interface Comment {
   id: number;
@@ -34,6 +35,8 @@ interface Comment {
   is_pinned?: boolean;
   pinned_at?: string;
   pinned_by?: number;
+  edited_at?: string;
+  edited_by?: number;
   attachments?: {
     id: number;
     filename: string;
@@ -68,7 +71,12 @@ interface TicketCommentsProps {
   onReaction?: (commentId: number, emoji: string) => void;
   onTogglePin?: (commentId: number) => void;
   onDeleteComment?: (commentId: number) => void | Promise<void | boolean>;
+  onEditComment?: (
+    commentId: number,
+    data: { comment?: string; created_at?: string },
+  ) => Promise<boolean>;
   canDeleteComments?: boolean;
+  canEditComments?: boolean;
   availableUsers?: User[];
   onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
   uploadingFile?: boolean;
@@ -111,7 +119,9 @@ const TicketComments = ({
   currentUserId,
   onTogglePin,
   onDeleteComment,
+  onEditComment,
   canDeleteComments = false,
+  canEditComments = false,
   availableUsers = [],
   onFileUpload,
   uploadingFile = false,
@@ -131,6 +141,7 @@ const TicketComments = ({
   const [pinnedExpanded, setPinnedExpanded] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [deletingComment, setDeletingComment] = useState(false);
+  const [editTarget, setEditTarget] = useState<Comment | null>(null);
 
   const pinnedComments = [...comments]
     .filter((c) => c.is_pinned)
@@ -446,6 +457,9 @@ const TicketComments = ({
                       </span>
                       <span className="text-[11px] text-muted-foreground flex-shrink-0">
                         {formatDate(p.created_at)}
+                        {p.edited_at && (
+                          <span className="ml-1 italic">(изменено)</span>
+                        )}
                       </span>
                     </div>
                     {onTogglePin && (
@@ -536,6 +550,14 @@ const TicketComments = ({
                     <p className="font-semibold text-xs">{comment.user_full_name || comment.user_name || 'Пользователь'}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {formatDate(comment.created_at)}
+                      {comment.edited_at && (
+                        <span
+                          className="ml-1 italic"
+                          title={`Изменено: ${formatDate(comment.edited_at)}`}
+                        >
+                          (изменено)
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className={`rounded-2xl px-3.5 py-2.5 ${
@@ -610,6 +632,16 @@ const TicketComments = ({
                       >
                         <Icon name="Pin" size={12} />
                         {comment.is_pinned ? 'Открепить' : 'Закрепить'}
+                      </button>
+                    )}
+                    {canEditComments && onEditComment && (
+                      <button
+                        onClick={() => setEditTarget(comment)}
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                        title="Изменить комментарий"
+                      >
+                        <Icon name="Pencil" size={12} />
+                        Изменить
                       </button>
                     )}
                     {canDeleteComments && onDeleteComment && (
@@ -847,6 +879,21 @@ const TicketComments = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {editTarget && onEditComment && (
+        <EditCommentDialog
+          open={!!editTarget}
+          onOpenChange={(open) => {
+            if (!open) setEditTarget(null);
+          }}
+          initialText={editTarget.comment}
+          initialCreatedAt={editTarget.created_at || ''}
+          onSave={async (data) => {
+            const ok = await onEditComment(editTarget.id, data);
+            return ok;
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -127,6 +127,30 @@ export const useTicketActions = (
     }
   };
 
+  const handleEditComment = async (
+    commentId: number,
+    data: { comment?: string; created_at?: string },
+  ): Promise<boolean> => {
+    try {
+      const url = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+      const resp = await apiFetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        body: JSON.stringify({ comment_id: commentId, ...data }),
+      });
+      if (resp.ok) {
+        await loadComments();
+        return true;
+      }
+      const errData = await resp.json().catch(() => ({}));
+      console.error('Edit comment failed:', resp.status, errData);
+      return false;
+    } catch (err) {
+      console.error('Edit comment failed:', err);
+      return false;
+    }
+  };
+
   const handleDeleteComment = async (commentId: number): Promise<boolean> => {
     try {
       const url = `https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3?id=${commentId}`;
@@ -251,6 +275,7 @@ export const useTicketActions = (
     handleReaction,
     handleTogglePin,
     handleDeleteComment,
+    handleEditComment,
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,

@@ -49,6 +49,20 @@
         "error": "string"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Edit comment unauthorized",
+      "method": "PUT",
+      "path": "/",
+      "body": {
+        "comment_id": 1,
+        "comment": "edited"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

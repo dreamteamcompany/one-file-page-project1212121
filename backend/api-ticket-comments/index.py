@@ -121,6 +121,8 @@ def handler(event: dict, context) -> dict:
             return handle_get_comments(event, conn, payload)
         elif method == 'POST':
             return handle_create_comment(event, conn, payload)
+        elif method == 'PUT':
+            return handle_edit_comment(event, conn, payload)
         elif method == 'DELETE':
             return handle_delete_comment(event, conn, payload)
         else:
@@ -245,6 +247,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
             tc.id, tc.ticket_id, tc.user_id, tc.comment,
             tc.is_internal, tc.created_at,
             tc.is_pinned, tc.pinned_at, tc.pinned_by,
+            tc.edited_at, tc.edited_by,
             u.username as user_name,
             u.full_name as user_full_name,
             u.photo_url as user_photo_url
@@ -523,6 +526,130 @@ def _is_admin_user(cur, user_id: int) -> bool:
         if system_role == 'admin' or name in ('admin', 'администратор'):
             return True
     return False
+
+
+def handle_edit_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Редактирование комментария (только администратор). Можно менять текст и дату создания."""
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except Exception:
+        return response(400, {'error': 'Invalid JSON'})
+
+    try:
+        comment_id = int(body.get('comment_id') or body.get('id') or 0)
+    except (TypeError, ValueError):
+        return response(400, {'error': 'comment_id is required'})
+    if comment_id <= 0:
+        return response(400, {'error': 'comment_id is required'})
+
+    new_text = body.get('comment')
+    new_created_at = body.get('created_at')
+
+    if new_text is None and new_created_at is None:
+        return response(400, {'error': 'Nothing to update'})
+
+    user_id = payload['user_id']
+    cur = conn.cursor()
+
+    if not _is_admin_user(cur, user_id):
+        cur.close()
+        return response(403, {'error': 'Редактировать комментарии может только администратор'})
+
+    cur.execute(f"""
+        SELECT id, ticket_id, comment, created_at
+        FROM {SCHEMA}.ticket_comments WHERE id = %s
+    """, (comment_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        return response(404, {'error': 'Comment not found'})
+
+    updates: List[str] = []
+    args: List[Any] = []
+    changed_text = False
+    changed_date = False
+
+    if new_text is not None:
+        new_text_str = str(new_text)
+        if len(new_text_str) > 20000:
+            cur.close()
+            return response(400, {'error': 'Comment is too long'})
+        if not new_text_str.strip():
+            cur.execute(
+                f"SELECT 1 FROM {SCHEMA}.comment_attachments WHERE comment_id = %s LIMIT 1",
+                (comment_id,),
+            )
+            if not cur.fetchone():
+                cur.close()
+                return response(400, {'error': 'Текст комментария не может быть пустым'})
+        if new_text_str != (row['comment'] or ''):
+            updates.append('comment = %s')
+            args.append(new_text_str)
+            changed_text = True
+
+    if new_created_at is not None:
+        try:
+            cur.execute("SELECT %s::timestamptz AS ts", (str(new_created_at),))
+            parsed = cur.fetchone()['ts']
+        except Exception:
+            cur.close()
+            return response(400, {'error': 'Invalid created_at format'})
+        if parsed != row['created_at']:
+            updates.append('created_at = %s')
+            args.append(parsed)
+            changed_date = True
+
+    if not updates:
+        cur.close()
+        return response(200, {'message': 'Без изменений', 'id': comment_id})
+
+    updates.append('edited_at = NOW()')
+    updates.append('edited_by = %s')
+    args.append(int(user_id))
+    args.append(comment_id)
+
+    cur.execute(
+        f"UPDATE {SCHEMA}.ticket_comments SET {', '.join(updates)} WHERE id = %s",
+        tuple(args),
+    )
+
+    history_parts = []
+    if changed_text:
+        history_parts.append('текст')
+    if changed_date:
+        history_parts.append('дата')
+    history_msg = f"Изменён комментарий ({', '.join(history_parts)})"
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.ticket_history 
+        (ticket_id, user_id, field_name, old_value, new_value, created_at)
+        VALUES (%s, %s, 'comment', %s, %s, NOW())
+    """, (row['ticket_id'], user_id, (row['comment'] or '')[:200], history_msg))
+
+    cur.execute(f"""
+        SELECT 
+            tc.id, tc.ticket_id, tc.user_id, tc.comment,
+            tc.is_internal, tc.created_at,
+            tc.is_pinned, tc.pinned_at, tc.pinned_by,
+            tc.edited_at, tc.edited_by,
+            u.username as user_name,
+            u.full_name as user_full_name,
+            u.photo_url as user_photo_url
+        FROM {SCHEMA}.ticket_comments tc
+        LEFT JOIN {SCHEMA}.users u ON tc.user_id = u.id
+        WHERE tc.id = %s
+    """, (comment_id,))
+    updated = cur.fetchone()
+
+    conn.commit()
+    cur.close()
+
+    result = dict(updated) if updated else {'id': comment_id}
+    for key in ('created_at', 'edited_at', 'pinned_at'):
+        v = result.get(key)
+        if v and hasattr(v, 'isoformat'):
+            result[key] = v.isoformat()
+    return response(200, {'message': 'Комментарий обновлён', 'comment': result})
 
 
 def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
