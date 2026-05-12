@@ -151,12 +151,12 @@ const TicketDetails = () => {
 
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen} forceCollapsed>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-1 -mt-4 md:-mt-3 lg:-mt-[18px]">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setMenuOpen(!menuOpen)}
-          className="lg:hidden"
+          className="lg:hidden shrink-0"
         >
           <Icon name="Menu" size={24} />
         </Button>
@@ -164,6 +164,7 @@ const TicketDetails = () => {
           variant="ghost"
           size="icon"
           onClick={handleBack}
+          className="shrink-0 w-9 h-9"
         >
           <Icon name="ArrowLeft" size={20} />
         </Button>
