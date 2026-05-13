@@ -644,7 +644,28 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             update_fields.append("description = %s")
             params.append(body['description'])
         
-        if 'status_id' in body:
+        if body.get('action') == 'reopen':
+            reopen_reason = body.get('reopen_reason', '').strip()
+            if not reopen_reason:
+                cur.close()
+                return response(400, {'error': 'Необходимо указать причину повторного открытия'})
+            cur.execute(
+                f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_reopened = true ORDER BY id LIMIT 1"
+            )
+            reopen_status = cur.fetchone()
+            if not reopen_status:
+                cur.close()
+                return response(400, {'error': 'Не найден статус с флагом "Открыта повторно"'})
+            reopen_status_id = reopen_status['id']
+            history_entries.append(('status_id', str(old_ticket['status_id']), str(reopen_status_id)))
+            history_entries.append(('reopen_reason', '', reopen_reason))
+            update_fields.append("status_id = %s")
+            params.append(reopen_status_id)
+            update_fields.append("is_archived = false")
+            update_fields.append("reopen_reason = %s")
+            params.append(reopen_reason)
+
+        elif 'status_id' in body:
             if body['status_id'] != old_ticket['status_id']:
                 history_entries.append(('status_id', str(old_ticket['status_id']), str(body['status_id'])))
             update_fields.append("status_id = %s")

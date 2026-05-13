@@ -89,6 +89,7 @@ interface TicketDetailsSidebarProps {
   onApprovalChange?: () => void;
   onUpdateDueDate?: (dueDate: string | null) => void;
   hidePing?: boolean;
+  onReopened?: () => void;
 }
 
 const TicketDetailsSidebar = ({
@@ -107,6 +108,7 @@ const TicketDetailsSidebar = ({
   onApprovalChange,
   onUpdateDueDate,
   hidePing = false,
+  onReopened,
 }: TicketDetailsSidebarProps) => {
   const { hasPermission, hasSystemRole } = useAuth();
   const canSeeGroup = hasSystemRole('admin', 'executor');
@@ -192,6 +194,7 @@ const TicketDetailsSidebar = ({
           onAssignGroup={onAssignGroup}
           onUpdateDueDate={onUpdateDueDate}
           onConfirmationChanged={onApprovalChange || (() => {})}
+          onReopened={onReopened}
         />
 
         {/* Объединённый блок: Группа исполнителей, Исполнитель, Наблюдатели, Согласующие */}

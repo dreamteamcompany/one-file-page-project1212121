@@ -226,6 +226,7 @@ const TicketDetails = () => {
               onSendPing={handleSendPing}
               onApprovalChange={loadTicket}
               onUpdateDueDate={handleUpdateDueDate}
+              onReopened={loadTicket}
             />
           </div>
 
@@ -278,6 +279,7 @@ const TicketDetails = () => {
                   onSendPing={handleSendPing}
                   onApprovalChange={loadTicket}
                   onUpdateDueDate={handleUpdateDueDate}
+                  onReopened={loadTicket}
                   hidePing
                 />
               </div>
