@@ -113,8 +113,8 @@ const TicketEventItem = ({ log }: TicketEventItemProps) => {
   return (
     <div className="flex items-center gap-2 my-1.5 px-1">
       <div className="flex-1 h-px bg-border/40" />
-      <div className={`flex items-center gap-1.5 text-[11px] text-muted-foreground/70 whitespace-nowrap`}>
-        <Icon name={config.icon as Parameters<typeof Icon>[0]['name']} size={11} className={config.color} />
+      <div className={`flex items-center gap-1.5 text-xs text-muted-foreground/70 whitespace-nowrap`}>
+        <Icon name={config.icon as Parameters<typeof Icon>[0]['name']} size={12} className={config.color} />
         <span className={`font-medium ${config.color}`}>{label}</span>
         {detail && <span className="text-muted-foreground/50">·</span>}
         {detail && <span>{detail}</span>}
