@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import TicketApprovalBlock from './TicketApprovalBlock';
-import TicketConfirmationBlock from './TicketConfirmationBlock';
 import TicketTimerCard from './sidebar/TicketTimerCard';
 import TicketPingCard from './sidebar/TicketPingCard';
 import TicketInfoFields from './sidebar/TicketInfoFields';
@@ -187,10 +186,12 @@ const TicketDetailsSidebar = ({
           updating={updating}
           isCustomer={isCustomer}
           executorGroups={executorGroups}
+          isPendingConfirmation={!!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation}
           onStatusChange={handleStatusChange}
           onAssignUser={onAssignUser}
           onAssignGroup={onAssignGroup}
           onUpdateDueDate={onUpdateDueDate}
+          onConfirmationChanged={onApprovalChange || (() => {})}
         />
 
         {/* Объединённый блок: Группа исполнителей, Исполнитель, Наблюдатели, Согласующие */}
@@ -216,12 +217,6 @@ const TicketDetailsSidebar = ({
             availableUsers={users}
           />
         </div>
-
-        <TicketConfirmationBlock
-          ticket={ticket}
-          isPendingConfirmation={!!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation}
-          onChanged={onApprovalChange || (() => {})}
-        />
 
         <RecentTicketsBlock
           ticketId={ticket.id}
