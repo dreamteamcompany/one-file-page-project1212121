@@ -790,6 +790,22 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             old_due_date_str = old_ticket['due_date'].isoformat() if old_ticket['due_date'] else None
             new_due_date_str = body['due_date']
             if new_due_date_str != old_due_date_str:
+                cur.execute(f"""
+                    SELECT 1
+                    FROM {SCHEMA}.permissions p
+                    JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id
+                    JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id
+                    JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+                    WHERE ur.user_id = %s
+                      AND (
+                            (p.resource = 'tickets' AND p.action = 'edit_deadline')
+                            OR r.name IN ('Администратор', 'Admin')
+                          )
+                    LIMIT 1
+                """, (user_id,))
+                if not cur.fetchone():
+                    cur.close()
+                    return response(403, {'error': 'Недостаточно прав для редактирования дедлайна'})
                 history_entries.append(('due_date', old_due_date_str if old_due_date_str else 'Не установлен', new_due_date_str if new_due_date_str else 'Удален'))
             update_fields.append("due_date = %s")
             params.append(body['due_date'])

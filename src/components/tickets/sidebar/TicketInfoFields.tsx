@@ -56,7 +56,7 @@ const TicketInfoFields = ({
   onReopened,
 }: TicketInfoFieldsProps) => {
   const { hasPermission, hasSystemRole, user, token } = useAuth();
-  const canEditDueDate = hasPermission('tickets', 'update') || hasSystemRole('admin');
+  const canEditDueDate = hasPermission('tickets', 'edit_deadline') || hasSystemRole('admin');
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
