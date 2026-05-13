@@ -105,7 +105,8 @@ const DEFAULT_CONFIG = {
 };
 
 const TicketEventItem = ({ log }: TicketEventItemProps) => {
-  const config = EVENT_CONFIG[log.field_name] ?? DEFAULT_CONFIG;
+  if (!EVENT_CONFIG[log.field_name]) return null;
+  const config = EVENT_CONFIG[log.field_name];
   const label = config.label(log);
   const detail = config.detail ? config.detail(log) : null;
   const actor = log.user_full_name || log.user_name;
