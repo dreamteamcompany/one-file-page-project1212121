@@ -39,6 +39,12 @@ const ExecutorGroups = () => {
   const membersHook = useGroupMembers(selectedGroup?.id ?? null);
   const mappingsHook = useGroupMappings(selectedGroup?.id ?? null);
 
+  const handleAddMember = async (userId: number, isLead: boolean): Promise<boolean> => {
+    const result = await membersHook.addMember(userId, isLead);
+    if (result) ref.loadReference();
+    return result;
+  };
+
   const selectedAssignType = selectedGroup?.auto_assign_type || (selectedGroup?.auto_assign ? 'all' : 'none');
   const memberUserIds = selectedAssignType === 'working' ? membersHook.members.map(m => m.user_id) : [];
   const { scheduleMap } = useMemberSchedules(memberUserIds);
@@ -142,10 +148,12 @@ const ExecutorGroups = () => {
                   members={membersHook.members}
                   users={ref.users}
                   loading={membersHook.loading}
-                  onAdd={membersHook.addMember}
+                  onAdd={handleAddMember}
                   onRemove={membersHook.removeMember}
                   autoAssignType={selectedAssignType}
                   scheduleMap={scheduleMap}
+                  userGroupMap={ref.userGroupMap}
+                  currentGroupId={selectedGroup?.id}
                 />
               </div>
 

@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
-import type { GroupMember, ReferenceUser, AutoAssignType } from '@/hooks/useExecutorGroups';
+import type { GroupMember, ReferenceUser, AutoAssignType, UserGroupInfo } from '@/hooks/useExecutorGroups';
 import { type ScheduleEntry, isUserOnShift } from '@/hooks/useWorkSchedules';
 
 interface MembersPanelProps {
@@ -20,9 +20,11 @@ interface MembersPanelProps {
   onRemove: (memberId: number) => Promise<boolean>;
   autoAssignType?: AutoAssignType;
   scheduleMap?: Record<number, ScheduleEntry[]>;
+  userGroupMap?: Record<number, UserGroupInfo>;
+  currentGroupId?: number;
 }
 
-const MembersPanel = ({ members, users, loading, onAdd, onRemove, autoAssignType, scheduleMap }: MembersPanelProps) => {
+const MembersPanel = ({ members, users, loading, onAdd, onRemove, autoAssignType, scheduleMap, userGroupMap = {}, currentGroupId }: MembersPanelProps) => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [isLead, setIsLead] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -32,6 +34,12 @@ const MembersPanel = ({ members, users, loading, onAdd, onRemove, autoAssignType
 
   const existingUserIds = new Set(members.map(m => m.user_id));
   const availableUsers = users.filter(u => !existingUserIds.has(u.id));
+
+  const getUserGroupWarning = (userId: number): string | null => {
+    const info = userGroupMap[userId];
+    if (!info || info.group_id === currentGroupId) return null;
+    return `Уже в группе «${info.group_name}» — будет перенесён`;
+  };
 
   const handleAdd = async () => {
     if (!selectedUserId) return;
@@ -94,11 +102,19 @@ const MembersPanel = ({ members, users, loading, onAdd, onRemove, autoAssignType
             {availableUsers.length === 0 ? (
               <div className="p-2 text-xs text-muted-foreground text-center">Нет доступных пользователей</div>
             ) : (
-              availableUsers.map(u => (
-                <SelectItem key={u.id} value={String(u.id)}>
-                  {u.full_name} ({u.email})
-                </SelectItem>
-              ))
+              availableUsers.map(u => {
+                const warning = getUserGroupWarning(u.id);
+                return (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    <span className="flex flex-col">
+                      <span>{u.full_name} ({u.email})</span>
+                      {warning && (
+                        <span className="text-[11px] text-amber-500 font-normal">{warning}</span>
+                      )}
+                    </span>
+                  </SelectItem>
+                );
+              })
             )}
           </SelectContent>
         </Select>

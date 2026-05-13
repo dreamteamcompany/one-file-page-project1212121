@@ -194,12 +194,20 @@ def get_reference_data(conn):
     """)
     valid_combos = [dict(r) for r in cur.fetchall()]
 
+    cur.execute(f"""
+        SELECT egm.user_id, eg.id AS group_id, eg.name AS group_name
+        FROM {SCHEMA}.executor_group_members egm
+        JOIN {SCHEMA}.executor_groups eg ON eg.id = egm.group_id AND eg.is_active = true
+    """)
+    user_group_map = {r['user_id']: {'group_id': r['group_id'], 'group_name': r['group_name']} for r in cur.fetchall()}
+
     cur.close()
     return response(200, {
         'users': users,
         'ticket_services': ticket_services,
         'services': services,
         'valid_combos': valid_combos,
+        'user_group_map': user_group_map,
     })
 
 
@@ -267,6 +275,7 @@ def update_group(conn, body):
 
 
 def add_member(conn, body):
+    """Добавляет участника в группу. Если пользователь уже в другой группе — переносит его."""
     group_id = safe_int(body.get('group_id'))
     user_id = safe_int(body.get('user_id'))
     is_lead = body.get('is_lead', False)
@@ -275,13 +284,29 @@ def add_member(conn, body):
         return response(400, {'error': 'group_id и user_id обязательны'})
 
     cur = conn.cursor()
+
+    # Проверяем, есть ли пользователь уже в этой же группе
     cur.execute(f"""
-        SELECT id FROM {SCHEMA}.executor_group_members
-        WHERE group_id = %s AND user_id = %s
-    """, (group_id, user_id))
-    if cur.fetchone():
+        SELECT id, group_id FROM {SCHEMA}.executor_group_members
+        WHERE user_id = %s
+    """, (user_id,))
+    existing = cur.fetchone()
+
+    if existing:
+        if existing['group_id'] == group_id:
+            cur.close()
+            return response(409, {'error': 'Пользователь уже в этой группе'})
+        # Пользователь в другой группе — переносим
+        cur.execute(f"""
+            UPDATE {SCHEMA}.executor_group_members
+            SET group_id = %s, is_lead = %s
+            WHERE user_id = %s
+            RETURNING id, group_id, user_id, is_lead, created_at
+        """, (group_id, is_lead, user_id))
+        member = dict(cur.fetchone())
+        conn.commit()
         cur.close()
-        return response(409, {'error': 'Пользователь уже в группе'})
+        return response(200, {**member, 'transferred': True})
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.executor_group_members (group_id, user_id, is_lead)

@@ -182,12 +182,16 @@ export const useGroupMembers = (groupId: number | null) => {
         method: 'POST',
         body: JSON.stringify({ group_id: groupId, user_id: userId, is_lead: isLead }),
       });
+      const data = await res.json();
       if (res.ok) {
-        toast({ title: 'Участник добавлен' });
+        if (data.transferred) {
+          toast({ title: 'Участник перенесён', description: 'Пользователь перемещён из другой группы в эту' });
+        } else {
+          toast({ title: 'Участник добавлен' });
+        }
         await loadMembers();
         return true;
       }
-      const data = await res.json();
       toast({ title: 'Ошибка', description: data.error, variant: 'destructive' });
     } catch {
       toast({ title: 'Ошибка', description: 'Не удалось добавить участника', variant: 'destructive' });
@@ -269,32 +273,38 @@ export const useGroupMappings = (groupId: number | null) => {
   return { mappings, loading, loadMappings, addMapping, removeMapping };
 };
 
+export interface UserGroupInfo {
+  group_id: number;
+  group_name: string;
+}
+
 export const useReferenceData = () => {
   const [users, setUsers] = useState<ReferenceUser[]>([]);
   const [ticketServices, setTicketServices] = useState<ReferenceTicketService[]>([]);
   const [services, setServices] = useState<ReferenceService[]>([]);
   const [validCombos, setValidCombos] = useState<ValidCombo[]>([]);
+  const [userGroupMap, setUserGroupMap] = useState<Record<number, UserGroupInfo>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await apiFetch(`${API_BASE}?action=reference`);
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users);
-          setTicketServices(data.ticket_services);
-          setServices(data.services);
-          setValidCombos(data.valid_combos);
-        }
-      } catch {
-        console.error('Failed to load reference data');
-      } finally {
-        setLoading(false);
+  const loadReference = useCallback(async () => {
+    try {
+      const res = await apiFetch(`${API_BASE}?action=reference`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users);
+        setTicketServices(data.ticket_services);
+        setServices(data.services);
+        setValidCombos(data.valid_combos);
+        setUserGroupMap(data.user_group_map || {});
       }
-    };
-    load();
+    } catch {
+      console.error('Failed to load reference data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadReference(); }, [loadReference]);
 
   const getServicesForTicketService = (ticketServiceId: number): number[] => {
     return validCombos
@@ -302,7 +312,7 @@ export const useReferenceData = () => {
       .map(c => c.service_id);
   };
 
-  return { users, ticketServices, services, validCombos, loading, getServicesForTicketService };
+  return { users, ticketServices, services, validCombos, userGroupMap, loading, loadReference, getServicesForTicketService };
 };
 
 export default useExecutorGroups;
