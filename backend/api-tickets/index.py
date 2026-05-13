@@ -627,7 +627,36 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             cur.close()
             return response(404, {'error': 'Ticket not found'})
         old_ticket = dict(row)
-        
+
+        # Резолвим имена для истории
+        def get_user_name(user_id):
+            if not user_id:
+                return None
+            cur.execute(f"SELECT full_name FROM {SCHEMA}.users WHERE id = %s", (user_id,))
+            r = cur.fetchone()
+            return r['full_name'] if r else str(user_id)
+
+        def get_status_name(status_id):
+            if not status_id:
+                return None
+            cur.execute(f"SELECT name FROM {SCHEMA}.ticket_statuses WHERE id = %s", (status_id,))
+            r = cur.fetchone()
+            return r['name'] if r else str(status_id)
+
+        def get_group_name(group_id):
+            if not group_id:
+                return None
+            cur.execute(f"SELECT name FROM {SCHEMA}.executor_groups WHERE id = %s", (group_id,))
+            r = cur.fetchone()
+            return r['name'] if r else str(group_id)
+
+        def get_priority_name(priority_id):
+            if not priority_id:
+                return None
+            cur.execute(f"SELECT name FROM {SCHEMA}.ticket_priorities WHERE id = %s", (priority_id,))
+            r = cur.fetchone()
+            return r['name'] if r else str(priority_id)
+
         update_fields = []
         params = []
         history_entries = []
@@ -657,7 +686,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 cur.close()
                 return response(400, {'error': 'Не найден статус с флагом "Открыта повторно"'})
             reopen_status_id = reopen_status['id']
-            history_entries.append(('status_id', str(old_ticket['status_id']), str(reopen_status_id)))
+            history_entries.append(('status_id', get_status_name(old_ticket['status_id']), get_status_name(reopen_status_id)))
             history_entries.append(('reopen_reason', '', reopen_reason))
             update_fields.append("status_id = %s")
             params.append(reopen_status_id)
@@ -667,7 +696,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
         elif 'status_id' in body:
             if body['status_id'] != old_ticket['status_id']:
-                history_entries.append(('status_id', str(old_ticket['status_id']), str(body['status_id'])))
+                history_entries.append(('status_id', get_status_name(old_ticket['status_id']), get_status_name(body['status_id'])))
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
             cur.execute(
@@ -712,13 +741,13 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         if 'priority_id' in body:
             if body['priority_id'] != old_ticket['priority_id']:
-                history_entries.append(('priority_id', str(old_ticket['priority_id']), str(body['priority_id'])))
+                history_entries.append(('priority_id', get_priority_name(old_ticket['priority_id']), get_priority_name(body['priority_id'])))
             update_fields.append("priority_id = %s")
             params.append(body['priority_id'])
         
         if 'assigned_to' in body:
             if body['assigned_to'] != old_ticket['assigned_to']:
-                history_entries.append(('assigned_to', str(old_ticket['assigned_to']) if old_ticket['assigned_to'] else 'Не назначен', str(body['assigned_to']) if body['assigned_to'] else 'Снят с назначения'))
+                history_entries.append(('assigned_to', get_user_name(old_ticket['assigned_to']) or 'Не назначен', get_user_name(body['assigned_to']) or 'Снят с назначения'))
             update_fields.append("assigned_to = %s")
             params.append(body['assigned_to'])
 
@@ -738,22 +767,22 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 old_group_id = old_ticket.get('executor_group_id')
                 if auto_group_id != old_group_id:
                     history_entries.append(('executor_group_id',
-                        str(old_group_id) if old_group_id else 'Не назначена',
-                        str(auto_group_id) if auto_group_id else 'Снята'))
+                        get_group_name(old_group_id) or 'Не назначена',
+                        get_group_name(auto_group_id) or 'Снята'))
                     update_fields.append("executor_group_id = %s")
                     params.append(auto_group_id)
             elif not new_user_id and 'executor_group_id' not in body:
                 # Исполнитель снят — снимаем группу
                 old_group_id = old_ticket.get('executor_group_id')
                 if old_group_id:
-                    history_entries.append(('executor_group_id', str(old_group_id), 'Снята'))
+                    history_entries.append(('executor_group_id', get_group_name(old_group_id) or str(old_group_id), 'Снята'))
                     update_fields.append("executor_group_id = NULL")
 
         if 'executor_group_id' in body:
             old_group = old_ticket.get('executor_group_id')
             new_group = body['executor_group_id']
             if new_group != old_group:
-                history_entries.append(('executor_group_id', str(old_group) if old_group else 'Не назначена', str(new_group) if new_group else 'Снята'))
+                history_entries.append(('executor_group_id', get_group_name(old_group) or 'Не назначена', get_group_name(new_group) or 'Снята'))
             update_fields.append("executor_group_id = %s")
             params.append(new_group if new_group else None)
         
