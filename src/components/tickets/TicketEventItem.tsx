@@ -111,21 +111,17 @@ const TicketEventItem = ({ log }: TicketEventItemProps) => {
   const actor = log.user_full_name || log.user_name;
 
   return (
-    <div className="flex items-center gap-3 my-3">
-      <div className={`flex-1 h-px ${config.borderColor.replace('border-', 'bg-').replace('/30', '/20')}`} />
-      <div className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl border ${config.bgColor} ${config.borderColor} max-w-xs text-center`}>
-        <div className={`flex items-center gap-1.5 font-semibold text-[11px] uppercase tracking-wide ${config.color}`}>
-          <Icon name={config.icon as Parameters<typeof Icon>[0]['name']} size={12} />
-          {label}
-        </div>
-        {detail && (
-          <p className="text-xs text-muted-foreground leading-relaxed">{detail}</p>
-        )}
-        <p className="text-[11px] text-muted-foreground/60">
-          {formatDate(log.created_at)}{actor ? ` · ${actor}` : ''}
-        </p>
+    <div className="flex items-center gap-2 my-1.5 px-1">
+      <div className="flex-1 h-px bg-border/40" />
+      <div className={`flex items-center gap-1.5 text-[11px] text-muted-foreground/70 whitespace-nowrap`}>
+        <Icon name={config.icon as Parameters<typeof Icon>[0]['name']} size={11} className={config.color} />
+        <span className={`font-medium ${config.color}`}>{label}</span>
+        {detail && <span className="text-muted-foreground/50">·</span>}
+        {detail && <span>{detail}</span>}
+        <span className="text-muted-foreground/40">·</span>
+        <span>{formatDate(log.created_at)}{actor ? ` · ${actor}` : ''}</span>
       </div>
-      <div className={`flex-1 h-px ${config.borderColor.replace('border-', 'bg-').replace('/30', '/20')}`} />
+      <div className="flex-1 h-px bg-border/40" />
     </div>
   );
 };
