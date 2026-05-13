@@ -761,7 +761,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 (ticket_id, user_id, field_name, old_value, new_value, created_at)
                 VALUES (%s, %s, %s, %s, %s, NOW())
             """, (ticket_id, payload['user_id'], field_name, old_value, new_value))
-        
+
+        if body.get('action') == 'reopen':
+            reopen_comment = f"🔄 Заявка открыта повторно\n\nПричина: {body.get('reopen_reason', '').strip()}"
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_comments
+                (ticket_id, user_id, comment, is_internal, requires_response, created_at)
+                VALUES (%s, %s, %s, false, false, NOW())
+            """, (ticket_id, payload['user_id'], reopen_comment))
+
         if 'service_ids' in body:
             cur.execute(f"DELETE FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_id = %s", (ticket_id,))
             for service_id in body['service_ids']:
