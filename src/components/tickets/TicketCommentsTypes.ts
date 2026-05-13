@@ -1,4 +1,5 @@
 import { UploadedAttachment } from '@/hooks/useFileUploader';
+export type { HistoryLog } from './TicketEventItem';
 
 export interface Comment {
   id: number;
@@ -69,6 +70,7 @@ export interface TicketCommentsProps {
   participantIds?: number[];
   myLastSeenAt?: string | null;
   onMarkRead?: (commentIds: number[]) => void;
+  auditLogs?: import('./TicketEventItem').HistoryLog[];
 }
 
 export const AVATAR_COLORS = [

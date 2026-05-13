@@ -82,12 +82,11 @@ interface Comment {
 
 interface AuditLog {
   id: number;
-  action: string;
-  username: string;
-  changed_fields?: any;
-  old_values?: any;
-  new_values?: any;
-  metadata?: any;
+  field_name: string;
+  user_name?: string;
+  user_full_name?: string;
+  old_value?: string;
+  new_value?: string;
   created_at: string;
 }
 
@@ -422,6 +421,7 @@ const TicketDetailsContent = ({
             participantIds={participantIds}
             myLastSeenAt={myLastSeenAt}
             onMarkRead={onMarkRead}
+            auditLogs={auditLogs}
           />
         )}
         

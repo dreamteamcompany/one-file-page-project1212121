@@ -18,6 +18,8 @@ import { Comment, User, TicketCommentsProps } from './TicketCommentsTypes';
 import TicketCommentsPinned from './TicketCommentsPinned';
 import TicketCommentItem from './TicketCommentItem';
 import TicketCommentsInput from './TicketCommentsInput';
+import TicketEventItem from './TicketEventItem';
+import type { HistoryLog } from './TicketEventItem';
 
 const TicketComments = ({
   comments,
@@ -46,6 +48,7 @@ const TicketComments = ({
   participantIds = [],
   myLastSeenAt = null,
   onMarkRead,
+  auditLogs = [],
 }: TicketCommentsProps) => {
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -81,6 +84,23 @@ const TicketComments = ({
   const sortedAsc = [...comments].sort((a, b) => {
     const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
     const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return ta - tb;
+  });
+
+  type FeedItem =
+    | { kind: 'comment'; data: Comment; idx: number }
+    | { kind: 'event'; data: HistoryLog };
+
+  const HIDDEN_FIELDS = new Set(['reopen_reason']);
+
+  const feedItems: FeedItem[] = [
+    ...sortedAsc.map((c, idx) => ({ kind: 'comment' as const, data: c, idx })),
+    ...auditLogs
+      .filter(log => !HIDDEN_FIELDS.has(log.field_name))
+      .map(log => ({ kind: 'event' as const, data: log })),
+  ].sort((a, b) => {
+    const ta = new Date(a.data.created_at ?? 0).getTime();
+    const tb = new Date(b.data.created_at ?? 0).getTime();
     return ta - tb;
   });
 
@@ -318,16 +338,20 @@ const TicketComments = ({
           <div className="flex items-center justify-center py-8">
             <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
           </div>
-        ) : comments.length === 0 ? (
+        ) : feedItems.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Icon name="MessageSquare" size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">Пока нет комментариев</p>
           </div>
         ) : (
-          sortedAsc.map((comment, idx) => {
+          feedItems.map((item) => {
+            if (item.kind === 'event') {
+              return <TicketEventItem key={`event-${item.data.id}`} log={item.data} />;
+            }
+            const comment = item.data;
             const parentComment = getParentComment(comment.parent_comment_id);
             const isOwn = comment.user_id === currentUserId;
-            const showNewDivider = idx === firstNewIndex;
+            const showNewDivider = item.idx === firstNewIndex;
             const status = isOwn ? getReadStatus(comment) : null;
 
             return (
