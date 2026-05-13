@@ -85,6 +85,38 @@ const BitrixInactiveUsers = () => {
   const [reports, setReports] = useState<ReportListItem[]>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
 
+  const [ufModalOpen, setUfModalOpen] = useState(false);
+  const [ufFields, setUfFields] = useState<Array<{
+    id: string;
+    field_name: string;
+    user_type_id: string;
+    label: string;
+    xml_id: string;
+    multiple: boolean;
+    mandatory: boolean;
+  }>>([]);
+  const [ufLoading, setUfLoading] = useState(false);
+  const [ufFilter, setUfFilter] = useState('');
+
+  const handleShowUfFields = async () => {
+    setUfModalOpen(true);
+    setUfLoading(true);
+    try {
+      const res = await apiFetch(`${API_URL}?action=list_uf_fields`);
+      if (res.ok) {
+        const json = await res.json();
+        setUfFields(json.fields || []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: err.error || 'Ошибка загрузки', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка загрузки UF-полей', variant: 'destructive' });
+    } finally {
+      setUfLoading(false);
+    }
+  };
+
   const loadReports = async () => {
     setReportsLoading(true);
     try {
@@ -342,6 +374,18 @@ const BitrixInactiveUsers = () => {
               Сотрудники, которые не заходили в Битрикс за указанный период
             </p>
           </div>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleShowUfFields}
+              title="Показать список UF-полей пользователей Битрикс"
+            >
+              <Icon name="ListTree" size={14} />
+              UF-поля
+            </Button>
+          )}
         </div>
         {tab === 'inactive' && data && visibleInactiveCount > 0 && (
           <DropdownMenu>
@@ -597,6 +641,82 @@ const BitrixInactiveUsers = () => {
         onOpenChange={setReportModalOpen}
         report={activeReport}
       />
+
+      <Dialog open={ufModalOpen} onOpenChange={setUfModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>UF-поля пользователей Битрикс</DialogTitle>
+            <DialogDescription>
+              Найди поле «Уволен автоматически» и пришли его FIELD_NAME (например UF_USR_...).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative">
+            <Icon
+              name="Search"
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              placeholder="Поиск по названию или коду..."
+              value={ufFilter}
+              onChange={e => setUfFilter(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto border rounded-md">
+            {ufLoading ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <Icon name="Loader2" size={20} className="animate-spin mx-auto mb-2" />
+                Загрузка...
+              </div>
+            ) : ufFields.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                Поля не найдены
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background border-b">
+                  <tr className="text-left">
+                    <th className="p-2 font-medium">Название</th>
+                    <th className="p-2 font-medium">Код (FIELD_NAME)</th>
+                    <th className="p-2 font-medium">Тип</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ufFields
+                    .filter(f => {
+                      const q = ufFilter.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        f.field_name.toLowerCase().includes(q) ||
+                        (f.label || '').toLowerCase().includes(q)
+                      );
+                    })
+                    .map(f => (
+                      <tr key={f.id} className="border-b hover:bg-muted/40">
+                        <td className="p-2">{f.label || <span className="text-muted-foreground">—</span>}</td>
+                        <td className="p-2">
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded select-all">
+                            {f.field_name}
+                          </code>
+                        </td>
+                        <td className="p-2 text-xs text-muted-foreground">{f.user_type_id}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUfModalOpen(false)}>
+              Закрыть
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };
