@@ -4,11 +4,17 @@ import os
 import jwt
 import requests
 import psycopg2
+import urllib3
 from datetime import datetime, timedelta, timezone
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 JWT_SECRET = os.environ.get('JWT_SECRET')
 BITRIX_WEBHOOK_URL = os.environ.get('BITRIX24_WEBHOOK_URL', '').rstrip('/')
 DATABASE_URL = os.environ.get('DATABASE_URL')
+ISPMGR_URL = os.environ.get('ISPMGR_URL', '').rstrip('/')
+ISPMGR_LOGIN = os.environ.get('ISPMGR_LOGIN', '')
+ISPMGR_PASSWORD = os.environ.get('ISPMGR_PASSWORD', '')
 
 CORS_HEADERS = {
     'Content-Type': 'application/json',
@@ -403,7 +409,92 @@ def search_bitrix_users(query):
 AUTO_FIRED_FIELD = 'UF_USR_1778669634988'
 
 
-def deactivate_user(user_id):
+def _ispmgr_v6_token():
+    """Получает токен авторизации ISPmanager 6."""
+    r = requests.post(
+        f"{ISPMGR_URL}/ispmgr/auth/v3/auth",
+        json={'email': ISPMGR_LOGIN, 'password': ISPMGR_PASSWORD},
+        headers={'Content-Type': 'application/json'},
+        timeout=15,
+        verify=False,
+    )
+    if not r.ok:
+        return None
+    try:
+        return r.json().get('token')
+    except BaseException:
+        return None
+
+
+def _ispmgr_v6_disable_mailbox(email):
+    token = _ispmgr_v6_token()
+    if not token:
+        return False, 'Не удалось авторизоваться в ISPmanager 6'
+    r = requests.post(
+        f"{ISPMGR_URL}/ispmgr/api/v3/mailbox/{email}/disable",
+        headers={'x-xsrf-token': token, 'Cookie': f'ses6={token}'},
+        timeout=15,
+        verify=False,
+    )
+    if r.ok:
+        return True, ''
+    return False, f'v6 disable failed: {r.status_code} {r.text[:200]}'
+
+
+def _ispmgr_v5_disable_mailbox(email):
+    """ISPmanager 5: func=mail.edit + enable=off."""
+    params = {
+        'authinfo': f'{ISPMGR_LOGIN}:{ISPMGR_PASSWORD}',
+        'func': 'mail.edit',
+        'elid': email,
+        'enable': 'off',
+        'sok': 'ok',
+        'out': 'json',
+    }
+    r = requests.get(
+        f"{ISPMGR_URL}/manager/ispmgr",
+        params=params,
+        timeout=15,
+        verify=False,
+    )
+    if not r.ok:
+        return False, f'v5 HTTP {r.status_code}'
+    try:
+        data = r.json()
+        if 'error' in data:
+            err = data['error']
+            msg = err.get('msg', {}).get('$') if isinstance(err.get('msg'), dict) else err
+            return False, f'v5 error: {msg}'
+        return True, ''
+    except BaseException as e:
+        return False, f'v5 parse: {e}'
+
+
+def disable_email(email):
+    """Блокирует корпоративный почтовый ящик через ISPmanager.
+    Пробует API v6, затем v5. Возвращает (success, message)."""
+    if not email or '@' not in email:
+        return False, 'Email пустой или некорректный'
+    if not ISPMGR_URL or not ISPMGR_LOGIN or not ISPMGR_PASSWORD:
+        return False, 'ISPmanager не настроен'
+
+    try:
+        ok, msg = _ispmgr_v6_disable_mailbox(email)
+        if ok:
+            return True, 'Отключено через ISPmanager 6'
+    except BaseException as e:
+        msg = f'v6 exception: {e}'
+
+    try:
+        ok2, msg2 = _ispmgr_v5_disable_mailbox(email)
+        if ok2:
+            return True, 'Отключено через ISPmanager 5'
+        return False, f'{msg} | {msg2}'
+    except BaseException as e:
+        return False, f'{msg} | v5 exception: {e}'
+
+
+def deactivate_user(user_id, email=None):
     r = requests.post(
         f"{BITRIX_WEBHOOK_URL}/user.update",
         json={
@@ -415,7 +506,14 @@ def deactivate_user(user_id):
         timeout=15,
     )
     r.raise_for_status()
-    return r.json()
+    result = r.json()
+
+    email_status = None
+    if email:
+        ok, msg = disable_email(email)
+        email_status = {'success': ok, 'message': msg}
+
+    return {'bitrix': result, 'email': email_status}
 
 
 def classify_users(users, days, exception_ids):
@@ -591,12 +689,20 @@ def handler(event, context):
                 'days_inactive': info.get('days_inactive'),
             }
             try:
-                result = deactivate_user(uid)
-                if result.get('result'):
+                result = deactivate_user(uid, email=info.get('email', ''))
+                bitrix_res = result.get('bitrix') or {}
+                email_res = result.get('email')
+                if bitrix_res.get('result'):
                     deactivated += 1
-                    item = {**base, 'status': 'deactivated', 'error_text': ''}
+                    note = ''
+                    if email_res is not None:
+                        if email_res['success']:
+                            note = f"Почта отключена: {email_res['message']}"
+                        else:
+                            note = f"Почта НЕ отключена: {email_res['message']}"
+                    item = {**base, 'status': 'deactivated', 'error_text': note}
                 else:
-                    err_text = str(result)
+                    err_text = str(bitrix_res)
                     errors.append({'id': uid, 'error': err_text})
                     item = {**base, 'status': 'error', 'error_text': err_text}
             except BaseException as e:
