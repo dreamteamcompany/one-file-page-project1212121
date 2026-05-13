@@ -12,6 +12,8 @@ export interface ReportItem {
   days_inactive: number | null;
   status: 'deactivated' | 'error' | 'skipped' | string;
   error_text: string;
+  email_status?: 'disabled' | 'error' | 'skipped' | '' | string;
+  email_message?: string;
 }
 
 export interface BlockReport {
@@ -40,6 +42,12 @@ const STATUS_LABELS: Record<string, string> = {
   skipped: 'Пропущен (исключение)',
 };
 
+const EMAIL_STATUS_LABELS: Record<string, string> = {
+  disabled: 'Отключена',
+  error: 'Ошибка',
+  skipped: 'Не настроено',
+};
+
 const csvEscape = (val: unknown): string => {
   const s = val === null || val === undefined ? '' : String(val);
   if (/[";,\n\r]/.test(s)) {
@@ -57,6 +65,8 @@ const downloadCSV = (report: BlockReport) => {
     'Последний вход',
     'Дней без входа',
     'Статус',
+    'Почта',
+    'Сообщение почты',
     'Ошибка',
   ];
 
@@ -70,6 +80,8 @@ const downloadCSV = (report: BlockReport) => {
       it.last_login ? new Date(it.last_login).toLocaleString('ru-RU') : 'Никогда',
       it.days_inactive ?? '',
       STATUS_LABELS[it.status] || it.status,
+      it.email_status ? (EMAIL_STATUS_LABELS[it.email_status] || it.email_status) : '',
+      it.email_message || '',
       it.error_text || '',
     ].map(csvEscape).join(';'));
   }
@@ -109,6 +121,24 @@ const StatusBadge = ({ status }: { status: string }) => {
     return <Badge variant="outline" className="text-xs text-emerald-700 border-emerald-300 bg-emerald-50">Пропущен</Badge>;
   }
   return <Badge variant="outline" className="text-xs">{status}</Badge>;
+};
+
+const EmailBadge = ({ status, message }: { status?: string; message?: string }) => {
+  if (!status) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  const label = EMAIL_STATUS_LABELS[status] || status;
+  const cls =
+    status === 'disabled'
+      ? 'text-xs text-red-700 border-red-300 bg-red-50'
+      : status === 'error'
+      ? 'text-xs text-orange-700 border-orange-300 bg-orange-50'
+      : 'text-xs text-muted-foreground';
+  return (
+    <Badge variant="outline" className={cls} title={message || ''}>
+      {label}
+    </Badge>
+  );
 };
 
 interface Props {
@@ -173,12 +203,13 @@ const BlockReportModal = ({ open, onOpenChange, report }: Props) => {
                     <th className="text-left p-2 font-medium hidden lg:table-cell">Последний вход</th>
                     <th className="text-left p-2 font-medium">Дней</th>
                     <th className="text-left p-2 font-medium">Статус</th>
+                    <th className="text-left p-2 font-medium">Почта</th>
                   </tr>
                 </thead>
                 <tbody>
                   {report.items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center p-6 text-muted-foreground">
+                      <td colSpan={7} className="text-center p-6 text-muted-foreground">
                         Нет записей
                       </td>
                     </tr>
@@ -198,6 +229,18 @@ const BlockReportModal = ({ open, onOpenChange, report }: Props) => {
                             {it.error_text && it.status === 'error' && (
                               <span className="text-xs text-muted-foreground" title={it.error_text}>
                                 {it.error_text.length > 60 ? it.error_text.slice(0, 60) + '…' : it.error_text}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex flex-col gap-1">
+                            <EmailBadge status={it.email_status} message={it.email_message} />
+                            {it.email_status === 'error' && it.email_message && (
+                              <span className="text-xs text-muted-foreground" title={it.email_message}>
+                                {it.email_message.length > 60
+                                  ? it.email_message.slice(0, 60) + '…'
+                                  : it.email_message}
                               </span>
                             )}
                           </div>

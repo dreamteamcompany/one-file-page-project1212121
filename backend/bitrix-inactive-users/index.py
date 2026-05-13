@@ -204,12 +204,14 @@ def save_report_item(report_id, item):
         cur.execute(
             f"INSERT INTO bitrix_block_report_items "
             f"(report_id, bitrix_user_id, full_name, email, position, "
-            f"last_login, days_inactive, status, error_text) "
+            f"last_login, days_inactive, status, error_text, "
+            f"email_status, email_message) "
             f"VALUES ({sql_int(report_id)}, {sql_str(item.get('id'))}, "
             f"{sql_str(item.get('name'))}, {sql_str(item.get('email'))}, "
             f"{sql_str(item.get('position'))}, {sql_ts(item.get('last_login'))}, "
             f"{sql_int(item.get('days_inactive'))}, {sql_str(item.get('status'))}, "
-            f"{sql_str(item.get('error_text'))})"
+            f"{sql_str(item.get('error_text'))}, "
+            f"{sql_str(item.get('email_status'))}, {sql_str(item.get('email_message'))})"
         )
         conn.commit()
     finally:
@@ -288,7 +290,7 @@ def fetch_report_with_items(report_id):
         }
         cur.execute(
             f"SELECT bitrix_user_id, full_name, email, position, last_login, "
-            f"days_inactive, status, error_text "
+            f"days_inactive, status, error_text, email_status, email_message "
             f"FROM bitrix_block_report_items WHERE report_id = {sql_int(report_id)} "
             f"ORDER BY id ASC"
         )
@@ -303,6 +305,8 @@ def fetch_report_with_items(report_id):
                 'days_inactive': row[5],
                 'status': row[6],
                 'error_text': row[7] or '',
+                'email_status': row[8] or '',
+                'email_message': row[9] or '',
             })
         report['items'] = items
         return report
@@ -692,19 +696,33 @@ def handler(event, context):
                 result = deactivate_user(uid, email=info.get('email', ''))
                 bitrix_res = result.get('bitrix') or {}
                 email_res = result.get('email')
+                email_status = ''
+                email_message = ''
+                if email_res is not None:
+                    email_status = 'disabled' if email_res['success'] else 'error'
+                    email_message = email_res['message']
+                elif info.get('email'):
+                    email_status = 'skipped'
+                    email_message = 'ISPmanager не настроен или email пуст'
                 if bitrix_res.get('result'):
                     deactivated += 1
-                    note = ''
-                    if email_res is not None:
-                        if email_res['success']:
-                            note = f"Почта отключена: {email_res['message']}"
-                        else:
-                            note = f"Почта НЕ отключена: {email_res['message']}"
-                    item = {**base, 'status': 'deactivated', 'error_text': note}
+                    item = {
+                        **base,
+                        'status': 'deactivated',
+                        'error_text': '',
+                        'email_status': email_status,
+                        'email_message': email_message,
+                    }
                 else:
                     err_text = str(bitrix_res)
                     errors.append({'id': uid, 'error': err_text})
-                    item = {**base, 'status': 'error', 'error_text': err_text}
+                    item = {
+                        **base,
+                        'status': 'error',
+                        'error_text': err_text,
+                        'email_status': email_status,
+                        'email_message': email_message,
+                    }
             except BaseException as e:
                 err_text = str(e)
                 errors.append({'id': uid, 'error': err_text})
@@ -745,6 +763,8 @@ def handler(event, context):
                 'days_inactive': it['days_inactive'],
                 'status': it['status'],
                 'error_text': it.get('error_text', ''),
+                'email_status': it.get('email_status', ''),
+                'email_message': it.get('email_message', ''),
             }
             for it in report_items
         ]
