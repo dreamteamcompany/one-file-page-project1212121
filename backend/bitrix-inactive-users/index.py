@@ -413,89 +413,117 @@ def search_bitrix_users(query):
 AUTO_FIRED_FIELD = 'UF_USR_1778669634988'
 
 
-def _ispmgr_v6_token():
-    """Получает токен авторизации ISPmanager 6."""
-    r = requests.post(
-        f"{ISPMGR_URL}/ispmgr/auth/v3/auth",
-        json={'email': ISPMGR_LOGIN, 'password': ISPMGR_PASSWORD},
-        headers={'Content-Type': 'application/json'},
-        timeout=15,
-        verify=False,
-    )
-    if not r.ok:
-        return None
+def _isp_log(stage, **kwargs):
     try:
-        return r.json().get('token')
+        safe = {k: (str(v)[:500] if isinstance(v, (str, bytes)) else v) for k, v in kwargs.items()}
+        print(f"[ISPMGR][{stage}] {json.dumps(safe, ensure_ascii=False, default=str)[:1500]}")
     except BaseException:
-        return None
+        print(f"[ISPMGR][{stage}] (log fail) {kwargs}")
 
 
-def _ispmgr_v6_disable_mailbox(email):
-    token = _ispmgr_v6_token()
-    if not token:
-        return False, 'Не удалось авторизоваться в ISPmanager 6'
-    r = requests.post(
-        f"{ISPMGR_URL}/ispmgr/api/v3/mailbox/{email}/disable",
-        headers={'x-xsrf-token': token, 'Cookie': f'ses6={token}'},
-        timeout=15,
-        verify=False,
-    )
-    if r.ok:
-        return True, ''
-    return False, f'v6 disable failed: {r.status_code} {r.text[:200]}'
+def _isp_base():
+    return f"{ISPMGR_URL}/manager/ispmgr" if '/manager/ispmgr' not in ISPMGR_URL else ISPMGR_URL
 
 
-def _ispmgr_v5_disable_mailbox(email):
-    """ISPmanager 5: func=mail.edit + enable=off."""
-    params = {
-        'authinfo': f'{ISPMGR_LOGIN}:{ISPMGR_PASSWORD}',
-        'func': 'mail.edit',
-        'elid': email,
-        'enable': 'off',
-        'sok': 'ok',
-        'out': 'json',
-    }
-    r = requests.get(
-        f"{ISPMGR_URL}/manager/ispmgr",
-        params=params,
-        timeout=15,
-        verify=False,
-    )
+def _isp_call(params):
+    """Универсальный вызов ISPmanager 5/Lite. Возвращает (status, parsed_or_text)."""
+    full = dict(params)
+    full['authinfo'] = f'{ISPMGR_LOGIN}:{ISPMGR_PASSWORD}'
+    full.setdefault('out', 'json')
+    url = _isp_base()
+    r = requests.get(url, params=full, timeout=20, verify=False)
+    _isp_log('call', func=params.get('func'), url=url, status=r.status_code, body=r.text[:800])
     if not r.ok:
-        return False, f'v5 HTTP {r.status_code}'
+        return r.status_code, r.text[:500]
     try:
-        data = r.json()
-        if 'error' in data:
-            err = data['error']
-            msg = err.get('msg', {}).get('$') if isinstance(err.get('msg'), dict) else err
-            return False, f'v5 error: {msg}'
-        return True, ''
-    except BaseException as e:
-        return False, f'v5 parse: {e}'
+        return 200, r.json()
+    except BaseException:
+        return 200, r.text[:800]
+
+
+def _isp_get_mailbox(email):
+    """Получает карточку ящика — для проверки текущего состояния enable."""
+    status, data = _isp_call({'func': 'mail.edit', 'elid': email})
+    if status != 200 or not isinstance(data, dict):
+        return None, f'cannot fetch: {status} {str(data)[:200]}'
+    if 'error' in data:
+        return None, f"error: {str(data['error'])[:300]}"
+
+    enable_val = None
+    # ISPmanager Lite: данные обычно в data['doc'] либо корневые поля
+    candidates = [data, data.get('doc') or {}]
+    for c in candidates:
+        if not isinstance(c, dict):
+            continue
+        for key in ('enable', 'enabled', 'disabled'):
+            v = c.get(key)
+            if isinstance(v, dict):
+                v = v.get('$') or v.get('value') or v.get('_value')
+            if v is not None:
+                enable_val = (key, v)
+                break
+        if enable_val:
+            break
+
+    return enable_val, str(data)[:500]
+
+
+def _is_disabled_value(key, val):
+    s = str(val).strip().lower()
+    if key in ('enable', 'enabled'):
+        return s in ('off', '0', 'false', 'no')
+    if key == 'disabled':
+        return s in ('on', '1', 'true', 'yes')
+    return False
 
 
 def disable_email(email):
-    """Блокирует корпоративный почтовый ящик через ISPmanager.
-    Пробует API v6, затем v5. Возвращает (success, message)."""
+    """Блокирует корпоративный почтовый ящик через ISPmanager Lite/5.
+    Делает: 1) проверка текущего состояния 2) попытка отключить 3) ре-проверка.
+    Возвращает (success, message)."""
     if not email or '@' not in email:
         return False, 'Email пустой или некорректный'
     if not ISPMGR_URL or not ISPMGR_LOGIN or not ISPMGR_PASSWORD:
         return False, 'ISPmanager не настроен'
 
-    try:
-        ok, msg = _ispmgr_v6_disable_mailbox(email)
-        if ok:
-            return True, 'Отключено через ISPmanager 6'
-    except BaseException as e:
-        msg = f'v6 exception: {e}'
+    # 1. Проверим, что ящик существует и узнаем состояние
+    before, raw_before = _isp_get_mailbox(email)
+    _isp_log('before', email=email, state=before, raw=raw_before)
+    if before is None:
+        return False, f'Ящик не найден или нет доступа: {raw_before[:200]}'
 
-    try:
-        ok2, msg2 = _ispmgr_v5_disable_mailbox(email)
-        if ok2:
-            return True, 'Отключено через ISPmanager 5'
-        return False, f'{msg} | {msg2}'
-    except BaseException as e:
-        return False, f'{msg} | v5 exception: {e}'
+    key_before, val_before = before
+    if _is_disabled_value(key_before, val_before):
+        return True, f'Уже отключён ({key_before}={val_before})'
+
+    # 2. Пробуем разные варианты отключения, которые поддерживают разные сборки ISPmanager
+    attempts = [
+        {'func': 'mail.edit', 'elid': email, 'enable': 'off', 'sok': 'ok'},
+        {'func': 'mail.edit', 'elid': email, 'enable': 'off', 'sok': 'yes'},
+        {'func': 'mail.suspend', 'elid': email, 'sok': 'ok'},
+        {'func': 'mail.suspend', 'elid': email},
+        {'func': 'mail.disable', 'elid': email, 'sok': 'ok'},
+    ]
+    last_err = ''
+    for params in attempts:
+        try:
+            status, data = _isp_call(params)
+            if isinstance(data, dict) and 'error' in data:
+                err = data['error']
+                msg = err.get('msg', {}).get('$') if isinstance(err.get('msg'), dict) else err
+                last_err = f"{params['func']}: {str(msg)[:200]}"
+                continue
+            # 3. Проверка-верификация
+            after, raw_after = _isp_get_mailbox(email)
+            _isp_log('after', email=email, state=after, raw=raw_after, attempt=params)
+            if after and _is_disabled_value(*after):
+                return True, f"Отключено (func={params['func']}, проверено: {after[0]}={after[1]})"
+            last_err = f"{params['func']}: ответ ok, но ящик всё ещё активен ({after})"
+        except BaseException as e:
+            last_err = f"{params['func']}: exception {e}"
+            continue
+
+    return False, f'Не удалось отключить. Последняя ошибка: {last_err}'
 
 
 def deactivate_user(user_id, email=None):
