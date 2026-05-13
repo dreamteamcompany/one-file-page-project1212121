@@ -721,7 +721,34 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 history_entries.append(('assigned_to', str(old_ticket['assigned_to']) if old_ticket['assigned_to'] else 'Не назначен', str(body['assigned_to']) if body['assigned_to'] else 'Снят с назначения'))
             update_fields.append("assigned_to = %s")
             params.append(body['assigned_to'])
-        
+
+            # Автоматически проставляем группу исполнителя
+            new_user_id = body['assigned_to']
+            if new_user_id and 'executor_group_id' not in body:
+                cur.execute(f"""
+                    SELECT egm.group_id
+                    FROM {SCHEMA}.executor_group_members egm
+                    JOIN {SCHEMA}.executor_groups eg ON eg.id = egm.group_id AND eg.is_active = true
+                    WHERE egm.user_id = %s
+                    ORDER BY eg.id
+                    LIMIT 1
+                """, (new_user_id,))
+                auto_group = cur.fetchone()
+                auto_group_id = auto_group['group_id'] if auto_group else None
+                old_group_id = old_ticket.get('executor_group_id')
+                if auto_group_id != old_group_id:
+                    history_entries.append(('executor_group_id',
+                        str(old_group_id) if old_group_id else 'Не назначена',
+                        str(auto_group_id) if auto_group_id else 'Снята'))
+                    update_fields.append("executor_group_id = %s")
+                    params.append(auto_group_id)
+            elif not new_user_id and 'executor_group_id' not in body:
+                # Исполнитель снят — снимаем группу
+                old_group_id = old_ticket.get('executor_group_id')
+                if old_group_id:
+                    history_entries.append(('executor_group_id', str(old_group_id), 'Снята'))
+                    update_fields.append("executor_group_id = NULL")
+
         if 'executor_group_id' in body:
             old_group = old_ticket.get('executor_group_id')
             new_group = body['executor_group_id']
