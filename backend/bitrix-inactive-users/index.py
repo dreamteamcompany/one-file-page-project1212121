@@ -411,38 +411,6 @@ def deactivate_user(user_id):
     return r.json()
 
 
-def list_user_uf_fields():
-    if not BITRIX_WEBHOOK_URL:
-        raise ValueError('BITRIX24_WEBHOOK_URL не настроен')
-    r = requests.post(
-        f"{BITRIX_WEBHOOK_URL}/user.userfield.list",
-        json={},
-        headers={'Content-Type': 'application/json'},
-        timeout=15,
-    )
-    r.raise_for_status()
-    data = r.json()
-    fields = data.get('result', []) or []
-    out = []
-    for f in fields:
-        labels = f.get('EDIT_FORM_LABEL') or {}
-        label_ru = ''
-        if isinstance(labels, dict):
-            label_ru = labels.get('ru') or labels.get('en') or ''
-        elif isinstance(labels, str):
-            label_ru = labels
-        out.append({
-            'id': f.get('ID'),
-            'field_name': f.get('FIELD_NAME'),
-            'user_type_id': f.get('USER_TYPE_ID'),
-            'label': label_ru,
-            'xml_id': f.get('XML_ID', ''),
-            'multiple': f.get('MULTIPLE') == 'Y',
-            'mandatory': f.get('MANDATORY') == 'Y',
-        })
-    return out
-
-
 def classify_users(users, days, exception_ids):
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     inactive = []
@@ -507,14 +475,6 @@ def handler(event, context):
             for u in users:
                 u['already_excluded'] = str(u['id']) in existing
             return resp(200, {'users': users})
-        except BaseException as e:
-            return resp(500, {'error': str(e)})
-
-    if method == 'GET' and action == 'list_uf_fields':
-        if not is_admin(payload):
-            return resp(403, {'error': 'Доступ только для администратора'})
-        try:
-            return resp(200, {'fields': list_user_uf_fields()})
         except BaseException as e:
             return resp(500, {'error': str(e)})
 
