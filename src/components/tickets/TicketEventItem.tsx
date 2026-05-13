@@ -66,8 +66,28 @@ const EVENT_CONFIG: Record<string, {
     color: 'text-violet-400',
     borderColor: 'border-violet-500/30',
     bgColor: 'bg-violet-500/10',
-    label: (log) => log.new_value ? 'Дедлайн установлен' : 'Дедлайн удалён',
-    detail: (log) => log.new_value || null,
+    label: (log) => {
+      const hadOld = !!log.old_value && log.old_value !== 'Не установлен';
+      const hasNew = !!log.new_value && log.new_value !== 'Удален';
+      if (!hadOld && hasNew) return 'Дедлайн установлен';
+      if (hadOld && !hasNew) return 'Дедлайн удалён';
+      return 'Дедлайн изменён';
+    },
+    detail: (log) => {
+      const fmt = (v?: string) => {
+        if (!v || v === 'Не установлен' || v === 'Удален') return null;
+        const d = new Date(v);
+        if (Number.isNaN(d.getTime())) return v;
+        return d.toLocaleString('ru-RU', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
+        }) + ' МСК';
+      };
+      const oldF = fmt(log.old_value);
+      const newF = fmt(log.new_value);
+      if (oldF && newF) return `${oldF} → ${newF}`;
+      return newF || oldF || null;
+    },
   },
   reopen_reason: {
     icon: 'RotateCcw',
