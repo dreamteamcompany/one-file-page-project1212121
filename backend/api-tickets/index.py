@@ -911,6 +911,92 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             import traceback
             print(f"[TICKETS] notify on update error: {notify_err}\n{traceback.format_exc()}")
 
+        # Авто-добавление наблюдателей при смене исполнителя
+        # по правилам ticket_watcher_rules с trigger_on_executor_change=true
+        try:
+            if (
+                'assigned_to' in body
+                and body['assigned_to'] != old_ticket.get('assigned_to')
+                and old_ticket.get('assigned_to')
+            ):
+                prev_assignee = old_ticket['assigned_to']
+                new_assignee = body.get('assigned_to')
+                creator_id = ticket.get('created_by') or old_ticket.get('created_by')
+
+                t_cat = body['category_id'] if 'category_id' in body else old_ticket.get('category_id')
+                t_dept = body['department_id'] if 'department_id' in body else old_ticket.get('department_id')
+                t_prio = body['priority_id'] if 'priority_id' in body else old_ticket.get('priority_id')
+                t_grp = body['executor_group_id'] if 'executor_group_id' in body else old_ticket.get('executor_group_id')
+
+                cur.execute(f"""
+                    SELECT id, category_id, department_id, priority_id, executor_group_id
+                    FROM {SCHEMA}.ticket_watcher_rules
+                    WHERE is_active = true AND trigger_on_executor_change = true
+                """)
+                exec_rules = [dict(r) for r in cur.fetchall()]
+
+                matched_ids = []
+                for r in exec_rules:
+                    if r['category_id'] and r['category_id'] != t_cat:
+                        continue
+                    if r['department_id'] and r['department_id'] != t_dept:
+                        continue
+                    if r['priority_id'] and r['priority_id'] != t_prio:
+                        continue
+                    if r['executor_group_id'] and r['executor_group_id'] != t_grp:
+                        continue
+                    matched_ids.append(r['id'])
+
+                if matched_ids:
+                    user_ids_to_add = set()
+                    if prev_assignee:
+                        user_ids_to_add.add(int(prev_assignee))
+
+                    ids_csv = ','.join(str(int(x)) for x in matched_ids)
+                    cur.execute(f"""
+                        SELECT target_type, target_id
+                        FROM {SCHEMA}.ticket_watcher_rule_targets
+                        WHERE rule_id IN ({ids_csv})
+                    """)
+                    rule_targets = [dict(t) for t in cur.fetchall()]
+
+                    group_ids = [t['target_id'] for t in rule_targets if t['target_type'] == 'group']
+                    role_ids = [t['target_id'] for t in rule_targets if t['target_type'] == 'role']
+                    for t in rule_targets:
+                        if t['target_type'] == 'user' and t['target_id']:
+                            user_ids_to_add.add(int(t['target_id']))
+                    if group_ids:
+                        gids_csv = ','.join(str(int(x)) for x in group_ids)
+                        cur.execute(f"""
+                            SELECT user_id FROM {SCHEMA}.executor_group_members
+                            WHERE group_id IN ({gids_csv})
+                        """)
+                        for rr in cur.fetchall():
+                            user_ids_to_add.add(int(rr['user_id']))
+                    if role_ids:
+                        rids_csv = ','.join(str(int(x)) for x in role_ids)
+                        cur.execute(f"""
+                            SELECT user_id FROM {SCHEMA}.user_roles
+                            WHERE role_id IN ({rids_csv})
+                        """)
+                        for rr in cur.fetchall():
+                            user_ids_to_add.add(int(rr['user_id']))
+
+                    for uid in user_ids_to_add:
+                        if not uid:
+                            continue
+                        if creator_id and uid == creator_id:
+                            continue
+                        if new_assignee and uid == new_assignee:
+                            continue
+                        cur.execute(f"""
+                            INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id, added_at)
+                            VALUES (%s, %s, NOW())
+                            ON CONFLICT (ticket_id, user_id) DO NOTHING
+                        """, (ticket_id, uid))
+        except Exception as wexc:
+            print(f"[TICKETS] auto-watcher on executor change error: {wexc}")
+
         # Актор «увидел» изменение (его собственное)
         try:
             cur.execute(f"""

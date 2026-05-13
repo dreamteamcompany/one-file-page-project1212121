@@ -58,6 +58,7 @@ interface WatcherRule {
   is_active: boolean;
   trigger_on_create: boolean;
   trigger_on_update: boolean;
+  trigger_on_executor_change: boolean;
   category_id: number | null;
   category_name?: string | null;
   department_id: number | null;
@@ -75,6 +76,7 @@ type FormState = {
   is_active: boolean;
   trigger_on_create: boolean;
   trigger_on_update: boolean;
+  trigger_on_executor_change: boolean;
   category_id: string;
   department_id: string;
   priority_id: string;
@@ -88,6 +90,7 @@ const EMPTY_FORM: FormState = {
   is_active: true,
   trigger_on_create: true,
   trigger_on_update: false,
+  trigger_on_executor_change: false,
   category_id: '',
   department_id: '',
   priority_id: '',
@@ -165,6 +168,7 @@ const TicketWatcherRules = () => {
       is_active: rule.is_active,
       trigger_on_create: rule.trigger_on_create,
       trigger_on_update: rule.trigger_on_update,
+      trigger_on_executor_change: !!rule.trigger_on_executor_change,
       category_id: rule.category_id ? String(rule.category_id) : '',
       department_id: rule.department_id ? String(rule.department_id) : '',
       priority_id: rule.priority_id ? String(rule.priority_id) : '',
@@ -206,16 +210,19 @@ const TicketWatcherRules = () => {
     }
     const hasCondition = ['category_id', 'department_id', 'priority_id', 'executor_group_id']
       .some((k) => form[k as keyof FormState]);
-    if (!hasCondition) {
-      toast({ title: 'Выберите хотя бы одно условие в блоке «Если»', variant: 'destructive' });
-      return;
-    }
-    if (form.targets.length === 0) {
-      toast({ title: 'Добавьте хотя бы одного наблюдателя в блоке «То»', variant: 'destructive' });
-      return;
-    }
-    if (!form.trigger_on_create && !form.trigger_on_update) {
+    if (!form.trigger_on_create && !form.trigger_on_update && !form.trigger_on_executor_change) {
       toast({ title: 'Выберите хотя бы один триггер срабатывания', variant: 'destructive' });
+      return;
+    }
+    if ((form.trigger_on_create || form.trigger_on_update) && !hasCondition) {
+      toast({
+        title: 'Для триггеров «При создании»/«При изменении» укажите хотя бы одно условие в блоке «Если»',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (form.targets.length === 0 && !form.trigger_on_executor_change) {
+      toast({ title: 'Добавьте хотя бы одного наблюдателя в блоке «То»', variant: 'destructive' });
       return;
     }
 
@@ -227,6 +234,7 @@ const TicketWatcherRules = () => {
         is_active: form.is_active,
         trigger_on_create: form.trigger_on_create,
         trigger_on_update: form.trigger_on_update,
+        trigger_on_executor_change: form.trigger_on_executor_change,
         category_id: form.category_id ? Number(form.category_id) : null,
         department_id: form.department_id ? Number(form.department_id) : null,
         priority_id: form.priority_id ? Number(form.priority_id) : null,
@@ -277,6 +285,7 @@ const TicketWatcherRules = () => {
         is_active: !rule.is_active,
         trigger_on_create: rule.trigger_on_create,
         trigger_on_update: rule.trigger_on_update,
+        trigger_on_executor_change: !!rule.trigger_on_executor_change,
         category_id: rule.category_id,
         department_id: rule.department_id,
         priority_id: rule.priority_id,
@@ -370,6 +379,9 @@ const TicketWatcherRules = () => {
                         {rule.trigger_on_update && (
                           <Badge variant="outline" className="text-xs">при изменении</Badge>
                         )}
+                        {rule.trigger_on_executor_change && (
+                          <Badge variant="outline" className="text-xs">при смене исполнителя</Badge>
+                        )}
                       </div>
                     </div>
                     {rule.description && (
@@ -389,22 +401,27 @@ const TicketWatcherRules = () => {
                           <Icon name="ArrowRight" size={12} />
                           То добавить наблюдателей
                         </div>
-                        {rule.targets.length === 0 ? (
-                          <span className="text-muted-foreground text-sm">нет</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {rule.targets.map((t, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                <Icon
-                                  name={TARGET_TYPE_ICON[t.target_type] as 'User'}
-                                  size={10}
-                                  className="mr-1"
-                                />
-                                {t.target_name || `#${t.target_id}`}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {rule.trigger_on_executor_change && (
+                            <Badge variant="secondary" className="text-xs bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                              <Icon name="UserMinus" size={10} className="mr-1" />
+                              Бывший исполнитель
+                            </Badge>
+                          )}
+                          {rule.targets.map((t, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              <Icon
+                                name={TARGET_TYPE_ICON[t.target_type] as 'User'}
+                                size={10}
+                                className="mr-1"
+                              />
+                              {t.target_name || `#${t.target_id}`}
+                            </Badge>
+                          ))}
+                          {rule.targets.length === 0 && !rule.trigger_on_executor_change && (
+                            <span className="text-muted-foreground text-sm">нет</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -490,6 +507,19 @@ const TicketWatcherRules = () => {
                 <Switch
                   checked={form.trigger_on_update}
                   onCheckedChange={(v) => setForm((f) => ({ ...f, trigger_on_update: v }))}
+                />
+              </div>
+              <div className="flex items-start justify-between gap-3 pt-1 border-t border-border/40">
+                <div className="flex-1">
+                  <span className="text-sm">При смене исполнителя</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Бывший исполнитель автоматически добавляется в наблюдатели.
+                    Условия «Если» и таргеты «То» при этом триггере необязательны.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.trigger_on_executor_change}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, trigger_on_executor_change: v }))}
                 />
               </div>
             </div>

@@ -49,6 +49,8 @@ def handler(event, context):
             body = json.loads(event.get('body') or '{}')
             if action == 'apply':
                 return apply_rules(conn, body)
+            if action == 'apply_executor_change':
+                return apply_executor_change(conn, body)
             return create_rule(conn, body)
 
         if method == 'PUT':
@@ -105,7 +107,7 @@ def list_rules(conn):
     cur = conn.cursor()
     cur.execute(f"""
         SELECT r.id, r.name, r.description, r.is_active,
-               r.trigger_on_create, r.trigger_on_update,
+               r.trigger_on_create, r.trigger_on_update, r.trigger_on_executor_change,
                r.category_id, c.name AS category_name,
                r.department_id, d.name AS department_name,
                r.priority_id, p.name AS priority_name,
@@ -131,7 +133,7 @@ def get_rule(conn, rule_id: int):
     cur = conn.cursor()
     cur.execute(f"""
         SELECT r.id, r.name, r.description, r.is_active,
-               r.trigger_on_create, r.trigger_on_update,
+               r.trigger_on_create, r.trigger_on_update, r.trigger_on_executor_change,
                r.category_id, r.department_id, r.priority_id, r.executor_group_id,
                r.created_at, r.updated_at
         FROM {SCHEMA}.ticket_watcher_rules r WHERE r.id = %s
@@ -169,16 +171,19 @@ def _validate_rule_payload(body: Dict[str, Any]) -> Optional[str]:
     name = (body.get('name') or '').strip()
     if not name:
         return 'Название обязательно'
+    on_executor_change = bool(body.get('trigger_on_executor_change'))
+    on_create = bool(body.get('trigger_on_create'))
+    on_update = bool(body.get('trigger_on_update'))
+    if not (on_create or on_update or on_executor_change):
+        return 'Выберите хотя бы один триггер срабатывания'
     has_condition = any(safe_int(body.get(k)) for k in (
         'category_id', 'department_id', 'priority_id', 'executor_group_id'
     ))
-    if not has_condition:
-        return 'Укажите хотя бы одно условие в блоке «Если»'
+    if (on_create or on_update) and not has_condition:
+        return 'Для триггеров «При создании»/«При изменении» укажите хотя бы одно условие в блоке «Если»'
     targets = _normalize_targets(body.get('targets'))
-    if not targets:
+    if not targets and not on_executor_change:
         return 'Укажите хотя бы одного наблюдателя в блоке «То»'
-    if not (body.get('trigger_on_create') or body.get('trigger_on_update')):
-        return 'Выберите хотя бы один триггер срабатывания'
     return None
 
 
@@ -190,9 +195,9 @@ def create_rule(conn, body: Dict[str, Any]):
     cur = conn.cursor()
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_watcher_rules
-        (name, description, is_active, trigger_on_create, trigger_on_update,
+        (name, description, is_active, trigger_on_create, trigger_on_update, trigger_on_executor_change,
          category_id, department_id, priority_id, executor_group_id)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING id
     """, (
         (body.get('name') or '').strip(),
@@ -200,6 +205,7 @@ def create_rule(conn, body: Dict[str, Any]):
         bool(body.get('is_active', True)),
         bool(body.get('trigger_on_create', True)),
         bool(body.get('trigger_on_update', False)),
+        bool(body.get('trigger_on_executor_change', False)),
         safe_int(body.get('category_id')),
         safe_int(body.get('department_id')),
         safe_int(body.get('priority_id')),
@@ -234,7 +240,7 @@ def update_rule(conn, rule_id: int, body: Dict[str, Any]):
     cur.execute(f"""
         UPDATE {SCHEMA}.ticket_watcher_rules
         SET name=%s, description=%s, is_active=%s,
-            trigger_on_create=%s, trigger_on_update=%s,
+            trigger_on_create=%s, trigger_on_update=%s, trigger_on_executor_change=%s,
             category_id=%s, department_id=%s, priority_id=%s, executor_group_id=%s,
             updated_at = NOW()
         WHERE id = %s
@@ -244,6 +250,7 @@ def update_rule(conn, rule_id: int, body: Dict[str, Any]):
         bool(body.get('is_active', True)),
         bool(body.get('trigger_on_create', True)),
         bool(body.get('trigger_on_update', False)),
+        bool(body.get('trigger_on_executor_change', False)),
         safe_int(body.get('category_id')),
         safe_int(body.get('department_id')),
         safe_int(body.get('priority_id')),
@@ -399,6 +406,95 @@ def apply_rules(conn, body: Dict[str, Any]):
             row = cur.fetchone()
             if row:
                 added.append(int(row['user_id']))
+
+    conn.commit()
+    cur.close()
+    return response(200, {
+        'success': True,
+        'ticket_id': ticket_id,
+        'matched_rules': matched_ids,
+        'added_user_ids': added,
+    })
+
+
+def apply_executor_change(conn, body: Dict[str, Any]):
+    """Применить правила с trigger_on_executor_change=true к смене исполнителя.
+
+    Добавляет в наблюдатели бывшего исполнителя + всех адресатов из блока «То»
+    каждого подходящего активного правила. Условия «Если» учитываются: если
+    у правила есть фильтры — должны совпасть с заявкой.
+    """
+    ticket_id = safe_int(body.get('ticket_id'))
+    previous_assignee = safe_int(body.get('previous_assignee_id'))
+    new_assignee = safe_int(body.get('new_assignee_id'))
+    if not ticket_id:
+        return response(400, {'error': 'ticket_id обязателен'})
+
+    cur = conn.cursor()
+    cur.execute(f"""
+        SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+        FROM {SCHEMA}.tickets WHERE id = %s
+    """, (ticket_id,))
+    ticket = cur.fetchone()
+    if not ticket:
+        cur.close()
+        return response(404, {'error': 'Заявка не найдена'})
+
+    cur.execute(f"""
+        SELECT id, category_id, department_id, priority_id, executor_group_id
+        FROM {SCHEMA}.ticket_watcher_rules
+        WHERE is_active = true AND trigger_on_executor_change = true
+    """)
+    rules = [dict(r) for r in cur.fetchall()]
+
+    matched_ids: List[int] = []
+    for r in rules:
+        if r['category_id'] and r['category_id'] != ticket['category_id']:
+            continue
+        if r['department_id'] and r['department_id'] != ticket['department_id']:
+            continue
+        if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
+            continue
+        if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+            continue
+        matched_ids.append(r['id'])
+
+    if not matched_ids:
+        cur.close()
+        return response(200, {'success': True, 'matched_rules': [], 'added_user_ids': []})
+
+    user_ids: set = set()
+    if previous_assignee:
+        user_ids.add(int(previous_assignee))
+
+    ids_csv = ','.join(str(int(x)) for x in matched_ids)
+    cur.execute(f"""
+        SELECT rule_id, target_type, target_id
+        FROM {SCHEMA}.ticket_watcher_rule_targets
+        WHERE rule_id IN ({ids_csv})
+    """)
+    targets = [dict(t) for t in cur.fetchall()]
+    for uid in _resolve_target_user_ids(cur, targets):
+        user_ids.add(int(uid))
+
+    creator_id = ticket.get('created_by')
+    added: List[int] = []
+    for uid in user_ids:
+        if not uid:
+            continue
+        if creator_id and uid == creator_id:
+            continue
+        if new_assignee and uid == new_assignee:
+            continue
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id)
+            VALUES (%s, %s)
+            ON CONFLICT (ticket_id, user_id) DO NOTHING
+            RETURNING user_id
+        """, (ticket_id, uid))
+        row = cur.fetchone()
+        if row:
+            added.append(int(row['user_id']))
 
     conn.commit()
     cur.close()
