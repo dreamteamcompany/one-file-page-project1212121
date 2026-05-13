@@ -400,10 +400,17 @@ def search_bitrix_users(query):
     return out
 
 
+AUTO_FIRED_FIELD = 'UF_USR_1778669634988'
+
+
 def deactivate_user(user_id):
     r = requests.post(
         f"{BITRIX_WEBHOOK_URL}/user.update",
-        json={'ID': user_id, 'ACTIVE': False},
+        json={
+            'ID': user_id,
+            'ACTIVE': False,
+            AUTO_FIRED_FIELD: 1,
+        },
         headers={'Content-Type': 'application/json'},
         timeout=15,
     )
