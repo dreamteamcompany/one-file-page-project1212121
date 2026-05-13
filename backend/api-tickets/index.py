@@ -948,10 +948,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     matched_ids.append(r['id'])
 
                 if matched_ids:
-                    user_ids_to_add = set()
-                    if prev_assignee:
-                        user_ids_to_add.add(int(prev_assignee))
+                    # Бывший исполнитель добавляется всегда (даже если он —
+                    # создатель заявки), исключаем только нового исполнителя
+                    forced_users = set()
+                    if prev_assignee and prev_assignee != new_assignee:
+                        forced_users.add(int(prev_assignee))
 
+                    # Адресаты блока «То» из правил (user/group/role)
+                    target_users = set()
                     ids_csv = ','.join(str(int(x)) for x in matched_ids)
                     cur.execute(f"""
                         SELECT target_type, target_id
@@ -964,7 +968,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     role_ids = [t['target_id'] for t in rule_targets if t['target_type'] == 'role']
                     for t in rule_targets:
                         if t['target_type'] == 'user' and t['target_id']:
-                            user_ids_to_add.add(int(t['target_id']))
+                            target_users.add(int(t['target_id']))
                     if group_ids:
                         gids_csv = ','.join(str(int(x)) for x in group_ids)
                         cur.execute(f"""
@@ -972,7 +976,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                             WHERE group_id IN ({gids_csv})
                         """)
                         for rr in cur.fetchall():
-                            user_ids_to_add.add(int(rr['user_id']))
+                            target_users.add(int(rr['user_id']))
                     if role_ids:
                         rids_csv = ','.join(str(int(x)) for x in role_ids)
                         cur.execute(f"""
@@ -980,15 +984,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                             WHERE role_id IN ({rids_csv})
                         """)
                         for rr in cur.fetchall():
-                            user_ids_to_add.add(int(rr['user_id']))
+                            target_users.add(int(rr['user_id']))
 
-                    for uid in user_ids_to_add:
+                    # Для адресатов из «То» — пропускаем создателя и нового исполнителя
+                    for uid in target_users:
                         if not uid:
                             continue
                         if creator_id and uid == creator_id:
                             continue
                         if new_assignee and uid == new_assignee:
                             continue
+                        forced_users.add(int(uid))
+
+                    for uid in forced_users:
                         cur.execute(f"""
                             INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id, added_at)
                             VALUES (%s, %s, NOW())
