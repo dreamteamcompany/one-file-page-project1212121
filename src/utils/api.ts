@@ -11,6 +11,7 @@ const EXECUTOR_GROUPS_API = 'https://functions.poehali.dev/a52eb50f-38cf-4887-ae
 const EXECUTOR_ASSIGNMENTS_API = 'https://functions.poehali.dev/bb7f3193-fa1a-4243-b236-08b2795bd696';
 const WORK_SCHEDULES_API = 'https://functions.poehali.dev/8db7a0da-8978-4e99-8d6b-45d47fc080c2';
 const CLASSIFY_TICKET_API = 'https://functions.poehali.dev/b1d49417-fb02-4b11-9656-d30b68924b54';
+const WATCHER_RULES_API = 'https://functions.poehali.dev/b6560f3c-5899-486e-83da-00fe16d0dd2f';
 export const UPLOAD_FILE_URL = 'https://functions.poehali.dev/3d20e803-c39e-4d0f-84c2-6c5eb7bb1af7';
 export const TICKETS_COUNTERS_URL = 'https://functions.poehali.dev/bcc93198-ef8f-4b7f-b1b7-25ed7616922c';
 export const TICKETS_MARK_READ_URL = 'https://functions.poehali.dev/91bd6009-4bdd-4161-9e0d-ea3a03bf70c0';
@@ -55,6 +56,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'executor-groups': EXECUTOR_GROUPS_API,
   'executor-assignments': EXECUTOR_ASSIGNMENTS_API,
   'work-schedules': WORK_SCHEDULES_API,
+  'watcher-rules': WATCHER_RULES_API,
 };
 
 export const API_URL = AUTH_API;

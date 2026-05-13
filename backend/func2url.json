@@ -1,4 +1,5 @@
 {
+  "api-watcher-rules": "https://functions.poehali.dev/b6560f3c-5899-486e-83da-00fe16d0dd2f",
   "users-search": "https://functions.poehali.dev/f8b49a39-1f3e-4195-9d9f-521b0cfca73d",
   "tickets-overdue-checker": "https://functions.poehali.dev/41449ffd-c976-4020-a11a-d964efcfda63",
   "tickets-counters": "https://functions.poehali.dev/bcc93198-ef8f-4b7f-b1b7-25ed7616922c",

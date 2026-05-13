@@ -118,6 +118,7 @@ const Settings = () => {
         { name: 'Сервисы услуг', path: '/ticket-services', icon: 'Building2', permission: { resource: 'ticket_services', action: 'read' } },
         { name: 'Статусы заявок', path: '/ticket-statuses', icon: 'CircleDot', permission: { resource: 'ticket_statuses', action: 'read' } },
         { name: 'Приоритеты заявок', path: '/ticket-priorities', icon: 'AlertCircle', permission: { resource: 'ticket_priorities', action: 'read' } },
+        { name: 'Наблюдатели', path: '/ticket-watcher-rules', icon: 'Eye', permission: { resource: 'ticket_priorities', action: 'read' } },
       ],
     },
     {

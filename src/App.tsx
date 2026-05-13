@@ -22,6 +22,7 @@ import TicketServicesManagement from "./pages/TicketServicesManagement";
 import TicketServiceCategories from "./pages/TicketServiceCategories";
 import TicketStatuses from "./pages/TicketStatuses";
 import TicketPriorities from "./pages/TicketPriorities";
+import TicketWatcherRules from "./pages/TicketWatcherRules";
 import SLA from "./pages/SLA";
 import SlaServiceMappings from "./pages/SlaServiceMappings";
 import ServiceProviders from "./pages/ServiceProviders";
@@ -67,6 +68,7 @@ const App = () => {
             <Route path="/ticket-service-categories" element={<ProtectedRoute><TicketServiceCategories /></ProtectedRoute>} />
             <Route path="/ticket-statuses" element={<ProtectedRoute><TicketStatuses /></ProtectedRoute>} />
             <Route path="/ticket-priorities" element={<ProtectedRoute><TicketPriorities /></ProtectedRoute>} />
+            <Route path="/ticket-watcher-rules" element={<ProtectedRoute requiredPermission={{ resource: 'ticket_priorities', action: 'read' }}><TicketWatcherRules /></ProtectedRoute>} />
             <Route path="/sla" element={<ProtectedRoute><SLA /></ProtectedRoute>} />
             <Route path="/sla-service-mappings" element={<ProtectedRoute><SlaServiceMappings /></ProtectedRoute>} />
             <Route path="/service-providers" element={<ProtectedRoute><ServiceProviders /></ProtectedRoute>} />
