@@ -58,6 +58,39 @@ const TicketCommentItem = ({
   onSetDeleteTargetId,
   observeRef,
 }: TicketCommentItemProps) => {
+  const isReopenComment = comment.comment.startsWith('🔄 Заявка открыта повторно');
+
+  if (isReopenComment) {
+    const reasonLine = comment.comment.split('\n\nПричина: ')[1] || '';
+    return (
+      <div ref={observeRef} data-comment-id={comment.id}>
+        {showNewDivider && (
+          <div className="flex items-center gap-2 my-3">
+            <div className="flex-1 h-px bg-red-500" />
+            <span className="text-[11px] font-semibold text-red-500 uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/30">
+              Новые сообщения
+            </span>
+            <div className="flex-1 h-px bg-red-500" />
+          </div>
+        )}
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-amber-500/30" />
+          <div className="flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 max-w-sm text-center">
+            <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs uppercase tracking-wide">
+              <Icon name="RotateCcw" size={13} />
+              Заявка открыта повторно
+            </div>
+            {reasonLine && (
+              <p className="text-xs text-muted-foreground leading-relaxed">{reasonLine}</p>
+            )}
+            <p className="text-[11px] text-muted-foreground/60">{formatDate(comment.created_at)} · {comment.user_full_name || comment.user_name}</p>
+          </div>
+          <div className="flex-1 h-px bg-amber-500/30" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {showNewDivider && (
