@@ -26,42 +26,42 @@ const TicketCountersBar = ({ onSelectRole, activeRole }: TicketCountersBarProps)
       label: 'Назначено мне',
       count: counters.by_role.assignee,
       icon: 'UserCheck',
-      color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30',
+      color: 'bg-blue-600 text-white border-blue-600',
     },
     {
       key: 'customer',
       label: 'Мои заявки',
       count: counters.by_role.customer,
       icon: 'User',
-      color: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/30',
+      color: 'bg-emerald-600 text-white border-emerald-600',
     },
     {
       key: 'watcher',
       label: 'Наблюдаю',
       count: counters.by_role.watcher,
       icon: 'Eye',
-      color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30',
+      color: 'bg-cyan-600 text-white border-cyan-600',
     },
     {
       key: 'approver',
       label: 'Согласовать',
       count: counters.by_role.approver,
       icon: 'CheckSquare',
-      color: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+      color: 'bg-amber-500 text-white border-amber-500',
     },
     {
       key: 'mentions',
       label: 'Упоминания',
       count: counters.by_event.mention,
       icon: 'AtSign',
-      color: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30',
+      color: 'bg-purple-600 text-white border-purple-600',
     },
     {
       key: 'overdue',
       label: 'Просрочено',
       count: counters.overdue,
       icon: 'AlertTriangle',
-      color: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30',
+      color: 'bg-red-600 text-white border-red-600',
     },
   ];
 
@@ -84,7 +84,7 @@ const TicketCountersBar = ({ onSelectRole, activeRole }: TicketCountersBarProps)
           >
             <Icon name={item.icon} size={14} />
             <span className="text-xs font-medium">{item.label}</span>
-            <span className="text-xs font-bold rounded-full bg-white/40 dark:bg-black/30 px-1.5 min-w-[20px] text-center">
+            <span className="text-xs font-bold rounded-full bg-white/25 px-1.5 min-w-[20px] text-center">
               {item.count}
             </span>
           </Button>
