@@ -124,18 +124,7 @@ const TicketsViewToggle = ({
             )}
           </Button>
         )}
-        {onToggleHideWaiting && !showArchived && !showHidden && !needsMyReply && (
-          <Button
-            variant={hideWaiting ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onToggleHideWaiting(!hideWaiting)}
-            className="flex items-center gap-2"
-            title={hideWaiting ? 'Ожидающие ответа скрыты' : 'Показаны все заявки'}
-          >
-            <Icon name={hideWaiting ? 'Filter' : 'FilterX'} size={16} />
-            <span className="hidden sm:inline">{hideWaiting ? 'Скрыть ожидающие' : 'Показать все'}</span>
-          </Button>
-        )}
+
       </div>
 
       {viewMode === 'list' && !showArchived && !showHidden && (
