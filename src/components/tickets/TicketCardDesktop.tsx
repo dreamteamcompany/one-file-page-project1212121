@@ -35,7 +35,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
                 <div
                   key={i}
                   className="flex-1 h-full rounded-sm transition-colors duration-300"
-                  style={{ backgroundColor: filled ? deadline.color : 'rgba(255,255,255,0.08)' }}
+                  style={{ backgroundColor: filled ? deadline.color : 'hsl(var(--muted))' }}
                 />
               );
             })}
@@ -50,7 +50,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
         {ticket.created_at && (
           <div className="flex flex-col items-start gap-0.5 max-w-full">
             <span className="text-xs text-muted-foreground">Дата создания</span>
-            <span className="inline-flex items-center gap-1.5 bg-muted/60 text-white rounded-md px-2 py-1 text-xs max-w-full">
+            <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs max-w-full">
               <Icon name="Clock" size={11} className="flex-shrink-0" />
               <span className="truncate">
                 {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
@@ -67,7 +67,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
         {ticket.due_date && (
           <div className="flex flex-col items-start gap-0.5 max-w-full">
             <span className="text-xs text-muted-foreground">Дедлайн</span>
-            <span className="inline-flex items-center gap-1.5 bg-muted/60 text-white rounded-md px-2 py-1 text-xs max-w-full">
+            <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs max-w-full">
               <Icon name="Calendar" size={11} className="flex-shrink-0" />
               <span className="truncate">
                 {new Date(ticket.due_date).toLocaleDateString('ru-RU', {

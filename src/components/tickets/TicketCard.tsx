@@ -103,7 +103,7 @@ const TicketCard = ({
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f97316', boxShadow: '0 0 0 2px #f97316, 0 0 8px rgba(249,115,22,0.8)' }} />
                   </span>
                 )}
-                <span className="text-xs font-mono text-white bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
+                <span className="text-xs font-mono text-foreground bg-muted px-2 py-0.5 rounded">#{ticket.id}</span>
                 {isCritical && (
                   <Badge variant="destructive" className="text-xs font-bold uppercase flex items-center gap-1 animate-pulse">
                     <Icon name="AlertTriangle" size={12} />
@@ -152,7 +152,7 @@ const TicketCard = ({
           </div>
         </div>
 
-        <div className="md:hidden pt-2.5 mt-1 space-y-2 border-t border-white/10">
+        <div className="md:hidden pt-2.5 mt-1 space-y-2 border-t border-border">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {ticket.status_name && (
               <Badge
@@ -188,7 +188,7 @@ const TicketCard = ({
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {ticket.created_at && (
-              <span className="inline-flex items-center gap-1.5 bg-muted/60 text-white rounded-md px-2 py-1 text-xs">
+              <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs">
                 <Icon name="Clock" size={11} className="flex-shrink-0" />
                 <span className="truncate">
                   {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
@@ -201,7 +201,7 @@ const TicketCard = ({
               </span>
             )}
             {ticket.due_date && (
-              <span className="inline-flex items-center gap-1.5 bg-muted/60 text-white rounded-md px-2 py-1 text-xs">
+              <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs">
                 <Icon name="Calendar" size={11} className="flex-shrink-0" />
                 <span className="truncate">
                   {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
