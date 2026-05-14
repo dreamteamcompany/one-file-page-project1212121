@@ -650,19 +650,30 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             return cur.fetchone() is not None
 
         # Проверка прав на редактирование содержания (только если реально что-то меняется)
-        _content_field_changed = False
-        if 'title' in body and body.get('title') != old_ticket.get('title'):
-            _content_field_changed = True
-        if 'description' in body and body.get('description') != old_ticket.get('description'):
-            _content_field_changed = True
-        if 'service_ids' in body:
-            _content_field_changed = True
-        if 'custom_fields' in body:
-            _content_field_changed = True
+        _content_changed_title = 'title' in body and body.get('title') != old_ticket.get('title')
+        _content_changed_desc = 'description' in body and body.get('description') != old_ticket.get('description')
+        _content_changed_services = ('service_ids' in body) or ('ticket_service_id' in body)
+        _content_changed_cf = 'custom_fields' in body
+        _content_field_changed = (
+            _content_changed_title or _content_changed_desc
+            or _content_changed_services or _content_changed_cf
+        )
 
         if _content_field_changed and not _can_edit_content():
             cur.close()
             return response(403, {'error': 'Недостаточно прав для редактирования содержания заявки'})
+
+        # Если пришёл ticket_service_id, разворачиваем его в service_ids
+        if 'ticket_service_id' in body and 'service_ids' not in body:
+            ts_id = body.get('ticket_service_id')
+            if ts_id:
+                cur.execute(
+                    f"SELECT service_id FROM {SCHEMA}.ticket_service_mappings WHERE ticket_service_id = %s",
+                    (int(ts_id),),
+                )
+                body['service_ids'] = [r['service_id'] for r in cur.fetchall()]
+            else:
+                body['service_ids'] = []
 
         # Резолвим имена для истории
         def get_user_name(user_id):
@@ -698,16 +709,16 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         history_entries = []
         
         if 'title' in body:
-            if body['title'] != old_ticket['title']:
-                history_entries.append(('title', old_ticket['title'], body['title']))
             update_fields.append("title = %s")
             params.append(body['title'])
         
         if 'description' in body:
-            if body['description'] != old_ticket['description']:
-                history_entries.append(('description', old_ticket['description'], body['description']))
             update_fields.append("description = %s")
             params.append(body['description'])
+
+        # Сводная запись в истории при изменении содержания
+        if _content_field_changed:
+            history_entries.append(('content', '', 'Содержание изменено'))
         
         if body.get('action') == 'reopen':
             reopen_reason = body.get('reopen_reason', '').strip()
@@ -846,21 +857,29 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             update_fields.append("due_date = %s")
             params.append(body['due_date'])
         
-        if not update_fields:
+        _has_side_updates = ('service_ids' in body) or ('custom_fields' in body)
+        if not update_fields and not _has_side_updates:
             cur.close()
             return response(400, {'error': 'No fields to update'})
-        
-        update_fields.append("updated_at = NOW()")
-        params.append(ticket_id)
-        
-        cur.execute(f"""
-            UPDATE {SCHEMA}.tickets 
-            SET {', '.join(update_fields)}
-            WHERE id = %s
-            RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, response_due_date, created_by, created_at, updated_at
-        """, params)
-        
-        ticket = dict(cur.fetchone())
+
+        if update_fields:
+            update_fields.append("updated_at = NOW()")
+            params.append(ticket_id)
+
+            cur.execute(f"""
+                UPDATE {SCHEMA}.tickets 
+                SET {', '.join(update_fields)}
+                WHERE id = %s
+                RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, response_due_date, created_by, created_at, updated_at
+            """, params)
+            ticket = dict(cur.fetchone())
+        else:
+            # Только побочные обновления (services / custom_fields) — апдейтим updated_at и читаем заявку
+            cur.execute(f"""
+                UPDATE {SCHEMA}.tickets SET updated_at = NOW() WHERE id = %s
+                RETURNING id, title, description, status_id, priority_id, assigned_to, due_date, response_due_date, created_by, created_at, updated_at
+            """, (ticket_id,))
+            ticket = dict(cur.fetchone())
         
         # Добавляем записи в историю
         for field_name, old_value, new_value in history_entries:

@@ -235,6 +235,40 @@ export const useTicketActions = (
     }
   };
 
+  const handleUpdateContent = async (payload: {
+    title?: string;
+    description?: string;
+    custom_fields?: Record<string, string>;
+    service_ids?: number[];
+    ticket_service_id?: number | null;
+  }): Promise<boolean> => {
+    try {
+      setUpdating(true);
+      const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Auth-Token': token,
+        },
+        body: JSON.stringify({ id: ticketId, ...payload }),
+      });
+
+      if (response.ok) {
+        await loadTicket(false);
+        await loadHistory();
+        return true;
+      }
+      const errData = await response.json().catch(() => ({}));
+      console.error('[UpdateContent] Ошибка:', response.status, errData);
+      return false;
+    } catch (error) {
+      console.error('[UpdateContent] Ошибка:', error);
+      return false;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleUpdateDueDate = async (dueDate: string | null) => {
     try {
       setUpdating(true);
@@ -282,5 +316,6 @@ export const useTicketActions = (
     handleAssignUser,
     handleAssignGroup,
     handleUpdateDueDate,
+    handleUpdateContent,
   };
 };

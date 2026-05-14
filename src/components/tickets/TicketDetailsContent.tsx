@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
 import RichText from '@/components/shared/RichText';
 import TicketComments from '@/components/tickets/TicketComments';
 import TicketHistory from '@/components/tickets/TicketHistory';
 import TicketFiles from '@/components/tickets/TicketFiles';
+import EditTicketContentDialog from '@/components/tickets/EditTicketContentDialog';
 import { isoToDisplay } from '@/components/ui/date-masked-input';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,6 +124,13 @@ interface TicketDetailsContentProps {
   participantIds?: number[];
   myLastSeenAt?: string | null;
   onMarkRead?: (commentIds: number[]) => void;
+  onUpdateContent?: (payload: {
+    title?: string;
+    description?: string;
+    custom_fields?: Record<string, string>;
+    ticket_service_id?: number | null;
+  }) => Promise<boolean>;
+  updating?: boolean;
 }
 
 const TicketDetailsContent = ({
@@ -153,12 +162,18 @@ const TicketDetailsContent = ({
   participantIds,
   myLastSeenAt,
   onMarkRead,
+  onUpdateContent,
+  updating,
 }: TicketDetailsContentProps) => {
-  const { hasSystemRole } = useAuth();
+  const { user, hasPermission, hasSystemRole } = useAuth();
   const canCallPhone = hasSystemRole('admin', 'executor');
+  const isAuthor = user?.id === ticket.created_by;
+  const canEditContent =
+    !!onUpdateContent && (isAuthor || hasPermission('tickets', 'edit_content'));
   const [activeTab, setActiveTab] = useState<'comments' | 'files' | 'history'>('comments');
   const [copiedFieldId, setCopiedFieldId] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [editContentOpen, setEditContentOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -209,15 +224,29 @@ const TicketDetailsContent = ({
   const isShortDescription = !ticket.description || ticket.description.length < 500;
 
   return (
+    <>
     <div className="flex-1 min-w-0 lg:pt-6 lg:pl-6 lg:flex lg:flex-col lg:min-h-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
         {/* Строка: заголовок + метаданные + дополнительные поля */}
         <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold text-foreground mb-4 md:mb-6">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
-            </h1>
+            <div className="flex items-start gap-2 mb-4 md:mb-6">
+              <h1 className="text-xl md:text-2xl font-bold text-foreground flex-1 min-w-0 break-words">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
+              </h1>
+              {canEditContent && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+                  title="Редактировать содержание"
+                  onClick={() => setEditContentOpen(true)}
+                >
+                  <Icon name="Pencil" size={16} />
+                </Button>
+              )}
+            </div>
             
             <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm">
               {ticket.due_date && deadlineInfo && (
@@ -438,6 +467,16 @@ const TicketDetailsContent = ({
       </div>
       </div>
     </div>
+    {canEditContent && onUpdateContent && (
+      <EditTicketContentDialog
+        open={editContentOpen}
+        onOpenChange={setEditContentOpen}
+        ticket={ticket}
+        updating={updating}
+        onSave={onUpdateContent}
+      />
+    )}
+    </>
   );
 };
 

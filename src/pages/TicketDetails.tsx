@@ -60,6 +60,7 @@ const TicketDetails = () => {
     handleAssignUser,
     handleAssignGroup,
     handleUpdateDueDate,
+    handleUpdateContent,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
 
   const isAdmin = !!user?.roles?.some(
@@ -339,6 +340,8 @@ const TicketDetails = () => {
                 participantIds={participantIds}
                 myLastSeenAt={myLastSeenAt}
                 onMarkRead={markCommentsRead}
+                onUpdateContent={handleUpdateContent}
+                updating={updating}
               />
           </div>
           </div>

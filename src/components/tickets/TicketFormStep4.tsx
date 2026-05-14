@@ -58,7 +58,7 @@ const updateCustomField = (
   });
 };
 
-const renderCustomField = (
+export const renderCustomField = (
   field: CustomField,
   formData: FormData,
   setFormData: (data: Record<string, string | number | number[] | Record<string, string>>) => void
