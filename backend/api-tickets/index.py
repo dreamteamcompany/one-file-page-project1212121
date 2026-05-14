@@ -617,6 +617,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             SELECT t.title, t.description, t.status_id, t.priority_id, t.assigned_to,
                    t.due_date, t.response_due_date, t.executor_group_id,
                    t.previous_status_id, t.sla_paused_at, t.sla_paused_total_seconds,
+                   t.created_by,
                    ts.is_waiting_response AS current_is_waiting
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
@@ -627,6 +628,41 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             cur.close()
             return response(404, {'error': 'Ticket not found'})
         old_ticket = dict(row)
+
+        # Право на редактирование содержания заявки (title, description, custom_fields, service_ids)
+        # Имеют: пользователи с правом tickets.edit_content, администраторы и автор заявки
+        def _can_edit_content() -> bool:
+            if old_ticket.get('created_by') == user_id:
+                return True
+            cur.execute(f"""
+                SELECT 1
+                FROM {SCHEMA}.user_roles ur
+                JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+                LEFT JOIN {SCHEMA}.role_permissions rp ON rp.role_id = ur.role_id
+                LEFT JOIN {SCHEMA}.permissions p ON p.id = rp.permission_id
+                WHERE ur.user_id = %s
+                  AND (
+                        (p.resource = 'tickets' AND p.action = 'edit_content')
+                        OR r.name IN ('Администратор', 'Admin')
+                      )
+                LIMIT 1
+            """, (user_id,))
+            return cur.fetchone() is not None
+
+        # Проверка прав на редактирование содержания (только если реально что-то меняется)
+        _content_field_changed = False
+        if 'title' in body and body.get('title') != old_ticket.get('title'):
+            _content_field_changed = True
+        if 'description' in body and body.get('description') != old_ticket.get('description'):
+            _content_field_changed = True
+        if 'service_ids' in body:
+            _content_field_changed = True
+        if 'custom_fields' in body:
+            _content_field_changed = True
+
+        if _content_field_changed and not _can_edit_content():
+            cur.close()
+            return response(403, {'error': 'Недостаточно прав для редактирования содержания заявки'})
 
         # Резолвим имена для истории
         def get_user_name(user_id):
