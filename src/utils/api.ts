@@ -78,6 +78,17 @@ const getAuthToken = (): string | null => {
     : sessionStorage.getItem('auth_token');
 };
 
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 400;
+
+const isRetryableMethod = (method?: string): boolean => {
+  const m = (method || 'GET').toUpperCase();
+  return m === 'GET' || m === 'HEAD';
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const apiFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
   const token = getAuthToken();
   
@@ -126,9 +137,32 @@ export const apiFetch = async (url: string, options: RequestInit = {}): Promise<
       console.error('[API] URL parsing error:', e);
     }
   }
-  
-  return fetch(finalUrl, {
+
+  const fetchInit: RequestInit = {
     ...options,
     headers,
-  });
+  };
+
+  const canRetry = isRetryableMethod(options.method) && !options.signal?.aborted;
+
+  if (!canRetry) {
+    return fetch(finalUrl, fetchInit);
+  }
+
+  let lastResponse: Response | null = null;
+  for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    if (options.signal?.aborted) {
+      return fetch(finalUrl, fetchInit);
+    }
+    const response = await fetch(finalUrl, fetchInit);
+    if (!RETRYABLE_STATUSES.has(response.status)) {
+      return response;
+    }
+    lastResponse = response;
+    if (attempt < MAX_RETRY_ATTEMPTS) {
+      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      await sleep(delay);
+    }
+  }
+  return lastResponse as Response;
 };

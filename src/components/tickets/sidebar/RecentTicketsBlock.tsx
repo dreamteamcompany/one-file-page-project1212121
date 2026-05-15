@@ -28,42 +28,27 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
   useEffect(() => {
     let cancelled = false;
 
-    const fetchOnce = async (): Promise<RecentTicket[] | null> => {
-      const baseUrl = getApiUrl('tickets');
-      const url = `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`;
-      const response = await apiFetch(url);
-      if (!response.ok) {
-        return null;
-      }
-      const data = await response.json();
-      return (data.tickets || []) as RecentTicket[];
-    };
-
     const loadRecentTickets = async () => {
-      setLoading(true);
-      const maxAttempts = 3;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          const result = await fetchOnce();
+      try {
+        setLoading(true);
+        const baseUrl = getApiUrl('tickets');
+        const response = await apiFetch(
+          `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`
+        );
+        if (cancelled) return;
+        if (response.ok) {
+          const data = await response.json();
           if (cancelled) return;
-          if (result !== null) {
-            const filtered = result
-              .filter((t) => t.id !== ticketId)
-              .slice(0, 3);
-            setTickets(filtered);
-            setLoading(false);
-            return;
-          }
-        } catch (error) {
-          if (cancelled) return;
-          console.error('Error loading recent tickets (attempt ' + attempt + '):', error);
+          const allTickets: RecentTicket[] = data.tickets || [];
+          const filtered = allTickets
+            .filter((t) => t.id !== ticketId)
+            .slice(0, 3);
+          setTickets(filtered);
         }
-        if (attempt < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-        }
-      }
-      if (!cancelled) {
-        setLoading(false);
+      } catch (error) {
+        if (!cancelled) console.error('Error loading recent tickets:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
 
