@@ -438,11 +438,18 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         """, (ticket['previous_status_id'], paused_seconds_to_add,
               paused_seconds_to_add, paused_seconds_to_add, data.ticket_id))
 
+        cur.execute(
+            f"SELECT id, name FROM {SCHEMA}.ticket_statuses WHERE id = ANY(%s)",
+            ([ticket['status_id'], ticket['previous_status_id']],),
+        )
+        _status_names_map = {row['id']: row['name'] for row in cur.fetchall()}
+        _old_status_name = _status_names_map.get(ticket['status_id']) or str(ticket['status_id'])
+        _new_status_name = _status_names_map.get(ticket['previous_status_id']) or str(ticket['previous_status_id'])
         cur.execute(f"""
             INSERT INTO {SCHEMA}.ticket_history
             (ticket_id, user_id, field_name, old_value, new_value, created_at)
             VALUES (%s, %s, 'status_id', %s, %s, NOW())
-        """, (data.ticket_id, user_id, str(ticket['status_id']), str(ticket['previous_status_id'])))
+        """, (data.ticket_id, user_id, _old_status_name, _new_status_name))
     else:
         cur.execute(f"""
             UPDATE {SCHEMA}.tickets

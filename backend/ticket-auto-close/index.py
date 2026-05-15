@@ -23,13 +23,13 @@ def handler(event: dict, context) -> dict:
 
     try:
         # Находим статус "Ожидает подтверждения"
-        cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_pending_confirmation = TRUE LIMIT 1")
+        cur.execute(f"SELECT id, name FROM {SCHEMA}.ticket_statuses WHERE is_pending_confirmation = TRUE LIMIT 1")
         pending_status = cur.fetchone()
         if not pending_status:
             return {'statusCode': 200, 'body': json.dumps({'message': 'Статус pending_confirmation не найден', 'closed': 0})}
 
         # Находим закрытый статус
-        cur.execute(f"SELECT id FROM {SCHEMA}.ticket_statuses WHERE is_closed = TRUE LIMIT 1")
+        cur.execute(f"SELECT id, name FROM {SCHEMA}.ticket_statuses WHERE is_closed = TRUE LIMIT 1")
         closed_status = cur.fetchone()
         if not closed_status:
             return {'statusCode': 200, 'body': json.dumps({'message': 'Закрытый статус не найден', 'closed': 0})}
@@ -60,7 +60,7 @@ def handler(event: dict, context) -> dict:
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
                 VALUES (%s, NULL, 'status_id', %s, %s, NOW())
-            """, (ticket['id'], str(pending_status['id']), str(closed_status['id'])))
+            """, (ticket['id'], pending_status['name'], closed_status['name']))
 
             closed_count += 1
 

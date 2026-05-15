@@ -1739,10 +1739,17 @@ def handle_ticket_confirmation(method: str, event: dict, conn) -> dict:
                 WHERE id = %s
             """, (pending_status['id'], ticket_id))
 
+            cur.execute(
+                f"SELECT id, name FROM {SCHEMA}.ticket_statuses WHERE id = ANY(%s)",
+                ([ticket['status_id'], pending_status['id']],),
+            )
+            _names = {r['id']: r['name'] for r in cur.fetchall()}
+            _old_name = _names.get(ticket['status_id']) or str(ticket['status_id'])
+            _new_name = _names.get(pending_status['id']) or str(pending_status['id'])
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
                 VALUES (%s, %s, 'status_id', %s, %s, NOW())
-            """, (ticket_id, user_id, str(ticket['status_id']), str(pending_status['id'])))
+            """, (ticket_id, user_id, _old_name, _new_name))
 
             conn.commit()
             return response(200, {'message': 'Заявка отправлена на подтверждение заказчику'})
@@ -1784,10 +1791,17 @@ def handle_ticket_confirmation(method: str, event: dict, conn) -> dict:
                     WHERE id = %s
                 """, (closed_status['id'], int(rating), ticket_id))
 
+                cur.execute(
+                    f"SELECT id, name FROM {SCHEMA}.ticket_statuses WHERE id = ANY(%s)",
+                    ([ticket['status_id'], closed_status['id']],),
+                )
+                _names = {r['id']: r['name'] for r in cur.fetchall()}
+                _old_name = _names.get(ticket['status_id']) or str(ticket['status_id'])
+                _new_name = _names.get(closed_status['id']) or str(closed_status['id'])
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
                     VALUES (%s, %s, 'status_id', %s, %s, NOW())
-                """, (ticket_id, user_id, str(ticket['status_id']), str(closed_status['id'])))
+                """, (ticket_id, user_id, _old_name, _new_name))
 
                 conn.commit()
                 return response(200, {'message': 'Заявка подтверждена и закрыта', 'rating': int(rating)})
@@ -1810,10 +1824,17 @@ def handle_ticket_confirmation(method: str, event: dict, conn) -> dict:
                     WHERE id = %s
                 """, (open_status['id'], rejection_reason.strip(), ticket_id))
 
+                cur.execute(
+                    f"SELECT id, name FROM {SCHEMA}.ticket_statuses WHERE id = ANY(%s)",
+                    ([ticket['status_id'], open_status['id']],),
+                )
+                _names = {r['id']: r['name'] for r in cur.fetchall()}
+                _old_name = _names.get(ticket['status_id']) or str(ticket['status_id'])
+                _new_name = _names.get(open_status['id']) or str(open_status['id'])
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.ticket_history (ticket_id, user_id, field_name, old_value, new_value, created_at)
                     VALUES (%s, %s, 'status_id', %s, %s, NOW())
-                """, (ticket_id, user_id, str(ticket['status_id']), str(open_status['id'])))
+                """, (ticket_id, user_id, _old_name, _new_name))
 
                 conn.commit()
                 return response(200, {'message': 'Заявка возвращена в работу'})
