@@ -890,7 +890,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             """, (ticket_id, payload['user_id'], field_name, old_value, new_value))
 
         if body.get('action') == 'reopen':
-            reopen_comment = f"🔄 Заявка открыта повторно\n\nПричина: {body.get('reopen_reason', '').strip()}"
+            reopen_reason_text = body.get('reopen_reason', '').strip()
+            cur.execute(
+                f"SELECT full_name FROM {SCHEMA}.users WHERE id = %s",
+                (payload['user_id'],)
+            )
+            user_row = cur.fetchone()
+            user_full_name = (user_row['full_name'] if user_row and user_row.get('full_name') else '').strip() or 'Пользователь'
+            reopen_comment = f"{user_full_name} возобновил заявку по причине: {reopen_reason_text}"
             cur.execute(f"""
                 INSERT INTO {SCHEMA}.ticket_comments
                 (ticket_id, user_id, comment, is_internal, requires_response, created_at)

@@ -12,6 +12,7 @@ import ReopenTicketButton from '@/components/tickets/ReopenTicketButton';
 import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { useTicketMarkRead } from '@/hooks/useTicketMarkRead';
+import { useToast } from '@/hooks/use-toast';
 
 const TicketDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ const TicketDetails = () => {
   const [confirmationMode, setConfirmationMode] = useState<'confirm' | 'reject' | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { user, hasPermission } = useAuth();
+  const { toast } = useToast();
 
   const {
     ticket,
@@ -98,6 +100,47 @@ const TicketDetails = () => {
   const isClosed = useMemo(
     () => !!statuses.find(s => s.id === ticket?.status_id)?.is_closed,
     [statuses, ticket?.status_id]
+  );
+
+  const showLockedToast = useCallback(() => {
+    toast({
+      title: 'Заявка закрыта',
+      description: 'Откройте её повторно, чтобы вносить изменения.',
+      variant: 'destructive',
+    });
+  }, [toast]);
+
+  const lockedHandleUpdateStatus = useCallback((statusId: number) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleUpdateStatus(statusId);
+  }, [isClosed, showLockedToast, handleUpdateStatus]);
+
+  const lockedHandleAssignUser = useCallback((userId: string) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleAssignUser(userId);
+  }, [isClosed, showLockedToast, handleAssignUser]);
+
+  const lockedHandleAssignGroup = useCallback((groupId: string) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleAssignGroup(groupId);
+  }, [isClosed, showLockedToast, handleAssignGroup]);
+
+  const lockedHandleUpdateDueDate = useCallback((dueDate: string | null) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleUpdateDueDate(dueDate);
+  }, [isClosed, showLockedToast, handleUpdateDueDate]);
+
+  const lockedHandleSendPing = useCallback(() => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleSendPing();
+  }, [isClosed, showLockedToast, handleSendPing]);
+
+  const lockedHandleSubmitComment = useCallback(
+    (parentCommentId?: number, mentionedUserIds?: number[], overrideText?: string) => {
+      if (isClosed) { showLockedToast(); return; }
+      return handleSubmitComment(parentCommentId, mentionedUserIds, overrideText);
+    },
+    [isClosed, showLockedToast, handleSubmitComment]
   );
   const needsCreatorConfirmation = isPendingConfirmation && isCreator;
 
@@ -221,28 +264,29 @@ const TicketDetails = () => {
               ticket={ticket}
               statuses={statuses}
               users={users}
-              updating={updating}
+              updating={updating || isClosed}
               sendingPing={sendingPing}
               isCustomer={ticket.created_by === user?.id}
               hasAssignee={!!ticket.assigned_to}
               executorGroups={executorGroups}
-              onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
-              onAssignUser={handleAssignUser}
-              onAssignGroup={handleAssignGroup}
-              onSendPing={handleSendPing}
+              onUpdateStatus={(statusId) => lockedHandleUpdateStatus(Number(statusId))}
+              onAssignUser={lockedHandleAssignUser}
+              onAssignGroup={lockedHandleAssignGroup}
+              onSendPing={lockedHandleSendPing}
               onApprovalChange={loadTicket}
-              onUpdateDueDate={handleUpdateDueDate}
+              onUpdateDueDate={lockedHandleUpdateDueDate}
               onReopened={loadTicket}
+              hidePing={isClosed}
             />
           </div>
 
           <div className="lg:hidden w-full space-y-2">
-            {ticket && (
+            {ticket && !isClosed && (
               <WaitingToggleButton
                 ticket={ticket}
                 statuses={statuses}
                 updating={updating}
-                onStatusChange={(statusId) => handleUpdateStatus(Number(statusId))}
+                onStatusChange={(statusId) => lockedHandleUpdateStatus(Number(statusId))}
                 className="w-full"
               />
             )}
@@ -274,17 +318,17 @@ const TicketDetails = () => {
                   ticket={ticket}
                   statuses={statuses}
                   users={users}
-                  updating={updating}
+                  updating={updating || isClosed}
                   sendingPing={sendingPing}
                   isCustomer={ticket.created_by === user?.id}
                   hasAssignee={!!ticket.assigned_to}
                   executorGroups={executorGroups}
-                  onUpdateStatus={(statusId) => handleUpdateStatus(Number(statusId))}
-                  onAssignUser={handleAssignUser}
-                  onAssignGroup={handleAssignGroup}
-                  onSendPing={handleSendPing}
+                  onUpdateStatus={(statusId) => lockedHandleUpdateStatus(Number(statusId))}
+                  onAssignUser={lockedHandleAssignUser}
+                  onAssignGroup={lockedHandleAssignGroup}
+                  onSendPing={lockedHandleSendPing}
                   onApprovalChange={loadTicket}
-                  onUpdateDueDate={handleUpdateDueDate}
+                  onUpdateDueDate={lockedHandleUpdateDueDate}
                   onReopened={loadTicket}
                   hidePing
                 />
@@ -294,26 +338,28 @@ const TicketDetails = () => {
 
 
 
-          <div className="lg:hidden w-full">
-            <Button
-              onClick={handleSendPing}
-              disabled={sendingPing}
-              size="lg"
-              className="w-full font-semibold bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              {sendingPing ? (
-                <>
-                  <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
-                  Отправка запроса...
-                </>
-              ) : (
-                <>
-                  <Icon name="Bell" size={18} className="mr-2" />
-                  Запросить статус
-                </>
-              )}
-            </Button>
-          </div>
+          {!isClosed && (
+            <div className="lg:hidden w-full">
+              <Button
+                onClick={lockedHandleSendPing}
+                disabled={sendingPing}
+                size="lg"
+                className="w-full font-semibold bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                {sendingPing ? (
+                  <>
+                    <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
+                    Отправка запроса...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Bell" size={18} className="mr-2" />
+                    Запросить статус
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
 
           <div className="min-w-0 lg:min-h-0 lg:flex lg:flex-col">
             <TicketDetailsContent
@@ -325,8 +371,8 @@ const TicketDetails = () => {
                 sendingPing={sendingPing}
                 userId={user?.id}
                 onCommentChange={setNewComment}
-                onSubmitComment={handleSubmitComment}
-                onSendPing={handleSendPing}
+                onSubmitComment={lockedHandleSubmitComment}
+                onSendPing={lockedHandleSendPing}
                 onReaction={handleReaction}
                 onTogglePin={handleTogglePin}
                 onDeleteComment={handleDeleteComment}
@@ -340,8 +386,12 @@ const TicketDetails = () => {
                 onRemoveAttachment={removeAttachment}
                 auditLogs={auditLogs}
                 loadingHistory={loadingHistory}
-                commentsBlocked={isReopened && !!isAssignee}
-                commentsBlockedMessage="Заявка открыта повторно. Для работы с ней необходимо сначала принять её в работу, изменив статус."
+                commentsBlocked={isClosed || (isReopened && !!isAssignee)}
+                commentsBlockedMessage={
+                  isClosed
+                    ? 'Заявка закрыта. Откройте её повторно, чтобы оставлять комментарии.'
+                    : 'Заявка открыта повторно. Для работы с ней необходимо сначала принять её в работу, изменив статус.'
+                }
                 participantIds={participantIds}
                 myLastSeenAt={myLastSeenAt}
                 onMarkRead={markCommentsRead}
