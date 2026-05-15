@@ -46,12 +46,14 @@ const ReopenTicketButton = ({ ticketId, onReopened, className }: ReopenTicketBut
   return (
     <>
       <Button
-        variant="outline"
-        size="sm"
-        className={className}
+        size="default"
+        className={
+          className ??
+          'bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 transition-all'
+        }
         onClick={() => setOpen(true)}
       >
-        <Icon name="RotateCcw" size={15} className="mr-2" />
+        <Icon name="RotateCcw" size={16} className="mr-2" />
         Открыть повторно
       </Button>
 
