@@ -36,7 +36,12 @@ def handler(event: dict, context) -> dict:
                           WHERE ta.ticket_id = n.ticket_id AND ta.approver_id = %s) AS is_approver
             FROM {SCHEMA}.notifications n
             LEFT JOIN {SCHEMA}.tickets t ON t.id = n.ticket_id
+            LEFT JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
             WHERE n.user_id = %s AND n.is_read = false
+              AND (n.ticket_id IS NULL OR (
+                   COALESCE(t.is_archived, false) = false
+                   AND COALESCE(ts.is_closed, false) = false
+              ))
         """, (user_id, user_id, user_id))
 
         rows = cur.fetchall()
