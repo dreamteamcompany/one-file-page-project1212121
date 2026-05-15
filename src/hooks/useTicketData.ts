@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URL, apiFetch } from '@/utils/api';
 import type { Ticket, TicketComment, TicketAuditLog, TicketStatus, User } from '@/types';
@@ -21,6 +21,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [participantIds, setParticipantIds] = useState<number[]>([]);
   const [myLastSeenAt, setMyLastSeenAt] = useState<string | null>(null);
+  const commentsAbortRef = useRef<AbortController | null>(null);
+  const commentsRequestIdRef = useRef<string | null>(null);
 
   const loadTicket = async (showLoader = true) => {
     try {
@@ -103,29 +105,67 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     }
   };
 
-  const loadComments = async () => {
-    try {
-      setLoadingComments(true);
-      const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
-      const response = await apiFetch(`${commentsUrl}?ticket_id=${id}`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setComments(data.comments || []);
-        if (Array.isArray(data.participant_ids)) {
-          setParticipantIds(data.participant_ids);
+  const loadComments = async (options?: { silent?: boolean; retries?: number }) => {
+    if (!id) return;
+    const silent = options?.silent ?? false;
+    const maxRetries = options?.retries ?? 2;
+
+    if (commentsAbortRef.current) {
+      commentsAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    commentsAbortRef.current = controller;
+
+    const requestTicketId = id;
+    commentsRequestIdRef.current = requestTicketId;
+
+    if (!silent) setLoadingComments(true);
+    const commentsUrl = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
+
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      try {
+        const response = await apiFetch(`${commentsUrl}?ticket_id=${requestTicketId}`, {
+          headers: {
+            'X-Auth-Token': token,
+          },
+          signal: controller.signal,
+        });
+
+        if (commentsRequestIdRef.current !== requestTicketId || controller.signal.aborted) {
+          return;
         }
-        if (typeof data.my_last_seen_at === 'string' || data.my_last_seen_at === null) {
-          setMyLastSeenAt(data.my_last_seen_at ?? null);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (commentsRequestIdRef.current !== requestTicketId || controller.signal.aborted) {
+            return;
+          }
+          setComments(data.comments || []);
+          if (Array.isArray(data.participant_ids)) {
+            setParticipantIds(data.participant_ids);
+          }
+          if (typeof data.my_last_seen_at === 'string' || data.my_last_seen_at === null) {
+            setMyLastSeenAt(data.my_last_seen_at ?? null);
+          }
+          if (!silent) setLoadingComments(false);
+          return;
         }
+        throw new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        attempt += 1;
+        if (attempt > maxRetries) {
+          console.error('Error loading comments:', error);
+          if (commentsRequestIdRef.current === requestTicketId && !silent) {
+            setLoadingComments(false);
+          }
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
       }
-    } catch (error) {
-      console.error('Error loading comments:', error);
-    } finally {
-      setLoadingComments(false);
     }
   };
 
@@ -164,6 +204,11 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   };
 
   useEffect(() => {
+    setComments([]);
+    setAuditLogs([]);
+    setParticipantIds([]);
+    setMyLastSeenAt(null);
+
     if (id && token) {
       loadTicket();
       loadStatuses();
@@ -172,6 +217,13 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       loadHistory();
       loadExecutorGroups();
     }
+
+    return () => {
+      if (commentsAbortRef.current) {
+        commentsAbortRef.current.abort();
+      }
+      commentsRequestIdRef.current = null;
+    };
   }, [id, token]);
 
   return {
