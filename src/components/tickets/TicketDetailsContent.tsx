@@ -227,7 +227,7 @@ const TicketDetailsContent = ({
 
   return (
     <>
-    <div className="flex-1 min-w-0 lg:pt-6 lg:pl-6 lg:flex lg:flex-col lg:min-h-0">
+    <div className="flex-1 min-w-0 lg:pl-6 lg:flex lg:flex-col lg:min-h-0">
       {/* Суть заявки */}
       <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
         {/* Строка: заголовок + метаданные + дополнительные поля */}
