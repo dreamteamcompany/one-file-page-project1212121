@@ -31,7 +31,7 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
         setLoading(true);
         const baseUrl = getApiUrl('tickets');
         const response = await apiFetch(
-          `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=4&page=1`
+          `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`
         );
         if (response.ok) {
           const data = await response.json();
