@@ -142,6 +142,42 @@ const TicketDetails = () => {
     },
     [isClosed, showLockedToast, handleSubmitComment]
   );
+
+  const lockedHandleReaction = useCallback((commentId: number, emoji: string) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleReaction(commentId, emoji);
+  }, [isClosed, showLockedToast, handleReaction]);
+
+  const lockedHandleTogglePin = useCallback((commentId: number) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleTogglePin(commentId);
+  }, [isClosed, showLockedToast, handleTogglePin]);
+
+  const lockedHandleDeleteComment = useCallback((commentId: number) => {
+    if (isClosed) { showLockedToast(); return; }
+    return handleDeleteComment(commentId);
+  }, [isClosed, showLockedToast, handleDeleteComment]);
+
+  const lockedHandleEditComment = useCallback(
+    (commentId: number, data: { comment?: string; created_at?: string }) => {
+      if (isClosed) { showLockedToast(); return Promise.resolve(false); }
+      return handleEditComment(commentId, data);
+    },
+    [isClosed, showLockedToast, handleEditComment]
+  );
+
+  const lockedHandleUpdateContent = useCallback(
+    (payload: {
+      title?: string;
+      description?: string;
+      custom_fields?: Record<string, string>;
+      ticket_service_id?: number | null;
+    }) => {
+      if (isClosed) { showLockedToast(); return Promise.resolve(false); }
+      return handleUpdateContent(payload);
+    },
+    [isClosed, showLockedToast, handleUpdateContent]
+  );
   const needsCreatorConfirmation = isPendingConfirmation && isCreator;
 
   const handleBack = useCallback(() => {
@@ -274,7 +310,7 @@ const TicketDetails = () => {
               onAssignGroup={lockedHandleAssignGroup}
               onSendPing={lockedHandleSendPing}
               onApprovalChange={loadTicket}
-              onUpdateDueDate={lockedHandleUpdateDueDate}
+              onUpdateDueDate={isClosed ? undefined : lockedHandleUpdateDueDate}
               onReopened={loadTicket}
               hidePing={isClosed}
             />
@@ -328,7 +364,7 @@ const TicketDetails = () => {
                   onAssignGroup={lockedHandleAssignGroup}
                   onSendPing={lockedHandleSendPing}
                   onApprovalChange={loadTicket}
-                  onUpdateDueDate={lockedHandleUpdateDueDate}
+                  onUpdateDueDate={isClosed ? undefined : lockedHandleUpdateDueDate}
                   onReopened={loadTicket}
                   hidePing
                 />
@@ -373,10 +409,10 @@ const TicketDetails = () => {
                 onCommentChange={setNewComment}
                 onSubmitComment={lockedHandleSubmitComment}
                 onSendPing={lockedHandleSendPing}
-                onReaction={handleReaction}
-                onTogglePin={handleTogglePin}
-                onDeleteComment={handleDeleteComment}
-                onEditComment={handleEditComment}
+                onReaction={lockedHandleReaction}
+                onTogglePin={lockedHandleTogglePin}
+                onDeleteComment={lockedHandleDeleteComment}
+                onEditComment={lockedHandleEditComment}
                 canDeleteComments={isAdmin}
                 canEditComments={isAdmin}
                 availableUsers={users}
@@ -395,8 +431,8 @@ const TicketDetails = () => {
                 participantIds={participantIds}
                 myLastSeenAt={myLastSeenAt}
                 onMarkRead={markCommentsRead}
-                onUpdateContent={handleUpdateContent}
-                updating={updating}
+                onUpdateContent={isClosed ? undefined : lockedHandleUpdateContent}
+                updating={updating || isClosed}
                 headerSlot={
                   isClosed ? (
                     <ReopenTicketButton ticketId={ticket.id} onReopened={loadTicket} />
