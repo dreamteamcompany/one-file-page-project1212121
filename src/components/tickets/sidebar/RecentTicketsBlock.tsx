@@ -30,16 +30,24 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
       try {
         setLoading(true);
         const baseUrl = getApiUrl('tickets');
-        const response = await apiFetch(
-          `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`
-        );
+        const url = `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`;
+        console.log('[RecentTicketsBlock] request', { ticketId, createdBy, url });
+        const response = await apiFetch(url);
+        console.log('[RecentTicketsBlock] response status', response.status);
         if (response.ok) {
           const data = await response.json();
+          console.log('[RecentTicketsBlock] response data', {
+            total: data.total,
+            ticketsLen: (data.tickets || []).length,
+          });
           const allTickets: RecentTicket[] = data.tickets || [];
           const filtered = allTickets
             .filter((t) => t.id !== ticketId)
             .slice(0, 3);
           setTickets(filtered);
+        } else {
+          const text = await response.text().catch(() => '');
+          console.warn('[RecentTicketsBlock] non-ok response', response.status, text);
         }
       } catch (error) {
         console.error('Error loading recent tickets:', error);
