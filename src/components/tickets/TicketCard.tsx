@@ -157,11 +157,11 @@ const TicketCard = ({
             {ticket.status_name && (
               <Badge
                 variant="secondary"
-                className="text-xs max-w-full truncate"
+                className="text-xs max-w-full truncate border"
                 style={{
-                  backgroundColor: `${ticket.status_color}20`,
+                  backgroundColor: `${ticket.status_color}33`,
                   color: ticket.status_color,
-                  borderColor: ticket.status_color,
+                  borderColor: `${ticket.status_color}80`,
                 }}
               >
                 {ticket.status_name}

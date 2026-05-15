@@ -24,7 +24,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
   return (
     <>
       {ticket.due_date && deadline && (
-        <div className="hidden md:flex absolute inset-y-3 left-[76%] right-0 z-20 flex-col items-start justify-center gap-1.5 px-4 pointer-events-none">
+        <div className="hidden md:flex absolute inset-y-3 left-[76%] right-0 z-20 flex-col items-start justify-center gap-1.5 px-4 pointer-events-none border-l border-border">
           <span className="text-sm font-semibold truncate max-w-full" style={{ color: deadline.color }}>
             {deadline.label}
           </span>
@@ -46,7 +46,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
         </div>
       )}
 
-      <div className="hidden md:flex absolute inset-y-3 left-[63%] right-[24%] z-20 flex-col items-start justify-center gap-2 px-4 pointer-events-none">
+      <div className="hidden md:flex absolute inset-y-3 left-[63%] right-[24%] z-20 flex-col items-start justify-center gap-2 px-4 pointer-events-none border-l border-border">
         {ticket.created_at && (
           <div className="flex flex-col items-start gap-0.5 max-w-full">
             <span className="text-xs text-muted-foreground">Дата создания</span>
@@ -83,17 +83,17 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
         )}
       </div>
 
-      <div className="hidden md:flex absolute inset-y-3 left-[50%] right-[37%] z-20 flex-col items-start justify-center gap-2 px-4 pointer-events-none">
+      <div className="hidden md:flex absolute inset-y-3 left-[50%] right-[37%] z-20 flex-col items-start justify-center gap-2 px-4 pointer-events-none border-l border-border">
         {ticket.status_name && (
           <div className="flex flex-col items-start gap-0.5 max-w-full">
             <span className="text-xs text-muted-foreground">Статус</span>
             <Badge
               variant="secondary"
-              className="text-xs max-w-full truncate"
+              className="text-xs max-w-full truncate border"
               style={{
-                backgroundColor: `${ticket.status_color}20`,
+                backgroundColor: `${ticket.status_color}33`,
                 color: ticket.status_color,
-                borderColor: ticket.status_color,
+                borderColor: `${ticket.status_color}80`,
               }}
             >
               {ticket.status_name}
