@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import { Badge } from '@/components/ui/badge';
 import { apiFetch, getApiUrl } from '@/utils/api';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface RecentTicket {
   id: number;
@@ -61,15 +62,7 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
     };
   }, [ticketId, createdBy]);
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '—';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
+  const formatDate = (dateStr?: string) => formatDateOnlyMSK(dateStr) || '—';
 
   const getServiceName = (ticket: RecentTicket) => {
     if (ticket.ticket_service?.name) return ticket.ticket_service.name;

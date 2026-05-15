@@ -1,4 +1,5 @@
 import { UploadedAttachment } from '@/hooks/useFileUploader';
+import { formatDateMSK } from '@/utils/dateFormat';
 export type { HistoryLog } from './TicketEventItem';
 
 export interface Comment {
@@ -90,12 +91,5 @@ export function getInitials(name?: string): string {
 }
 
 export function formatDate(dateString?: string): string {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateMSK(dateString);
 }

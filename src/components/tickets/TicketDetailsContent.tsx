@@ -9,6 +9,7 @@ import EditTicketContentDialog from '@/components/tickets/EditTicketContentDialo
 import { isoToDisplay } from '@/components/ui/date-masked-input';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 import { useAuth } from '@/contexts/AuthContext';
+import { parseServerDate } from '@/utils/dateFormat';
 
 interface CustomField {
   id: number;
@@ -186,13 +187,15 @@ const TicketDetailsContent = ({
   }, []);
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    const d = parseServerDate(dateString);
+    if (!d) return '';
+    return d.toLocaleString('ru-RU', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Europe/Moscow',
     });
   };
 
@@ -200,7 +203,9 @@ const TicketDetailsContent = ({
     if (!dueDate) return null;
     
     const now = currentTime;
-    const due = new Date(dueDate).getTime();
+    const dueDateObj = parseServerDate(dueDate);
+    if (!dueDateObj) return null;
+    const due = dueDateObj.getTime();
     const timeLeft = due - now;
     
     if (timeLeft < 0) {

@@ -1,5 +1,6 @@
 import Icon from '@/components/ui/icon';
 import { formatDate } from './TicketCommentsTypes';
+import { parseServerDate } from '@/utils/dateFormat';
 
 export interface HistoryLog {
   id: number;
@@ -76,8 +77,8 @@ const EVENT_CONFIG: Record<string, {
     detail: (log) => {
       const fmt = (v?: string) => {
         if (!v || v === 'Не установлен' || v === 'Удален') return null;
-        const d = new Date(v);
-        if (Number.isNaN(d.getTime())) return v;
+        const d = parseServerDate(v);
+        if (!d) return v;
         return d.toLocaleString('ru-RU', {
           day: '2-digit', month: '2-digit', year: 'numeric',
           hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',

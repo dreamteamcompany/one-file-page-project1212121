@@ -1,6 +1,7 @@
 import Icon from '@/components/ui/icon';
 import { useState, useRef, useEffect } from 'react';
 import { useMentionSearch } from '@/hooks/useMentionSearch';
+import { getMskTimestamp } from '@/utils/dateFormat';
 
 
 import {
@@ -63,11 +64,7 @@ const TicketComments = ({
 
   const pinnedComments = [...comments]
     .filter((c) => c.is_pinned)
-    .sort((a, b) => {
-      const ta = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
-      const tb = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
-      return tb - ta;
-    });
+    .sort((a, b) => getMskTimestamp(b.pinned_at) - getMskTimestamp(a.pinned_at));
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -81,11 +78,7 @@ const TicketComments = ({
   }
   const frozenLastSeen = frozenLastSeenRef.current;
 
-  const sortedAsc = [...comments].sort((a, b) => {
-    const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return ta - tb;
-  });
+  const sortedAsc = [...comments].sort((a, b) => getMskTimestamp(a.created_at) - getMskTimestamp(b.created_at));
 
   type FeedItem =
     | { kind: 'comment'; data: Comment; idx: number }
@@ -98,11 +91,7 @@ const TicketComments = ({
     ...auditLogs
       .filter(log => !HIDDEN_FIELDS.has(log.field_name))
       .map(log => ({ kind: 'event' as const, data: log })),
-  ].sort((a, b) => {
-    const ta = new Date(a.data.created_at ?? 0).getTime();
-    const tb = new Date(b.data.created_at ?? 0).getTime();
-    return ta - tb;
-  });
+  ].sort((a, b) => getMskTimestamp(a.data.created_at) - getMskTimestamp(b.data.created_at));
 
   // Скролл вниз после загрузки комментариев
   useEffect(() => {
@@ -113,11 +102,10 @@ const TicketComments = ({
 
   const firstNewIndex = (() => {
     if (!frozenLastSeen || !currentUserId) return -1;
-    const cutoff = new Date(frozenLastSeen).getTime();
+    const cutoff = getMskTimestamp(frozenLastSeen);
     return sortedAsc.findIndex((c) => {
       if (c.user_id === currentUserId) return false;
-      const t = c.created_at ? new Date(c.created_at).getTime() : 0;
-      return t > cutoff;
+      return getMskTimestamp(c.created_at) > cutoff;
     });
   })();
 

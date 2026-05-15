@@ -5,6 +5,7 @@ import Icon from '@/components/ui/icon';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 import { Ticket, getDeadlineProgress } from './TicketsListTypes';
 import TicketCardDesktop from './TicketCardDesktop';
+import { parseServerDate } from '@/utils/dateFormat';
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -122,12 +123,13 @@ const TicketCard = ({
                     style={{ backgroundColor: '#f97316' }}
                     title={
                       ticket.client_replied_at
-                        ? `Последний ответ клиента: ${new Date(ticket.client_replied_at).toLocaleString('ru-RU', {
+                        ? `Последний ответ клиента: ${(parseServerDate(ticket.client_replied_at) ?? new Date()).toLocaleString('ru-RU', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit',
+                            timeZone: 'Europe/Moscow',
                           })}`
                         : 'Клиент оставил новый комментарий'
                     }

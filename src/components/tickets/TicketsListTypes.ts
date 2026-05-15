@@ -1,3 +1,5 @@
+import { getMskTimestamp } from '@/utils/dateFormat';
+
 export interface CustomField {
   id: number;
   name: string;
@@ -75,8 +77,9 @@ export interface DeadlineProgress {
 export const getDeadlineProgress = (dueDate?: string): DeadlineProgress | null => {
   if (!dueDate) return null;
 
-  const now = new Date().getTime();
-  const due = new Date(dueDate).getTime();
+  const now = Date.now();
+  const due = getMskTimestamp(dueDate);
+  if (!due) return null;
   const timeLeft = due - now;
 
   if (timeLeft < 0) {

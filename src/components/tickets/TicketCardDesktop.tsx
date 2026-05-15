@@ -1,6 +1,16 @@
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { Ticket, getDeadlineProgress } from './TicketsListTypes';
+import { parseServerDate } from '@/utils/dateFormat';
+
+const MSK_LIST_OPTS = {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Moscow',
+} as const;
 
 interface TicketCardDesktopProps {
   ticket: Ticket;
@@ -53,13 +63,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
             <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs max-w-full">
               <Icon name="Clock" size={11} className="flex-shrink-0" />
               <span className="truncate">
-                {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {(parseServerDate(ticket.created_at) ?? new Date()).toLocaleString('ru-RU', MSK_LIST_OPTS)}
               </span>
             </span>
           </div>
@@ -70,13 +74,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
             <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs max-w-full">
               <Icon name="Calendar" size={11} className="flex-shrink-0" />
               <span className="truncate">
-                {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {(parseServerDate(ticket.due_date) ?? new Date()).toLocaleString('ru-RU', MSK_LIST_OPTS)}
               </span>
             </span>
           </div>

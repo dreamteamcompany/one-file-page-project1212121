@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import Icon from '@/components/ui/icon';
+import { formatDateOnlyMSK, formatTimeMSK } from '@/utils/dateFormat';
 
 interface CommentAttachment {
   id: number;
@@ -43,16 +44,9 @@ const formatSize = (size: number): string => {
   return `${(size / 1024 / 1024 / 1024).toFixed(1)} ГБ`;
 };
 
-const formatDateGroup = (iso?: string) => {
-  if (!iso) return 'Без даты';
-  const d = new Date(iso);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-};
+const formatDateGroup = (iso?: string) => formatDateOnlyMSK(iso, { longMonth: true, withYear: true }) || 'Без даты';
 
-const formatTime = (iso?: string) => {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-};
+const formatTime = (iso?: string) => formatTimeMSK(iso);
 
 const isImage = (filename: string) => /\.(jpe?g|png|gif|webp|svg|bmp|heic|heif)$/i.test(filename);
 

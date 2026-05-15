@@ -1,3 +1,5 @@
+import { getMskTimestamp } from '@/utils/dateFormat';
+
 export interface User {
   id: number;
   name: string;
@@ -69,8 +71,9 @@ export interface DeadlineInfo {
 export const getDeadlineInfo = (dueDate?: string): DeadlineInfo | null => {
   if (!dueDate) return null;
   
-  const now = new Date().getTime();
-  const due = new Date(dueDate).getTime();
+  const now = Date.now();
+  const due = getMskTimestamp(dueDate);
+  if (!due) return null;
   const timeLeft = due - now;
   
   if (timeLeft < 0) {

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { apiFetch, API_URL } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface TicketConfirmationBlockProps {
   ticket: {
@@ -75,7 +76,7 @@ const TicketConfirmationBlock = ({
         <p className="text-xs text-muted-foreground">
           Заявка отправлена заказчику на проверку.
           {ticket.confirmation_sent_at && (
-            <> Отправлено {new Date(ticket.confirmation_sent_at).toLocaleDateString('ru-RU')}.</>
+            <> Отправлено {formatDateOnlyMSK(ticket.confirmation_sent_at)}.</>
           )}
         </p>
       </div>

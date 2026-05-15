@@ -1,4 +1,5 @@
 import Icon from '@/components/ui/icon';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface AuditLog {
   id: number;
@@ -17,16 +18,7 @@ interface TicketHistoryProps {
 }
 
 const TicketHistory = ({ logs, loading }: TicketHistoryProps) => {
-  const formatDateTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDateTime = (dateStr: string) => formatDateTimeMSK(dateStr);
 
   const getActionIcon = (action: string) => {
     switch (action) {

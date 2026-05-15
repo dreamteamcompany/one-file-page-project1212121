@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import DateMaskedInput from '@/components/ui/date-masked-input';
 import { Ticket, DeadlineInfo } from './types';
+import { parseServerDate, getMskHourMinute } from '@/utils/dateFormat';
 
 interface DeadlineSectionProps {
   ticket: Ticket;
@@ -27,8 +28,8 @@ const DeadlineSection = ({
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
   const [dueTimeValue, setDueTimeValue] = useState(() => {
     if (ticket.due_date) {
-      const date = new Date(ticket.due_date);
-      return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      const { hour, minute } = getMskHourMinute(ticket.due_date);
+      return `${hour}:${minute}`;
     }
     return '12:00';
   });
@@ -55,11 +56,11 @@ const DeadlineSection = ({
                   {responseDeadlineInfo.label}
                 </p>
                 <p className="text-xs" style={{ color: responseDeadlineInfo.color, opacity: 0.75 }}>
-                  {new Date(ticket.response_due_date).toLocaleDateString('ru-RU', {
-                    day: 'numeric', month: 'long', year: 'numeric'
+                  {(parseServerDate(ticket.response_due_date) ?? new Date()).toLocaleDateString('ru-RU', {
+                    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Moscow'
                   })}
                   {' в '}
-                  {new Date(ticket.response_due_date).toLocaleTimeString('ru-RU', {
+                  {(parseServerDate(ticket.response_due_date) ?? new Date()).toLocaleTimeString('ru-RU', {
                     hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow'
                   })}
                   {' МСК'}
@@ -176,13 +177,14 @@ const DeadlineSection = ({
                   {deadlineInfo.label}
                 </p>
                 <p className="text-xs" style={{ color: deadlineInfo.color, opacity: 0.75 }}>
-                  {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
+                  {(parseServerDate(ticket.due_date) ?? new Date()).toLocaleDateString('ru-RU', {
                     day: 'numeric',
                     month: 'long',
-                    year: 'numeric'
+                    year: 'numeric',
+                    timeZone: 'Europe/Moscow'
                   })}
                   {' в '}
-                  {new Date(ticket.due_date).toLocaleTimeString('ru-RU', {
+                  {(parseServerDate(ticket.due_date) ?? new Date()).toLocaleTimeString('ru-RU', {
                     hour: '2-digit',
                     minute: '2-digit',
                     timeZone: 'Europe/Moscow'

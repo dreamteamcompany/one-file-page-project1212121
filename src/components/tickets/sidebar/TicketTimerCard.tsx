@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
+import { getMskTimestamp } from '@/utils/dateFormat';
 
 interface TicketTimerCardProps {
   dueDate?: string;
@@ -21,7 +22,7 @@ const TicketTimerCard = ({ dueDate }: TicketTimerCardProps) => {
   const getTimeLeft = () => {
     if (!dueDate) return null;
     
-    const due = new Date(dueDate).getTime();
+    const due = getMskTimestamp(dueDate);
     const diff = due - currentTime;
     
     if (diff < 0) {
