@@ -1340,6 +1340,11 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
             cur.close()
             return response(404, {'error': 'Status not found'})
         
+        cur.execute(
+            f"UPDATE {SCHEMA}.tickets SET is_archived = %s WHERE status_id = %s AND COALESCE(is_archived, false) <> %s",
+            (bool(is_closed), status_id, bool(is_closed))
+        )
+        
         conn.commit()
         cur.close()
         return response(200, status)
