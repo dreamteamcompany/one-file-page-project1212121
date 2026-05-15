@@ -23,6 +23,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [myLastSeenAt, setMyLastSeenAt] = useState<string | null>(null);
   const commentsAbortRef = useRef<AbortController | null>(null);
   const commentsRequestIdRef = useRef<string | null>(null);
+  const historyAbortRef = useRef<AbortController | null>(null);
+  const historyRequestIdRef = useRef<string | null>(null);
 
   const loadTicket = async (showLoader = true) => {
     try {
@@ -85,23 +87,61 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     }
   };
 
-  const loadHistory = async () => {
-    try {
-      setLoadingHistory(true);
-      const historyUrl = 'https://functions.poehali.dev/429bf640-f15c-4a4f-b791-a7437061ba87';
-      const response = await apiFetch(`${historyUrl}?ticket_id=${id}`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAuditLogs(data.logs || []);
+  const loadHistory = async (options?: { silent?: boolean; retries?: number }) => {
+    if (!id) return;
+    const silent = options?.silent ?? false;
+    const maxRetries = options?.retries ?? 2;
+
+    if (historyAbortRef.current) {
+      historyAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+
+    const requestTicketId = id;
+    historyRequestIdRef.current = requestTicketId;
+
+    if (!silent) setLoadingHistory(true);
+    const historyUrl = 'https://functions.poehali.dev/429bf640-f15c-4a4f-b791-a7437061ba87';
+
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      try {
+        const response = await apiFetch(`${historyUrl}?ticket_id=${requestTicketId}`, {
+          headers: {
+            'X-Auth-Token': token,
+          },
+          signal: controller.signal,
+        });
+
+        if (historyRequestIdRef.current !== requestTicketId || controller.signal.aborted) {
+          return;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          if (historyRequestIdRef.current !== requestTicketId || controller.signal.aborted) {
+            return;
+          }
+          setAuditLogs(data.logs || []);
+          if (!silent) setLoadingHistory(false);
+          return;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        attempt += 1;
+        if (attempt > maxRetries) {
+          console.error('Error loading history:', error);
+          if (historyRequestIdRef.current === requestTicketId && !silent) {
+            setLoadingHistory(false);
+          }
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
       }
-    } catch (error) {
-      console.error('Error loading history:', error);
-    } finally {
-      setLoadingHistory(false);
     }
   };
 
@@ -223,6 +263,10 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
         commentsAbortRef.current.abort();
       }
       commentsRequestIdRef.current = null;
+      if (historyAbortRef.current) {
+        historyAbortRef.current.abort();
+      }
+      historyRequestIdRef.current = null;
     };
   }, [id, token]);
 
