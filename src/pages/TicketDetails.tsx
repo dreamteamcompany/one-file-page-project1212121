@@ -8,6 +8,7 @@ import TicketDetailsContent from '@/components/tickets/TicketDetailsContent';
 import TicketDetailsSidebar from '@/components/tickets/TicketDetailsSidebar';
 import WaitingToggleButton from '@/components/tickets/sidebar/WaitingToggleButton';
 import ConfirmationOverlay from '@/components/tickets/ConfirmationOverlay';
+import ReopenTicketButton from '@/components/tickets/ReopenTicketButton';
 import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { useTicketMarkRead } from '@/hooks/useTicketMarkRead';
@@ -92,6 +93,10 @@ const TicketDetails = () => {
   const isAssignee = user?.id === ticket?.assigned_to;
   const isReopened = useMemo(
     () => !!statuses.find(s => s.id === ticket?.status_id)?.is_reopened,
+    [statuses, ticket?.status_id]
+  );
+  const isClosed = useMemo(
+    () => !!statuses.find(s => s.id === ticket?.status_id)?.is_closed,
     [statuses, ticket?.status_id]
   );
   const needsCreatorConfirmation = isPendingConfirmation && isCreator;
@@ -342,6 +347,11 @@ const TicketDetails = () => {
                 onMarkRead={markCommentsRead}
                 onUpdateContent={handleUpdateContent}
                 updating={updating}
+                headerSlot={
+                  isClosed ? (
+                    <ReopenTicketButton ticketId={ticket.id} onReopened={loadTicket} />
+                  ) : null
+                }
               />
           </div>
           </div>

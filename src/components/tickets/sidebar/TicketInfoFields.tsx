@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import {
   Select,
@@ -10,13 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, API_URL } from '@/utils/api';
 import { getDeadlineInfo } from './ticket-info/types';
@@ -58,32 +50,8 @@ const TicketInfoFields = ({
   const { hasPermission, hasSystemRole, user, token } = useAuth();
   const canEditDueDate = hasPermission('tickets', 'edit_deadline') || hasSystemRole('admin');
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
-  const [reopenReason, setReopenReason] = useState('');
-  const [reopenLoading, setReopenLoading] = useState(false);
 
   const isAssignee = user?.id === ticket.assigned_to;
-  const currentStatus = statuses.find(s => s.id === ticket.status_id);
-  const isClosed = !!currentStatus?.is_closed;
-
-  const handleReopen = async () => {
-    if (!reopenReason.trim()) return;
-    setReopenLoading(true);
-    try {
-      const res = await apiFetch(`${API_URL}?endpoint=tickets`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
-        body: JSON.stringify({ id: ticket.id, action: 'reopen', reopen_reason: reopenReason.trim() }),
-      });
-      if (res.ok) {
-        setReopenDialogOpen(false);
-        setReopenReason('');
-        onReopened?.();
-      }
-    } finally {
-      setReopenLoading(false);
-    }
-  };
 
   const sendForConfirmation = async () => {
     setConfirmLoading(true);
@@ -249,51 +217,6 @@ const TicketInfoFields = ({
         </div>
       )}
 
-      {isClosed && (
-        <div className="p-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => setReopenDialogOpen(true)}
-          >
-            <Icon name="RotateCcw" size={15} className="mr-2" />
-            Открыть повторно
-          </Button>
-        </div>
-      )}
-
-      <Dialog open={reopenDialogOpen} onOpenChange={setReopenDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Открыть заявку повторно</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-sm text-muted-foreground mb-3">
-              Опишите причину повторного открытия заявки. Это поможет исполнителю понять, что нужно доделать.
-            </p>
-            <Textarea
-              placeholder="Укажите причину..."
-              value={reopenReason}
-              onChange={(e) => setReopenReason(e.target.value)}
-              rows={4}
-              className="resize-none"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setReopenDialogOpen(false); setReopenReason(''); }}>
-              Отмена
-            </Button>
-            <Button
-              disabled={!reopenReason.trim() || reopenLoading}
-              onClick={handleReopen}
-            >
-              {reopenLoading ? <Icon name="Loader2" size={15} className="mr-2 animate-spin" /> : <Icon name="RotateCcw" size={15} className="mr-2" />}
-              Открыть повторно
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

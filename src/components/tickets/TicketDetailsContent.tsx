@@ -131,6 +131,7 @@ interface TicketDetailsContentProps {
     ticket_service_id?: number | null;
   }) => Promise<boolean>;
   updating?: boolean;
+  headerSlot?: React.ReactNode;
 }
 
 const TicketDetailsContent = ({
@@ -164,6 +165,7 @@ const TicketDetailsContent = ({
   onMarkRead,
   onUpdateContent,
   updating,
+  headerSlot,
 }: TicketDetailsContentProps) => {
   const { user, hasPermission, hasSystemRole } = useAuth();
   const canCallPhone = hasSystemRole('admin', 'executor');
@@ -231,6 +233,11 @@ const TicketDetailsContent = ({
         {/* Строка: заголовок + метаданные + дополнительные поля */}
         <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
           <div className="flex-1 min-w-0">
+            {headerSlot && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {headerSlot}
+              </div>
+            )}
             <div className="flex items-start gap-2 mb-4 md:mb-6">
               <h1 className="text-xl md:text-2xl font-bold text-foreground flex-1 min-w-0 break-words">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
