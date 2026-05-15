@@ -26,32 +26,43 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
   const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const fetchOnce = async (): Promise<RecentTicket[] | null> => {
+      const baseUrl = getApiUrl('tickets');
+      const url = `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`;
+      const response = await apiFetch(url);
+      if (!response.ok) {
+        return null;
+      }
+      const data = await response.json();
+      return (data.tickets || []) as RecentTicket[];
+    };
+
     const loadRecentTickets = async () => {
-      try {
-        setLoading(true);
-        const baseUrl = getApiUrl('tickets');
-        const url = `${baseUrl}?endpoint=tickets&created_by=${createdBy}&limit=10&page=1&show_all=true`;
-        console.log('[RecentTicketsBlock] request', { ticketId, createdBy, url });
-        const response = await apiFetch(url);
-        console.log('[RecentTicketsBlock] response status', response.status);
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[RecentTicketsBlock] response data', {
-            total: data.total,
-            ticketsLen: (data.tickets || []).length,
-          });
-          const allTickets: RecentTicket[] = data.tickets || [];
-          const filtered = allTickets
-            .filter((t) => t.id !== ticketId)
-            .slice(0, 3);
-          setTickets(filtered);
-        } else {
-          const text = await response.text().catch(() => '');
-          console.warn('[RecentTicketsBlock] non-ok response', response.status, text);
+      setLoading(true);
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const result = await fetchOnce();
+          if (cancelled) return;
+          if (result !== null) {
+            const filtered = result
+              .filter((t) => t.id !== ticketId)
+              .slice(0, 3);
+            setTickets(filtered);
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          if (cancelled) return;
+          console.error('Error loading recent tickets (attempt ' + attempt + '):', error);
         }
-      } catch (error) {
-        console.error('Error loading recent tickets:', error);
-      } finally {
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+        }
+      }
+      if (!cancelled) {
         setLoading(false);
       }
     };
@@ -59,6 +70,10 @@ const RecentTicketsBlock = ({ ticketId, createdBy }: RecentTicketsBlockProps) =>
     if (createdBy) {
       loadRecentTickets();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [ticketId, createdBy]);
 
   const formatDate = (dateStr?: string) => {
