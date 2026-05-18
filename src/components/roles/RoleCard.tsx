@@ -57,8 +57,27 @@ const RoleCard = ({
     <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="text-lg font-bold mb-1">{role.name}</h3>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <h3 className="text-lg font-bold">{role.name}</h3>
+              {role.system_role ? (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-amber-500/10 text-amber-500"
+                  title="Системная роль — привязана к встроенной логике приложения, изменения и удаление ограничены"
+                >
+                  <Icon name="Lock" size={10} />
+                  Системная
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-muted text-muted-foreground"
+                  title="Обычная роль — права настраиваются вручную"
+                >
+                  <Icon name="UserCog" size={10} />
+                  Обычная
+                </span>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">{role.description}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
@@ -74,9 +93,21 @@ const RoleCard = ({
             </span>
           </div>
           {role.system_role && SYSTEM_ROLE_MAP[role.system_role] && (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${SYSTEM_ROLE_MAP[role.system_role].color}`}>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${SYSTEM_ROLE_MAP[role.system_role].color}`}
+              title={`Системный тип: ${role.system_role}`}
+            >
               <Icon name={SYSTEM_ROLE_MAP[role.system_role].icon} size={11} />
               {SYSTEM_ROLE_MAP[role.system_role].label}
+            </span>
+          )}
+          {role.system_role && !SYSTEM_ROLE_MAP[role.system_role] && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400"
+              title="Системный тип роли"
+            >
+              <Icon name="Cog" size={11} />
+              {role.system_role}
             </span>
           )}
         </div>
