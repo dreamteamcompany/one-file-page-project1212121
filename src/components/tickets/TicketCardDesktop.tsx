@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { Ticket, getDeadlineProgress } from './TicketsListTypes';
-import { parseServerDate } from '@/utils/dateFormat';
+import { parseServerDate, getDeadlineLeftLabel } from '@/utils/dateFormat';
 
 const MSK_LIST_OPTS = {
   day: 'numeric',
@@ -19,17 +19,7 @@ interface TicketCardDesktopProps {
 const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
   const deadline = ticket.due_date ? getDeadlineProgress(ticket.due_date) : null;
 
-  const getDeadlineLeftLabel = () => {
-    if (!ticket.due_date) return '';
-    const oneDay = 24 * 60 * 60 * 1000;
-    const oneHour = 60 * 60 * 1000;
-    const timeLeft = new Date(ticket.due_date).getTime() - new Date().getTime();
-    if (timeLeft < 0) return 'Просрочено';
-    const daysLeft = Math.floor(timeLeft / oneDay);
-    const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
-    if (daysLeft === 0) return `Осталось: ${hoursLeft} ч`;
-    return `Осталось: ${daysLeft} д ${hoursLeft} ч`;
-  };
+  const leftLabel = getDeadlineLeftLabel(ticket.due_date);
 
   return (
     <>
@@ -51,7 +41,7 @@ const TicketCardDesktop = ({ ticket }: TicketCardDesktopProps) => {
             })}
           </div>
           <span className="text-xs text-muted-foreground truncate max-w-full">
-            {getDeadlineLeftLabel()}
+            {leftLabel}
           </span>
         </div>
       )}

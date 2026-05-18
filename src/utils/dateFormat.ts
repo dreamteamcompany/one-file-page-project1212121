@@ -90,3 +90,82 @@ export const getMskTimestamp = (input?: string | number | Date | null): number =
   const d = parseAsUtc(input);
   return d ? d.getTime() : 0;
 };
+
+export type DeadlineSeverity = {
+  color: string;
+  label: string;
+  percent: number;
+  urgent: boolean;
+  overdue: boolean;
+};
+
+const COLOR_RED = '#ef4444';
+const COLOR_ORANGE = '#f97316';
+const COLOR_GREEN = '#22c55e';
+
+export const getDeadlineSeverity = (dueDate?: string | null): DeadlineSeverity | null => {
+  if (!dueDate) return null;
+  const due = getMskTimestamp(dueDate);
+  if (!due) return null;
+
+  const now = Date.now();
+  const timeLeft = due - now;
+
+  if (timeLeft < 0) {
+    return { color: COLOR_RED, label: 'Просрочена', percent: 100, urgent: true, overdue: true };
+  }
+
+  const oneHour = 60 * 60 * 1000;
+  const oneDay = 24 * oneHour;
+  const threeHours = 3 * oneHour;
+  const twoDays = 2 * oneDay;
+
+  const daysLeft = Math.floor(timeLeft / oneDay);
+  const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
+
+  if (timeLeft < threeHours) {
+    return {
+      color: COLOR_RED,
+      label: `Менее 3 часов (${hoursLeft} ч)`,
+      percent: 100,
+      urgent: true,
+      overdue: false,
+    };
+  }
+
+  if (timeLeft < twoDays) {
+    const label = daysLeft === 0
+      ? `Менее суток (${hoursLeft} ч)`
+      : `Остался ${daysLeft} день ${hoursLeft} ч`;
+    return {
+      color: COLOR_ORANGE,
+      label,
+      percent: 80,
+      urgent: true,
+      overdue: false,
+    };
+  }
+
+  const dayWord = daysLeft >= 2 && daysLeft <= 4 ? 'дня' : 'дней';
+  return {
+    color: COLOR_GREEN,
+    label: `Осталось ${daysLeft} ${dayWord} ${hoursLeft} ч`,
+    percent: 30,
+    urgent: false,
+    overdue: false,
+  };
+};
+
+export const getDeadlineLeftLabel = (dueDate?: string | null): string => {
+  if (!dueDate) return '';
+  const due = getMskTimestamp(dueDate);
+  if (!due) return '';
+  const timeLeft = due - Date.now();
+  if (timeLeft < 0) return 'Просрочено';
+  const oneHour = 60 * 60 * 1000;
+  const oneDay = 24 * oneHour;
+  const daysLeft = Math.floor(timeLeft / oneDay);
+  const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
+  if (daysLeft === 0) return `Осталось: ${hoursLeft} ч`;
+  return `Осталось: ${daysLeft} д ${hoursLeft} ч`;
+};

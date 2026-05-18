@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { getDeadlineSeverity } from '@/utils/dateFormat';
 
 interface Ticket {
   id: number;
@@ -43,26 +44,9 @@ const TicketKanbanCard = ({ ticket, onClick, isDragging = false }: TicketKanbanC
   };
 
   const getDueDateInfo = (dueDate?: string) => {
-    if (!dueDate) return null;
-    
-    const now = new Date().getTime();
-    const due = new Date(dueDate).getTime();
-    const timeLeft = due - now;
-    
-    if (timeLeft < 0) {
-      return { color: '#ef4444', text: 'Просрочена', urgent: true };
-    }
-    
-    const oneDay = 24 * 60 * 60 * 1000;
-    const daysLeft = Math.ceil(timeLeft / oneDay);
-    
-    if (daysLeft <= 1) {
-      return { color: '#ef4444', text: `${daysLeft} день`, urgent: true };
-    } else if (daysLeft <= 3) {
-      return { color: '#f97316', text: `${daysLeft} дня`, urgent: true };
-    }
-    
-    return null;
+    const s = getDeadlineSeverity(dueDate);
+    if (!s) return null;
+    return { color: s.color, text: s.label, urgent: s.urgent };
   };
 
   const dueDateInfo = getDueDateInfo(ticket.due_date);

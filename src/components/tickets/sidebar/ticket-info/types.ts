@@ -1,4 +1,4 @@
-import { getMskTimestamp } from '@/utils/dateFormat';
+import { getDeadlineSeverity } from '@/utils/dateFormat';
 
 export interface User {
   id: number;
@@ -69,33 +69,7 @@ export interface DeadlineInfo {
 }
 
 export const getDeadlineInfo = (dueDate?: string): DeadlineInfo | null => {
-  if (!dueDate) return null;
-  
-  const now = Date.now();
-  const due = getMskTimestamp(dueDate);
-  if (!due) return null;
-  const timeLeft = due - now;
-  
-  if (timeLeft < 0) {
-    return { color: '#ef4444', label: 'Просрочена', urgent: true };
-  }
-  
-  const oneDay = 24 * 60 * 60 * 1000;
-  const oneHour = 60 * 60 * 1000;
-  const threeHours = 3 * oneHour;
-  const twoDays = 2 * oneDay;
-  const daysLeft = Math.floor(timeLeft / oneDay);
-  const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
-
-  if (timeLeft < threeHours) {
-    return { color: '#ef4444', label: `Менее 3 часов (${hoursLeft} ч)`, urgent: true };
-  }
-  if (timeLeft < twoDays) {
-    if (daysLeft === 0) {
-      return { color: '#f97316', label: `Менее суток (${hoursLeft} ч)`, urgent: true };
-    }
-    return { color: '#f97316', label: `Остался ${daysLeft} день ${hoursLeft} ч`, urgent: true };
-  }
-  const dayWord = daysLeft >= 2 && daysLeft <= 4 ? 'дня' : 'дней';
-  return { color: '#22c55e', label: `Осталось ${daysLeft} ${dayWord} ${hoursLeft} ч`, urgent: false };
+  const s = getDeadlineSeverity(dueDate);
+  if (!s) return null;
+  return { color: s.color, label: s.label, urgent: s.urgent };
 };

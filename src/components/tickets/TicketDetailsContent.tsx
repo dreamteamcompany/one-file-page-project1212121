@@ -9,7 +9,7 @@ import EditTicketContentDialog from '@/components/tickets/EditTicketContentDialo
 import { isoToDisplay } from '@/components/ui/date-masked-input';
 import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 import { useAuth } from '@/contexts/AuthContext';
-import { parseServerDate } from '@/utils/dateFormat';
+import { parseServerDate, getDeadlineSeverity } from '@/utils/dateFormat';
 
 interface CustomField {
   id: number;
@@ -200,36 +200,10 @@ const TicketDetailsContent = ({
   };
 
   const getDeadlineInfo = (dueDate?: string) => {
-    if (!dueDate) return null;
-    
-    const now = currentTime;
-    const dueDateObj = parseServerDate(dueDate);
-    if (!dueDateObj) return null;
-    const due = dueDateObj.getTime();
-    const timeLeft = due - now;
-    
-    if (timeLeft < 0) {
-      return { color: '#ef4444', label: 'Просрочена' };
-    }
-    
-    const oneDay = 24 * 60 * 60 * 1000;
-    const oneHour = 60 * 60 * 1000;
-    const threeHours = 3 * oneHour;
-    const twoDays = 2 * oneDay;
-    const daysLeft = Math.floor(timeLeft / oneDay);
-    const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
-
-    if (timeLeft < threeHours) {
-      return { color: '#ef4444', label: `Менее 3 часов (${hoursLeft} ч)` };
-    }
-    if (timeLeft < twoDays) {
-      if (daysLeft === 0) {
-        return { color: '#f97316', label: `Менее суток (${hoursLeft} ч)` };
-      }
-      return { color: '#f97316', label: `Остался ${daysLeft} день ${hoursLeft} ч` };
-    }
-    const dayWord = daysLeft >= 2 && daysLeft <= 4 ? 'дня' : 'дней';
-    return { color: '#22c55e', label: `Осталось ${daysLeft} ${dayWord} ${hoursLeft} ч` };
+    void currentTime;
+    const s = getDeadlineSeverity(dueDate);
+    if (!s) return null;
+    return { color: s.color, label: s.label };
   };
 
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
