@@ -559,6 +559,103 @@ def action_count(conn) -> dict:
     return {'pending': len(ids)}
 
 
+def action_dry_run(conn) -> dict:
+    """Считает, сколько заявок и связанных сущностей будет импортировано, без записи в БД."""
+    try:
+        all_req = vsdesk_list('/api/requests/')
+    except Exception as e:
+        return {'error': f'vsdesk_unreachable: {e}'}
+
+    mapping = load_status_mapping(conn)
+    enabled_statuses = {k for k, v in mapping.items() if v.get('sync_enabled')}
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT external_id FROM tickets WHERE external_source='vsdesk' AND external_id IS NOT NULL")
+        existing = {row['external_id'] for row in cur.fetchall()}
+
+    eligible_ids: List[str] = []
+    by_status: Dict[str, int] = {}
+    skipped_existing = 0
+    skipped_filtered = 0
+    no_status_raw = 0
+
+    for r in all_req:
+        ext_id = str(r.get('id') or '')
+        status_raw = (r.get('Status') or '').strip()
+        if not ext_id:
+            continue
+        if not status_raw:
+            no_status_raw += 1
+            continue
+        if ext_id in existing:
+            skipped_existing += 1
+            continue
+        if status_raw.lower() not in enabled_statuses:
+            skipped_filtered += 1
+            continue
+        eligible_ids.append(ext_id)
+        by_status[status_raw] = by_status.get(status_raw, 0) + 1
+
+    # Семплируем первые N для оценки объёма деталей
+    SAMPLE_LIMIT = 5
+    sample_ids = eligible_ids[:SAMPLE_LIMIT]
+    sample_stats = {
+        'sampled': 0,
+        'comments': 0,
+        'attachments': 0,
+        'history': 0,
+        'watchers': 0,
+        'custom_fields': 0,
+        'errors': 0,
+    }
+    for ext in sample_ids:
+        try:
+            d = vsdesk_raw(f'/api/requests/{ext}/')
+        except Exception:
+            sample_stats['errors'] += 1
+            continue
+        if not isinstance(d, dict):
+            sample_stats['errors'] += 1
+            continue
+        sample_stats['sampled'] += 1
+        subs = d.get('subs') or []
+        sample_stats['comments'] += len(subs)
+        att_in_subs = sum(len(c.get('files') or []) for c in subs if isinstance(c, dict))
+        sample_stats['attachments'] += len(d.get('files') or []) + att_in_subs
+        sample_stats['history'] += len(d.get('history') or d.get('log') or [])
+        sample_stats['watchers'] += len(d.get('watchers') or d.get('observers') or [])
+        cf = d.get('custom_fields') or d.get('fields') or {}
+        if isinstance(cf, dict):
+            sample_stats['custom_fields'] += len(cf)
+        elif isinstance(cf, list):
+            sample_stats['custom_fields'] += len(cf)
+
+    # Прогноз: среднее × кол-во заявок
+    forecast = {}
+    if sample_stats['sampled'] > 0 and eligible_ids:
+        for key in ('comments', 'attachments', 'history', 'watchers', 'custom_fields'):
+            avg = sample_stats[key] / sample_stats['sampled']
+            forecast[key] = round(avg * len(eligible_ids))
+
+    return {
+        'total_in_vsdesk': len(all_req),
+        'will_import': len(eligible_ids),
+        'already_imported': skipped_existing,
+        'filtered_by_status': skipped_filtered,
+        'no_status_raw': no_status_raw,
+        'by_status': [{'vsdesk_status': k, 'count': v} for k, v in sorted(by_status.items(), key=lambda x: -x[1])],
+        'sample': {
+            'sampled_tickets': sample_stats['sampled'],
+            'comments': sample_stats['comments'],
+            'attachments': sample_stats['attachments'],
+            'history': sample_stats['history'],
+            'watchers': sample_stats['watchers'],
+            'custom_fields': sample_stats['custom_fields'],
+        },
+        'forecast': forecast,
+    }
+
+
 def action_sync_batch(conn, offset: int, limit: int) -> dict:
     ids = collect_eligible_ext_ids(conn)
     total = len(ids)
@@ -619,6 +716,9 @@ def handler(event: dict, context) -> dict:
 
         if action == 'count' and method == 'GET':
             return api_response(200, action_count(conn))
+
+        if action == 'dry_run' and method == 'GET':
+            return api_response(200, action_dry_run(conn))
 
         if action in ('sync', '') and method in ('GET', 'POST'):
             try:

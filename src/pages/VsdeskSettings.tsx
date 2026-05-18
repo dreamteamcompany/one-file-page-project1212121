@@ -44,6 +44,36 @@ const VsdeskSettings = () => {
   const [syncRunning, setSyncRunning] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
 
+  const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<{
+    total_in_vsdesk: number;
+    will_import: number;
+    already_imported: number;
+    filtered_by_status: number;
+    by_status: { vsdesk_status: string; count: number }[];
+    sample: { sampled_tickets: number; comments: number; attachments: number; history: number; watchers: number; custom_fields: number };
+    forecast: { comments?: number; attachments?: number; history?: number; watchers?: number; custom_fields?: number };
+  } | null>(null);
+
+  const handleDryRun = async () => {
+    setDryRunLoading(true);
+    setDryRunResult(null);
+    try {
+      await handleSave();
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=dry_run`);
+      const data = await res.json();
+      if (data.error) {
+        toast({ title: data.error, variant: 'destructive' });
+      } else {
+        setDryRunResult(data);
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения с vsDesk', variant: 'destructive' });
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!hasPermission('settings', 'read')) {
       navigate('/tickets');
@@ -212,6 +242,16 @@ const VsdeskSettings = () => {
               Сохранить настройки
             </Button>
             <Button
+              onClick={handleDryRun}
+              disabled={dryRunLoading || loading || enabledCount === 0}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+            >
+              <Icon name={dryRunLoading ? 'Loader2' : 'Eye'} size={14} className={dryRunLoading ? 'animate-spin' : ''} />
+              {dryRunLoading ? 'Считаем...' : 'Сухой прогон'}
+            </Button>
+            <Button
               onClick={handleRunSync}
               disabled={syncRunning || loading || enabledCount === 0}
               size="sm"
@@ -221,6 +261,77 @@ const VsdeskSettings = () => {
               {syncRunning ? 'Синхронизация...' : 'Запустить синхронизацию'}
             </Button>
           </div>
+
+          {dryRunResult && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon name="Eye" size={16} className="text-blue-500" />
+                <p className="text-sm font-medium">Прогноз импорта (без записи)</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Всего в vsDesk</span>
+                  <span className="text-lg font-semibold">{dryRunResult.total_in_vsdesk}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Будет импортировано</span>
+                  <span className="text-lg font-semibold text-green-500">{dryRunResult.will_import}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Уже импортировано</span>
+                  <span className="text-lg font-semibold">{dryRunResult.already_imported}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground">Пропущено по статусу</span>
+                  <span className="text-lg font-semibold">{dryRunResult.filtered_by_status}</span>
+                </div>
+              </div>
+              {dryRunResult.by_status.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-1">К импорту по статусам:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {dryRunResult.by_status.map((s) => (
+                      <span
+                        key={s.vsdesk_status}
+                        className="text-xs px-2 py-1 rounded-md bg-background border border-border/50"
+                      >
+                        {s.vsdesk_status}: <b>{s.count}</b>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {dryRunResult.sample.sampled_tickets > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Прогноз связанных данных (на основе выборки из {dryRunResult.sample.sampled_tickets} заявок):
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground">Комментариев</span>
+                      <span className="font-semibold">≈ {dryRunResult.forecast.comments ?? 0}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground">Вложений</span>
+                      <span className="font-semibold">≈ {dryRunResult.forecast.attachments ?? 0}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground">Истории</span>
+                      <span className="font-semibold">≈ {dryRunResult.forecast.history ?? 0}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground">Наблюдателей</span>
+                      <span className="font-semibold">≈ {dryRunResult.forecast.watchers ?? 0}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-muted-foreground">Кастомных полей</span>
+                      <span className="font-semibold">≈ {dryRunResult.forecast.custom_fields ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {syncRunning || syncProgress.total > 0 ? (
             <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
