@@ -280,11 +280,28 @@ def import_one_ticket(conn, ext_id: str, mapping: Dict[str, Dict[str, Any]],
     if not target_status_id:
         return {'status': 'error', 'reason': 'no_target_status'}
 
+    # Признак "закрытого" статуса -> архивация
+    is_archived_flag = False
+    closed_at_value = None
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT is_closed, is_open FROM ticket_statuses WHERE id = %s",
+            (target_status_id,)
+        )
+        st = cur.fetchone()
+        if st:
+            is_archived_flag = bool(st.get('is_closed')) or (st.get('is_open') is False and not st.get('is_open'))
+            # Берём только явный is_closed = TRUE
+            is_archived_flag = bool(st.get('is_closed'))
+
     title = (req.get('Name') or 'Без темы')[:500]
     description = strip_html(req.get('Content') or '')
     due_date = req.get('timestampEnd') or None
     created_at = req.get('timestamp') or None
     priority_id = map_priority(req.get('Priority') or '')
+
+    if is_archived_flag:
+        closed_at_value = req.get('timestampClose') or req.get('timestampEnd') or created_at
 
     author_email = req.get('UserEmail') or req.get('AuthorEmail') or ''
     author_name = req.get('UserName') or req.get('Author') or req.get('FIO') or ''
@@ -298,16 +315,38 @@ def import_one_ticket(conn, ext_id: str, mapping: Dict[str, Dict[str, Any]],
     if executor_name or executor_email or executor_vsdesk_id:
         assigned_to = find_or_create_user(conn, executor_email, executor_name, executor_vsdesk_id)
 
+    # Пытаемся сохранить номер заявки = vsDesk id
+    explicit_id: Optional[int] = None
+    if ext_id.isdigit():
+        candidate = int(ext_id)
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM tickets WHERE id = %s", (candidate,))
+            if not cur.fetchone():
+                explicit_id = candidate
+
     with conn.cursor() as cur:
-        cur.execute(
-            """INSERT INTO tickets
-               (title, description, status_id, priority_id, created_by, assigned_to,
-                due_date, created_at, external_id, external_source)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'vsdesk')
-               RETURNING id""",
-            (title, description, target_status_id, priority_id, created_by_user,
-             assigned_to, due_date, created_at, ext_id)
-        )
+        if explicit_id is not None:
+            cur.execute(
+                """INSERT INTO tickets
+                   (id, title, description, status_id, priority_id, created_by, assigned_to,
+                    due_date, created_at, closed_at, is_archived, external_id, external_source)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'vsdesk')
+                   RETURNING id""",
+                (explicit_id, title, description, target_status_id, priority_id,
+                 created_by_user, assigned_to, due_date, created_at,
+                 closed_at_value, is_archived_flag, ext_id)
+            )
+        else:
+            cur.execute(
+                """INSERT INTO tickets
+                   (title, description, status_id, priority_id, created_by, assigned_to,
+                    due_date, created_at, closed_at, is_archived, external_id, external_source)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'vsdesk')
+                   RETURNING id""",
+                (title, description, target_status_id, priority_id, created_by_user,
+                 assigned_to, due_date, created_at,
+                 closed_at_value, is_archived_flag, ext_id)
+            )
         local_id = cur.fetchone()['id']
 
     counters = {'comments': 0, 'attachments': 0, 'history': 0, 'watchers': 0, 'custom_fields': 0}
@@ -656,6 +695,40 @@ def action_dry_run(conn) -> dict:
     }
 
 
+def action_bump_sequence(conn) -> dict:
+    """Двигает tickets_id_seq выше максимального vsDesk id, чтобы новые заявки не конфликтовали."""
+    try:
+        all_req = vsdesk_list('/api/requests/')
+    except Exception as e:
+        return {'success': False, 'error': f'vsdesk_unreachable: {e}'}
+
+    max_vsdesk = 0
+    for r in all_req:
+        try:
+            v = int(r.get('id') or 0)
+            if v > max_vsdesk:
+                max_vsdesk = v
+        except Exception:
+            continue
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT COALESCE(MAX(id), 0) AS m FROM tickets")
+        max_local = cur.fetchone()['m'] or 0
+        # sequence имя
+        cur.execute("SELECT pg_get_serial_sequence('tickets', 'id') AS seq")
+        seq_name = cur.fetchone()['seq']
+        target = max(max_local, max_vsdesk) + 1
+        # setval устанавливает текущее значение; следующий nextval = target + 1, поэтому даём target-1
+        cur.execute(f"SELECT setval('{seq_name}', %s, true)", (max(target - 1, 1),))
+    conn.commit()
+    return {
+        'success': True,
+        'max_vsdesk_id': max_vsdesk,
+        'max_local_id': max_local,
+        'next_id_will_be': target,
+    }
+
+
 def action_purge(conn) -> dict:
     """Удаляет все заявки vsDesk и связанные данные. Файлы в S3 удаляет по возможности."""
     s3 = get_s3_client()
@@ -975,6 +1048,9 @@ def handler(event: dict, context) -> dict:
 
         if action == 'purge' and method in ('POST', 'DELETE'):
             return api_response(200, action_purge(conn))
+
+        if action == 'bump_sequence' and method == 'POST':
+            return api_response(200, action_bump_sequence(conn))
 
         if action == 'start_job' and method == 'POST':
             return api_response(200, action_start_job(conn))

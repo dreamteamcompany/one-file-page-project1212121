@@ -126,6 +126,31 @@ const VsdeskSettings = () => {
     }
   };
 
+  const [bumpLoading, setBumpLoading] = useState(false);
+  const [bumpResult, setBumpResult] = useState<{ max_vsdesk_id: number; max_local_id: number; next_id_will_be: number } | null>(null);
+
+  const handleBumpSequence = async () => {
+    const ok = window.confirm(
+      'Сейчас будет сдвинута нумерация заявок выше максимума vsDesk. После этого новые локальные заявки начнутся с большего номера, а импортированные сохранят оригинальные id vsDesk. Продолжить?'
+    );
+    if (!ok) return;
+    setBumpLoading(true);
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=bump_sequence`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setBumpResult(data);
+        toast({ title: `Нумерация сдвинута. Следующий id: ${data.next_id_will_be}` });
+      } else {
+        toast({ title: data.error || 'Не удалось сдвинуть нумерацию', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setBumpLoading(false);
+    }
+  };
+
   const [purgeLoading, setPurgeLoading] = useState(false);
   const [purgeResult, setPurgeResult] = useState<{
     tickets: number;
@@ -369,6 +394,17 @@ const VsdeskSettings = () => {
             <Button onClick={handleSave} disabled={saving || loading} size="sm" className="gap-2">
               <Icon name="Save" size={14} />
               Сохранить настройки
+            </Button>
+            <Button
+              onClick={handleBumpSequence}
+              disabled={bumpLoading}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              title="Сдвинуть нумерацию выше vsDesk — нажмите ОДИН раз перед первой синхронизацией"
+            >
+              <Icon name={bumpLoading ? 'Loader2' : 'Hash'} size={14} className={bumpLoading ? 'animate-spin' : ''} />
+              {bumpLoading ? 'Сдвигаем...' : 'Подготовить нумерацию'}
             </Button>
             <Button
               onClick={handleDryRun}
@@ -644,6 +680,29 @@ const VsdeskSettings = () => {
               )}
             </div>
           ) : null}
+
+          {bumpResult && (
+            <div className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="Hash" size={16} className="text-amber-500" />
+                <p className="text-sm font-medium">Нумерация подготовлена</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Макс. id в vsDesk</span>
+                  <span className="font-semibold">{bumpResult.max_vsdesk_id}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Макс. id у нас</span>
+                  <span className="font-semibold">{bumpResult.max_local_id}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">След. локальный id</span>
+                  <span className="font-semibold text-green-500">{bumpResult.next_id_will_be}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {purgeResult && (
             <div className="mt-4 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
