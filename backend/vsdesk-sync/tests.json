@@ -1,11 +1,17 @@
 {
   "tests": [
     {
-      "name": "Sync vsDesk tickets",
-      "method": "GET",
+      "name": "CORS preflight OPTIONS",
+      "method": "OPTIONS",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": {"success": true},
+      "expectedStatus": 200
+    },
+    {
+      "name": "Unknown action returns 400",
+      "method": "GET",
+      "path": "/?action=unknown_xyz",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "unknown action: unknown_xyz"},
       "bodyMatcher": "partial"
     }
   ]

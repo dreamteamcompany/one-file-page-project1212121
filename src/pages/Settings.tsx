@@ -71,12 +71,38 @@ const Settings = () => {
   const handleVsdeskSync = async () => {
     setSyncLoading(true);
     setSyncResult(null);
+    let offset = 0;
+    const limit = 10;
+    let totals = { inserted: 0, skipped: 0, filtered: 0, errors: 0, processed: 0, total: 0 };
+    let safetyHops = 0;
     try {
-      const res = await fetch(func2url['vsdesk-sync']);
-      const data = await res.json();
+      while (true) {
+        safetyHops += 1;
+        if (safetyHops > 1000) break;
+        const res = await fetch(`${func2url['vsdesk-sync']}?action=sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offset, limit }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setSyncResult({ success: false, message: data.error || 'Ошибка синхронизации' });
+          return;
+        }
+        totals = {
+          inserted: totals.inserted + (data.inserted || 0),
+          skipped: totals.skipped + (data.skipped || 0),
+          filtered: totals.filtered + (data.filtered || 0),
+          errors: totals.errors + (data.errors || 0),
+          processed: data.processed,
+          total: data.total,
+        };
+        if (data.done || data.batch_size === 0) break;
+        offset = data.next_offset;
+      }
       setSyncResult({
-        success: data.success,
-        message: data.message || 'Синхронизация завершена',
+        success: true,
+        message: `Готово. Добавлено: ${totals.inserted}, пропущено: ${totals.skipped}, ошибок: ${totals.errors}`,
       });
     } catch {
       setSyncResult({ success: false, message: 'Ошибка соединения с vsDesk' });
@@ -230,15 +256,24 @@ const Settings = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium">vsDesk</p>
-                  <p className="text-xs text-muted-foreground">Заявки и комментарии</p>
+                  <p className="text-xs text-muted-foreground">Заявки, комментарии, файлы, история, наблюдатели</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 {syncResult && (
                   <span className={`text-xs ${syncResult.success ? 'text-green-500' : 'text-red-500'}`}>
                     {syncResult.message}
                   </span>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate('/settings/vsdesk')}
+                  className="gap-2"
+                >
+                  <Icon name="Settings" size={14} />
+                  Настроить
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"

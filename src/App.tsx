@@ -15,6 +15,7 @@ import Roles from "./pages/Roles";
 import CustomFields from "./pages/CustomFields";
 import LogAnalyzer from "./pages/LogAnalyzer";
 import Settings from "./pages/Settings";
+import VsdeskSettings from "./pages/VsdeskSettings";
 import Tickets from "./pages/Tickets";
 import TicketDetails from "./pages/TicketDetails";
 import TicketServices from "./pages/TicketServices";
@@ -61,6 +62,7 @@ const App = () => {
             <Route path="/custom-fields" element={<ProtectedRoute requiredPermission={{ resource: 'custom_fields', action: 'read' }}><CustomFields /></ProtectedRoute>} />
             <Route path="/log-analyzer" element={<ProtectedRoute><LogAnalyzer /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/settings/vsdesk" element={<ProtectedRoute><VsdeskSettings /></ProtectedRoute>} />
             <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
             <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetails /></ProtectedRoute>} />
             <Route path="/ticket-services" element={<ProtectedRoute><TicketServices /></ProtectedRoute>} />
