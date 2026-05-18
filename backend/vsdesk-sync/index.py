@@ -496,6 +496,275 @@ def import_one_ticket(conn, ext_id: str, mapping: Dict[str, Dict[str, Any]],
 
 
 # =====================================================================
+# Обновление уже импортированной заявки (delta)
+# =====================================================================
+
+def update_one_ticket(conn, ext_id: str, mapping: Dict[str, Dict[str, Any]],
+                       default_status_id: Optional[int],
+                       system_user_id: int) -> Dict[str, Any]:
+    """Догружает изменения для уже импортированной заявки. vsDesk — источник истины."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM tickets WHERE external_source='vsdesk' AND external_id=%s LIMIT 1",
+            (ext_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return {'status': 'skipped', 'reason': 'not_imported_yet'}
+        local_id = row['id']
+
+    try:
+        req = vsdesk_raw(f'/api/requests/{ext_id}/')
+    except Exception as e:
+        return {'status': 'error', 'reason': f'fetch_failed: {e}'}
+
+    if not isinstance(req, dict):
+        return {'status': 'error', 'reason': 'invalid_response'}
+
+    status_raw = (req.get('Status') or '').strip()
+    status_key = status_raw.lower()
+    map_row = mapping.get(status_key)
+
+    # Маппинг может отсутствовать (статус изменился). Не падаем: оставляем текущий статус.
+    target_status_id = (map_row.get('status_id') if map_row else None) or None
+    is_archived_flag: Optional[bool] = None
+    closed_at_value = None
+    if target_status_id:
+        with conn.cursor() as cur:
+            cur.execute("SELECT is_closed FROM ticket_statuses WHERE id = %s", (target_status_id,))
+            st = cur.fetchone()
+            if st:
+                is_archived_flag = bool(st.get('is_closed'))
+                if is_archived_flag:
+                    closed_at_value = req.get('timestampClose') or req.get('timestampEnd') or None
+
+    title = (req.get('Name') or 'Без темы')[:500]
+    description = strip_html(req.get('Content') or '')
+    due_date = req.get('timestampEnd') or None
+    priority_id = map_priority(req.get('Priority') or '')
+
+    author_email = req.get('UserEmail') or req.get('AuthorEmail') or ''
+    author_name = req.get('UserName') or req.get('Author') or req.get('FIO') or ''
+    author_vsdesk_id = str(req.get('user_id') or req.get('UserId') or '')
+    author_user = find_or_create_user(conn, author_email, author_name, author_vsdesk_id)
+
+    executor_email = req.get('ExecutorEmail') or req.get('ExpertEmail') or ''
+    executor_name = req.get('Executor') or req.get('Expert') or ''
+    executor_vsdesk_id = str(req.get('executor_id') or req.get('expert_id') or '')
+    assigned_to = None
+    if executor_name or executor_email or executor_vsdesk_id:
+        assigned_to = find_or_create_user(conn, executor_email, executor_name, executor_vsdesk_id)
+
+    # UPDATE заявки
+    update_parts = ['title = %s', 'description = %s', 'priority_id = %s', 'due_date = %s',
+                    'updated_at = CURRENT_TIMESTAMP']
+    update_vals: List[Any] = [title, description, priority_id, due_date]
+
+    if target_status_id is not None:
+        update_parts.append('status_id = %s')
+        update_vals.append(target_status_id)
+    if is_archived_flag is not None:
+        update_parts.append('is_archived = %s')
+        update_vals.append(is_archived_flag)
+        if is_archived_flag and closed_at_value:
+            update_parts.append('closed_at = %s')
+            update_vals.append(closed_at_value)
+    if assigned_to is not None:
+        update_parts.append('assigned_to = %s')
+        update_vals.append(assigned_to)
+    if author_user is not None:
+        update_parts.append('created_by = %s')
+        update_vals.append(author_user)
+
+    update_vals.append(local_id)
+    with conn.cursor() as cur:
+        cur.execute(
+            f"UPDATE tickets SET {', '.join(update_parts)} WHERE id = %s",
+            tuple(update_vals)
+        )
+
+    counters = {'comments': 0, 'attachments': 0, 'history': 0, 'watchers': 0, 'custom_fields': 0}
+
+    # === Новые комментарии ===
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM ticket_comments WHERE ticket_id=%s AND external_source='vsdesk' AND external_id IS NOT NULL",
+            (local_id,)
+        )
+        existing_comments = {r['external_id'] for r in cur.fetchall()}
+
+    for c in (req.get('subs') or []):
+        try:
+            ext_comment_id = str(c.get('id') or '')
+            if not ext_comment_id or ext_comment_id in existing_comments:
+                continue
+            text = strip_html(c.get('comment') or '')
+            if not text and not (c.get('files') or c.get('file')):
+                continue
+            ts_raw = c.get('timestamp') or ''
+            c_created = parse_ts(ts_raw)
+            is_internal = bool(c.get('show') == 1)
+            c_email = c.get('UserEmail') or ''
+            c_name = c.get('UserName') or c.get('Author') or ''
+            c_vsdesk_id = str(c.get('user_id') or '')
+            comment_user = find_or_create_user(conn, c_email, c_name, c_vsdesk_id) or system_user_id
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO ticket_comments
+                       (ticket_id, user_id, comment, is_internal, created_at, external_id, external_source)
+                       VALUES (%s, %s, %s, %s, %s, %s, 'vsdesk')
+                       RETURNING id""",
+                    (local_id, comment_user, text or '(вложение)', is_internal, c_created, ext_comment_id)
+                )
+                new_comment_id = cur.fetchone()['id']
+            counters['comments'] += 1
+
+            for f in (c.get('files') or []):
+                fname = f.get('name') or f.get('filename') or 'file'
+                furl = f.get('url') or f.get('path') or ''
+                content = vsdesk_download(furl) if furl else None
+                final_url = upload_to_s3(content, fname) if content else (furl if furl.startswith('http') else f'{VSDESK_URL}{furl}')
+                fsize = f.get('size') or (len(content) if content else 0)
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO comment_attachments
+                           (comment_id, filename, url, size, external_id, external_source)
+                           VALUES (%s, %s, %s, %s, %s, 'vsdesk')""",
+                        (new_comment_id, fname, final_url, fsize, str(f.get('id') or ''))
+                    )
+                counters['attachments'] += 1
+        except Exception:
+            continue
+
+    # === Новые вложения самой заявки ===
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM ticket_attachments WHERE ticket_id=%s AND external_source='vsdesk' AND external_id IS NOT NULL",
+            (local_id,)
+        )
+        existing_atts = {r['external_id'] for r in cur.fetchall()}
+
+    for f in (req.get('files') or []):
+        try:
+            ext_att_id = str(f.get('id') or '')
+            if ext_att_id and ext_att_id in existing_atts:
+                continue
+            fname = f.get('name') or f.get('filename') or 'file'
+            furl = f.get('url') or f.get('path') or ''
+            content = vsdesk_download(furl) if furl else None
+            final_url = upload_to_s3(content, fname) if content else (furl if furl.startswith('http') else f'{VSDESK_URL}{furl}')
+            fsize = f.get('size') or (len(content) if content else 0)
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO ticket_attachments
+                       (ticket_id, filename, url, size, uploaded_by, external_id, external_source)
+                       VALUES (%s, %s, %s, %s, %s, %s, 'vsdesk')""",
+                    (local_id, fname, final_url, fsize, author_user or system_user_id, ext_att_id or None)
+                )
+            counters['attachments'] += 1
+        except Exception:
+            continue
+
+    # === Новые наблюдатели ===
+    watchers = req.get('watchers') or req.get('observers') or []
+    for w in watchers:
+        try:
+            w_email = w.get('email') if isinstance(w, dict) else ''
+            w_name = (w.get('name') or w.get('full_name') or '') if isinstance(w, dict) else str(w)
+            w_id = str(w.get('id') or '') if isinstance(w, dict) else ''
+            wu = find_or_create_user(conn, w_email, w_name, w_id)
+            if wu:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO ticket_watchers (ticket_id, user_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                        (local_id, wu)
+                    )
+                    if cur.rowcount:
+                        counters['watchers'] += 1
+        except Exception:
+            continue
+
+    # === Новые события истории ===
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM ticket_history WHERE ticket_id=%s AND external_source='vsdesk' AND external_id IS NOT NULL",
+            (local_id,)
+        )
+        existing_hist = {r['external_id'] for r in cur.fetchall()}
+
+    history = req.get('history') or req.get('log') or []
+    for h in history:
+        try:
+            ext_h_id = str(h.get('id') or '')
+            if ext_h_id and ext_h_id in existing_hist:
+                continue
+            h_email = h.get('UserEmail') or ''
+            h_name = h.get('UserName') or h.get('user') or ''
+            h_vid = str(h.get('user_id') or '')
+            hu = find_or_create_user(conn, h_email, h_name, h_vid) or system_user_id
+            field_name = (h.get('field') or h.get('action') or 'change')[:100]
+            old_v = h.get('old_value') or h.get('from') or ''
+            new_v = h.get('new_value') or h.get('to') or h.get('value') or ''
+            h_ts = parse_ts(h.get('timestamp') or '')
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO ticket_history
+                       (ticket_id, user_id, field_name, old_value, new_value, created_at, external_id, external_source)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, 'vsdesk')""",
+                    (local_id, hu, field_name, str(old_v) if old_v else None,
+                     str(new_v) if new_v else None, h_ts, ext_h_id or None)
+                )
+            counters['history'] += 1
+        except Exception:
+            continue
+
+    # === Кастомные поля (перезапись значений) ===
+    custom_fields = req.get('custom_fields') or req.get('fields') or {}
+    if isinstance(custom_fields, dict):
+        custom_items = list(custom_fields.items())
+    elif isinstance(custom_fields, list):
+        custom_items = [((cf.get('name') or cf.get('field') or ''), cf.get('value')) for cf in custom_fields if isinstance(cf, dict)]
+    else:
+        custom_items = []
+    for name, value in custom_items:
+        if not name:
+            continue
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM ticket_custom_fields WHERE LOWER(name) = LOWER(%s) LIMIT 1",
+                    (str(name),)
+                )
+                row = cur.fetchone()
+                if row:
+                    field_id = row['id']
+                else:
+                    cur.execute(
+                        """INSERT INTO ticket_custom_fields (name, field_type, is_required)
+                           VALUES (%s, 'text', FALSE) RETURNING id""",
+                        (str(name)[:255],)
+                    )
+                    field_id = cur.fetchone()['id']
+                # Перезаписываем: удаляем старое значение этого поля и вставляем новое
+                cur.execute(
+                    "DELETE FROM ticket_custom_field_values WHERE ticket_id=%s AND field_id=%s AND external_source='vsdesk'",
+                    (local_id, field_id)
+                )
+                cur.execute(
+                    """INSERT INTO ticket_custom_field_values (ticket_id, field_id, value, external_source)
+                       VALUES (%s, %s, %s, 'vsdesk')""",
+                    (local_id, field_id, '' if value is None else str(value))
+                )
+            counters['custom_fields'] += 1
+        except Exception:
+            continue
+
+    conn.commit()
+    return {'status': 'updated', 'local_id': local_id, 'counters': counters}
+
+
+# =====================================================================
 # Actions
 # =====================================================================
 
@@ -840,6 +1109,38 @@ def get_active_job(conn) -> Optional[dict]:
         return cur.fetchone()
 
 
+def collect_imported_ext_ids(conn) -> List[str]:
+    """Возвращает ext_id всех уже импортированных vsDesk-заявок (для delta-sync)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT external_id FROM tickets WHERE external_source='vsdesk' AND external_id IS NOT NULL"
+        )
+        return [row['external_id'] for row in cur.fetchall()]
+
+
+def action_start_delta_job(conn) -> dict:
+    """Создаёт фоновую задачу обновления уже импортированных заявок."""
+    existing = get_active_job(conn)
+    if existing:
+        return {'success': True, 'job_id': existing['id'], 'already_running': True}
+
+    ids = collect_imported_ext_ids(conn)
+    if not ids:
+        return {'success': False, 'error': 'Нет импортированных заявок vsDesk для обновления.'}
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO vsdesk_sync_jobs
+               (status, job_type, queue, total, processed, inserted, skipped, filtered, errors, error_details, started_at)
+               VALUES ('running', 'delta', %s::jsonb, %s, 0, 0, 0, 0, 0, '[]'::jsonb, CURRENT_TIMESTAMP)
+               RETURNING id""",
+            (json.dumps(ids), len(ids))
+        )
+        job_id = cur.fetchone()['id']
+    conn.commit()
+    return {'success': True, 'job_id': job_id, 'total': len(ids)}
+
+
 def action_start_job(conn) -> dict:
     existing = get_active_job(conn)
     if existing:
@@ -929,13 +1230,27 @@ def action_tick(conn) -> dict:
     stats = {'inserted': 0, 'skipped': 0, 'filtered': 0, 'errors': 0}
     new_errors: List[dict] = []
 
+    job_type = job.get('job_type') or 'import'
+
     for ext in batch:
         try:
-            res = import_one_ticket(conn, ext, mapping, default_status, sys_user)
-            key = res['status'] if res['status'] in ('inserted', 'skipped', 'filtered') else 'errors'
-            stats[key] += 1
-            if res.get('status') == 'error':
-                new_errors.append({'ext_id': ext, 'reason': res.get('reason') or 'unknown'})
+            if job_type == 'delta':
+                res = update_one_ticket(conn, ext, mapping, default_status, sys_user)
+                # для delta: 'updated' считаем как 'inserted' (т.е. успешно обработано)
+                status = res.get('status')
+                if status == 'updated':
+                    stats['inserted'] += 1
+                elif status in ('skipped', 'filtered'):
+                    stats[status] += 1
+                else:
+                    stats['errors'] += 1
+                    new_errors.append({'ext_id': ext, 'reason': res.get('reason') or 'unknown'})
+            else:
+                res = import_one_ticket(conn, ext, mapping, default_status, sys_user)
+                key = res['status'] if res['status'] in ('inserted', 'skipped', 'filtered') else 'errors'
+                stats[key] += 1
+                if res.get('status') == 'error':
+                    new_errors.append({'ext_id': ext, 'reason': res.get('reason') or 'unknown'})
         except Exception as e:
             stats['errors'] += 1
             new_errors.append({'ext_id': ext, 'reason': f'exception: {e}'})
@@ -978,6 +1293,37 @@ def action_tick(conn) -> dict:
         'processed_in_tick': len(batch),
         'remaining': len(rest),
         'done': done,
+        **stats,
+    }
+
+
+def action_delta_batch(conn, offset: int, limit: int) -> dict:
+    ids = collect_imported_ext_ids(conn)
+    total = len(ids)
+    batch = ids[offset:offset + limit]
+    mapping = load_status_mapping(conn)
+    default_status = get_default_status_id(conn)
+    sys_user = get_system_user_id(conn)
+    stats = {'inserted': 0, 'skipped': 0, 'filtered': 0, 'errors': 0, 'details': []}
+    for ext in batch:
+        res = update_one_ticket(conn, ext, mapping, default_status, sys_user)
+        status = res.get('status')
+        if status == 'updated':
+            stats['inserted'] += 1
+        elif status in ('skipped', 'filtered'):
+            stats[status] += 1
+        else:
+            stats['errors'] += 1
+            stats['details'].append({'ext_id': ext, 'reason': res.get('reason')})
+    next_offset = offset + len(batch)
+    done = next_offset >= total
+    return {
+        'success': True,
+        'total': total,
+        'processed': next_offset,
+        'next_offset': next_offset,
+        'done': done,
+        'batch_size': len(batch),
         **stats,
     }
 
@@ -1054,6 +1400,22 @@ def handler(event: dict, context) -> dict:
 
         if action == 'start_job' and method == 'POST':
             return api_response(200, action_start_job(conn))
+
+        if action == 'start_delta_job' and method == 'POST':
+            return api_response(200, action_start_delta_job(conn))
+
+        if action == 'delta_sync' and method in ('POST', 'GET'):
+            try:
+                offset = int(body.get('offset') if 'offset' in body else params.get('offset', 0))
+            except Exception:
+                offset = 0
+            try:
+                limit = int(body.get('limit') if 'limit' in body else params.get('limit', 10))
+            except Exception:
+                limit = 10
+            if limit <= 0 or limit > 100:
+                limit = 10
+            return api_response(200, action_delta_batch(conn, offset, limit))
 
         if action == 'job_status' and method == 'GET':
             return api_response(200, action_job_status(conn))

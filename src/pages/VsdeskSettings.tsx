@@ -126,6 +126,78 @@ const VsdeskSettings = () => {
     }
   };
 
+  const [deltaJobStarting, setDeltaJobStarting] = useState(false);
+  const handleStartDeltaJob = async () => {
+    setDeltaJobStarting(true);
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=start_delta_job`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast({
+          title: data.already_running
+            ? 'Фоновая задача уже запущена'
+            : `Догрузка обновлений запущена. К проверке: ${data.total} заявок.`,
+        });
+        await loadJobStatus();
+      } else {
+        toast({ title: data.error || 'Не удалось создать задачу', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setDeltaJobStarting(false);
+    }
+  };
+
+  const [deltaRunning, setDeltaRunning] = useState(false);
+  const [deltaProgress, setDeltaProgress] = useState({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
+  const [deltaErrors, setDeltaErrors] = useState<{ ext_id: string; reason: string }[]>([]);
+
+  const handleRunDeltaInTab = async () => {
+    setDeltaRunning(true);
+    setDeltaErrors([]);
+    setDeltaProgress({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
+    let offset = 0;
+    const limit = 10;
+    let safetyHops = 0;
+    const collected: { ext_id: string; reason: string }[] = [];
+    try {
+      while (true) {
+        safetyHops += 1;
+        if (safetyHops > 2000) break;
+        const res = await fetch(`${func2url['vsdesk-sync']}?action=delta_sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offset, limit }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          toast({ title: data.error || 'Ошибка догрузки', variant: 'destructive' });
+          break;
+        }
+        if (Array.isArray(data.details) && data.details.length) collected.push(...data.details);
+        setDeltaProgress((prev) => ({
+          processed: data.processed,
+          total: data.total,
+          inserted: prev.inserted + (data.inserted || 0),
+          skipped: prev.skipped + (data.skipped || 0),
+          filtered: prev.filtered + (data.filtered || 0),
+          errors: prev.errors + (data.errors || 0),
+        }));
+        setDeltaErrors([...collected]);
+        if (data.done || data.batch_size === 0) {
+          toast({ title: `Догрузка завершена. Обновлено: ${data.processed}, ошибок: ${collected.length}` });
+          break;
+        }
+        offset = data.next_offset;
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setDeltaRunning(false);
+    }
+  };
+
   const [bumpLoading, setBumpLoading] = useState(false);
   const [bumpResult, setBumpResult] = useState<{ max_vsdesk_id: number; max_local_id: number; next_id_will_be: number } | null>(null);
 
@@ -436,6 +508,28 @@ const VsdeskSettings = () => {
               {job?.status === 'running' ? 'Фоновая задача запущена' : 'Запустить в фоне'}
             </Button>
             <Button
+              onClick={handleRunDeltaInTab}
+              disabled={deltaRunning || loading}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              title="Пройти по уже импортированным заявкам и догрузить новые комментарии/файлы/историю и обновить статусы"
+            >
+              <Icon name={deltaRunning ? 'Loader2' : 'RefreshCcw'} size={14} className={deltaRunning ? 'animate-spin' : ''} />
+              {deltaRunning ? 'Догружаем...' : 'Догрузить во вкладке'}
+            </Button>
+            <Button
+              onClick={handleStartDeltaJob}
+              disabled={deltaJobStarting || loading || job?.status === 'running'}
+              size="sm"
+              variant="secondary"
+              className="gap-2"
+              title="Запустить догрузку обновлений в фоне (cron подхватит)"
+            >
+              <Icon name={deltaJobStarting ? 'Loader2' : 'CloudDownload'} size={14} className={deltaJobStarting ? 'animate-spin' : ''} />
+              {deltaJobStarting ? 'Запускаем...' : 'Догрузить в фоне'}
+            </Button>
+            <Button
               onClick={handlePurge}
               disabled={purgeLoading || syncRunning}
               size="sm"
@@ -680,6 +774,65 @@ const VsdeskSettings = () => {
               )}
             </div>
           ) : null}
+
+          {(deltaRunning || deltaProgress.total > 0) && (
+            <div className="mt-4 p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Icon name="RefreshCcw" size={16} className={deltaRunning ? 'animate-spin text-purple-500' : 'text-purple-500'} />
+                  <p className="text-sm font-medium">Догрузка обновлений во вкладке</p>
+                </div>
+                <p className="text-xs text-muted-foreground">{deltaProgress.processed} / {deltaProgress.total}</p>
+              </div>
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-purple-500 transition-all"
+                  style={{
+                    width: deltaProgress.total
+                      ? `${Math.min(100, (deltaProgress.processed / deltaProgress.total) * 100)}%`
+                      : '0%',
+                  }}
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Обновлено</span>
+                  <span className="font-semibold text-green-500">{deltaProgress.inserted}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Пропущено</span>
+                  <span className="font-semibold">{deltaProgress.skipped}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Отфильтровано</span>
+                  <span className="font-semibold">{deltaProgress.filtered}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Ошибок</span>
+                  <span className="font-semibold text-red-500">{deltaProgress.errors}</span>
+                </div>
+              </div>
+              {deltaErrors.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="AlertTriangle" size={14} className="text-red-500" />
+                    <p className="text-xs font-medium">Ошибки ({deltaErrors.length})</p>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {deltaErrors.slice(-50).map((err, i) => (
+                      <div
+                        key={`${err.ext_id}-${i}`}
+                        className="flex items-start gap-2 text-xs p-2 rounded-md bg-background border border-border/50"
+                      >
+                        <span className="font-mono text-muted-foreground shrink-0">#{err.ext_id}</span>
+                        <span className="text-red-500 break-all">{err.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {bumpResult && (
             <div className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
