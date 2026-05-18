@@ -13,7 +13,14 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Icon from '@/components/ui/icon';
+import { apiFetch, API_URL } from '@/utils/api';
 import type { TicketStatus } from '@/hooks/useTicketStatuses';
+
+interface RoleOption {
+  id: number;
+  name: string;
+  system_role?: string | null;
+}
 
 const predefinedColors = [
   { name: 'Серый', value: '#6b7280' },
@@ -56,6 +63,7 @@ interface StatusDialogProps {
       count_for_distribution: boolean;
       is_in_progress: boolean;
       is_reopened: boolean;
+      role_ids: number[];
     },
     editingStatus: TicketStatus | null
   ) => Promise<boolean>;
@@ -89,9 +97,21 @@ const StatusDialog = ({
     count_for_distribution: false,
     is_in_progress: false,
     is_reopened: false,
+    role_ids: [] as number[],
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    apiFetch(`${API_URL}?endpoint=roles`)
+      .then((res) => res.json())
+      .then((data) => {
+        setRoles(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setRoles([]));
+  }, [open]);
 
   useEffect(() => {
     if (editingStatus) {
@@ -108,6 +128,7 @@ const StatusDialog = ({
         count_for_distribution: editingStatus.count_for_distribution || false,
         is_in_progress: editingStatus.is_in_progress || false,
         is_reopened: editingStatus.is_reopened || false,
+        role_ids: editingStatus.role_ids ? [...editingStatus.role_ids] : [],
       });
     } else {
       setFormData(defaultFormData);
@@ -292,6 +313,56 @@ const StatusDialog = ({
               <p className="text-xs text-muted-foreground mt-1.5 ml-6">
                 Заявка с этим статусом считается переоткрытой
               </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Доступно для ролей</Label>
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Выберите роли, которым будет виден этот статус. Если не выбрана ни одна роль —
+                статус скрыт у всех, кроме администратора.
+              </p>
+              {roles.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Роли не загружены</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {roles.map((role) => {
+                    const checked = formData.role_ids.includes(role.id);
+                    const isAdminRole = (role.system_role || '').toLowerCase() === 'admin';
+                    return (
+                      <label
+                        key={role.id}
+                        htmlFor={`role-${role.id}`}
+                        className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition-colors ${
+                          checked
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-muted-foreground/30'
+                        } ${isAdminRole ? 'opacity-70' : ''}`}
+                      >
+                        <Checkbox
+                          id={`role-${role.id}`}
+                          checked={checked || isAdminRole}
+                          disabled={isAdminRole}
+                          onCheckedChange={(c) => {
+                            if (isAdminRole) return;
+                            setFormData((prev) => ({
+                              ...prev,
+                              role_ids: c
+                                ? [...prev.role_ids, role.id]
+                                : prev.role_ids.filter((id) => id !== role.id),
+                            }));
+                          }}
+                        />
+                        <span className="truncate">{role.name}</span>
+                        {isAdminRole && (
+                          <span className="ml-auto text-[10px] text-muted-foreground">всегда</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

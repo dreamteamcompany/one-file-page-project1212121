@@ -79,6 +79,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get ticket statuses (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=ticket-statuses",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

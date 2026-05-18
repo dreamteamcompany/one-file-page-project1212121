@@ -7,6 +7,75 @@ from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
 
 
+def _get_user_role_info(cur, user_id: int) -> Dict[str, Any]:
+    """Возвращает информацию о ролях пользователя: список role_id и флаг is_admin"""
+    cur.execute(
+        f"""
+        SELECT ur.role_id, r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+        """,
+        (user_id,)
+    )
+    rows = cur.fetchall()
+    role_ids = [r['role_id'] for r in rows]
+    is_admin = any((r.get('system_role') or '').lower() == 'admin' for r in rows)
+    return {'role_ids': role_ids, 'is_admin': is_admin}
+
+
+def _filter_statuses_by_role(statuses: List[Dict[str, Any]], role_info: Dict[str, Any],
+                              status_role_map: Dict[int, List[int]]) -> List[Dict[str, Any]]:
+    """Оставляет только статусы, доступные роли пользователя.
+
+    Правила:
+    - admin видит все статусы;
+    - если у статуса нет ни одной привязанной роли — статус скрыт у всех (кроме admin);
+    - иначе статус виден, если у пользователя есть хотя бы одна разрешённая роль.
+    """
+    if role_info.get('is_admin'):
+        return statuses
+    user_roles = set(role_info.get('role_ids') or [])
+    out = []
+    for st in statuses:
+        allowed = set(status_role_map.get(st['id'], []))
+        if not allowed:
+            continue
+        if allowed & user_roles:
+            out.append(st)
+    return out
+
+
+def _load_status_role_map(cur) -> Dict[int, List[int]]:
+    """Возвращает {status_id: [role_id, ...]}"""
+    cur.execute(f"SELECT status_id, role_id FROM {SCHEMA}.ticket_status_roles")
+    res: Dict[int, List[int]] = {}
+    for row in cur.fetchall():
+        res.setdefault(row['status_id'], []).append(row['role_id'])
+    return res
+
+
+def _replace_status_roles(cur, status_id: int, role_ids: List[int]) -> None:
+    """Перезаписывает связи статуса с ролями"""
+    cur.execute(f"DELETE FROM {SCHEMA}.ticket_status_roles WHERE status_id = %s", (status_id,))
+    clean = []
+    seen = set()
+    for rid in role_ids or []:
+        try:
+            r = int(rid)
+        except (TypeError, ValueError):
+            continue
+        if r in seen:
+            continue
+        seen.add(r)
+        clean.append(r)
+    for rid in clean:
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.ticket_status_roles (status_id, role_id) VALUES (%s, %s)",
+            (status_id, rid)
+        )
+
+
 def _ticket_participants(cur, ticket_id: int, created_by: Optional[int] = None,
                           assigned_to: Optional[int] = None) -> Set[int]:
     """Возвращает все user_id, которые участвуют в заявке"""
@@ -1226,6 +1295,10 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
         
         cur.execute(f'SELECT id, name, color, is_closed, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
+        status_role_map = _load_status_role_map(cur)
+        user_id = payload.get('user_id')
+        role_info = _get_user_role_info(cur, user_id) if user_id else {'role_ids': [], 'is_admin': False}
+        statuses = _filter_statuses_by_role(statuses, role_info, status_role_map)
         
         cur.execute(f'SELECT id, name, description FROM {SCHEMA}.departments ORDER BY name')
         departments = [dict(row) for row in cur.fetchall()]
@@ -1256,6 +1329,14 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         cur = conn.cursor()
         cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation, count_for_distribution, is_in_progress, is_reopened FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
+        role_map = _load_status_role_map(cur)
+        for st in statuses:
+            st['role_ids'] = role_map.get(st['id'], [])
+        params = event.get('queryStringParameters') or {}
+        if str(params.get('filter_by_role', '')).lower() in ('1', 'true', 'yes'):
+            user_id = payload.get('user_id')
+            role_info = _get_user_role_info(cur, user_id) if user_id else {'role_ids': [], 'is_admin': False}
+            statuses = _filter_statuses_by_role(statuses, role_info, role_map)
         cur.close()
         return response(200, statuses)
     
@@ -1272,6 +1353,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         count_for_distribution = body.get('count_for_distribution', False)
         is_in_progress = body.get('is_in_progress', False)
         is_reopened = body.get('is_reopened', False)
+        role_ids = body.get('role_ids') or []
         
         if not name:
             return response(400, {'error': 'Name is required'})
@@ -1298,6 +1380,8 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
             (name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, count_for_distribution, is_in_progress, is_reopened)
         )
         status = dict(cur.fetchone())
+        _replace_status_roles(cur, status['id'], role_ids)
+        status['role_ids'] = [int(r) for r in (role_ids or []) if str(r).lstrip('-').isdigit()]
         conn.commit()
         cur.close()
         return response(201, status)
@@ -1316,6 +1400,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         count_for_distribution = body.get('count_for_distribution', False)
         is_in_progress = body.get('is_in_progress', False)
         is_reopened = body.get('is_reopened', False)
+        role_ids = body.get('role_ids')
         
         if not status_id or not name:
             return response(400, {'error': 'ID and name are required'})
@@ -1346,6 +1431,11 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
         if not status:
             cur.close()
             return response(404, {'error': 'Status not found'})
+        
+        if role_ids is not None:
+            _replace_status_roles(cur, status_id, role_ids)
+        cur.execute(f"SELECT role_id FROM {SCHEMA}.ticket_status_roles WHERE status_id = %s", (status_id,))
+        status['role_ids'] = [r['role_id'] for r in cur.fetchall()]
         
         cur.execute(
             f"UPDATE {SCHEMA}.tickets SET is_archived = %s WHERE status_id = %s AND COALESCE(is_archived, false) <> %s",

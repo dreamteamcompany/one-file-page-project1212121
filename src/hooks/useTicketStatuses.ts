@@ -17,6 +17,7 @@ export interface TicketStatus {
   count_for_distribution: boolean;
   is_in_progress: boolean;
   is_reopened: boolean;
+  role_ids?: number[];
 }
 
 export const useTicketStatuses = () => {
@@ -61,6 +62,7 @@ export const useTicketStatuses = () => {
       count_for_distribution: boolean;
       is_in_progress: boolean;
       is_reopened: boolean;
+      role_ids: number[];
     },
     editingStatus: TicketStatus | null
   ) => {
