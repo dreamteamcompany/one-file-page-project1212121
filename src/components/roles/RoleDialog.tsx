@@ -125,7 +125,16 @@ const RoleDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Системная роль</Label>
+            <div className="flex items-center gap-2">
+              <Label>Системный тип роли</Label>
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-amber-500/10 text-amber-500"
+                title="Системный тип привязывает роль к встроенной логике приложения"
+              >
+                <Icon name="Lock" size={10} />
+                опционально
+              </span>
+            </div>
             <Select
               value={formData.system_role || 'none'}
               onValueChange={(val) => onFormChange({ ...formData, system_role: val === 'none' ? '' : val })}
@@ -135,7 +144,11 @@ const RoleDialog = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">
-                  <span className="text-muted-foreground">Не выбрана</span>
+                  <div className="flex items-center gap-2">
+                    <Icon name="UserCog" size={14} />
+                    <span>Без типа</span>
+                    <span className="text-xs text-muted-foreground ml-1">— обычная роль, права настраиваются вручную</span>
+                  </div>
                 </SelectItem>
                 {SYSTEM_ROLES.map(sr => (
                   <SelectItem key={sr.value} value={sr.value}>
@@ -148,6 +161,9 @@ const RoleDialog = ({
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Привязывает роль к встроенной логике: например, «Администратор» всегда видит все статусы и имеет полный доступ, «Исполнитель» может брать заявки в работу.
+            </p>
           </div>
 
           <div className="space-y-3 border-t border-border pt-4">
