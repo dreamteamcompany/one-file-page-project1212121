@@ -82,18 +82,20 @@ export const getDeadlineInfo = (dueDate?: string): DeadlineInfo | null => {
   
   const oneDay = 24 * 60 * 60 * 1000;
   const oneHour = 60 * 60 * 1000;
+  const threeHours = 3 * oneHour;
+  const twoDays = 2 * oneDay;
   const daysLeft = Math.floor(timeLeft / oneDay);
   const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
-  
-  if (daysLeft === 0) {
-    return { color: '#ef4444', label: `Менее суток (${hoursLeft} ч)`, urgent: true };
-  } else if (daysLeft === 1) {
-    return { color: '#ef4444', label: `Остался ${daysLeft} день ${hoursLeft} ч`, urgent: true };
-  } else if (daysLeft <= 3) {
-    return { color: '#f97316', label: `Осталось ${daysLeft} дня ${hoursLeft} ч`, urgent: true };
-  } else if (daysLeft <= 7) {
-    return { color: '#eab308', label: `Осталось ${daysLeft} дней ${hoursLeft} ч`, urgent: false };
-  } else {
-    return { color: '#22c55e', label: `Осталось ${daysLeft} дней ${hoursLeft} ч`, urgent: false };
+
+  if (timeLeft < threeHours) {
+    return { color: '#ef4444', label: `Менее 3 часов (${hoursLeft} ч)`, urgent: true };
   }
+  if (timeLeft < twoDays) {
+    if (daysLeft === 0) {
+      return { color: '#f97316', label: `Менее суток (${hoursLeft} ч)`, urgent: true };
+    }
+    return { color: '#f97316', label: `Остался ${daysLeft} день ${hoursLeft} ч`, urgent: true };
+  }
+  const dayWord = daysLeft >= 2 && daysLeft <= 4 ? 'дня' : 'дней';
+  return { color: '#22c55e', label: `Осталось ${daysLeft} ${dayWord} ${hoursLeft} ч`, urgent: false };
 };

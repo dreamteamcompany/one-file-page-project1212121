@@ -88,18 +88,20 @@ export const getDeadlineProgress = (dueDate?: string): DeadlineProgress | null =
 
   const oneDay = 24 * 60 * 60 * 1000;
   const oneHour = 60 * 60 * 1000;
+  const threeHours = 3 * oneHour;
+  const twoDays = 2 * oneDay;
   const daysLeft = Math.floor(timeLeft / oneDay);
   const hoursLeft = Math.floor((timeLeft % oneDay) / oneHour);
 
-  if (daysLeft === 0) {
-    return { percent: 100, color: '#ef4444', label: `Менее суток (${hoursLeft} ч)` };
-  } else if (daysLeft === 1) {
-    return { percent: 100, color: '#ef4444', label: `Остался ${daysLeft} день ${hoursLeft} ч` };
-  } else if (daysLeft <= 3) {
-    return { percent: 66, color: '#f97316', label: `Осталось ${daysLeft} дня ${hoursLeft} ч` };
-  } else if (daysLeft <= 7) {
-    return { percent: 33, color: '#eab308', label: `Осталось ${daysLeft} дней ${hoursLeft} ч` };
-  } else {
-    return { percent: 15, color: '#22c55e', label: `Осталось ${daysLeft} дней ${hoursLeft} ч` };
+  if (timeLeft < threeHours) {
+    return { percent: 100, color: '#ef4444', label: `Менее 3 часов (${hoursLeft} ч)` };
   }
+  if (timeLeft < twoDays) {
+    if (daysLeft === 0) {
+      return { percent: 100, color: '#f97316', label: `Менее суток (${hoursLeft} ч)` };
+    }
+    return { percent: 80, color: '#f97316', label: `Остался ${daysLeft} день ${hoursLeft} ч` };
+  }
+  const dayWord = daysLeft >= 2 && daysLeft <= 4 ? 'дня' : 'дней';
+  return { percent: 30, color: '#22c55e', label: `Осталось ${daysLeft} ${dayWord} ${hoursLeft} ч` };
 };
