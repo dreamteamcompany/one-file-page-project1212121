@@ -751,6 +751,164 @@ def action_purge(conn) -> dict:
     return {'success': True, **counts}
 
 
+# =====================================================================
+# Фоновая задача (Job)
+# =====================================================================
+
+JOB_TICK_BATCH = 10
+JOB_LOCK_TIMEOUT_SECONDS = 180  # если воркер завис — лок снимется через 3 мин
+
+
+def get_active_job(conn) -> Optional[dict]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT * FROM vsdesk_sync_jobs WHERE status='running' ORDER BY id DESC LIMIT 1"
+        )
+        return cur.fetchone()
+
+
+def action_start_job(conn) -> dict:
+    existing = get_active_job(conn)
+    if existing:
+        return {'success': True, 'job_id': existing['id'], 'already_running': True}
+
+    ids = collect_eligible_ext_ids(conn)
+    if not ids:
+        return {'success': False, 'error': 'Нет заявок для синхронизации. Отметьте статусы и сохраните настройки.'}
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO vsdesk_sync_jobs
+               (status, queue, total, processed, inserted, skipped, filtered, errors, error_details, started_at)
+               VALUES ('running', %s::jsonb, %s, 0, 0, 0, 0, 0, '[]'::jsonb, CURRENT_TIMESTAMP)
+               RETURNING id""",
+            (json.dumps(ids), len(ids))
+        )
+        job_id = cur.fetchone()['id']
+    conn.commit()
+    return {'success': True, 'job_id': job_id, 'total': len(ids)}
+
+
+def action_job_status(conn) -> dict:
+    with conn.cursor() as cur:
+        cur.execute(
+            """SELECT id, status, total, processed, inserted, skipped, filtered, errors,
+                      error_details, last_error, started_at, last_tick_at, finished_at
+               FROM vsdesk_sync_jobs ORDER BY id DESC LIMIT 1"""
+        )
+        row = cur.fetchone()
+    if not row:
+        return {'job': None}
+    return {'job': dict(row)}
+
+
+def action_cancel_job(conn) -> dict:
+    with conn.cursor() as cur:
+        cur.execute(
+            """UPDATE vsdesk_sync_jobs SET status='cancelled', finished_at=CURRENT_TIMESTAMP
+               WHERE status='running' RETURNING id"""
+        )
+        row = cur.fetchone()
+    conn.commit()
+    return {'success': True, 'cancelled_job_id': row['id'] if row else None}
+
+
+def action_tick(conn) -> dict:
+    """Вызывается cron'ом каждую минуту. Обрабатывает 1 пачку у активной задачи."""
+    # Снимаем зависшие локи
+    with conn.cursor() as cur:
+        cur.execute(
+            """UPDATE vsdesk_sync_jobs
+               SET is_locked = FALSE
+               WHERE is_locked = TRUE
+                 AND locked_at < CURRENT_TIMESTAMP - INTERVAL '%s seconds'""",
+            (JOB_LOCK_TIMEOUT_SECONDS,)
+        )
+        # Берём активную задачу с локом
+        cur.execute(
+            """UPDATE vsdesk_sync_jobs
+               SET is_locked = TRUE, locked_at = CURRENT_TIMESTAMP
+               WHERE id = (
+                   SELECT id FROM vsdesk_sync_jobs
+                   WHERE status='running' AND is_locked=FALSE
+                   ORDER BY id ASC LIMIT 1
+               )
+               RETURNING *"""
+        )
+        job = cur.fetchone()
+    conn.commit()
+
+    if not job:
+        return {'success': True, 'idle': True}
+
+    job_id = job['id']
+    queue = job['queue'] or []
+    if not isinstance(queue, list):
+        queue = []
+
+    batch = queue[:JOB_TICK_BATCH]
+    rest = queue[JOB_TICK_BATCH:]
+
+    mapping = load_status_mapping(conn)
+    default_status = get_default_status_id(conn)
+    sys_user = get_system_user_id(conn)
+
+    stats = {'inserted': 0, 'skipped': 0, 'filtered': 0, 'errors': 0}
+    new_errors: List[dict] = []
+
+    for ext in batch:
+        try:
+            res = import_one_ticket(conn, ext, mapping, default_status, sys_user)
+            key = res['status'] if res['status'] in ('inserted', 'skipped', 'filtered') else 'errors'
+            stats[key] += 1
+            if res.get('status') == 'error':
+                new_errors.append({'ext_id': ext, 'reason': res.get('reason') or 'unknown'})
+        except Exception as e:
+            stats['errors'] += 1
+            new_errors.append({'ext_id': ext, 'reason': f'exception: {e}'})
+
+    existing_errors = job.get('error_details') or []
+    if not isinstance(existing_errors, list):
+        existing_errors = []
+    existing_errors.extend(new_errors)
+    # обрезаем чтобы не разрасталось
+    if len(existing_errors) > 500:
+        existing_errors = existing_errors[-500:]
+
+    done = len(rest) == 0
+    new_status = 'done' if done else 'running'
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """UPDATE vsdesk_sync_jobs
+               SET queue = %s::jsonb,
+                   processed = processed + %s,
+                   inserted = inserted + %s,
+                   skipped = skipped + %s,
+                   filtered = filtered + %s,
+                   errors = errors + %s,
+                   error_details = %s::jsonb,
+                   status = %s,
+                   last_tick_at = CURRENT_TIMESTAMP,
+                   finished_at = CASE WHEN %s THEN CURRENT_TIMESTAMP ELSE finished_at END,
+                   is_locked = FALSE
+               WHERE id = %s""",
+            (json.dumps(rest), len(batch),
+             stats['inserted'], stats['skipped'], stats['filtered'], stats['errors'],
+             json.dumps(existing_errors), new_status, done, job_id)
+        )
+    conn.commit()
+
+    return {
+        'success': True,
+        'job_id': job_id,
+        'processed_in_tick': len(batch),
+        'remaining': len(rest),
+        'done': done,
+        **stats,
+    }
+
+
 def action_sync_batch(conn, offset: int, limit: int) -> dict:
     ids = collect_eligible_ext_ids(conn)
     total = len(ids)
@@ -817,6 +975,18 @@ def handler(event: dict, context) -> dict:
 
         if action == 'purge' and method in ('POST', 'DELETE'):
             return api_response(200, action_purge(conn))
+
+        if action == 'start_job' and method == 'POST':
+            return api_response(200, action_start_job(conn))
+
+        if action == 'job_status' and method == 'GET':
+            return api_response(200, action_job_status(conn))
+
+        if action == 'cancel_job' and method == 'POST':
+            return api_response(200, action_cancel_job(conn))
+
+        if action == 'tick' and method in ('POST', 'GET'):
+            return api_response(200, action_tick(conn))
 
         if action in ('sync', '') and method in ('GET', 'POST'):
             try:

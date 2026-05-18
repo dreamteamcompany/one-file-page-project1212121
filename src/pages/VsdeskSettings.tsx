@@ -46,6 +46,86 @@ const VsdeskSettings = () => {
   const [syncErrors, setSyncErrors] = useState<{ ext_id: string; reason: string }[]>([]);
   const [syncFinished, setSyncFinished] = useState(false);
 
+  type JobInfo = {
+    id: number;
+    status: 'running' | 'done' | 'failed' | 'cancelled';
+    total: number;
+    processed: number;
+    inserted: number;
+    skipped: number;
+    filtered: number;
+    errors: number;
+    error_details: { ext_id: string; reason: string }[];
+    last_error: string | null;
+    started_at: string;
+    last_tick_at: string | null;
+    finished_at: string | null;
+  };
+  const [job, setJob] = useState<JobInfo | null>(null);
+  const [jobStarting, setJobStarting] = useState(false);
+
+  const loadJobStatus = async () => {
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=job_status`);
+      const data = await res.json();
+      setJob(data.job || null);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    loadJobStatus();
+    const i = setInterval(loadJobStatus, 3000);
+    return () => clearInterval(i);
+  }, []);
+
+  const handleStartJob = async () => {
+    await handleSave();
+    setJobStarting(true);
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=start_job`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast({
+          title: data.already_running
+            ? 'Фоновая задача уже запущена'
+            : `Задача создана. К обработке: ${data.total} заявок. Cron подхватит её в течение минуты.`,
+        });
+        await loadJobStatus();
+      } else {
+        toast({ title: data.error || 'Не удалось создать задачу', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setJobStarting(false);
+    }
+  };
+
+  const handleCancelJob = async () => {
+    if (!window.confirm('Остановить фоновую синхронизацию? Уже импортированные заявки сохранятся.')) return;
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=cancel_job`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Фоновая задача остановлена' });
+        await loadJobStatus();
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    }
+  };
+
+  const handleTickNow = async () => {
+    try {
+      await fetch(`${func2url['vsdesk-sync']}?action=tick`, { method: 'POST' });
+      await loadJobStatus();
+    } catch {
+      /* ignore */
+    }
+  };
+
   const [purgeLoading, setPurgeLoading] = useState(false);
   const [purgeResult, setPurgeResult] = useState<{
     tickets: number;
@@ -304,10 +384,20 @@ const VsdeskSettings = () => {
               onClick={handleRunSync}
               disabled={syncRunning || loading || enabledCount === 0}
               size="sm"
+              variant="outline"
               className="gap-2"
             >
               <Icon name={syncRunning ? 'Loader2' : 'Play'} size={14} className={syncRunning ? 'animate-spin' : ''} />
-              {syncRunning ? 'Синхронизация...' : 'Запустить синхронизацию'}
+              {syncRunning ? 'Синхронизация...' : 'Запустить во вкладке'}
+            </Button>
+            <Button
+              onClick={handleStartJob}
+              disabled={jobStarting || loading || enabledCount === 0 || job?.status === 'running'}
+              size="sm"
+              className="gap-2"
+            >
+              <Icon name={jobStarting ? 'Loader2' : 'Zap'} size={14} className={jobStarting ? 'animate-spin' : ''} />
+              {job?.status === 'running' ? 'Фоновая задача запущена' : 'Запустить в фоне'}
             </Button>
             <Button
               onClick={handlePurge}
@@ -386,6 +476,103 @@ const VsdeskSettings = () => {
                       <span className="text-muted-foreground">Кастомных полей</span>
                       <span className="font-semibold">≈ {dryRunResult.forecast.custom_fields ?? 0}</span>
                     </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {job && (
+            <div className="mt-4 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    name={job.status === 'running' ? 'Loader2' : job.status === 'done' ? 'CheckCircle2' : 'AlertTriangle'}
+                    size={16}
+                    className={
+                      job.status === 'running'
+                        ? 'animate-spin text-blue-500'
+                        : job.status === 'done'
+                        ? 'text-green-500'
+                        : 'text-red-500'
+                    }
+                  />
+                  <p className="text-sm font-medium">
+                    Фоновая синхронизация —{' '}
+                    {job.status === 'running'
+                      ? 'идёт'
+                      : job.status === 'done'
+                      ? 'завершена'
+                      : job.status === 'cancelled'
+                      ? 'остановлена'
+                      : 'ошибка'}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {job.processed} / {job.total}
+                </p>
+              </div>
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 transition-all"
+                  style={{
+                    width: job.total
+                      ? `${Math.min(100, (job.processed / job.total) * 100)}%`
+                      : '0%',
+                  }}
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Добавлено</span>
+                  <span className="font-semibold text-green-500">{job.inserted}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Пропущено</span>
+                  <span className="font-semibold">{job.skipped}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Отфильтровано</span>
+                  <span className="font-semibold">{job.filtered}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Ошибок</span>
+                  <span className="font-semibold text-red-500">{job.errors}</span>
+                </div>
+              </div>
+              {job.last_tick_at && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Последняя пачка: {new Date(job.last_tick_at).toLocaleTimeString()}
+                </p>
+              )}
+              {job.status === 'running' && (
+                <div className="flex gap-2 mt-3">
+                  <Button onClick={handleTickNow} size="sm" variant="outline" className="gap-2">
+                    <Icon name="FastForward" size={14} />
+                    Обработать пачку сейчас
+                  </Button>
+                  <Button onClick={handleCancelJob} size="sm" variant="destructive" className="gap-2">
+                    <Icon name="Square" size={14} />
+                    Остановить
+                  </Button>
+                </div>
+              )}
+              {Array.isArray(job.error_details) && job.error_details.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="AlertTriangle" size={14} className="text-red-500" />
+                    <p className="text-xs font-medium">Ошибки ({job.error_details.length})</p>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {job.error_details.slice(-50).map((err, i) => (
+                      <div
+                        key={`${err.ext_id}-${i}`}
+                        className="flex items-start gap-2 text-xs p-2 rounded-md bg-background border border-border/50"
+                      >
+                        <span className="font-mono text-muted-foreground shrink-0">#{err.ext_id}</span>
+                        <span className="text-red-500 break-all">{err.reason}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
