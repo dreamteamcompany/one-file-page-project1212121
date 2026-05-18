@@ -96,6 +96,15 @@ const PaymentsSidebar = ({
           </li>
         )}
 
+        {hasPermission('knowledge_base', 'read') && (
+          <li>
+            <Link to="/knowledge-base" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/knowledge-base') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="База знаний">
+              <Icon name="BookOpen" size={22} />
+              {!collapsed && <span>База знаний</span>}
+            </Link>
+          </li>
+        )}
+
 
         {hasPermission('settings', 'read') && (
           <li>
