@@ -656,6 +656,101 @@ def action_dry_run(conn) -> dict:
     }
 
 
+def action_purge(conn) -> dict:
+    """Удаляет все заявки vsDesk и связанные данные. Файлы в S3 удаляет по возможности."""
+    s3 = get_s3_client()
+    deleted_files_s3 = 0
+    cdn_prefix = f'{CDN_BASE}/' if CDN_BASE else ''
+
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM tickets WHERE external_source='vsdesk' AND external_id IS NOT NULL"
+        )
+        ticket_ids = [row['id'] for row in cur.fetchall()]
+
+        counts = {
+            'tickets': len(ticket_ids),
+            'comments': 0,
+            'comment_attachments': 0,
+            'ticket_attachments': 0,
+            'history': 0,
+            'watchers': 0,
+            'custom_field_values': 0,
+            's3_files_deleted': 0,
+        }
+
+        if not ticket_ids:
+            return {'success': True, **counts}
+
+        # Соберём S3-ключи перед удалением записей
+        s3_keys: List[str] = []
+        cur.execute(
+            "SELECT url FROM ticket_attachments WHERE external_source='vsdesk' AND ticket_id = ANY(%s)",
+            (ticket_ids,)
+        )
+        for row in cur.fetchall():
+            url = row['url'] or ''
+            if cdn_prefix and url.startswith(cdn_prefix):
+                s3_keys.append(url[len(cdn_prefix):])
+
+        cur.execute(
+            """SELECT ca.url FROM comment_attachments ca
+               JOIN ticket_comments tc ON tc.id = ca.comment_id
+               WHERE tc.ticket_id = ANY(%s) AND ca.external_source='vsdesk'""",
+            (ticket_ids,)
+        )
+        for row in cur.fetchall():
+            url = row['url'] or ''
+            if cdn_prefix and url.startswith(cdn_prefix):
+                s3_keys.append(url[len(cdn_prefix):])
+
+        # Удаляем связанные сущности
+        cur.execute(
+            """DELETE FROM comment_attachments
+               WHERE comment_id IN (SELECT id FROM ticket_comments WHERE ticket_id = ANY(%s))""",
+            (ticket_ids,)
+        )
+        counts['comment_attachments'] = cur.rowcount or 0
+
+        cur.execute("DELETE FROM ticket_comments WHERE ticket_id = ANY(%s)", (ticket_ids,))
+        counts['comments'] = cur.rowcount or 0
+
+        cur.execute(
+            "DELETE FROM ticket_attachments WHERE ticket_id = ANY(%s) AND external_source='vsdesk'",
+            (ticket_ids,)
+        )
+        counts['ticket_attachments'] = cur.rowcount or 0
+
+        cur.execute("DELETE FROM ticket_history WHERE ticket_id = ANY(%s)", (ticket_ids,))
+        counts['history'] = cur.rowcount or 0
+
+        cur.execute("DELETE FROM ticket_watchers WHERE ticket_id = ANY(%s)", (ticket_ids,))
+        counts['watchers'] = cur.rowcount or 0
+
+        cur.execute("DELETE FROM ticket_custom_field_values WHERE ticket_id = ANY(%s)", (ticket_ids,))
+        counts['custom_field_values'] = cur.rowcount or 0
+
+        cur.execute(
+            "DELETE FROM tickets WHERE id = ANY(%s) AND external_source='vsdesk'",
+            (ticket_ids,)
+        )
+        counts['tickets'] = cur.rowcount or 0
+
+    conn.commit()
+
+    # Чистим S3 — best-effort
+    if s3 and s3_keys:
+        for key in s3_keys:
+            try:
+                s3.delete_object(Bucket=S3_BUCKET, Key=key)
+                deleted_files_s3 += 1
+            except Exception:
+                continue
+    counts['s3_files_deleted'] = deleted_files_s3
+
+    return {'success': True, **counts}
+
+
 def action_sync_batch(conn, offset: int, limit: int) -> dict:
     ids = collect_eligible_ext_ids(conn)
     total = len(ids)
@@ -719,6 +814,9 @@ def handler(event: dict, context) -> dict:
 
         if action == 'dry_run' and method == 'GET':
             return api_response(200, action_dry_run(conn))
+
+        if action == 'purge' and method in ('POST', 'DELETE'):
+            return api_response(200, action_purge(conn))
 
         if action in ('sync', '') and method in ('GET', 'POST'):
             try:

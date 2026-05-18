@@ -43,6 +43,46 @@ const VsdeskSettings = () => {
 
   const [syncRunning, setSyncRunning] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
+  const [syncErrors, setSyncErrors] = useState<{ ext_id: string; reason: string }[]>([]);
+  const [syncFinished, setSyncFinished] = useState(false);
+
+  const [purgeLoading, setPurgeLoading] = useState(false);
+  const [purgeResult, setPurgeResult] = useState<{
+    tickets: number;
+    comments: number;
+    comment_attachments: number;
+    ticket_attachments: number;
+    history: number;
+    watchers: number;
+    custom_field_values: number;
+    s3_files_deleted: number;
+  } | null>(null);
+
+  const handlePurge = async () => {
+    const ok = window.confirm(
+      'Удалить ВСЕ заявки, импортированные из vsDesk, со всеми комментариями, файлами, историей и наблюдателями? Это действие нельзя отменить.'
+    );
+    if (!ok) return;
+    const ok2 = window.confirm('Точно? Введи ОК для подтверждения.');
+    if (!ok2) return;
+
+    setPurgeLoading(true);
+    setPurgeResult(null);
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=purge`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setPurgeResult(data);
+        toast({ title: `Удалено заявок: ${data.tickets}` });
+      } else {
+        toast({ title: data.error || 'Не удалось удалить', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setPurgeLoading(false);
+    }
+  };
 
   const [dryRunLoading, setDryRunLoading] = useState(false);
   const [dryRunResult, setDryRunResult] = useState<{
@@ -150,14 +190,17 @@ const VsdeskSettings = () => {
   };
 
   const handleRunSync = async () => {
-    // Сохраняем настройки перед запуском
     await handleSave();
     setSyncRunning(true);
+    setSyncFinished(false);
+    setSyncErrors([]);
     setSyncProgress({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
 
     let offset = 0;
     const limit = 10;
     let safetyHops = 0;
+    let totalInserted = 0;
+    const collectedErrors: { ext_id: string; reason: string }[] = [];
     try {
       while (true) {
         safetyHops += 1;
@@ -172,6 +215,10 @@ const VsdeskSettings = () => {
           toast({ title: data.error || 'Ошибка синхронизации', variant: 'destructive' });
           break;
         }
+        totalInserted += data.inserted || 0;
+        if (Array.isArray(data.details) && data.details.length) {
+          collectedErrors.push(...data.details);
+        }
         setSyncProgress((prev) => ({
           processed: data.processed,
           total: data.total,
@@ -180,12 +227,14 @@ const VsdeskSettings = () => {
           filtered: prev.filtered + (data.filtered || 0),
           errors: prev.errors + (data.errors || 0),
         }));
+        setSyncErrors([...collectedErrors]);
         if (data.done || data.batch_size === 0) {
-          toast({ title: `Синхронизация завершена. Добавлено: ${data.inserted ?? 0} в этой пачке, всего обработано ${data.processed}` });
+          toast({ title: `Синхронизация завершена. Добавлено всего: ${totalInserted}, ошибок: ${collectedErrors.length}` });
           break;
         }
         offset = data.next_offset;
       }
+      setSyncFinished(true);
     } catch {
       toast({ title: 'Ошибка соединения с vsDesk', variant: 'destructive' });
     } finally {
@@ -259,6 +308,16 @@ const VsdeskSettings = () => {
             >
               <Icon name={syncRunning ? 'Loader2' : 'Play'} size={14} className={syncRunning ? 'animate-spin' : ''} />
               {syncRunning ? 'Синхронизация...' : 'Запустить синхронизацию'}
+            </Button>
+            <Button
+              onClick={handlePurge}
+              disabled={purgeLoading || syncRunning}
+              size="sm"
+              variant="destructive"
+              className="gap-2 ml-auto"
+            >
+              <Icon name={purgeLoading ? 'Loader2' : 'Trash2'} size={14} className={purgeLoading ? 'animate-spin' : ''} />
+              {purgeLoading ? 'Удаляем...' : 'Удалить синхронизированные'}
             </Button>
           </div>
 
@@ -369,8 +428,78 @@ const VsdeskSettings = () => {
                   <span className="font-semibold text-red-500">{syncProgress.errors}</span>
                 </div>
               </div>
+
+              {syncErrors.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="AlertTriangle" size={14} className="text-red-500" />
+                    <p className="text-xs font-medium">Заявки с ошибками ({syncErrors.length})</p>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {syncErrors.map((err, i) => (
+                      <div
+                        key={`${err.ext_id}-${i}`}
+                        className="flex items-start gap-2 text-xs p-2 rounded-md bg-background border border-border/50"
+                      >
+                        <span className="font-mono text-muted-foreground shrink-0">#{err.ext_id}</span>
+                        <span className="text-red-500 break-all">{err.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {syncFinished && syncErrors.length === 0 && syncProgress.errors === 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50 text-xs text-green-500 flex items-center gap-2">
+                  <Icon name="CheckCircle2" size={14} />
+                  Все заявки импортированы без ошибок
+                </div>
+              )}
             </div>
           ) : null}
+
+          {purgeResult && (
+            <div className="mt-4 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Icon name="Trash2" size={16} className="text-red-500" />
+                <p className="text-sm font-medium">Удаление завершено</p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Заявок</span>
+                  <span className="font-semibold">{purgeResult.tickets}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Комментариев</span>
+                  <span className="font-semibold">{purgeResult.comments}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Вложений к заявкам</span>
+                  <span className="font-semibold">{purgeResult.ticket_attachments}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Вложений к коммент.</span>
+                  <span className="font-semibold">{purgeResult.comment_attachments}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Истории</span>
+                  <span className="font-semibold">{purgeResult.history}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Наблюдателей</span>
+                  <span className="font-semibold">{purgeResult.watchers}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Кастомных полей</span>
+                  <span className="font-semibold">{purgeResult.custom_field_values}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Файлов в S3</span>
+                  <span className="font-semibold">{purgeResult.s3_files_deleted}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
