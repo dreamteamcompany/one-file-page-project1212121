@@ -366,6 +366,22 @@ const VsdeskSettings = () => {
     }
   };
 
+  const handleResetInlineJob = async () => {
+    if (!window.confirm('Сбросить текущую очередь импорта во вкладке? Импортированные заявки сохранятся, но прогресс начнётся заново.')) return;
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=reset_inline_job`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setSyncProgress({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
+        setSyncErrors([]);
+        setSyncFinished(false);
+        toast({ title: 'Очередь сброшена. Можно запускать заново.' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    }
+  };
+
   const handleRunSync = async () => {
     await handleSave();
     setSyncRunning(true);
@@ -497,6 +513,17 @@ const VsdeskSettings = () => {
             >
               <Icon name={syncRunning ? 'Loader2' : 'Play'} size={14} className={syncRunning ? 'animate-spin' : ''} />
               {syncRunning ? 'Синхронизация...' : 'Запустить во вкладке'}
+            </Button>
+            <Button
+              onClick={handleResetInlineJob}
+              disabled={syncRunning}
+              size="sm"
+              variant="ghost"
+              className="gap-2"
+              title="Сбросить очередь импорта во вкладке"
+            >
+              <Icon name="RotateCcw" size={14} />
+              Сбросить очередь
             </Button>
             <Button
               onClick={handleStartJob}

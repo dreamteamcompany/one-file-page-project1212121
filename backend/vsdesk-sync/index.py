@@ -1102,9 +1102,10 @@ JOB_LOCK_TIMEOUT_SECONDS = 180  # если воркер завис — лок с
 
 
 def get_active_job(conn) -> Optional[dict]:
+    """Активная фоновая задача (не inline — inline обслуживается фронтом отдельно)."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT * FROM vsdesk_sync_jobs WHERE status='running' ORDER BY id DESC LIMIT 1"
+            "SELECT * FROM vsdesk_sync_jobs WHERE status='running' AND job_type <> 'inline' ORDER BY id DESC LIMIT 1"
         )
         return cur.fetchone()
 
@@ -1198,13 +1199,13 @@ def action_tick(conn) -> dict:
                  AND locked_at < CURRENT_TIMESTAMP - INTERVAL '%s seconds'""",
             (JOB_LOCK_TIMEOUT_SECONDS,)
         )
-        # Берём активную задачу с локом
+        # Берём активную задачу с локом (inline-job обрабатывает фронт, tick их не трогает)
         cur.execute(
             """UPDATE vsdesk_sync_jobs
                SET is_locked = TRUE, locked_at = CURRENT_TIMESTAMP
                WHERE id = (
                    SELECT id FROM vsdesk_sync_jobs
-                   WHERE status='running' AND is_locked=FALSE
+                   WHERE status='running' AND is_locked=FALSE AND job_type <> 'inline'
                    ORDER BY id ASC LIMIT 1
                )
                RETURNING *"""
@@ -1328,29 +1329,134 @@ def action_delta_batch(conn, offset: int, limit: int) -> dict:
     }
 
 
+def _get_or_create_inline_job(conn, force_rebuild: bool = False) -> Optional[dict]:
+    """Возвращает активный inline-job. Если его нет — строит очередь из vsDesk один раз и создаёт job.
+    Возвращает None если vsDesk недоступен или нечего импортировать."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT * FROM vsdesk_sync_jobs WHERE status='running' AND job_type='inline' ORDER BY id DESC LIMIT 1"
+        )
+        existing = cur.fetchone()
+
+    if existing and not force_rebuild:
+        return dict(existing)
+
+    # Строим очередь — один тяжёлый запрос к vsDesk
+    try:
+        ids = collect_eligible_ext_ids(conn)
+    except Exception as e:
+        return {'__error__': f'vsdesk_unreachable: {e}'}
+
+    if not ids:
+        return None
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO vsdesk_sync_jobs
+               (status, job_type, queue, total, processed, inserted, skipped, filtered, errors, error_details, started_at)
+               VALUES ('running', 'inline', %s::jsonb, %s, 0, 0, 0, 0, 0, '[]'::jsonb, CURRENT_TIMESTAMP)
+               RETURNING *""",
+            (json.dumps(ids), len(ids))
+        )
+        job = cur.fetchone()
+    conn.commit()
+    return dict(job)
+
+
 def action_sync_batch(conn, offset: int, limit: int) -> dict:
-    ids = collect_eligible_ext_ids(conn)
-    total = len(ids)
-    batch = ids[offset:offset + limit]
+    """Импортирует пачку заявок vsDesk, используя кэшированную очередь в БД (job_type='inline').
+    Параметр offset игнорируется (оставлен для совместимости фронта) — очередь сохраняется на сервере.
+    Каждый вызов забирает первые `limit` ext_id из очереди, импортирует и удаляет из очереди.
+    """
+    # Если offset=0 и есть незавершённый inline-job — продолжаем с него.
+    # Если очереди нет — строим её один раз.
+    job_info = _get_or_create_inline_job(conn, force_rebuild=False)
+
+    if job_info is None:
+        return {
+            'success': True,
+            'total': 0,
+            'processed': 0,
+            'next_offset': 0,
+            'done': True,
+            'batch_size': 0,
+            'inserted': 0,
+            'skipped': 0,
+            'filtered': 0,
+            'errors': 0,
+            'details': [],
+        }
+    if isinstance(job_info, dict) and job_info.get('__error__'):
+        return {'success': False, 'error': job_info['__error__']}
+
+    job_id = job_info['id']
+    queue = job_info.get('queue') or []
+    if not isinstance(queue, list):
+        queue = []
+    total = int(job_info.get('total') or len(queue) + int(job_info.get('processed') or 0))
+    already_processed = int(job_info.get('processed') or 0)
+
+    if limit <= 0 or limit > 100:
+        limit = 10
+    batch = queue[:limit]
+    rest = queue[limit:]
+
     mapping = load_status_mapping(conn)
     default_status = get_default_status_id(conn)
     sys_user = get_system_user_id(conn)
     stats = {'inserted': 0, 'skipped': 0, 'filtered': 0, 'errors': 0, 'details': []}
+
     for ext in batch:
-        res = import_one_ticket(conn, ext, mapping, default_status, sys_user)
-        stats[res['status'] if res['status'] in ('inserted', 'skipped', 'filtered') else 'errors'] += 1
-        if res.get('status') == 'error':
-            stats['details'].append({'ext_id': ext, 'reason': res.get('reason')})
-    next_offset = offset + len(batch)
-    done = next_offset >= total
+        try:
+            res = import_one_ticket(conn, ext, mapping, default_status, sys_user)
+            key = res['status'] if res['status'] in ('inserted', 'skipped', 'filtered') else 'errors'
+            stats[key] += 1
+            if res.get('status') == 'error':
+                stats['details'].append({'ext_id': ext, 'reason': res.get('reason')})
+        except Exception as e:
+            stats['errors'] += 1
+            stats['details'].append({'ext_id': ext, 'reason': f'exception: {e}'})
+
+    new_processed = already_processed + len(batch)
+    done = len(rest) == 0
+    new_status = 'done' if done else 'running'
+
+    existing_errors = job_info.get('error_details') or []
+    if not isinstance(existing_errors, list):
+        existing_errors = []
+    existing_errors.extend(stats['details'])
+    if len(existing_errors) > 500:
+        existing_errors = existing_errors[-500:]
+
+    with conn.cursor() as cur:
+        cur.execute(
+            """UPDATE vsdesk_sync_jobs
+               SET queue = %s::jsonb,
+                   processed = %s,
+                   inserted = inserted + %s,
+                   skipped = skipped + %s,
+                   filtered = filtered + %s,
+                   errors = errors + %s,
+                   error_details = %s::jsonb,
+                   status = %s,
+                   last_tick_at = CURRENT_TIMESTAMP,
+                   finished_at = CASE WHEN %s THEN CURRENT_TIMESTAMP ELSE finished_at END
+               WHERE id = %s""",
+            (json.dumps(rest), new_processed,
+             stats['inserted'], stats['skipped'], stats['filtered'], stats['errors'],
+             json.dumps(existing_errors), new_status, done, job_id)
+        )
+    conn.commit()
+
     return {
         'success': True,
         'total': total,
-        'processed': next_offset,
-        'next_offset': next_offset,
+        'processed': new_processed,
+        'next_offset': new_processed,
         'done': done,
         'batch_size': len(batch),
-        **stats,
+        'job_id': job_id,
+        **{k: v for k, v in stats.items()},
     }
 
 
@@ -1425,6 +1531,16 @@ def handler(event: dict, context) -> dict:
 
         if action == 'tick' and method in ('POST', 'GET'):
             return api_response(200, action_tick(conn))
+
+        if action == 'reset_inline_job' and method == 'POST':
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE vsdesk_sync_jobs SET status='cancelled', finished_at=CURRENT_TIMESTAMP
+                       WHERE status='running' AND job_type='inline' RETURNING id"""
+                )
+                row = cur.fetchone()
+            conn.commit()
+            return api_response(200, {'success': True, 'cancelled_job_id': row['id'] if row else None})
 
         if action in ('sync', '') and method in ('GET', 'POST'):
             try:
