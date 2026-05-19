@@ -191,7 +191,9 @@ def normalize_email(s: Any) -> str:
 
 def find_or_create_user(conn, email: str = '', full_name: str = '',
                         vsdesk_user_id: str = '') -> Optional[int]:
-    """Ищет пользователя по email -> external_id -> full_name; иначе создаёт без пароля."""
+    """Ищет пользователя ПРИОРИТЕТНО по full_name (как просил заказчик),
+    далее по email и external_id. Если не нашли — создаёт нового с can_login=TRUE
+    и password_hash='NO_LOGIN' (вход только через 'Забыли пароль')."""
     email_n = normalize_email(email)
     full_name = (full_name or '').strip()
     vsdesk_user_id = (str(vsdesk_user_id) if vsdesk_user_id else '').strip()
@@ -200,42 +202,54 @@ def find_or_create_user(conn, email: str = '', full_name: str = '',
         return None
 
     with conn.cursor() as cur:
-        if email_n:
-            cur.execute("SELECT id FROM users WHERE LOWER(email) = %s LIMIT 1", (email_n,))
+        # 1. Приоритет — по full_name (TRIM + регистронезависимо)
+        if full_name:
+            cur.execute(
+                "SELECT id FROM users WHERE LOWER(TRIM(full_name)) = LOWER(TRIM(%s)) "
+                "AND COALESCE(external_id, '') <> 'system' LIMIT 1",
+                (full_name,)
+            )
             row = cur.fetchone()
             if row:
                 return row['id']
 
+        # 2. По email
+        if email_n:
+            cur.execute(
+                "SELECT id FROM users WHERE LOWER(email) = %s "
+                "AND COALESCE(external_id, '') <> 'system' LIMIT 1",
+                (email_n,)
+            )
+            row = cur.fetchone()
+            if row:
+                return row['id']
+
+        # 3. По external_id vsDesk
         if vsdesk_user_id:
             cur.execute(
-                "SELECT id FROM users WHERE external_source='vsdesk' AND external_id=%s LIMIT 1",
+                "SELECT id FROM users WHERE external_source='vsdesk' AND external_id=%s "
+                "AND COALESCE(external_id, '') <> 'system' LIMIT 1",
                 (vsdesk_user_id,)
             )
             row = cur.fetchone()
             if row:
                 return row['id']
 
-        if full_name:
-            cur.execute("SELECT id FROM users WHERE LOWER(full_name) = LOWER(%s) LIMIT 1", (full_name,))
-            row = cur.fetchone()
-            if row:
-                return row['id']
-
-        # Создаём нового
+        # 4. Создаём нового — обязательно хотя бы что-то одно есть
         email_for_db = email_n or f'vsdesk_{vsdesk_user_id or uuid.uuid4().hex[:8]}@imported.local'
-        username = re.sub(r'[^a-z0-9_]', '_', email_for_db.split('@')[0])[:90] or f'vsdesk_{uuid.uuid4().hex[:8]}'
-        # email/username уникальные — добавим суффикс если занято
+        username_base = re.sub(r'[^a-z0-9_]', '_', email_for_db.split('@')[0])[:90] or f'vsdesk_{uuid.uuid4().hex[:8]}'
+        username = username_base
         cur.execute("SELECT 1 FROM users WHERE email = %s OR username = %s", (email_for_db, username))
         if cur.fetchone():
             suffix = uuid.uuid4().hex[:6]
             email_for_db = email_for_db.replace('@', f'+{suffix}@')
-            username = f'{username}_{suffix}'
+            username = f'{username_base}_{suffix}'
 
         cur.execute(
             """INSERT INTO users
                (email, password_hash, full_name, username, is_active, can_login,
                 external_source, external_id, auto_registered)
-               VALUES (%s, 'NO_LOGIN', %s, %s, TRUE, FALSE, 'vsdesk', %s, TRUE)
+               VALUES (%s, 'NO_LOGIN', %s, %s, TRUE, TRUE, 'vsdesk', %s, TRUE)
                RETURNING id""",
             (email_for_db, full_name or email_for_db, username, vsdesk_user_id or None)
         )
@@ -306,6 +320,7 @@ def import_one_ticket(conn, ext_id: str, mapping: Dict[str, Dict[str, Any]],
     author_email = req.get('UserEmail') or req.get('AuthorEmail') or ''
     author_name = req.get('UserName') or req.get('Author') or req.get('FIO') or ''
     author_vsdesk_id = str(req.get('user_id') or req.get('UserId') or '')
+    # Fallback на технического юзера — только если совсем нет данных об авторе
     created_by_user = find_or_create_user(conn, author_email, author_name, author_vsdesk_id) or system_user_id
 
     executor_email = req.get('ExecutorEmail') or req.get('ExpertEmail') or ''
@@ -1461,6 +1476,237 @@ def action_sync_batch(conn, offset: int, limit: int) -> dict:
 
 
 # =====================================================================
+# Перепривязка импортированных заявок (vsDesk-import → реальные юзеры)
+# =====================================================================
+
+def _get_import_user_id(conn) -> Optional[int]:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM users WHERE external_source='vsdesk' AND external_id='system' LIMIT 1"
+        )
+        row = cur.fetchone()
+        return row['id'] if row else None
+
+
+def action_remap_count(conn) -> dict:
+    """Сколько заявок ещё нужно перепривязать с технического юзера."""
+    import_uid = _get_import_user_id(conn)
+    if not import_uid:
+        return {'pending': 0, 'tickets': 0, 'comments': 0, 'watchers': 0, 'history': 0}
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) AS c FROM tickets WHERE external_source='vsdesk' AND (created_by = %s OR assigned_to = %s)",
+            (import_uid, import_uid)
+        )
+        tickets_left = cur.fetchone()['c'] or 0
+        cur.execute("SELECT COUNT(*) AS c FROM ticket_watchers WHERE user_id = %s", (import_uid,))
+        watchers_left = cur.fetchone()['c'] or 0
+        cur.execute("SELECT COUNT(*) AS c FROM ticket_comments WHERE user_id = %s", (import_uid,))
+        comments_left = cur.fetchone()['c'] or 0
+        cur.execute("SELECT COUNT(*) AS c FROM ticket_history WHERE user_id = %s", (import_uid,))
+        history_left = cur.fetchone()['c'] or 0
+    return {
+        'pending': tickets_left,
+        'tickets': tickets_left,
+        'comments': comments_left,
+        'watchers': watchers_left,
+        'history': history_left,
+    }
+
+
+def remap_one_ticket(conn, ticket_local_id: int, ext_id: str, import_uid: int) -> dict:
+    """Подтягивает заявку из vsDesk и переставляет ссылки на реальных юзеров.
+    Обновляет: created_by, assigned_to, watchers, авторов комментариев и истории."""
+    counters = {'updated': 0, 'comments_fixed': 0, 'watchers_fixed': 0, 'history_fixed': 0}
+    try:
+        req = vsdesk_raw(f'/api/requests/{ext_id}/')
+    except Exception as e:
+        return {'status': 'error', 'reason': f'fetch_failed: {e}', **counters}
+    if not isinstance(req, dict):
+        return {'status': 'error', 'reason': 'invalid_response', **counters}
+
+    # Автор
+    author_email = req.get('UserEmail') or req.get('AuthorEmail') or ''
+    author_name = req.get('UserName') or req.get('Author') or req.get('FIO') or ''
+    author_vid = str(req.get('user_id') or req.get('UserId') or '')
+    new_author = find_or_create_user(conn, author_email, author_name, author_vid)
+
+    # Исполнитель
+    exec_email = req.get('ExecutorEmail') or req.get('ExpertEmail') or ''
+    exec_name = req.get('Executor') or req.get('Expert') or ''
+    exec_vid = str(req.get('executor_id') or req.get('expert_id') or '')
+    new_executor = None
+    if exec_name or exec_email or exec_vid:
+        new_executor = find_or_create_user(conn, exec_email, exec_name, exec_vid)
+
+    with conn.cursor() as cur:
+        if new_author and new_author != import_uid:
+            cur.execute(
+                "UPDATE tickets SET created_by = %s WHERE id = %s AND created_by = %s",
+                (new_author, ticket_local_id, import_uid)
+            )
+            if cur.rowcount:
+                counters['updated'] += 1
+        if new_executor and new_executor != import_uid:
+            cur.execute(
+                "UPDATE tickets SET assigned_to = %s WHERE id = %s AND (assigned_to = %s OR assigned_to IS NULL)",
+                (new_executor, ticket_local_id, import_uid)
+            )
+            if cur.rowcount:
+                counters['updated'] += 1
+
+    # Наблюдатели
+    watchers = req.get('watchers') or req.get('observers') or []
+    for w in watchers:
+        w_email = w.get('email') if isinstance(w, dict) else ''
+        w_name = (w.get('name') or w.get('full_name') or '') if isinstance(w, dict) else str(w)
+        w_id = str(w.get('id') or '') if isinstance(w, dict) else ''
+        new_w = find_or_create_user(conn, w_email, w_name, w_id)
+        if not new_w or new_w == import_uid:
+            continue
+        with conn.cursor() as cur:
+            # Снять с import_uid → переставить
+            cur.execute(
+                "UPDATE ticket_watchers SET user_id = %s WHERE ticket_id = %s AND user_id = %s "
+                "AND NOT EXISTS (SELECT 1 FROM ticket_watchers tw2 WHERE tw2.ticket_id = %s AND tw2.user_id = %s)",
+                (new_w, ticket_local_id, import_uid, ticket_local_id, new_w)
+            )
+            if cur.rowcount:
+                counters['watchers_fixed'] += 1
+            else:
+                # Если такой watcher уже есть → просто удаляем строку с import_uid
+                cur.execute(
+                    "DELETE FROM ticket_watchers WHERE ticket_id = %s AND user_id = %s",
+                    (ticket_local_id, import_uid)
+                )
+
+    # Комментарии (по external_id)
+    subs = req.get('subs') or []
+    for c in subs:
+        if not isinstance(c, dict):
+            continue
+        ext_c = str(c.get('id') or '')
+        if not ext_c:
+            continue
+        c_email = c.get('UserEmail') or ''
+        c_name = c.get('UserName') or c.get('Author') or ''
+        c_vid = str(c.get('user_id') or '')
+        new_c = find_or_create_user(conn, c_email, c_name, c_vid)
+        if not new_c or new_c == import_uid:
+            continue
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE ticket_comments SET user_id = %s "
+                "WHERE ticket_id = %s AND external_source='vsdesk' AND external_id = %s AND user_id = %s",
+                (new_c, ticket_local_id, ext_c, import_uid)
+            )
+            if cur.rowcount:
+                counters['comments_fixed'] += 1
+
+    # История
+    history = req.get('history') or req.get('log') or []
+    for h in history:
+        if not isinstance(h, dict):
+            continue
+        ext_h = str(h.get('id') or '')
+        if not ext_h:
+            continue
+        h_email = h.get('UserEmail') or ''
+        h_name = h.get('UserName') or h.get('user') or ''
+        h_vid = str(h.get('user_id') or '')
+        new_h = find_or_create_user(conn, h_email, h_name, h_vid)
+        if not new_h or new_h == import_uid:
+            continue
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE ticket_history SET user_id = %s "
+                "WHERE ticket_id = %s AND external_source='vsdesk' AND external_id = %s AND user_id = %s",
+                (new_h, ticket_local_id, ext_h, import_uid)
+            )
+            if cur.rowcount:
+                counters['history_fixed'] += 1
+
+    conn.commit()
+    return {'status': 'ok', **counters}
+
+
+def action_remap_batch(conn, limit: int = 5) -> dict:
+    """Берёт следующую пачку vsDesk-заявок, привязанных к техническому юзеру, и перепривязывает их.
+    Также включает заявки, где импорт-юзер только в наблюдателях/комментариях."""
+    import_uid = _get_import_user_id(conn)
+    if not import_uid:
+        return {'success': True, 'done': True, 'reason': 'no_import_user'}
+    if limit <= 0 or limit > 30:
+        limit = 5
+
+    with conn.cursor() as cur:
+        # Берём заявки, где import_uid в created_by/assigned_to ИЛИ в комментариях/наблюдателях/истории.
+        cur.execute(
+            """
+            SELECT DISTINCT t.id, t.external_id FROM tickets t
+            WHERE t.external_source = 'vsdesk' AND t.external_id IS NOT NULL
+              AND (
+                t.created_by = %s OR t.assigned_to = %s
+                OR EXISTS (SELECT 1 FROM ticket_comments c WHERE c.ticket_id = t.id AND c.user_id = %s)
+                OR EXISTS (SELECT 1 FROM ticket_watchers w WHERE w.ticket_id = t.id AND w.user_id = %s)
+                OR EXISTS (SELECT 1 FROM ticket_history h WHERE h.ticket_id = t.id AND h.user_id = %s)
+              )
+            ORDER BY t.id ASC
+            LIMIT %s
+            """,
+            (import_uid, import_uid, import_uid, import_uid, import_uid, limit)
+        )
+        rows = cur.fetchall()
+
+    if not rows:
+        return {'success': True, 'done': True, 'processed': 0}
+
+    totals = {'processed': 0, 'updated': 0, 'comments_fixed': 0, 'watchers_fixed': 0, 'history_fixed': 0, 'errors': 0}
+    details: List[dict] = []
+    for r in rows:
+        try:
+            res = remap_one_ticket(conn, r['id'], r['external_id'], import_uid)
+            totals['processed'] += 1
+            if res.get('status') == 'ok':
+                totals['updated'] += res.get('updated', 0)
+                totals['comments_fixed'] += res.get('comments_fixed', 0)
+                totals['watchers_fixed'] += res.get('watchers_fixed', 0)
+                totals['history_fixed'] += res.get('history_fixed', 0)
+            else:
+                totals['errors'] += 1
+                details.append({'ticket_id': r['id'], 'ext_id': r['external_id'], 'reason': res.get('reason')})
+        except Exception as e:
+            totals['errors'] += 1
+            details.append({'ticket_id': r['id'], 'ext_id': r['external_id'], 'reason': f'exception: {e}'})
+
+    # После пачки — пересчитываем "осталось"
+    remain = action_remap_count(conn)
+    return {
+        'success': True,
+        'done': remain.get('pending', 0) == 0 and remain.get('comments', 0) == 0
+                 and remain.get('watchers', 0) == 0 and remain.get('history', 0) == 0,
+        'remaining': remain,
+        'details': details,
+        **totals,
+    }
+
+
+def action_enable_login_for_imported(conn) -> dict:
+    """Включает can_login для всех импортированных vsDesk-юзеров (кроме технического)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """UPDATE users SET can_login = TRUE, updated_at = CURRENT_TIMESTAMP
+               WHERE external_source = 'vsdesk'
+                 AND COALESCE(external_id, '') <> 'system'
+                 AND can_login = FALSE
+               RETURNING id"""
+        )
+        ids = [row['id'] for row in cur.fetchall()]
+    conn.commit()
+    return {'success': True, 'updated_users': len(ids)}
+
+
+# =====================================================================
 # Handler
 # =====================================================================
 
@@ -1541,6 +1787,19 @@ def handler(event: dict, context) -> dict:
                 row = cur.fetchone()
             conn.commit()
             return api_response(200, {'success': True, 'cancelled_job_id': row['id'] if row else None})
+
+        if action == 'remap_count' and method == 'GET':
+            return api_response(200, action_remap_count(conn))
+
+        if action == 'remap_batch' and method in ('POST', 'GET'):
+            try:
+                limit = int(body.get('limit') if 'limit' in body else params.get('limit', 5))
+            except Exception:
+                limit = 5
+            return api_response(200, action_remap_batch(conn, limit))
+
+        if action == 'enable_login_imported' and method == 'POST':
+            return api_response(200, action_enable_login_for_imported(conn))
 
         if action in ('sync', '') and method in ('GET', 'POST'):
             try:

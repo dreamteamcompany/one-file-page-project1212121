@@ -149,6 +149,91 @@ const VsdeskSettings = () => {
     }
   };
 
+  const [remapRunning, setRemapRunning] = useState(false);
+  const [remapProgress, setRemapProgress] = useState({
+    processed: 0, updated: 0, comments_fixed: 0, watchers_fixed: 0, history_fixed: 0, errors: 0,
+  });
+  const [remapPending, setRemapPending] = useState<{
+    tickets: number; comments: number; watchers: number; history: number;
+  } | null>(null);
+
+  const loadRemapCount = async () => {
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=remap_count`);
+      const data = await res.json();
+      setRemapPending({
+        tickets: data.tickets || 0,
+        comments: data.comments || 0,
+        watchers: data.watchers || 0,
+        history: data.history || 0,
+      });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    loadRemapCount();
+  }, []);
+
+  const handleEnableLoginImported = async () => {
+    if (!window.confirm('Разрешить вход для всех импортированных vsDesk-пользователей?')) return;
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=enable_login_imported`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: `Вход разрешён для ${data.updated_users} пользователей` });
+      } else {
+        toast({ title: data.error || 'Ошибка', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    }
+  };
+
+  const handleRunRemapInTab = async () => {
+    setRemapRunning(true);
+    setRemapProgress({ processed: 0, updated: 0, comments_fixed: 0, watchers_fixed: 0, history_fixed: 0, errors: 0 });
+    const limit = 5;
+    let safetyHops = 0;
+    try {
+      while (true) {
+        safetyHops += 1;
+        if (safetyHops > 4000) break;
+        const res = await fetch(`${func2url['vsdesk-sync']}?action=remap_batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          toast({ title: data.error || 'Ошибка перепривязки', variant: 'destructive' });
+          break;
+        }
+        setRemapProgress((prev) => ({
+          processed: prev.processed + (data.processed || 0),
+          updated: prev.updated + (data.updated || 0),
+          comments_fixed: prev.comments_fixed + (data.comments_fixed || 0),
+          watchers_fixed: prev.watchers_fixed + (data.watchers_fixed || 0),
+          history_fixed: prev.history_fixed + (data.history_fixed || 0),
+          errors: prev.errors + (data.errors || 0),
+        }));
+        if (data.remaining) {
+          setRemapPending(data.remaining);
+        }
+        if (data.done || (data.processed || 0) === 0) {
+          toast({ title: 'Перепривязка завершена' });
+          await loadRemapCount();
+          break;
+        }
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setRemapRunning(false);
+    }
+  };
+
   const [deltaRunning, setDeltaRunning] = useState(false);
   const [deltaProgress, setDeltaProgress] = useState({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
   const [deltaErrors, setDeltaErrors] = useState<{ ext_id: string; reason: string }[]>([]);
@@ -608,6 +693,32 @@ const VsdeskSettings = () => {
               {deltaJobStarting ? 'Запускаем...' : 'Догрузить в фоне'}
             </Button>
             <Button
+              onClick={handleRunRemapInTab}
+              disabled={remapRunning || loading}
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              title="Перепривязать заявки, где заказчик/исполнитель/наблюдатели указаны как 'vsDesk (импорт)' — заменить на реальных пользователей"
+            >
+              <Icon name={remapRunning ? 'Loader2' : 'UserCheck'} size={14} className={remapRunning ? 'animate-spin' : ''} />
+              {remapRunning
+                ? 'Перепривязка...'
+                : remapPending && remapPending.tickets > 0
+                ? `Перепривязать (${remapPending.tickets})`
+                : 'Перепривязать импорт'}
+            </Button>
+            <Button
+              onClick={handleEnableLoginImported}
+              disabled={loading}
+              size="sm"
+              variant="ghost"
+              className="gap-2"
+              title="Разрешить вход в систему всем импортированным пользователям из vsDesk"
+            >
+              <Icon name="KeyRound" size={14} />
+              Разрешить вход импорту
+            </Button>
+            <Button
               onClick={handlePurge}
               disabled={purgeLoading || syncRunning}
               size="sm"
@@ -852,6 +963,51 @@ const VsdeskSettings = () => {
               )}
             </div>
           ) : null}
+
+          {(remapRunning || remapProgress.processed > 0 || (remapPending && remapPending.tickets > 0)) && (
+            <div className="mt-4 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Icon
+                    name="UserCheck"
+                    size={16}
+                    className={remapRunning ? 'animate-pulse text-emerald-500' : 'text-emerald-500'}
+                  />
+                  <p className="text-sm font-medium">Перепривязка импортированных заявок</p>
+                </div>
+                {remapPending && (
+                  <p className="text-xs text-muted-foreground">
+                    Осталось: {remapPending.tickets} заявок
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Меняем заказчика/исполнителя/наблюдателей с технического «vsDesk (импорт)» на реальных пользователей. Идёт пачками по 5 заявок.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Обработано</span>
+                  <span className="font-semibold">{remapProgress.processed}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Заявок исправлено</span>
+                  <span className="font-semibold text-green-500">{remapProgress.updated}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Комментарии</span>
+                  <span className="font-semibold">{remapProgress.comments_fixed}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Наблюдатели</span>
+                  <span className="font-semibold">{remapProgress.watchers_fixed}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Ошибок</span>
+                  <span className="font-semibold text-red-500">{remapProgress.errors}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {(deltaRunning || deltaProgress.total > 0) && (
             <div className="mt-4 p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
