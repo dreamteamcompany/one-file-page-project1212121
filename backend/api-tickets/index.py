@@ -370,12 +370,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             """
             params.append(user_id)
         
-        count_query = f"SELECT COUNT(DISTINCT t.id) AS total FROM {SCHEMA}.tickets t {where_clause}"
+        count_query = f"SELECT COUNT(*) AS total FROM {SCHEMA}.tickets t {where_clause}"
         cur.execute(count_query, params)
         total = cur.fetchone()['total']
         
         main_query = f"""
-            SELECT DISTINCT t.id, t.title, t.description, t.status_id, t.priority_id,
+            SELECT t.id, t.title, t.description, t.status_id, t.priority_id,
                    t.assigned_to, t.created_by, t.created_at, t.updated_at,
                    t.department_id, t.due_date, t.executor_group_id,
                    t.confirmation_sent_at, t.rating, t.rejection_reason,
