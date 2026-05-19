@@ -1,3 +1,10 @@
+export interface Company {
+  id: number;
+  name: string;
+  members_count: number;
+  root_departments_count: number;
+}
+
 export interface Department {
   id: number;
   name: string;
@@ -17,6 +24,14 @@ export interface DepartmentNode extends Department {
   children: DepartmentNode[];
 }
 
+export interface CompanyNode {
+  kind: 'company';
+  id: number | null;
+  name: string;
+  members_count: number;
+  children: DepartmentNode[];
+}
+
 export interface DepartmentUser {
   id: number;
   full_name: string;
@@ -27,4 +42,9 @@ export interface DepartmentUser {
   department_id?: number | null;
   department_name?: string | null;
   is_active?: boolean;
+}
+
+export interface OrgChartTreeData {
+  companies: Company[];
+  departments: Department[];
 }

@@ -65,7 +65,21 @@ def _safe_int(v: Any) -> Optional[int]:
 
 
 def handle_tree(cur) -> Dict[str, Any]:
-    """Возвращает плоский список отделов с руководителем и счётчиками."""
+    """Возвращает компании (корни) + отделы под ними."""
+    # Компании
+    cur.execute(
+        """
+        SELECT c.id, c.name,
+               (SELECT COUNT(*) FROM users WHERE company_id = c.id AND is_active = true) AS members_count,
+               (SELECT COUNT(*) FROM departments WHERE company_id = c.id AND is_active = true AND parent_id IS NULL) AS root_departments_count
+        FROM companies c
+        WHERE COALESCE(c.is_active, true) = true
+        ORDER BY c.name
+        """
+    )
+    companies = [dict(r) for r in cur.fetchall()]
+
+    # Отделы
     cur.execute(
         """
         SELECT d.id, d.name, d.parent_id, d.head_user_id, d.company_id,
@@ -80,8 +94,9 @@ def handle_tree(cur) -> Dict[str, Any]:
         ORDER BY COALESCE(d.parent_id, 0), d.name
         """
     )
-    rows = [dict(r) for r in cur.fetchall()]
-    return _resp(200, rows)
+    departments = [dict(r) for r in cur.fetchall()]
+
+    return _resp(200, {'companies': companies, 'departments': departments})
 
 
 def handle_department_users(cur, dept_id: int) -> Dict[str, Any]:
@@ -247,6 +262,78 @@ def handle_delete_dept(cur, conn, dept_id: int) -> Dict[str, Any]:
     return _resp(200, {'ok': True})
 
 
+def handle_create_company(cur, conn, data: Dict[str, Any]) -> Dict[str, Any]:
+    name = (data.get('name') or '').strip()
+    if not name:
+        return _resp(400, {'error': 'Название обязательно'})
+    cur.execute(
+        "INSERT INTO companies (name, is_active) VALUES (%s, true) RETURNING id, name",
+        (name,),
+    )
+    row = dict(cur.fetchone())
+    conn.commit()
+    return _resp(201, row)
+
+
+def handle_update_company(cur, conn, company_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    if not company_id:
+        return _resp(400, {'error': 'id required'})
+    name = (data.get('name') or '').strip()
+    if not name:
+        return _resp(400, {'error': 'Название не может быть пустым'})
+    cur.execute(
+        "UPDATE companies SET name = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING id, name",
+        (name, company_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return _resp(404, {'error': 'Компания не найдена'})
+    conn.commit()
+    return _resp(200, dict(row))
+
+
+def handle_delete_company(cur, conn, company_id: int) -> Dict[str, Any]:
+    if not company_id:
+        return _resp(400, {'error': 'id required'})
+    cur.execute(
+        "SELECT COUNT(*) AS c FROM departments WHERE company_id = %s AND is_active = true",
+        (company_id,),
+    )
+    if (cur.fetchone() or {}).get('c', 0) > 0:
+        return _resp(400, {'error': 'У компании есть отделы — сначала переместите их'})
+    cur.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE company_id = %s AND is_active = true",
+        (company_id,),
+    )
+    if (cur.fetchone() or {}).get('c', 0) > 0:
+        return _resp(400, {'error': 'В компании есть сотрудники'})
+    cur.execute("UPDATE companies SET is_active = false WHERE id = %s", (company_id,))
+    conn.commit()
+    return _resp(200, {'ok': True})
+
+
+def handle_move_department(cur, conn, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Перенос корневого отдела в другую компанию (или 'без компании')."""
+    dept_id = _safe_int(data.get('department_id'))
+    company_id = _safe_int(data.get('company_id'))
+    if not dept_id:
+        return _resp(400, {'error': 'department_id required'})
+    cur.execute("SELECT id FROM departments WHERE id = %s AND is_active = true", (dept_id,))
+    if not cur.fetchone():
+        return _resp(404, {'error': 'Отдел не найден'})
+    if company_id is not None:
+        cur.execute("SELECT id FROM companies WHERE id = %s", (company_id,))
+        if not cur.fetchone():
+            return _resp(404, {'error': 'Компания не найдена'})
+    # При перемещении в другую компанию отдел становится корневым (parent_id = NULL)
+    cur.execute(
+        "UPDATE departments SET company_id = %s, parent_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+        (company_id, dept_id),
+    )
+    conn.commit()
+    return _resp(200, {'ok': True, 'department_id': dept_id, 'company_id': company_id})
+
+
 def handle_move_user(cur, conn, data: Dict[str, Any]) -> Dict[str, Any]:
     user_id = _safe_int(data.get('user_id'))
     dept_id = _safe_int(data.get('department_id'))
@@ -292,7 +379,10 @@ def route(event: Dict[str, Any], cur, conn) -> Optional[Dict[str, Any]]:
         return _resp(405, {'error': 'Method not allowed'})
 
     # Write-операции — только админ
-    if endpoint in ('create-dept', 'update-dept', 'delete-dept', 'move-user'):
+    if endpoint in (
+        'create-dept', 'update-dept', 'delete-dept', 'move-user',
+        'create-company', 'update-company', 'delete-company', 'move-department',
+    ):
         payload = _verify_token(event)
         if not payload:
             return _resp(401, {'error': 'Требуется авторизация'})
@@ -315,6 +405,14 @@ def route(event: Dict[str, Any], cur, conn) -> Optional[Dict[str, Any]]:
             return handle_delete_dept(cur, conn, _safe_int(qs.get('id')))
         if endpoint == 'move-user' and method in ('POST', 'PUT'):
             return handle_move_user(cur, conn, body)
+        if endpoint == 'create-company' and method == 'POST':
+            return handle_create_company(cur, conn, body)
+        if endpoint == 'update-company' and method in ('PUT', 'PATCH'):
+            return handle_update_company(cur, conn, _safe_int(qs.get('id')), body)
+        if endpoint == 'delete-company' and method == 'DELETE':
+            return handle_delete_company(cur, conn, _safe_int(qs.get('id')))
+        if endpoint == 'move-department' and method in ('POST', 'PUT'):
+            return handle_move_department(cur, conn, body)
         return _resp(405, {'error': 'Method not allowed'})
 
     return None

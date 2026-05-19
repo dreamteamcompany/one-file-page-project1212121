@@ -18,10 +18,14 @@ import {
 import OrgChartTree from '@/components/org-chart/OrgChartTree';
 import DepartmentPanel from '@/components/org-chart/DepartmentPanel';
 import EditDepartmentDialog from '@/components/org-chart/EditDepartmentDialog';
+import EditCompanyDialog from '@/components/org-chart/EditCompanyDialog';
 import {
+  Company,
+  CompanyNode,
   Department,
   DepartmentNode,
   DepartmentUser,
+  OrgChartTreeData,
 } from '@/components/org-chart/types';
 
 const API_URL = (func2url as Record<string, string>)['departments'];
@@ -57,6 +61,7 @@ const OrgChart = () => {
     [getToken],
   );
 
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDept, setSelectedDept] = useState<number | null>(null);
@@ -69,8 +74,15 @@ const OrgChart = () => {
   const [searchResults, setSearchResults] = useState<DepartmentUser[]>([]);
   const [activeDragUser, setActiveDragUser] = useState<DepartmentUser | null>(null);
   const [editDept, setEditDept] = useState<Department | null>(null);
-  const [creatingUnder, setCreatingUnder] = useState<number | null | undefined>(undefined);
+  const [creatingUnder, setCreatingUnder] = useState<
+    { parentId: number | null; companyId: number | null } | null
+  >(null);
+  const [editCompany, setEditCompany] = useState<{ id: number; name: string } | null>(
+    null,
+  );
+  const [creatingCompany, setCreatingCompany] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
@@ -85,8 +97,13 @@ const OrgChart = () => {
         headers: authHeaders(),
       });
       if (res.ok) {
-        const data: Department[] = await res.json();
-        setDepartments(data);
+        const data: OrgChartTreeData = await res.json();
+        setCompanies(data.companies || []);
+        setDepartments(data.departments || []);
+        const all = new Set<string>();
+        (data.companies || []).forEach((c) => all.add(`c-${c.id}`));
+        all.add('none');
+        setExpandedCompanies(all);
       } else {
         toast({ title: 'Не удалось загрузить структуру', variant: 'destructive' });
       }
@@ -123,7 +140,6 @@ const OrgChart = () => {
     else setPanelData(null);
   }, [selectedDept, loadDeptUsers]);
 
-  // Поиск с дебаунсом
   useEffect(() => {
     if (!search.trim()) {
       setSearchResults([]);
@@ -139,7 +155,33 @@ const OrgChart = () => {
     return () => clearTimeout(t);
   }, [search, authHeaders]);
 
-  // Найти меня
+  const expandAncestors = useCallback(
+    (deptId: number) => {
+      const map = new Map<number, Department>();
+      departments.forEach((d) => map.set(d.id, d));
+      const target = map.get(deptId);
+      const ancestors = new Set<number>();
+      let cur = target;
+      while (cur && cur.parent_id) {
+        ancestors.add(cur.parent_id);
+        cur = map.get(cur.parent_id);
+      }
+      setExpandedNodes((prev) => {
+        const next = new Set(prev);
+        ancestors.forEach((id) => next.add(id));
+        return next;
+      });
+      if (target) {
+        setExpandedCompanies((prev) => {
+          const next = new Set(prev);
+          next.add(target.company_id === null ? 'none' : `c-${target.company_id}`);
+          return next;
+        });
+      }
+    },
+    [departments],
+  );
+
   const findMe = async () => {
     const res = await fetch(`${API_URL}?endpoint=me-department`, {
       headers: authHeaders(),
@@ -158,41 +200,46 @@ const OrgChart = () => {
     }
   };
 
-  const expandAncestors = useCallback(
-    (deptId: number) => {
-      const map = new Map<number, Department>();
-      departments.forEach((d) => map.set(d.id, d));
-      const ancestors = new Set<number>();
-      let cur = map.get(deptId);
-      while (cur && cur.parent_id) {
-        ancestors.add(cur.parent_id);
-        cur = map.get(cur.parent_id);
-      }
-      setExpandedNodes((prev) => {
-        const next = new Set(prev);
-        ancestors.forEach((id) => next.add(id));
-        return next;
-      });
-    },
-    [departments],
-  );
-
-  // Построение дерева
-  const tree = useMemo<DepartmentNode[]>(() => {
-    const map = new Map<number, DepartmentNode>();
-    departments.forEach((d) => map.set(d.id, { ...d, children: [] }));
-    const roots: DepartmentNode[] = [];
-    map.forEach((node) => {
-      if (node.parent_id && map.has(node.parent_id)) {
-        map.get(node.parent_id)!.children.push(node);
-      } else {
-        roots.push(node);
+  const companyNodes = useMemo<CompanyNode[]>(() => {
+    const deptMap = new Map<number, DepartmentNode>();
+    departments.forEach((d) => deptMap.set(d.id, { ...d, children: [] }));
+    deptMap.forEach((node) => {
+      if (node.parent_id && deptMap.has(node.parent_id)) {
+        deptMap.get(node.parent_id)!.children.push(node);
       }
     });
-    return roots;
-  }, [departments]);
 
-  // DnD: перенос юзера в отдел
+    const rootsByCompany = new Map<number | 'none', DepartmentNode[]>();
+    deptMap.forEach((node) => {
+      if (!node.parent_id) {
+        const key: number | 'none' = node.company_id == null ? 'none' : node.company_id;
+        if (!rootsByCompany.has(key)) rootsByCompany.set(key, []);
+        rootsByCompany.get(key)!.push(node);
+      }
+    });
+
+    const result: CompanyNode[] = companies.map((c) => ({
+      kind: 'company',
+      id: c.id,
+      name: c.name,
+      members_count: c.members_count,
+      children: rootsByCompany.get(c.id) || [],
+    }));
+
+    const orphanRoots = rootsByCompany.get('none') || [];
+    if (orphanRoots.length > 0) {
+      result.push({
+        kind: 'company',
+        id: null,
+        name: 'Без компании',
+        members_count: 0,
+        children: orphanRoots,
+      });
+    }
+
+    return result;
+  }, [companies, departments]);
+
   const handleDragStart = (e: DragStartEvent) => {
     const u = e.active.data.current?.user as DepartmentUser | undefined;
     if (u) setActiveDragUser(u);
@@ -201,19 +248,25 @@ const OrgChart = () => {
   const handleDragEnd = async (e: DragEndEvent) => {
     setActiveDragUser(null);
     if (!isAdmin) {
-      toast({ title: 'Недостаточно прав', variant: 'destructive' });
+      if (e.active.data.current?.user) {
+        toast({ title: 'Недостаточно прав', variant: 'destructive' });
+      }
       return;
     }
     const u = e.active.data.current?.user as DepartmentUser | undefined;
-    const targetDeptId = e.over?.data.current?.deptId as number | undefined;
-    if (!u || !targetDeptId) return;
-    if (u.department_id === targetDeptId) return;
+    if (!u) return;
+    const overData = e.over?.data.current as
+      | { deptId?: number; companyId?: number | null; kind?: string }
+      | undefined;
+    if (!overData) return;
+    if (overData.kind !== 'dept' || !overData.deptId) return;
+    if (u.department_id === overData.deptId) return;
 
     try {
       const res = await fetch(`${API_URL}?endpoint=move-user`, {
         method: 'POST',
         headers: authHeaders(true),
-        body: JSON.stringify({ user_id: u.id, department_id: targetDeptId }),
+        body: JSON.stringify({ user_id: u.id, department_id: overData.deptId }),
       });
       if (res.ok) {
         toast({ title: `${u.full_name} перемещён` });
@@ -228,16 +281,21 @@ const OrgChart = () => {
     }
   };
 
-  // CRUD отделов
   const handleCreateDept = async (
     name: string,
     parentId: number | null,
     headUserId: number | null,
   ) => {
+    const companyId = creatingUnder?.companyId ?? null;
     const res = await fetch(`${API_URL}?endpoint=create-dept`, {
       method: 'POST',
       headers: authHeaders(true),
-      body: JSON.stringify({ name, parent_id: parentId, head_user_id: headUserId }),
+      body: JSON.stringify({
+        name,
+        parent_id: parentId,
+        head_user_id: headUserId,
+        company_id: companyId,
+      }),
     });
     if (res.ok) {
       toast({ title: 'Отдел создан' });
@@ -284,11 +342,55 @@ const OrgChart = () => {
     }
   };
 
+  const handleCreateCompany = async (name: string) => {
+    const res = await fetch(`${API_URL}?endpoint=create-company`, {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      toast({ title: 'Компания создана' });
+      await loadTree();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast({ title: err.error || 'Ошибка', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateCompany = async (id: number, name: string) => {
+    const res = await fetch(`${API_URL}?endpoint=update-company&id=${id}`, {
+      method: 'PUT',
+      headers: authHeaders(true),
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      toast({ title: 'Компания обновлена' });
+      await loadTree();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast({ title: err.error || 'Ошибка', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteCompany = async (id: number) => {
+    if (!window.confirm('Удалить компанию? Действие нельзя отменить.')) return;
+    const res = await fetch(`${API_URL}?endpoint=delete-company&id=${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (res.ok) {
+      toast({ title: 'Компания удалена' });
+      await loadTree();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast({ title: err.error || 'Ошибка', variant: 'destructive' });
+    }
+  };
+
   return (
     <PageLayout>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex flex-col h-[calc(100vh-7rem)] gap-4">
-          {/* Шапка */}
           <div className="flex flex-wrap items-center gap-3 justify-between">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -296,7 +398,7 @@ const OrgChart = () => {
                 Оргструктура
               </h1>
               <span className="text-sm text-muted-foreground">
-                Всего отделов: {departments.length}
+                Компаний: {companies.length} · Отделов: {departments.length}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -354,18 +456,17 @@ const OrgChart = () => {
               {isAdmin && (
                 <Button
                   size="sm"
-                  onClick={() => setCreatingUnder(null)}
+                  onClick={() => setCreatingCompany(true)}
                   className="gap-2"
                 >
                   <Icon name="Plus" size={14} />
-                  Добавить отдел
+                  Добавить компанию
                 </Button>
               )}
             </div>
           </div>
 
           <div className="flex flex-1 gap-4 min-h-0">
-            {/* Дерево */}
             <div
               ref={scrollContainerRef}
               className="flex-1 overflow-auto border rounded-lg bg-card p-6"
@@ -375,22 +476,23 @@ const OrgChart = () => {
                   <Icon name="Loader2" size={24} className="animate-spin mr-2" />
                   Загрузка...
                 </div>
-              ) : tree.length === 0 ? (
+              ) : companyNodes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-                  <Icon name="GitBranch" size={48} />
-                  <p>Отделов пока нет</p>
+                  <Icon name="Building2" size={48} />
+                  <p>Компаний пока нет</p>
                   {isAdmin && (
-                    <Button onClick={() => setCreatingUnder(null)} className="gap-2">
+                    <Button onClick={() => setCreatingCompany(true)} className="gap-2">
                       <Icon name="Plus" size={14} />
-                      Создать первый отдел
+                      Создать первую компанию
                     </Button>
                   )}
                 </div>
               ) : (
                 <OrgChartTree
-                  nodes={tree}
+                  companyNodes={companyNodes}
                   selectedId={selectedDept}
                   expandedNodes={expandedNodes}
+                  expandedCompanies={expandedCompanies}
                   onToggleExpand={(id) =>
                     setExpandedNodes((prev) => {
                       const next = new Set(prev);
@@ -399,15 +501,40 @@ const OrgChart = () => {
                       return next;
                     })
                   }
+                  onToggleCompany={(key) =>
+                    setExpandedCompanies((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    })
+                  }
                   onSelect={(id) => setSelectedDept(id)}
                   onEdit={isAdmin ? (d) => setEditDept(d) : undefined}
-                  onAddChild={isAdmin ? (parentId) => setCreatingUnder(parentId) : undefined}
+                  onAddChild={
+                    isAdmin
+                      ? (parentId) => {
+                          const parent = departments.find((d) => d.id === parentId);
+                          setCreatingUnder({
+                            parentId,
+                            companyId: parent?.company_id ?? null,
+                          });
+                        }
+                      : undefined
+                  }
                   onDelete={isAdmin ? handleDeleteDept : undefined}
+                  onAddRootDept={
+                    isAdmin
+                      ? (companyId) => setCreatingUnder({ parentId: null, companyId })
+                      : undefined
+                  }
+                  onEditCompany={isAdmin ? (c) => setEditCompany(c) : undefined}
+                  onDeleteCompany={isAdmin ? handleDeleteCompany : undefined}
+                  onCreateCompany={isAdmin ? () => setCreatingCompany(true) : undefined}
                 />
               )}
             </div>
 
-            {/* Боковая панель */}
             {selectedDept && panelData && (
               <DepartmentPanel
                 data={panelData}
@@ -439,27 +566,45 @@ const OrgChart = () => {
         </DragOverlay>
       </DndContext>
 
-      {/* Диалоги */}
       <EditDepartmentDialog
-        open={editDept !== null || creatingUnder !== undefined}
+        open={editDept !== null || creatingUnder !== null}
         mode={editDept ? 'edit' : 'create'}
         department={editDept}
-        parentId={editDept ? editDept.parent_id : creatingUnder ?? null}
+        parentId={editDept ? editDept.parent_id : creatingUnder?.parentId ?? null}
         departments={departments}
         authHeaders={authHeaders}
         apiUrl={API_URL}
         onClose={() => {
           setEditDept(null);
-          setCreatingUnder(undefined);
+          setCreatingUnder(null);
         }}
         onSave={async (name, headUserId) => {
           if (editDept) {
             await handleUpdateDept(editDept.id, name, headUserId);
           } else {
-            await handleCreateDept(name, creatingUnder ?? null, headUserId);
+            await handleCreateDept(name, creatingUnder?.parentId ?? null, headUserId);
           }
           setEditDept(null);
-          setCreatingUnder(undefined);
+          setCreatingUnder(null);
+        }}
+      />
+
+      <EditCompanyDialog
+        open={editCompany !== null || creatingCompany}
+        mode={editCompany ? 'edit' : 'create'}
+        initialName={editCompany?.name}
+        onClose={() => {
+          setEditCompany(null);
+          setCreatingCompany(false);
+        }}
+        onSave={async (name) => {
+          if (editCompany) {
+            await handleUpdateCompany(editCompany.id, name);
+          } else {
+            await handleCreateCompany(name);
+          }
+          setEditCompany(null);
+          setCreatingCompany(false);
         }}
       />
     </PageLayout>
