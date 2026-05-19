@@ -73,20 +73,47 @@ def get_endpoint(event: Dict[str, Any]) -> str:
     return get_query_param(event, 'endpoint', '')
 
 
+def _is_admin_in_db(user_id: int) -> bool:
+    """Проверить роль администратора по БД (JWT не содержит ролей)."""
+    if not user_id:
+        return False
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT 1
+                FROM {SCHEMA}.user_roles ur
+                JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+                WHERE ur.user_id = {int(user_id)}
+                  AND (r.system_role = 'admin'
+                       OR r.name IN ('Администратор', 'Admin', 'admin'))
+                LIMIT 1
+                """
+            )
+            return cur.fetchone() is not None
+    except Exception:
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
 def has_role_admin(payload: Dict[str, Any]) -> bool:
     roles = payload.get('roles') or []
     for r in roles:
         name = (r.get('name') if isinstance(r, dict) else str(r)) or ''
         if name in ('Администратор', 'Admin', 'admin'):
             return True
-    return False
+        if isinstance(r, dict) and r.get('system_role') == 'admin':
+            return True
+    user_id = safe_int(payload.get('user_id'))
+    return _is_admin_in_db(user_id) if user_id else False
 
 
 def can_write(payload: Dict[str, Any]) -> bool:
-    if has_role_admin(payload):
-        return True
-    perms = payload.get('permissions') or []
-    for p in perms:
-        if isinstance(p, dict) and p.get('resource') == 'knowledge_base' and p.get('action') in ('write', 'create', 'update'):
-            return True
-    return False
+    return has_role_admin(payload)
