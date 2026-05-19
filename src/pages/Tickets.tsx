@@ -69,10 +69,12 @@ const Tickets = () => {
     hiddenCount,
     hideWaiting,
     showAll,
+    showWatching,
     toggleArchived,
     toggleHidden,
     toggleHideWaiting,
     toggleShowAll,
+    toggleWatching,
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
@@ -172,6 +174,8 @@ const Tickets = () => {
           onToggleHideWaiting={toggleHideWaiting}
           showAll={showAll}
           onToggleShowAll={toggleShowAll}
+          showWatching={showWatching}
+          onToggleWatching={toggleWatching}
         />
 
           <TicketCountersBar />

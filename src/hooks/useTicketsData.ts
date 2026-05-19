@@ -37,6 +37,7 @@ export const useTicketsData = () => {
   const [needsMyReply, setNeedsMyReply] = useState<boolean>(false);
   const [needsMyReplyCount, setNeedsMyReplyCount] = useState(0);
   const [showAll, setShowAll] = useState<boolean>(false);
+  const [showWatching, setShowWatching] = useState<boolean>(false);
 
   const loadHiddenCount = useCallback(async () => {
     if (!token) return;
@@ -70,7 +71,7 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
-  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean, showAllArg?: boolean) => {
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean, showAllArg?: boolean, showWatchingArg?: boolean) => {
     if (!token) return;
 
     const archived = isArchived !== undefined ? isArchived : showArchived;
@@ -78,10 +79,16 @@ export const useTicketsData = () => {
     const skipWaiting = hideWaitingArg !== undefined ? hideWaitingArg : hideWaiting;
     const onlyMyReply = needsMyReplyArg !== undefined ? needsMyReplyArg : needsMyReply;
     const all = showAllArg !== undefined ? showAllArg : showAll;
+    const watching = showWatchingArg !== undefined ? showWatchingArg : showWatching;
     setLoading(true);
     try {
       let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`;
-      if (all) {
+      if (watching) {
+        url += `&is_archived=${archived}&is_watcher=true`;
+        if (skipWaiting) {
+          url += '&hide_waiting=true';
+        }
+      } else if (all) {
         url += '&show_all=true';
       } else if (hidden) {
         url += '&is_hidden=true';
@@ -111,7 +118,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, showArchived, showHidden, hideWaiting, needsMyReply, showAll]);
+  }, [token, showArchived, showHidden, hideWaiting, needsMyReply, showAll, showWatching]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -192,8 +199,9 @@ export const useTicketsData = () => {
     setShowArchived(archived);
     setShowHidden(false);
     setShowAll(false);
+    setShowWatching(false);
     setPage(1);
-    loadTickets(1, archived, false, undefined, undefined, false);
+    loadTickets(1, archived, false, undefined, undefined, false, false);
     loadHiddenCount();
   }, [loadTickets, loadHiddenCount]);
 
@@ -201,8 +209,9 @@ export const useTicketsData = () => {
     setShowHidden(hidden);
     setShowArchived(false);
     setShowAll(false);
+    setShowWatching(false);
     setPage(1);
-    loadTickets(1, false, hidden, undefined, undefined, false);
+    loadTickets(1, false, hidden, undefined, undefined, false, false);
   }, [loadTickets]);
 
   const toggleHideWaiting = useCallback((value: boolean) => {
@@ -217,8 +226,9 @@ export const useTicketsData = () => {
     setShowArchived(false);
     setShowHidden(false);
     setShowAll(false);
+    setShowWatching(false);
     setPage(1);
-    loadTickets(1, false, false, undefined, value, false);
+    loadTickets(1, false, false, undefined, value, false, false);
   }, [loadTickets]);
 
   const toggleShowAll = useCallback((value: boolean) => {
@@ -226,9 +236,19 @@ export const useTicketsData = () => {
     setShowArchived(false);
     setShowHidden(false);
     setNeedsMyReply(false);
+    setShowWatching(false);
     setPage(1);
-    loadTickets(1, false, false, undefined, false, value);
+    loadTickets(1, false, false, undefined, false, value, false);
   }, [loadTickets]);
+
+  const toggleWatching = useCallback((value: boolean) => {
+    setShowWatching(value);
+    setShowHidden(false);
+    setShowAll(false);
+    setNeedsMyReply(false);
+    setPage(1);
+    loadTickets(1, showArchived, false, undefined, false, false, value);
+  }, [loadTickets, showArchived]);
 
   return {
     tickets,
@@ -250,6 +270,7 @@ export const useTicketsData = () => {
     needsMyReply,
     needsMyReplyCount,
     showAll,
+    showWatching,
     loadTickets,
     loadDictionaries,
     loadServices,
@@ -258,6 +279,7 @@ export const useTicketsData = () => {
     toggleHideWaiting,
     toggleNeedsMyReply,
     toggleShowAll,
+    toggleWatching,
     loadHiddenCount,
     loadNeedsMyReplyCount,
   };

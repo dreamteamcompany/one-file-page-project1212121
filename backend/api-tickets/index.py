@@ -264,6 +264,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         hide_waiting = query_params.get('hide_waiting')
         show_all = query_params.get('show_all')
         needs_my_reply = query_params.get('needs_my_reply')
+        is_watcher = query_params.get('is_watcher')
         from_date = query_params.get('from_date')
         to_date = query_params.get('to_date')
         page = max(1, int(query_params.get('page', 1)))
@@ -357,6 +358,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                           SELECT MAX(tcnr2.created_at) FROM {SCHEMA}.ticket_comments tcnr2
                           WHERE tcnr2.ticket_id = t.id AND tcnr2.is_internal = false
                       )
+                )
+            """
+            params.append(user_id)
+        if is_watcher == 'true':
+            where_clause += f"""
+                AND EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_watchers twf
+                    WHERE twf.ticket_id = t.id AND twf.user_id = %s
                 )
             """
             params.append(user_id)

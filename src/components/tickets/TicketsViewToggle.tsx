@@ -27,6 +27,8 @@ interface TicketsViewToggleProps {
   needsMyReply?: boolean;
   showAll?: boolean;
   onToggleShowAll?: (value: boolean) => void;
+  showWatching?: boolean;
+  onToggleWatching?: (value: boolean) => void;
 }
 
 const TicketsViewToggle = ({
@@ -44,6 +46,8 @@ const TicketsViewToggle = ({
   needsMyReply = false,
   showAll = false,
   onToggleShowAll,
+  showWatching = false,
+  onToggleWatching,
 }: TicketsViewToggleProps) => {
   const { hasSystemRole } = useAuth();
   const isPlainUser = hasSystemRole('user') && !hasSystemRole('admin', 'manager');
@@ -93,9 +97,9 @@ const TicketsViewToggle = ({
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
-          variant="outline"
+          variant={showWatching ? 'default' : 'outline'}
           size="sm"
-          onClick={() => {}}
+          onClick={() => onToggleWatching?.(!showWatching)}
           className="flex items-center gap-2"
         >
           <Icon name="Users" size={16} />
