@@ -390,31 +390,82 @@ const VsdeskSettings = () => {
     setSyncProgress({ processed: 0, total: 0, inserted: 0, skipped: 0, filtered: 0, errors: 0 });
 
     let offset = 0;
-    const limit = 10;
+    const limit = 3;
     let safetyHops = 0;
     let totalInserted = 0;
+    let consecutiveFailures = 0;
     const collectedErrors: { ext_id: string; reason: string }[] = [];
     try {
       while (true) {
         safetyHops += 1;
-        if (safetyHops > 1000) break;
-        const res = await fetch(`${func2url['vsdesk-sync']}?action=sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ offset, limit }),
-        });
-        const data = await res.json();
+        if (safetyHops > 10000) break;
+        let res: Response;
+        try {
+          res = await fetch(`${func2url['vsdesk-sync']}?action=sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ offset, limit }),
+          });
+        } catch {
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 5) {
+            toast({ title: 'Связь нестабильна — синхронизация приостановлена. Нажми «Запустить во вкладке» ещё раз для продолжения.', variant: 'destructive' });
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+
+        // 504 / 502 / 503 — функция упала по таймауту, пробуем ту же пачку снова
+        if (res.status >= 500) {
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 5) {
+            toast({ title: `Сервер не отвечает (HTTP ${res.status}). Попробуй позже или нажми кнопку ещё раз — прогресс не теряется.`, variant: 'destructive' });
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 3000));
+          continue;
+        }
+
+        let data: {
+          success?: boolean;
+          error?: string;
+          processed?: number;
+          total?: number;
+          inserted?: number;
+          skipped?: number;
+          filtered?: number;
+          errors?: number;
+          details?: { ext_id: string; reason: string }[];
+          next_offset?: number;
+          done?: boolean;
+          batch_size?: number;
+        };
+        try {
+          data = await res.json();
+        } catch {
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 5) {
+            toast({ title: 'Ответ сервера не распознан. Прогресс сохранён в БД.', variant: 'destructive' });
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+
         if (!data.success) {
           toast({ title: data.error || 'Ошибка синхронизации', variant: 'destructive' });
           break;
         }
+
+        consecutiveFailures = 0;
         totalInserted += data.inserted || 0;
         if (Array.isArray(data.details) && data.details.length) {
           collectedErrors.push(...data.details);
         }
         setSyncProgress((prev) => ({
-          processed: data.processed,
-          total: data.total,
+          processed: data.processed ?? prev.processed,
+          total: data.total ?? prev.total,
           inserted: prev.inserted + (data.inserted || 0),
           skipped: prev.skipped + (data.skipped || 0),
           filtered: prev.filtered + (data.filtered || 0),
@@ -422,10 +473,10 @@ const VsdeskSettings = () => {
         }));
         setSyncErrors([...collectedErrors]);
         if (data.done || data.batch_size === 0) {
-          toast({ title: `Синхронизация завершена. Добавлено всего: ${totalInserted}, ошибок: ${collectedErrors.length}` });
+          toast({ title: `Синхронизация завершена. Добавлено за сессию: ${totalInserted}, ошибок: ${collectedErrors.length}` });
           break;
         }
-        offset = data.next_offset;
+        offset = data.next_offset ?? offset + (data.batch_size || limit);
       }
       setSyncFinished(true);
     } catch {
