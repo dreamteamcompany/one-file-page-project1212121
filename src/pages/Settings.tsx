@@ -167,6 +167,7 @@ const Settings = () => {
         { name: 'Компании', path: '/companies', icon: 'Building2', permission: { resource: 'companies', action: 'read' } },
         { name: 'Подразделения', path: '/departments', icon: 'Network', permission: { resource: 'departments', action: 'read' } },
         { name: 'Должности', path: '/positions', icon: 'Briefcase', permission: { resource: 'positions', action: 'read' } },
+        { name: 'Оргструктура', path: '/org-chart', icon: 'GitBranch', permission: { resource: 'departments', action: 'read' } },
       ],
     },
     {

@@ -12,6 +12,20 @@
       "method": "OPTIONS",
       "path": "/",
       "expectedStatus": 200
+    },
+    {
+      "name": "Orgchart tree requires auth",
+      "method": "GET",
+      "path": "/?endpoint=orgchart-tree",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Move user requires auth",
+      "method": "POST",
+      "path": "/?endpoint=move-user",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
     }
   ]
 }

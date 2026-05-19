@@ -41,6 +41,7 @@ import WorkSchedules from "./pages/WorkSchedules";
 import BitrixCallback from "./pages/BitrixCallback";
 import AiTraining from "./pages/AiTraining";
 import BitrixInactiveUsers from "./pages/BitrixInactiveUsers";
+import OrgChart from "./pages/OrgChart";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -88,6 +89,7 @@ const App = () => {
             <Route path="/work-schedules" element={<ProtectedRoute requiredPermission={{ resource: 'executor_groups', action: 'read' }}><WorkSchedules /></ProtectedRoute>} />
             <Route path="/ai-training" element={<ProtectedRoute><AiTraining /></ProtectedRoute>} />
             <Route path="/bitrix-inactive-users" element={<ProtectedRoute><BitrixInactiveUsers /></ProtectedRoute>} />
+            <Route path="/org-chart" element={<ProtectedRoute><OrgChart /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

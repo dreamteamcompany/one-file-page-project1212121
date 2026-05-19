@@ -8,6 +8,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from utils import json_dumps
+from orgchart import route as orgchart_route
 
 
 DSN = os.environ.get('DATABASE_URL')
@@ -176,6 +177,11 @@ def handler(event: dict, context) -> dict:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         query_params = event.get('queryStringParameters') or {}
         dept_id = query_params.get('id')
+
+        # Маршрутизация эндпоинтов "Оргструктуры"
+        orgchart_resp = orgchart_route(event, cur, conn)
+        if orgchart_resp is not None:
+            return orgchart_resp
 
         if method == 'GET':
             return handle_get(cur, query_params)
