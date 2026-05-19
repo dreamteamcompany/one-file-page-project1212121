@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TicketsViewToggleProps {
   viewMode: 'list' | 'kanban';
@@ -44,6 +45,8 @@ const TicketsViewToggle = ({
   showAll = false,
   onToggleShowAll,
 }: TicketsViewToggleProps) => {
+  const { hasSystemRole } = useAuth();
+  const isPlainUser = hasSystemRole('user') && !hasSystemRole('admin', 'manager');
   const isOpenOrAllActive = !showArchived && !showHidden;
   const currentLabel = showAll ? 'Все' : 'Открытые';
 
@@ -96,8 +99,8 @@ const TicketsViewToggle = ({
           className="flex items-center gap-2"
         >
           <Icon name="Users" size={16} />
-          <span className="hidden sm:inline">Заявки моих сотрудников</span>
-          <span className="sm:hidden">Мои сотр.</span>
+          <span className="hidden sm:inline">Наблюдаю</span>
+          <span className="sm:hidden">Наблюдаю</span>
         </Button>
         <Button
           variant={showArchived ? 'default' : 'outline'}
@@ -108,7 +111,7 @@ const TicketsViewToggle = ({
           <Icon name="Archive" size={16} />
           <span className="hidden sm:inline">Архив</span>
         </Button>
-        {onToggleHidden && (
+        {onToggleHidden && !isPlainUser && (
           <Button
             variant={showHidden ? 'default' : 'outline'}
             size="sm"
@@ -127,7 +130,7 @@ const TicketsViewToggle = ({
 
       </div>
 
-      {viewMode === 'list' && !showArchived && !showHidden && (
+      {viewMode === 'list' && !showHidden && (
         <Button
           variant={bulkMode ? 'default' : 'outline'}
           size="sm"
