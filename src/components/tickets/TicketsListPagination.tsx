@@ -14,7 +14,7 @@ const TicketsListPagination = ({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between pt-2">
+    <div className="flex items-center justify-between py-6">
       <span className="text-sm text-muted-foreground">
         Заявок: {totalTickets}, страница {page} из {totalPages}
       </span>
