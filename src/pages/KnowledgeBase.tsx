@@ -82,7 +82,7 @@ type Mode = 'list' | 'view' | 'edit' | 'new';
 
 const KnowledgeBase = () => {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, token } = useAuth();
   const { toast } = useToast();
   const canRead = hasPermission('knowledge_base', 'read');
   const canWrite =
@@ -126,13 +126,13 @@ const KnowledgeBase = () => {
 
   const loadCategories = async () => {
     const res = await fetch(`${KB_URL}?endpoint=categories`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) setCategories(await res.json());
   };
   const loadTags = async () => {
     const res = await fetch(`${KB_URL}?endpoint=tags`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) setTags(await res.json());
   };
@@ -142,13 +142,13 @@ const KnowledgeBase = () => {
     if (filterTag) params.set('tag_id', String(filterTag));
     if (showFavorites) params.set('favorites', '1');
     const res = await fetch(`${KB_URL}?${params}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) setArticles(await res.json());
   };
   const loadPopular = async () => {
     const res = await fetch(`${KB_URL}?endpoint=popular`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) setPopular(await res.json());
   };
@@ -175,7 +175,7 @@ const KnowledgeBase = () => {
     }
     const t = setTimeout(async () => {
       const res = await fetch(`${KB_URL}?endpoint=search&q=${encodeURIComponent(search)}`, {
-        headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+        headers: { 'X-Auth-Token': token || '' },
       });
       if (res.ok) setSearchResults(await res.json());
     }, 300);
@@ -184,7 +184,7 @@ const KnowledgeBase = () => {
 
   const openArticle = async (id: number) => {
     const res = await fetch(`${KB_URL}?endpoint=article&id=${id}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (!res.ok) return;
     const a: ArticleFull = await res.json();
@@ -193,12 +193,12 @@ const KnowledgeBase = () => {
     // increment view
     fetch(`${KB_URL}?endpoint=view`, {
       method: 'POST',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+      headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
       body: JSON.stringify({ article_id: id }),
     });
     // load comments
     const cr = await fetch(`${KB_URL}?endpoint=comments&article_id=${id}`, {
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (cr.ok) setComments(await cr.json());
   };
@@ -245,7 +245,7 @@ const KnowledgeBase = () => {
       if (!isNew && activeArticle) body.id = activeArticle.id;
       const res = await fetch(`${KB_URL}?endpoint=articles`, {
         method: isNew ? 'POST' : 'PUT',
-        headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+        headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = await res.json();
@@ -269,7 +269,7 @@ const KnowledgeBase = () => {
     if (!window.confirm('Удалить статью? Это действие необратимо.')) return;
     const res = await fetch(`${KB_URL}?endpoint=articles&id=${activeArticle.id}`, {
       method: 'DELETE',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) {
       toast({ title: 'Статья удалена' });
@@ -283,7 +283,7 @@ const KnowledgeBase = () => {
     if (!activeArticle) return;
     const res = await fetch(`${KB_URL}?endpoint=like`, {
       method: 'POST',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+      headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
       body: JSON.stringify({ article_id: activeArticle.id }),
     });
     if (res.ok) {
@@ -296,7 +296,7 @@ const KnowledgeBase = () => {
     if (!activeArticle) return;
     const res = await fetch(`${KB_URL}?endpoint=favorite`, {
       method: 'POST',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+      headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
       body: JSON.stringify({ article_id: activeArticle.id }),
     });
     if (res.ok) {
@@ -309,13 +309,13 @@ const KnowledgeBase = () => {
     if (!activeArticle || !newComment.trim()) return;
     const res = await fetch(`${KB_URL}?endpoint=comments`, {
       method: 'POST',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+      headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
       body: JSON.stringify({ article_id: activeArticle.id, content: newComment }),
     });
     if (res.ok) {
       setNewComment('');
       const cr = await fetch(`${KB_URL}?endpoint=comments&article_id=${activeArticle.id}`, {
-        headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+        headers: { 'X-Auth-Token': token || '' },
       });
       if (cr.ok) setComments(await cr.json());
     }
@@ -328,7 +328,7 @@ const KnowledgeBase = () => {
       const base64 = (reader.result as string).split(',')[1];
       const res = await fetch(`${KB_URL}?endpoint=files`, {
         method: 'POST',
-        headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+        headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
         body: JSON.stringify({
           article_id: activeArticle.id,
           filename: file.name,
@@ -352,7 +352,7 @@ const KnowledgeBase = () => {
     if (!window.confirm('Удалить файл?')) return;
     const res = await fetch(`${KB_URL}?endpoint=files&id=${fid}`, {
       method: 'DELETE',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) await openArticle(activeArticle.id);
   };
@@ -361,7 +361,7 @@ const KnowledgeBase = () => {
     if (!newCatName.trim()) return;
     const res = await fetch(`${KB_URL}?endpoint=categories`, {
       method: 'POST',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+      headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newCatName, parent_id: newCatParent }),
     });
     if (res.ok) {
@@ -376,7 +376,7 @@ const KnowledgeBase = () => {
     if (!window.confirm('Удалить категорию? Статьи внутри останутся без категории.')) return;
     const res = await fetch(`${KB_URL}?endpoint=categories&id=${cid}`, {
       method: 'DELETE',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '' },
+      headers: { 'X-Auth-Token': token || '' },
     });
     if (res.ok) {
       await loadCategories();
@@ -389,7 +389,7 @@ const KnowledgeBase = () => {
     if (!name) return;
     const res = await fetch(`${KB_URL}?endpoint=tags`, {
       method: 'POST',
-      headers: { 'X-Auth-Token': localStorage.getItem('authToken') || '', 'Content-Type': 'application/json' },
+      headers: { 'X-Auth-Token': token || '', 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
     if (res.ok) await loadTags();
