@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '@/utils/api';
+import useVisiblePolling from '@/hooks/useVisiblePolling';
 
 interface Notification {
   id: number;
@@ -52,14 +53,14 @@ const NotificationBell = () => {
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
     const onRefresh = () => loadNotifications();
     window.addEventListener('notifications:refresh', onRefresh);
     return () => {
-      clearInterval(interval);
       window.removeEventListener('notifications:refresh', onRefresh);
     };
   }, [token, user]);
+
+  useVisiblePolling(loadNotifications, 60000, !!token && !!user);
 
   const handleMarkAsRead = async (notificationId: number) => {
     if (!token || !user) return;

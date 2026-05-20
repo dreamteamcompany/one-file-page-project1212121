@@ -105,9 +105,39 @@ export const usePendingApprovals = () => {
     };
 
     loadPendingApprovals();
-    const interval = setInterval(loadPendingApprovals, 30000);
 
-    return () => clearInterval(interval);
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (intervalId !== null) return;
+      intervalId = setInterval(loadPendingApprovals, 120000);
+    };
+
+    const stop = () => {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadPendingApprovals();
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    if (document.visibilityState === 'visible') {
+      start();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [token, user, toast]);
 
   const requestNotificationPermission = async () => {

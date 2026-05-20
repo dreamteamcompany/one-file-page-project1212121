@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { TICKETS_COUNTERS_URL } from '@/utils/api';
+import useVisiblePolling from '@/hooks/useVisiblePolling';
 
 export interface TicketCounters {
   total: number;
@@ -41,7 +42,7 @@ const EMPTY: TicketCounters = {
   overdue: 0,
 };
 
-export const useTicketCounters = (pollMs = 30000) => {
+export const useTicketCounters = (pollMs = 60000) => {
   const { token, user } = useAuth();
   const [counters, setCounters] = useState<TicketCounters>(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -68,15 +69,12 @@ export const useTicketCounters = (pollMs = 30000) => {
     refresh();
     const onRefresh = () => refresh();
     window.addEventListener('notifications:refresh', onRefresh);
-    if (!pollMs) {
-      return () => window.removeEventListener('notifications:refresh', onRefresh);
-    }
-    const id = setInterval(refresh, pollMs);
     return () => {
-      clearInterval(id);
       window.removeEventListener('notifications:refresh', onRefresh);
     };
-  }, [refresh, pollMs]);
+  }, [refresh]);
+
+  useVisiblePolling(refresh, pollMs, !!token && !!user);
 
   return { counters, loading, refresh };
 };
