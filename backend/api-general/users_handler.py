@@ -4,7 +4,7 @@ import os
 import bcrypt
 from models import UserRequest
 from shared_utils import response
-from permissions_middleware import check_permission
+from permissions_middleware import check_permission, check_permissions_batch
 
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
@@ -19,23 +19,38 @@ def handle_users(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            has_users_read = check_permission(conn, user_id, 'users', 'read')
-            has_assign_executor = check_permission(conn, user_id, 'tickets', 'assign_executor')
-            if not has_users_read and not has_assign_executor:
+            # Одна проверка прав batch'ем вместо двух отдельных запросов
+            perms = check_permissions_batch(conn, user_id, [
+                {'resource': 'users', 'action': 'read'},
+                {'resource': 'tickets', 'action': 'assign_executor'},
+            ])
+            if not perms.get('users.read') and not perms.get('tickets.assign_executor'):
                 return response(403, {'error': 'Access denied', 'message': 'No permission to read users'})
+
             params = event.get('queryStringParameters', {}) or {}
-            user_id = params.get('id')
-            
-            if user_id:
-                cur.execute(f"SELECT * FROM {SCHEMA}.users WHERE id = %s", (user_id,))
+            target_user_id = params.get('id')
+
+            # Безопасный набор колонок — БЕЗ password_hash.
+            user_cols = (
+                "u.id, u.email, u.full_name, u.username, u.position, u.photo_url, "
+                "u.is_active, u.can_login, u.company_id, u.department_id, u.position_id, "
+                "u.bitrix_user_id, u.bypass_department_head_check, u.external_id, u.external_source, "
+                "u.auto_registered, u.last_login, u.created_at, u.updated_at"
+            )
+
+            if target_user_id:
+                cur.execute(
+                    f"SELECT {user_cols} FROM {SCHEMA}.users u WHERE u.id = %s",
+                    (target_user_id,)
+                )
                 user = cur.fetchone()
                 if not user:
                     return response(404, {'error': 'User not found'})
                 return response(200, dict(user))
             else:
                 cur.execute(f"""
-                    SELECT u.*, 
-                           COALESCE(json_agg(DISTINCT jsonb_build_object('id', r.id, 'name', r.name)) 
+                    SELECT {user_cols},
+                           COALESCE(json_agg(DISTINCT jsonb_build_object('id', r.id, 'name', r.name))
                                     FILTER (WHERE r.id IS NOT NULL), '[]') as roles
                     FROM {SCHEMA}.users u
                     LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
