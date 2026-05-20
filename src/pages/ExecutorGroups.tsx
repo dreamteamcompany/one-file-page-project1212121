@@ -106,7 +106,7 @@ const ExecutorGroups = () => {
       </header>
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1">
-        <div className="w-full lg:w-[340px] flex-shrink-0">
+        <div className={`w-full lg:w-[340px] flex-shrink-0 ${selectedGroup ? 'hidden lg:block' : 'block'}`}>
           <div className="sticky top-0">
             {loading ? (
               <div className="flex justify-center py-12">
@@ -135,14 +135,27 @@ const ExecutorGroups = () => {
           </div>
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className={`flex-1 min-w-0 ${selectedGroup ? 'block' : 'hidden lg:block'}`}>
           {!selectedGroup ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <div className="hidden lg:flex flex-col items-center justify-center py-20 text-muted-foreground">
               <Icon name="MousePointerClick" size={48} className="mb-3 opacity-30" />
               <p className="text-sm">Выберите группу для настройки</p>
             </div>
           ) : (
             <div className="space-y-6">
+              <div className="flex items-center justify-between gap-3 lg:hidden">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 -ml-2"
+                  onClick={() => setSelectedGroup(null)}
+                >
+                  <Icon name="ChevronLeft" size={16} />
+                  К списку групп
+                </Button>
+                <div className="text-sm font-semibold truncate">{selectedGroup.name}</div>
+              </div>
+
               <div className="p-5 rounded-lg border bg-card">
                 <MembersPanel
                   members={membersHook.members}
