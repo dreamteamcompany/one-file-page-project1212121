@@ -1691,6 +1691,56 @@ def action_remap_batch(conn, limit: int = 5) -> dict:
     }
 
 
+def action_probe(ext_id: str) -> dict:
+    """Возвращает сырой JSON заявки vsDesk + анализ всех ключей,
+    где может лежать имя/email автора и комментаторов. Нужен для диагностики."""
+    ext_id = (ext_id or '').strip()
+    if not ext_id:
+        return {'error': 'Передай параметр id (внешний id заявки vsDesk)'}
+    try:
+        raw = vsdesk_raw(f'/api/requests/{ext_id}/')
+    except Exception as e:
+        return {'error': f'vsdesk_unreachable: {e}'}
+
+    def summarize(d):
+        out = {}
+        if isinstance(d, dict):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    out[k] = {'__type__': 'dict', '__len__': len(v), '__keys__': list(v.keys())[:30]}
+                elif isinstance(v, list):
+                    sample_keys = []
+                    if v and isinstance(v[0], dict):
+                        sample_keys = list(v[0].keys())[:30]
+                    out[k] = {'__type__': 'list', '__len__': len(v), '__first_keys__': sample_keys}
+                else:
+                    out[k] = v
+        return out
+
+    top = summarize(raw) if isinstance(raw, dict) else {}
+
+    subs = raw.get('subs') if isinstance(raw, dict) else None
+    first_sub = summarize(subs[0]) if isinstance(subs, list) and subs and isinstance(subs[0], dict) else {}
+
+    history = raw.get('history') if isinstance(raw, dict) else None
+    first_history = summarize(history[0]) if isinstance(history, list) and history and isinstance(history[0], dict) else {}
+
+    watchers = raw.get('watchers') if isinstance(raw, dict) else None
+    first_watcher = summarize(watchers[0]) if isinstance(watchers, list) and watchers and isinstance(watchers[0], dict) else {}
+
+    return {
+        'ext_id': ext_id,
+        'top_level': top,
+        'subs_count': len(subs) if isinstance(subs, list) else 0,
+        'first_sub': first_sub,
+        'history_count': len(history) if isinstance(history, list) else 0,
+        'first_history': first_history,
+        'watchers_count': len(watchers) if isinstance(watchers, list) else 0,
+        'first_watcher': first_watcher,
+        'raw': raw,
+    }
+
+
 def action_enable_login_for_imported(conn) -> dict:
     """Включает can_login для всех импортированных vsDesk-юзеров (кроме технического)."""
     with conn.cursor() as cur:
@@ -1787,6 +1837,9 @@ def handler(event: dict, context) -> dict:
                 row = cur.fetchone()
             conn.commit()
             return api_response(200, {'success': True, 'cancelled_job_id': row['id'] if row else None})
+
+        if action == 'probe' and method == 'GET':
+            return api_response(200, action_probe(params.get('id', '')))
 
         if action == 'remap_count' and method == 'GET':
             return api_response(200, action_remap_count(conn))
