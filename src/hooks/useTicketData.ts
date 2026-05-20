@@ -49,66 +49,79 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   };
 
   const loadStatuses = async () => {
+    let firstOk = false;
+    let loaded: TicketStatus[] = [];
     try {
       const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
         headers: {
           'X-Auth-Token': token,
         },
       });
-      let loaded: TicketStatus[] = [];
       if (response.ok) {
+        firstOk = true;
         const data = await response.json();
         loaded = Array.isArray(data.statuses) ? data.statuses : [];
       } else {
         console.warn('[loadStatuses] dictionaries-api HTTP', response.status);
       }
-
-      // Фолбэк: если справочник вернул пусто (например, у пользователя не подтянулись role_ids,
-      // и фильтр на бэке всё срезал) — берём полный список статусов отдельным запросом.
-      if (loaded.length === 0) {
-        try {
-          const fallback = await apiFetch(`${API_URL}?endpoint=ticket-statuses`, {
-            headers: { 'X-Auth-Token': token },
-          });
-          if (fallback.ok) {
-            const fbData = await fallback.json();
-            if (Array.isArray(fbData)) {
-              loaded = fbData;
-            }
-          } else {
-            console.warn('[loadStatuses] fallback ticket-statuses HTTP', fallback.status);
-          }
-        } catch (fbErr) {
-          console.error('[loadStatuses] fallback error:', fbErr);
-        }
-      }
-
-      setStatuses(loaded);
     } catch (error) {
-      console.error('Error loading statuses:', error);
+      console.error('Error loading statuses (primary):', error);
     }
+
+    // Фолбэк включается ТОЛЬКО если основной endpoint ответил 200, но статусы пустые
+    // (например, фильтр по ролям всё срезал). При сетевой ошибке/rate-limit не добиваем бэк.
+    if (firstOk && loaded.length === 0) {
+      try {
+        const fallback = await apiFetch(`${API_URL}?endpoint=ticket-statuses`, {
+          headers: { 'X-Auth-Token': token },
+        });
+        if (fallback.ok) {
+          const fbData = await fallback.json();
+          if (Array.isArray(fbData)) {
+            loaded = fbData;
+          }
+        } else {
+          console.warn('[loadStatuses] fallback ticket-statuses HTTP', fallback.status);
+        }
+      } catch (fbErr) {
+        console.error('[loadStatuses] fallback error:', fbErr);
+      }
+    }
+
+    setStatuses(loaded);
   };
 
   const loadUsers = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=users`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const adaptedUsers = Array.isArray(data) ? data.map((u: any) => ({
-          id: u.id,
-          name: u.full_name || u.username,
-          email: u.username,
-          role: '',
-          photo_url: u.photo_url || ''
-        })) : [];
-        setUsers(adaptedUsers);
+    const maxRetries = 3;
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      try {
+        const response = await apiFetch(`${API_URL}?endpoint=users`, {
+          headers: {
+            'X-Auth-Token': token,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const adaptedUsers = Array.isArray(data) ? data.map((u: { id: number; full_name?: string; username?: string; photo_url?: string }) => ({
+            id: u.id,
+            name: u.full_name || u.username || '',
+            email: u.username || '',
+            role: '',
+            photo_url: u.photo_url || ''
+          })) : [];
+          setUsers(adaptedUsers);
+          return;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        attempt += 1;
+        if (attempt > maxRetries) {
+          console.error('Error loading users:', error);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
       }
-    } catch (error) {
-      console.error('Error loading users:', error);
     }
   };
 
@@ -252,19 +265,30 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   };
 
   const loadExecutorGroups = async () => {
-    try {
-      const EXECUTOR_GROUPS_URL = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
-      const response = await apiFetch(EXECUTOR_GROUPS_URL, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setExecutorGroups(Array.isArray(data) ? data : data.groups || []);
+    const EXECUTOR_GROUPS_URL = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
+    const maxRetries = 3;
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      try {
+        const response = await apiFetch(EXECUTOR_GROUPS_URL, {
+          headers: {
+            'X-Auth-Token': token,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setExecutorGroups(Array.isArray(data) ? data : data.groups || []);
+          return;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        attempt += 1;
+        if (attempt > maxRetries) {
+          console.error('Error loading executor groups:', error);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
       }
-    } catch (error) {
-      console.error('Error loading executor groups:', error);
     }
   };
 
@@ -275,12 +299,28 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     setMyLastSeenAt(null);
 
     if (id && token) {
+      // Сначала — то, что нужно для немедленной отрисовки заявки.
       loadTicket();
+      // Чуть разносим параллельные тяжёлые запросы, чтобы не упереться в rate-limit БД.
       loadStatuses();
-      loadComments();
-      loadUsers();
-      loadHistory();
       loadExecutorGroups();
+      loadUsers();
+      // Эти грузим с небольшой задержкой — они тяжелее и не нужны для первого экрана.
+      const tComments = setTimeout(() => { loadComments(); }, 150);
+      const tHistory = setTimeout(() => { loadHistory(); }, 300);
+
+      return () => {
+        clearTimeout(tComments);
+        clearTimeout(tHistory);
+        if (commentsAbortRef.current) {
+          commentsAbortRef.current.abort();
+        }
+        commentsRequestIdRef.current = null;
+        if (historyAbortRef.current) {
+          historyAbortRef.current.abort();
+        }
+        historyRequestIdRef.current = null;
+      };
     }
 
     return () => {
