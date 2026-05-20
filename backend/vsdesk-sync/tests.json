@@ -13,6 +13,22 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "unknown action: unknown_xyz"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "get_pause returns paused state",
+      "method": "GET",
+      "path": "/?action=get_pause",
+      "expectedStatus": 200,
+      "expectedBody": {"paused": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "tick is blocked while paused",
+      "method": "POST",
+      "path": "/?action=tick",
+      "expectedStatus": 200,
+      "expectedBody": {"paused": true, "idle": true},
+      "bodyMatcher": "partial"
     }
   ]
 }

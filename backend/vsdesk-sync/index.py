@@ -1757,6 +1757,60 @@ def action_enable_login_for_imported(conn) -> dict:
 
 
 # =====================================================================
+# Глобальная пауза
+# =====================================================================
+
+def is_paused(conn) -> dict:
+    """Возвращает {'paused': bool, 'reason': str|None, 'paused_at': str|None}."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT paused, paused_reason, paused_at FROM vsdesk_settings WHERE id = 1 LIMIT 1"
+            )
+            row = cur.fetchone()
+    except Exception:
+        return {'paused': False, 'reason': None, 'paused_at': None}
+    if not row:
+        return {'paused': False, 'reason': None, 'paused_at': None}
+    return {
+        'paused': bool(row.get('paused')),
+        'reason': row.get('paused_reason'),
+        'paused_at': str(row.get('paused_at')) if row.get('paused_at') else None,
+    }
+
+
+def paused_response() -> dict:
+    return {
+        'success': False,
+        'paused': True,
+        'error': 'vsDesk-синхронизация на паузе. Включите её в настройках интеграции.',
+        'idle': True,
+    }
+
+
+def action_get_pause(conn) -> dict:
+    return is_paused(conn)
+
+
+def action_set_pause(conn, body: dict) -> dict:
+    paused = bool(body.get('paused'))
+    reason = (body.get('reason') or '').strip() or None
+    with conn.cursor() as cur:
+        cur.execute(
+            """INSERT INTO vsdesk_settings (id, paused, paused_reason, paused_at, updated_at)
+               VALUES (1, %s, %s, CASE WHEN %s THEN CURRENT_TIMESTAMP ELSE NULL END, CURRENT_TIMESTAMP)
+               ON CONFLICT (id) DO UPDATE
+               SET paused = EXCLUDED.paused,
+                   paused_reason = EXCLUDED.paused_reason,
+                   paused_at = CASE WHEN EXCLUDED.paused THEN CURRENT_TIMESTAMP ELSE NULL END,
+                   updated_at = CURRENT_TIMESTAMP""",
+            (paused, reason, paused)
+        )
+    conn.commit()
+    return {'success': True, **is_paused(conn)}
+
+
+# =====================================================================
 # Handler
 # =====================================================================
 
@@ -1779,6 +1833,24 @@ def handler(event: dict, context) -> dict:
 
     conn = get_db()
     try:
+        # Pause control — отдельные действия, всегда доступны
+        if action == 'get_pause' and method == 'GET':
+            return api_response(200, action_get_pause(conn))
+
+        if action == 'set_pause' and method == 'POST':
+            return api_response(200, action_set_pause(conn, body))
+
+        # Тяжёлые действия — блокируем при глобальной паузе
+        HEAVY_ACTIONS = {
+            'tick', 'start_job', 'start_delta_job', 'delta_sync',
+            'sync', '', 'remap_batch', 'dry_run', 'count', 'statuses',
+            'bump_sequence',
+        }
+        if action in HEAVY_ACTIONS:
+            pause_state = is_paused(conn)
+            if pause_state.get('paused'):
+                return api_response(200, {**paused_response(), **pause_state})
+
         if action == 'statuses' and method == 'GET':
             return api_response(200, action_statuses(conn))
 

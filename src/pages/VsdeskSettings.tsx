@@ -283,6 +283,53 @@ const VsdeskSettings = () => {
     }
   };
 
+  const [pauseState, setPauseState] = useState<{ paused: boolean; reason: string | null; paused_at: string | null }>({ paused: false, reason: null, paused_at: null });
+  const [pauseToggling, setPauseToggling] = useState(false);
+
+  const loadPauseState = async () => {
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=get_pause`);
+      const data = await res.json();
+      setPauseState({
+        paused: !!data.paused,
+        reason: data.reason || null,
+        paused_at: data.paused_at || null,
+      });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    loadPauseState();
+  }, []);
+
+  const handleTogglePause = async () => {
+    const nextPaused = !pauseState.paused;
+    if (nextPaused) {
+      if (!window.confirm('Поставить vsDesk-синхронизацию на паузу? Cron перестанет дёргать импорт, ручные кнопки тоже будут заблокированы.')) return;
+    }
+    setPauseToggling(true);
+    try {
+      const res = await fetch(`${func2url['vsdesk-sync']}?action=set_pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paused: nextPaused, reason: nextPaused ? 'Поставлено вручную из настроек' : null }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPauseState({ paused: !!data.paused, reason: data.reason || null, paused_at: data.paused_at || null });
+        toast({ title: nextPaused ? 'vsDesk-синхронизация на паузе' : 'vsDesk-синхронизация возобновлена' });
+      } else {
+        toast({ title: data.error || 'Не удалось переключить паузу', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Ошибка соединения', variant: 'destructive' });
+    } finally {
+      setPauseToggling(false);
+    }
+  };
+
   const [bumpLoading, setBumpLoading] = useState(false);
   const [bumpResult, setBumpResult] = useState<{ max_vsdesk_id: number; max_local_id: number; next_id_will_be: number } | null>(null);
 
@@ -590,6 +637,38 @@ const VsdeskSettings = () => {
           К настройкам
         </Button>
       </header>
+
+      <Card className={`mb-6 border-2 ${pauseState.paused ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' : 'border-emerald-500/40'}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${pauseState.paused ? 'bg-amber-500/20' : 'bg-emerald-500/10'}`}>
+                <Icon name={pauseState.paused ? 'PauseCircle' : 'PlayCircle'} size={20} className={pauseState.paused ? 'text-amber-600' : 'text-emerald-600'} />
+              </div>
+              <div>
+                <CardTitle className="text-base">
+                  {pauseState.paused ? 'Синхронизация на паузе' : 'Синхронизация активна'}
+                </CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  {pauseState.paused
+                    ? `${pauseState.reason || 'Cron и ручной импорт отключены'}${pauseState.paused_at ? ` · с ${new Date(pauseState.paused_at).toLocaleString('ru-RU')}` : ''}`
+                    : 'Cron-tick и ручной импорт разрешены'}
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              onClick={handleTogglePause}
+              disabled={pauseToggling}
+              size="sm"
+              variant={pauseState.paused ? 'default' : 'outline'}
+              className="gap-2"
+            >
+              <Icon name={pauseToggling ? 'Loader2' : pauseState.paused ? 'Play' : 'Pause'} size={14} className={pauseToggling ? 'animate-spin' : ''} />
+              {pauseState.paused ? 'Снять с паузы' : 'Поставить на паузу'}
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
