@@ -55,10 +55,35 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
           'X-Auth-Token': token,
         },
       });
+      let loaded: TicketStatus[] = [];
       if (response.ok) {
         const data = await response.json();
-        setStatuses(data.statuses || []);
+        loaded = Array.isArray(data.statuses) ? data.statuses : [];
+      } else {
+        console.warn('[loadStatuses] dictionaries-api HTTP', response.status);
       }
+
+      // Фолбэк: если справочник вернул пусто (например, у пользователя не подтянулись role_ids,
+      // и фильтр на бэке всё срезал) — берём полный список статусов отдельным запросом.
+      if (loaded.length === 0) {
+        try {
+          const fallback = await apiFetch(`${API_URL}?endpoint=ticket-statuses`, {
+            headers: { 'X-Auth-Token': token },
+          });
+          if (fallback.ok) {
+            const fbData = await fallback.json();
+            if (Array.isArray(fbData)) {
+              loaded = fbData;
+            }
+          } else {
+            console.warn('[loadStatuses] fallback ticket-statuses HTTP', fallback.status);
+          }
+        } catch (fbErr) {
+          console.error('[loadStatuses] fallback error:', fbErr);
+        }
+      }
+
+      setStatuses(loaded);
     } catch (error) {
       console.error('Error loading statuses:', error);
     }
