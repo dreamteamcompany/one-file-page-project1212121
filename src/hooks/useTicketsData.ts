@@ -38,6 +38,8 @@ export const useTicketsData = () => {
   const [needsMyReplyCount, setNeedsMyReplyCount] = useState(0);
   const [showAll, setShowAll] = useState<boolean>(false);
   const [showWatching, setShowWatching] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const loadHiddenCount = useCallback(async () => {
     if (!token) return;
@@ -71,7 +73,7 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
-  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean, showAllArg?: boolean, showWatchingArg?: boolean) => {
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean, showAllArg?: boolean, showWatchingArg?: boolean, sortByArg?: string, sortDirArg?: 'asc' | 'desc') => {
     if (!token) return;
 
     const archived = isArchived !== undefined ? isArchived : showArchived;
@@ -80,9 +82,11 @@ export const useTicketsData = () => {
     const onlyMyReply = needsMyReplyArg !== undefined ? needsMyReplyArg : needsMyReply;
     const all = showAllArg !== undefined ? showAllArg : showAll;
     const watching = showWatchingArg !== undefined ? showWatchingArg : showWatching;
+    const sortByValue = sortByArg !== undefined ? sortByArg : sortBy;
+    const sortDirValue = sortDirArg !== undefined ? sortDirArg : sortDir;
     setLoading(true);
     try {
-      let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}`;
+      let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}&sort_by=${encodeURIComponent(sortByValue)}&sort_dir=${sortDirValue}`;
       if (watching) {
         url += `&is_archived=${archived}&is_watcher=true`;
         if (skipWaiting) {
@@ -118,7 +122,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, showArchived, showHidden, hideWaiting, needsMyReply, showAll, showWatching]);
+  }, [token, showArchived, showHidden, hideWaiting, needsMyReply, showAll, showWatching, sortBy, sortDir]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -271,6 +275,10 @@ export const useTicketsData = () => {
     needsMyReplyCount,
     showAll,
     showWatching,
+    sortBy,
+    sortDir,
+    setSortBy,
+    setSortDir,
     loadTickets,
     loadDictionaries,
     loadServices,

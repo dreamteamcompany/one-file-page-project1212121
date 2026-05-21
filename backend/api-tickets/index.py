@@ -272,6 +272,29 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         page = max(1, int(query_params.get('page', 1)))
         limit = min(100, max(1, int(query_params.get('limit', 50))))
         offset = (page - 1) * limit
+
+        # Сортировка списка заявок. Whitelist допустимых полей.
+        sort_by_param = (query_params.get('sort_by') or 'created_at').strip()
+        sort_dir_param = (query_params.get('sort_dir') or 'desc').strip().lower()
+        sort_dir_sql = 'ASC' if sort_dir_param == 'asc' else 'DESC'
+        nulls_sql = 'NULLS FIRST' if sort_dir_sql == 'ASC' else 'NULLS LAST'
+
+        sort_map = {
+            'created_at': 't.created_at',
+            'due_date': 't.due_date',
+            'assignee': 'u1.full_name',
+            'creator': 'u2.full_name',
+            'status': 's.name',
+            'executor_group': 'eg.name',
+            'service': '(SELECT MIN(s2.name) FROM ' + SCHEMA + '.ticket_to_service_mappings tsm2 '
+                       'JOIN ' + SCHEMA + '.services s2 ON s2.id = tsm2.service_id '
+                       'WHERE tsm2.ticket_id = t.id)',
+            'ticket_service': '(SELECT MIN(ts2.name) FROM ' + SCHEMA + '.ticket_to_service_mappings tsm3 '
+                              'JOIN ' + SCHEMA + '.ticket_services ts2 ON ts2.id = tsm3.ticket_service_id '
+                              'WHERE tsm3.ticket_id = t.id)',
+        }
+        sort_field_sql = sort_map.get(sort_by_param, 't.created_at')
+        order_by_clause = f"ORDER BY {sort_field_sql} {sort_dir_sql} {nulls_sql}, t.id DESC"
         
         cur = conn.cursor()
         
@@ -438,7 +461,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             LEFT JOIN {SCHEMA}.users u2 ON t.created_by = u2.id
             LEFT JOIN {SCHEMA}.executor_groups eg ON t.executor_group_id = eg.id
             {where_clause}
-            ORDER BY t.created_at DESC
+            {order_by_clause}
             LIMIT %s OFFSET %s
         """
         cur.execute(main_query, params + [limit, offset])
