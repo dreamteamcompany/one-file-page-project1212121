@@ -19,7 +19,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SlaGroupBudgets, { GroupBudgetItem } from '@/components/sla/SlaGroupBudgets';
-import { TimeInput, CompactTimeInput } from './SlaTimeInputs';
+import { InlineTimeInput, CompactTimeInput } from './SlaTimeInputs';
 import {
   PriorityTime,
   SLAItem,
@@ -114,21 +114,21 @@ const SlaFormDialog = ({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="timing" className="space-y-5 mt-4">
-              <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Icon name="Timer" size={16} className="text-primary" />
-                  Время реакции
-                </h3>
-                <div className="space-y-4 pl-6">
-                  <TimeInput
-                    label="Максимальное время реакции"
+            <TabsContent value="timing" className="space-y-3 mt-4">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon name="Timer" size={15} className="text-primary" />
+                  <h3 className="text-sm font-semibold">Время реакции</h3>
+                </div>
+                <div className="divide-y divide-border/50">
+                  <InlineTimeInput
+                    label="Макс. время реакции"
                     value={formData.response_time_minutes}
                     onChange={(minutes) => setFormData({ ...formData, response_time_minutes: minutes })}
                     description="Максимальное время для первого ответа на заявку"
                   />
-                  <TimeInput
-                    label="Уведомление о сроке реакции"
+                  <InlineTimeInput
+                    label="Уведомление о сроке"
                     value={formData.response_notification_minutes}
                     onChange={(minutes) => setFormData({ ...formData, response_notification_minutes: minutes })}
                     description="За сколько до окончания времени реакции отправить уведомление"
@@ -136,20 +136,20 @@ const SlaFormDialog = ({
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Icon name="CheckCircle2" size={16} className="text-green-500" />
-                  Время решения
-                </h3>
-                <div className="space-y-4 pl-6">
-                  <TimeInput
-                    label="Максимальное время решения"
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon name="CheckCircle2" size={15} className="text-green-500" />
+                  <h3 className="text-sm font-semibold">Время решения</h3>
+                </div>
+                <div className="divide-y divide-border/50">
+                  <InlineTimeInput
+                    label="Макс. время решения"
                     value={formData.resolution_time_minutes}
                     onChange={(minutes) => setFormData({ ...formData, resolution_time_minutes: minutes })}
                     description="Максимальное время для полного решения заявки"
                   />
-                  <TimeInput
-                    label="Уведомление о сроке решения"
+                  <InlineTimeInput
+                    label="Уведомление о сроке"
                     value={formData.resolution_notification_minutes}
                     onChange={(minutes) => setFormData({ ...formData, resolution_notification_minutes: minutes })}
                     description="За сколько до окончания времени решения отправить уведомление"
@@ -157,26 +157,28 @@ const SlaFormDialog = ({
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Icon name="AlertTriangle" size={16} className="text-orange-500" />
-                  При отсутствии ответа
-                </h3>
-                <div className="space-y-4 pl-6">
-                  <TimeInput
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="AlertTriangle" size={15} className="text-orange-500" />
+                  <h3 className="text-sm font-semibold">При отсутствии ответа</h3>
+                </div>
+                <div className="space-y-2">
+                  <InlineTimeInput
                     label="Время без ответа"
                     value={formData.no_response_minutes}
                     onChange={(minutes) => setFormData({ ...formData, no_response_minutes: minutes })}
-                    description="Если клиент не отвечает указанное время"
+                    description="Если клиент не отвечает указанное время — заявку можно перевести в другой статус"
                   />
-                  <div className="space-y-2">
-                    <Label htmlFor="no_response_status">Перевести в статус</Label>
+                  <div className="flex items-center justify-between gap-3 py-1">
+                    <Label htmlFor="no_response_status" className="text-sm flex-shrink-0">
+                      Перевести в статус
+                    </Label>
                     <Select
                       value={formData.no_response_status_id?.toString() || 'none'}
                       onValueChange={(value) => setFormData({ ...formData, no_response_status_id: value === 'none' ? undefined : parseInt(value) })}
                     >
-                      <SelectTrigger id="no_response_status">
-                        <SelectValue placeholder="Выберите статус" />
+                      <SelectTrigger id="no_response_status" className="h-8 text-sm w-48">
+                        <SelectValue placeholder="Не переводить" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Не переводить</SelectItem>
