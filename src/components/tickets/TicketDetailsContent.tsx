@@ -376,7 +376,10 @@ const TicketDetailsContent = ({
       </div>
 
       {/* Комментарии, Файлы и История (вкладки) */}
-      <div className="rounded-lg bg-card border mb-6 lg:mb-0 flex flex-col" style={{ height: '820px', minHeight: '400px', maxHeight: '85vh' }}>
+      <div
+        className="rounded-lg bg-card border mb-6 lg:mb-0 flex flex-col w-full max-w-full overflow-x-hidden"
+        style={{ height: '820px', minHeight: '400px', maxHeight: '85vh', touchAction: 'pan-y' }}
+      >
         <div className="flex gap-6 px-4 pt-3 border-b shrink-0">
           <button 
             onClick={() => setActiveTab('comments')}
@@ -411,7 +414,7 @@ const TicketDetailsContent = ({
         </div>
 
       {/* Контент вкладок */}
-      <div className="p-4 flex-1 min-h-0 flex flex-col">
+      <div className="p-4 flex-1 min-h-0 flex flex-col w-full max-w-full overflow-x-hidden">
         {activeTab === 'comments' && (
           <TicketComments
             comments={comments}

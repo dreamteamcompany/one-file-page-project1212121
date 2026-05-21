@@ -242,6 +242,19 @@
   color: hsl(var(--muted-foreground) / 0.6);
 }
 
+/* Не даём вставленным картинкам/контенту вылезать из contenteditable */
+.empty-editor img,
+.empty-editor video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+.empty-editor pre,
+.empty-editor table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* Кастомный тонкий скроллбар */
 * {
   scrollbar-width: thin;

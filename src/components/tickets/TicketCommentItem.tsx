@@ -124,7 +124,7 @@ const TicketCommentItem = ({
             {getInitials(comment.user_full_name || comment.user_name)}
           </div>
         )}
-        <div className="max-w-[80%] min-w-[120px]">
+        <div className="max-w-[80%] min-w-[120px] min-w-0">
           <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
             <p className="font-semibold text-xs">{comment.user_full_name || comment.user_name || 'Пользователь'}</p>
             <p className="text-[11px] text-muted-foreground">

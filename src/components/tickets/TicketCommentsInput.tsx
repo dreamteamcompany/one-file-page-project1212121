@@ -234,7 +234,7 @@ const TicketCommentsInput = ({
     pendingAttachments.filter((a) => a.status === 'done').length > 0;
 
   return (
-    <div className="space-y-3 mt-6 pt-4 border-t shrink-0">
+    <div className="space-y-3 mt-6 pt-4 border-t shrink-0 w-full max-w-full overflow-x-hidden">
       {commentsBlocked && (
         <div className="rounded-lg border border-orange-500/40 bg-orange-500/10 p-4 flex items-start gap-3">
           <Icon name="AlertTriangle" size={20} className="text-orange-500 flex-shrink-0 mt-0.5" />
@@ -278,13 +278,13 @@ const TicketCommentsInput = ({
               onKeyDown={handleKeyDown}
               data-placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
               className={[
-                'min-h-[90px] lg:min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                'min-h-[90px] lg:min-h-[120px] w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
                 'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
-                'overflow-y-auto max-h-[400px]',
+                'overflow-y-auto overflow-x-hidden max-h-[400px]',
                 submittingComment ? 'opacity-50 pointer-events-none' : '',
                 'empty-editor',
               ].join(' ')}
-              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', touchAction: 'pan-y' }}
             />
 
             {showMentions && (

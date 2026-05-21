@@ -307,7 +307,7 @@ const TicketComments = ({
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center gap-2 mb-4 shrink-0">
         <Icon name="MessageSquare" size={18} className="text-muted-foreground" />
         <h3 className="text-base font-semibold">Комментарии</h3>
@@ -321,7 +321,11 @@ const TicketComments = ({
         onTogglePin={onTogglePin}
       />
 
-      <div ref={commentsListRef} className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
+      <div
+        ref={commentsListRef}
+        className="space-y-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1 w-full max-w-full"
+        style={{ touchAction: 'pan-y', overscrollBehaviorX: 'contain', wordBreak: 'break-word' }}
+      >
         {loadingComments ? (
           <div className="flex items-center justify-center py-8">
             <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
