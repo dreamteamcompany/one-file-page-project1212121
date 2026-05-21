@@ -75,7 +75,7 @@ const FieldGroupDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] w-[calc(100%-2rem)] sm:w-full overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] w-[calc(100%-2rem)] sm:w-full overflow-hidden !flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {editingGroup ? 'Редактировать группу полей' : 'Создать группу полей'}
@@ -88,7 +88,7 @@ const FieldGroupDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Название *</Label>
@@ -112,17 +112,17 @@ const FieldGroupDialog = ({
             </div>
           </div>
 
-          <div className="space-y-2 flex-1 overflow-hidden flex flex-col">
+          <div className="space-y-2 flex-1 min-h-0 overflow-hidden flex flex-col">
             <Label>Поля группы ({formData.field_ids.length})</Label>
             
             <Input
               placeholder="Поиск полей..."
               value={fieldSearchQuery}
               onChange={(e) => setFieldSearchQuery(e.target.value)}
-              className="mb-2"
+              className="mb-2 flex-shrink-0"
             />
 
-            <ScrollArea className="flex-1 border rounded-md p-3">
+            <ScrollArea className="flex-1 min-h-[200px] border rounded-md p-3">
               <div className="space-y-2">
                 {filteredFieldsForSelection.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
@@ -161,7 +161,7 @@ const FieldGroupDialog = ({
             </ScrollArea>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row gap-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 flex-shrink-0">
             <Button 
               type="button" 
               variant="outline" 
