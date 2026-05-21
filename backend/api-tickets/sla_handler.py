@@ -121,6 +121,13 @@ def _list_sla(cur) -> Dict[str, Any]:
 def _create_sla(event: Dict[str, Any], cur, conn) -> Dict[str, Any]:
     try:
         body = json.loads(event.get('body', '{}'))
+    except Exception as e:
+        return response(400, {'error': f'Некорректные данные: {str(e)}'})
+
+    if body.get('copy_from_id'):
+        return _copy_sla(int(body['copy_from_id']), cur, conn)
+
+    try:
         sla_req = SLARequest(**body)
     except Exception as e:
         return response(400, {'error': f'Некорректные данные: {str(e)}'})
@@ -219,6 +226,81 @@ def _delete_sla(event: Dict[str, Any], cur, conn) -> Dict[str, Any]:
 
     conn.commit()
     return response(200, {'message': 'SLA удалён'})
+
+
+def _make_copy_name(cur, base_name: str) -> str:
+    """Подбирает уникальное имя для копии SLA в формате '{name} (копия)', '(копия 2)', ..."""
+    cur.execute(f"SELECT name FROM {SCHEMA}.sla")
+    existing = {row['name'] for row in cur.fetchall()}
+
+    candidate = f"{base_name} (копия)"
+    if candidate not in existing:
+        return candidate
+
+    n = 2
+    while True:
+        candidate = f"{base_name} (копия {n})"
+        if candidate not in existing:
+            return candidate
+        n += 1
+
+
+def _copy_sla(source_id: int, cur, conn) -> Dict[str, Any]:
+    """Создаёт полную копию SLA включая priority_times и group_budgets"""
+    cur.execute(f"""
+        SELECT id, name, response_time_minutes, response_notification_minutes,
+               no_response_minutes, no_response_status_id,
+               resolution_time_minutes, resolution_notification_minutes,
+               use_work_schedule
+        FROM {SCHEMA}.sla
+        WHERE id = %s
+    """, (source_id,))
+    src = cur.fetchone()
+    if not src:
+        return response(404, {'error': 'Исходный SLA не найден'})
+
+    new_name = _make_copy_name(cur, src['name'])
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.sla
+            (name, response_time_minutes, response_notification_minutes,
+             no_response_minutes, no_response_status_id,
+             resolution_time_minutes, resolution_notification_minutes,
+             use_work_schedule)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+    """, (
+        new_name,
+        src['response_time_minutes'],
+        src['response_notification_minutes'],
+        src['no_response_minutes'],
+        src['no_response_status_id'],
+        src['resolution_time_minutes'],
+        src['resolution_notification_minutes'],
+        src['use_work_schedule'],
+    ))
+    new_id = cur.fetchone()['id']
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.sla_priority_times
+            (sla_id, priority_id, response_time_minutes, response_notification_minutes,
+             resolution_time_minutes, resolution_notification_minutes)
+        SELECT %s, priority_id, response_time_minutes, response_notification_minutes,
+               resolution_time_minutes, resolution_notification_minutes
+        FROM {SCHEMA}.sla_priority_times
+        WHERE sla_id = %s
+    """, (new_id, source_id))
+
+    cur.execute(f"""
+        INSERT INTO {SCHEMA}.sla_group_budgets
+            (sla_id, executor_group_id, resolution_minutes, response_minutes, sort_order, priority_id)
+        SELECT %s, executor_group_id, resolution_minutes, response_minutes, sort_order, priority_id
+        FROM {SCHEMA}.sla_group_budgets
+        WHERE sla_id = %s
+    """, (new_id, source_id))
+
+    conn.commit()
+    return response(201, {'id': new_id, 'name': new_name, 'message': 'SLA скопирован'})
 
 
 def _save_priority_times_for_sla(cur, sla_id: int, priority_times: list):

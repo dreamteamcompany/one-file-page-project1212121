@@ -9,6 +9,7 @@ import Icon from '@/components/ui/icon';
 import { GroupBudgetItem } from '@/components/sla/SlaGroupBudgets';
 import SlaCard from './sla/SlaCard';
 import SlaFormDialog from './sla/SlaFormDialog';
+import SlaCopyDialog from './sla/SlaCopyDialog';
 import {
   PriorityTime,
   SLAItem,
@@ -32,6 +33,7 @@ const SLA = () => {
   const [groupBudgets, setGroupBudgets] = useState<GroupBudgetItem[]>([]);
   const [groupBudgetsValid, setGroupBudgetsValid] = useState(true);
   const [expandedSla, setExpandedSla] = useState<number | null>(null);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!hasPermission('sla', 'read')) {
@@ -181,6 +183,21 @@ const SLA = () => {
     }
   };
 
+  const handleCopy = async (sourceId: number) => {
+    if (!hasPermission('sla', 'create')) return;
+    const res = await apiFetch(`${getApiUrl('sla')}?endpoint=sla`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ copy_from_id: sourceId }),
+    });
+    if (res.ok) {
+      loadSlas();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Не удалось скопировать SLA');
+    }
+  };
+
   const handleDialogClose = (open: boolean) => {
     setDialogOpen(open);
     if (!open) {
@@ -255,13 +272,24 @@ const SLA = () => {
           </div>
         </div>
         {hasPermission('sla', 'create') && (
-          <Button
-            onClick={() => { setEditingSla(null); setPriorityTimes([]); setPriorityTimesEnabled(false); setGroupBudgets([]); setDialogOpen(true); }}
-            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90"
-          >
-            <Icon name="Plus" size={20} className="mr-2" />
-            Создать SLA
-          </Button>
+          <div className="flex gap-2">
+            {slas.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setCopyDialogOpen(true)}
+              >
+                <Icon name="Copy" size={18} className="mr-2" />
+                Копировать
+              </Button>
+            )}
+            <Button
+              onClick={() => { setEditingSla(null); setPriorityTimes([]); setPriorityTimesEnabled(false); setGroupBudgets([]); setDialogOpen(true); }}
+              className="bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+            >
+              <Icon name="Plus" size={20} className="mr-2" />
+              Создать SLA
+            </Button>
+          </div>
         )}
       </div>
 
@@ -318,6 +346,13 @@ const SLA = () => {
         groupBudgetsValid={groupBudgetsValid}
         onSubmit={handleSubmit}
         onClose={() => handleDialogClose(false)}
+      />
+
+      <SlaCopyDialog
+        open={copyDialogOpen}
+        onOpenChange={setCopyDialogOpen}
+        slas={slas}
+        onCopy={handleCopy}
       />
     </PageLayout>
   );

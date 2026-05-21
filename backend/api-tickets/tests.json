@@ -109,6 +109,19 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Copy SLA - requires auth",
+      "method": "POST",
+      "path": "/?endpoint=sla",
+      "body": {
+        "copy_from_id": 1
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }
