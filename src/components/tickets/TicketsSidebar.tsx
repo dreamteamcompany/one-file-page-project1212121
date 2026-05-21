@@ -64,7 +64,9 @@ const TicketsSidebar = ({
       onTouchEnd={handleTouchEnd}
     >
       <a href="/" className="flex items-center gap-3 px-5 py-5 pb-[30px] border-b border-border flex-shrink-0">
-        <Logo className="h-8 w-auto text-foreground" />
+        <div className="bg-[#0f1729] rounded-lg px-3 py-2 flex items-center justify-center w-full">
+          <Logo className="h-8 w-auto" />
+        </div>
       </a>
       <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-accent/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-accent/50">
         <ul className="px-[15px] py-5 space-y-1 pb-4">
