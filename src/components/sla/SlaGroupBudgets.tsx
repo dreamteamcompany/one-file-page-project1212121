@@ -14,6 +14,66 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { Switch } from '@/components/ui/switch';
 
+const InlineMinutesInput = ({
+  label,
+  value,
+  onChange,
+  invalid,
+  description,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (minutes: number | null) => void;
+  invalid?: boolean;
+  description?: string;
+}) => {
+  const hours = value ? Math.floor(value / 60) : 0;
+  const minutes = value ? value % 60 : 0;
+
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <Label className="text-sm text-foreground truncate">{label}</Label>
+        {description && (
+          <span
+            className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 cursor-help"
+            title={description}
+          >
+            <Icon name="Info" size={13} />
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <Input
+          type="number"
+          min="0"
+          className={`w-14 h-8 text-sm text-center px-1 ${invalid ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+          placeholder="0"
+          value={hours || ''}
+          onChange={(e) => {
+            const h = parseInt(e.target.value) || 0;
+            onChange(h * 60 + minutes);
+          }}
+        />
+        <span className="text-xs text-muted-foreground">ч</span>
+        <Input
+          type="number"
+          min="0"
+          max="59"
+          className={`w-14 h-8 text-sm text-center px-1 ${invalid ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+          placeholder="0"
+          value={minutes || ''}
+          onChange={(e) => {
+            const m = parseInt(e.target.value) || 0;
+            onChange(hours * 60 + m);
+          }}
+        />
+        <span className="text-xs text-muted-foreground">мин</span>
+      </div>
+    </div>
+  );
+};
+
 interface ExecutorGroup {
   id: number;
   name: string;
@@ -62,54 +122,6 @@ const SEGMENT_COLORS = [
   '#14b8a6',
   '#6366f1',
 ];
-
-const BudgetTimeInput = ({
-  label,
-  value,
-  onChange,
-  invalid,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (minutes: number | null) => void;
-  invalid?: boolean;
-}) => {
-  const hours = value ? Math.floor(value / 60) : 0;
-  const minutes = value ? value % 60 : 0;
-
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="flex gap-1 items-center">
-        <Input
-          type="number"
-          min="0"
-          className={`w-16 h-8 text-xs ${invalid ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-          placeholder="ч"
-          value={hours || ''}
-          onChange={(e) => {
-            const h = parseInt(e.target.value) || 0;
-            onChange(h * 60 + minutes);
-          }}
-        />
-        <span className="text-xs text-muted-foreground">ч</span>
-        <Input
-          type="number"
-          min="0"
-          max="59"
-          className={`w-16 h-8 text-xs ${invalid ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-          placeholder="мин"
-          value={minutes || ''}
-          onChange={(e) => {
-            const m = parseInt(e.target.value) || 0;
-            onChange(hours * 60 + m);
-          }}
-        />
-        <span className="text-xs text-muted-foreground">мин</span>
-      </div>
-    </div>
-  );
-};
 
 const formatMinutes = (m: number) => {
   const abs = Math.abs(m);
@@ -522,96 +534,20 @@ const BudgetEditor = ({
       {tabBudgets.map((budget, localIdx) => {
         const segColor = SEGMENT_COLORS[localIdx % SEGMENT_COLORS.length];
         return (
-          <div
+          <GroupBudgetRow
             key={budget._origIndex}
-            className="flex flex-col gap-3 p-3 rounded-lg bg-muted/30 border border-border"
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: segColor }}
-              />
-              <div className="flex-1 min-w-0">
-                <Label className="text-xs text-muted-foreground">Группа</Label>
-                <Select
-                  value={budget.executor_group_id.toString()}
-                  onValueChange={(val) =>
-                    updateBudget(budget._origIndex, {
-                      executor_group_id: parseInt(val),
-                    })
-                  }
-                >
-                  <SelectTrigger className="mt-1 h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups
-                      .filter(
-                        (g) =>
-                          g.id === budget.executor_group_id ||
-                          !usedGroupIds.includes(g.id)
-                      )
-                      .map((g) => (
-                        <SelectItem key={g.id} value={g.id.toString()}>
-                          {g.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  disabled={localIdx === 0}
-                  onClick={() => moveBudget(budget._origIndex, -1)}
-                  title="Выше"
-                >
-                  <Icon name="ChevronUp" size={14} />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  disabled={localIdx === tabBudgets.length - 1}
-                  onClick={() => moveBudget(budget._origIndex, 1)}
-                  title="Ниже"
-                >
-                  <Icon name="ChevronDown" size={14} />
-                </Button>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-red-500 hover:bg-red-500/10"
-                onClick={() => removeBudget(budget._origIndex)}
-              >
-                <Icon name="Trash2" size={16} />
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <BudgetTimeInput
-                label="Решение"
-                value={budget.resolution_minutes}
-                onChange={(m) =>
-                  updateBudget(budget._origIndex, { resolution_minutes: m })
-                }
-                invalid={resolutionOverflow}
-              />
-              <BudgetTimeInput
-                label="Реакция"
-                value={budget.response_minutes}
-                onChange={(m) =>
-                  updateBudget(budget._origIndex, { response_minutes: m })
-                }
-                invalid={responseOverflow}
-              />
-            </div>
-          </div>
+            budget={budget}
+            localIdx={localIdx}
+            totalCount={tabBudgets.length}
+            color={segColor}
+            groups={groups}
+            usedGroupIds={usedGroupIds}
+            resolutionOverflow={resolutionOverflow}
+            responseOverflow={responseOverflow}
+            updateBudget={updateBudget}
+            removeBudget={removeBudget}
+            moveBudget={moveBudget}
+          />
         );
       })}
 
@@ -633,6 +569,163 @@ const BudgetEditor = ({
           <Icon name="AlertTriangle" size={14} className="mt-0.5 flex-shrink-0" />
           <div>
             Сумма бюджетов групп превышает общий SLA. Уменьшите время у одной из групп — иначе SLA не получится сохранить.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const GroupBudgetRow = ({
+  budget,
+  localIdx,
+  totalCount,
+  color,
+  groups,
+  usedGroupIds,
+  resolutionOverflow,
+  responseOverflow,
+  updateBudget,
+  removeBudget,
+  moveBudget,
+}: {
+  budget: GroupBudgetItem & { _origIndex: number };
+  localIdx: number;
+  totalCount: number;
+  color: string;
+  groups: ExecutorGroup[];
+  usedGroupIds: number[];
+  resolutionOverflow: boolean;
+  responseOverflow: boolean;
+  updateBudget: (origIndex: number, updates: Partial<GroupBudgetItem>) => void;
+  removeBudget: (origIndex: number) => void;
+  moveBudget: (origIndex: number, dir: -1 | 1) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const groupName =
+    groups.find((g) => g.id === budget.executor_group_id)?.name ||
+    `Группа #${budget.executor_group_id}`;
+  const hasOverflow =
+    (resolutionOverflow && (budget.resolution_minutes || 0) > 0) ||
+    (responseOverflow && (budget.response_minutes || 0) > 0);
+
+  return (
+    <div
+      className={`rounded-lg border bg-muted/20 overflow-hidden ${
+        hasOverflow ? 'border-red-500/40' : 'border-border'
+      }`}
+    >
+      <div className="flex items-center gap-2 p-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+        >
+          <Icon
+            name={open ? 'ChevronDown' : 'ChevronRight'}
+            size={14}
+            className="text-muted-foreground flex-shrink-0"
+          />
+          <span
+            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: color }}
+          />
+          <span className="text-sm font-medium truncate">{groupName}</span>
+        </button>
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-shrink-0">
+          <span className="flex items-center gap-1">
+            <Icon name="Timer" size={11} />
+            {formatMinutes(budget.response_minutes || 0) || '—'}
+          </span>
+          <span className="flex items-center gap-1">
+            <Icon name="CheckCircle2" size={11} />
+            {formatMinutes(budget.resolution_minutes || 0) || '—'}
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            disabled={localIdx === 0}
+            onClick={() => moveBudget(budget._origIndex, -1)}
+            title="Выше"
+          >
+            <Icon name="ChevronUp" size={13} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            disabled={localIdx === totalCount - 1}
+            onClick={() => moveBudget(budget._origIndex, 1)}
+            title="Ниже"
+          >
+            <Icon name="ChevronDown" size={13} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-red-500 hover:bg-red-500/10"
+            onClick={() => removeBudget(budget._origIndex)}
+          >
+            <Icon name="Trash2" size={14} />
+          </Button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="px-3 pb-2 border-t border-border/50 bg-background/40 space-y-2">
+          <div className="pt-2">
+            <Label className="text-xs text-muted-foreground">Группа исполнителей</Label>
+            <Select
+              value={budget.executor_group_id.toString()}
+              onValueChange={(val) =>
+                updateBudget(budget._origIndex, {
+                  executor_group_id: parseInt(val),
+                })
+              }
+            >
+              <SelectTrigger className="mt-1 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {groups
+                  .filter(
+                    (g) =>
+                      g.id === budget.executor_group_id ||
+                      !usedGroupIds.includes(g.id)
+                  )
+                  .map((g) => (
+                    <SelectItem key={g.id} value={g.id.toString()}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="divide-y divide-border/40">
+            <InlineMinutesInput
+              label="Реакция"
+              value={budget.response_minutes}
+              onChange={(m) =>
+                updateBudget(budget._origIndex, { response_minutes: m })
+              }
+              invalid={responseOverflow}
+              description="Сколько максимум времени группа держит заявку до первого ответа"
+            />
+            <InlineMinutesInput
+              label="Решение"
+              value={budget.resolution_minutes}
+              onChange={(m) =>
+                updateBudget(budget._origIndex, { resolution_minutes: m })
+              }
+              invalid={resolutionOverflow}
+              description="Сколько максимум времени группа держит заявку до полного решения"
+            />
           </div>
         </div>
       )}
