@@ -57,6 +57,7 @@ const TicketForm = ({
     handleNextFromManualDescription,
     handleBack,
     onSubmit,
+    isSubmitting,
   } = useTicketFormLogic({
     formData,
     setFormData,
@@ -110,6 +111,7 @@ const TicketForm = ({
             isUploadingFiles={fileUploader.isUploading}
             onSelectFiles={fileUploader.uploadMany}
             onRemoveAttachment={fileUploader.remove}
+            isSubmitting={isSubmitting}
           />
         )}
 
@@ -166,6 +168,7 @@ const TicketForm = ({
             isUploadingFiles={fileUploader.isUploading}
             onSelectFiles={fileUploader.uploadMany}
             onRemoveAttachment={fileUploader.remove}
+            isSubmitting={isSubmitting}
           />
         )}
 
@@ -176,6 +179,7 @@ const TicketForm = ({
             customFields={visibleCustomFields}
             onSubmit={onSubmit}
             onBack={handleBack}
+            isSubmitting={isSubmitting}
           />
         )}
       </DialogContent>

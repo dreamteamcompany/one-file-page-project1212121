@@ -65,6 +65,7 @@ interface TicketFormStep1Props {
   isUploadingFiles?: boolean;
   onSelectFiles?: (files: FileList | File[]) => void;
   onRemoveAttachment?: (id: string) => void;
+  isSubmitting?: boolean;
 }
 
 const TicketFormStep1 = ({
@@ -82,6 +83,7 @@ const TicketFormStep1 = ({
   isUploadingFiles,
   onSelectFiles,
   onRemoveAttachment,
+  isSubmitting = false,
 }: TicketFormStep1Props) => {
   const [criticalConfirmOpen, setCriticalConfirmOpen] = useState(false);
   const [pendingPriorityId, setPendingPriorityId] = useState<string | null>(null);
@@ -137,6 +139,8 @@ const TicketFormStep1 = ({
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
     if (descPastedImages.length > 0) {
       const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
       const base = formData.description.trim();
@@ -338,10 +342,19 @@ const TicketFormStep1 = ({
             <Button
               type="submit"
               className="flex-1 gap-2"
-              disabled={isUploadingFiles || !canProceed}
+              disabled={isUploadingFiles || !canProceed || isSubmitting}
             >
-              <Icon name="Send" size={18} />
-              {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}
+              {isSubmitting ? (
+                <>
+                  <Icon name="Loader2" size={18} className="animate-spin" />
+                  Создание заявки...
+                </>
+              ) : (
+                <>
+                  <Icon name="Send" size={18} />
+                  {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}
+                </>
+              )}
             </Button>
           )}
         </div>

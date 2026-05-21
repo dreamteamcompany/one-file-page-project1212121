@@ -41,6 +41,7 @@ interface TicketFormStep4Props {
   customFields: CustomField[];
   onSubmit: (e: React.FormEvent) => Promise<void>;
   onBack: () => void;
+  isSubmitting?: boolean;
 }
 
 const updateCustomField = (
@@ -180,9 +181,16 @@ const TicketFormStep4 = ({
   customFields,
   onSubmit,
   onBack,
+  isSubmitting = false,
 }: TicketFormStep4Props) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    onSubmit(e);
+  };
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleFormSubmit}>
       <div className="space-y-4 mt-4">
         <div className="grid grid-cols-2 gap-3">
           {customFields.map((field) => {
@@ -211,9 +219,18 @@ const TicketFormStep4 = ({
             <Icon name="ArrowLeft" size={18} />
             Назад
           </Button>
-          <Button type="submit" className="flex-1 gap-2">
-            <Icon name="Send" size={18} />
-            Создать заявку
+          <Button type="submit" className="flex-1 gap-2" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Icon name="Loader2" size={18} className="animate-spin" />
+                Создание заявки...
+              </>
+            ) : (
+              <>
+                <Icon name="Send" size={18} />
+                Создать заявку
+              </>
+            )}
           </Button>
         </div>
       </div>

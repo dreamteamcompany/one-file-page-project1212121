@@ -40,6 +40,7 @@ export const useTicketFormLogic = ({
   const [classification, setClassification] = useState<ClassificationResult | null>(null);
   const [visibleCustomFields, setVisibleCustomFields] = useState<CustomField[]>([]);
   const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileUploader = useFileUploader('uploads/attachments');
 
   const userFilteredTicketServices = useMemo(() => {
@@ -225,22 +226,28 @@ export const useTicketFormLogic = ({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalTitle = (formData.title || '').trim()
-      || selectedTicketService?.ticket_title
-      || formData.description.slice(0, 100)
-      || 'Новая заявка';
-    const updatedFormData = {
-      ...formData,
-      service_ids: selectedServices,
-      title: finalTitle,
-      category_id: '',
-    };
-    setFormData(updatedFormData);
-    await handleSubmit(e, updatedFormData, fileUploader.successful);
-    setStep(1);
-    setSelectedServices([]);
-    setClassification(null);
-    fileUploader.clear();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const finalTitle = (formData.title || '').trim()
+        || selectedTicketService?.ticket_title
+        || formData.description.slice(0, 100)
+        || 'Новая заявка';
+      const updatedFormData = {
+        ...formData,
+        service_ids: selectedServices,
+        title: finalTitle,
+        category_id: '',
+      };
+      setFormData(updatedFormData);
+      await handleSubmit(e, updatedFormData, fileUploader.successful);
+      setStep(1);
+      setSelectedServices([]);
+      setClassification(null);
+      fileUploader.clear();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const loadVisibleFields = useCallback(async () => {
@@ -344,5 +351,6 @@ export const useTicketFormLogic = ({
     handleNextFromManualDescription,
     handleBack,
     onSubmit,
+    isSubmitting,
   };
 };
