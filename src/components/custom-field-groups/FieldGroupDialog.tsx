@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { Field, FieldGroup } from '@/hooks/useCustomFieldGroups';
@@ -75,7 +74,7 @@ const FieldGroupDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] w-[calc(100%-2rem)] sm:w-full overflow-hidden !flex flex-col">
+      <DialogContent className="max-w-2xl h-[90dvh] sm:h-auto sm:max-h-[90vh] w-[calc(100%-2rem)] sm:w-full overflow-hidden !flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {editingGroup ? 'Редактировать группу полей' : 'Создать группу полей'}
@@ -122,7 +121,10 @@ const FieldGroupDialog = ({
               className="mb-2 flex-shrink-0"
             />
 
-            <ScrollArea className="flex-1 min-h-[200px] border rounded-md p-3">
+            <div
+              className="flex-1 min-h-[180px] border rounded-md p-3 overflow-y-auto overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               <div className="space-y-2">
                 {filteredFieldsForSelection.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
@@ -158,7 +160,7 @@ const FieldGroupDialog = ({
                   ))
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row gap-2 flex-shrink-0">
