@@ -18,6 +18,7 @@ interface Props {
   value: TicketsFiltersValue;
   onChange: (next: TicketsFiltersValue) => void;
   debounceMs?: number;
+  align?: 'left' | 'right';
 }
 
 const FIELDS: { key: keyof TicketsFiltersValue; label: string; placeholder: string; type?: 'text' | 'date' }[] = [
@@ -31,7 +32,7 @@ const FIELDS: { key: keyof TicketsFiltersValue; label: string; placeholder: stri
   { key: 'due_to', label: 'Дедлайн по', placeholder: '', type: 'date' },
 ];
 
-const TicketsFilters = ({ value, onChange, debounceMs = 400 }: Props) => {
+const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left' }: Props) => {
   const [local, setLocal] = useState<TicketsFiltersValue>(value);
   const [expanded, setExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +65,7 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400 }: Props) => {
 
   return (
     <div className="mt-3 px-1">
-      <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
         <Button
           variant="outline"
           size="sm"

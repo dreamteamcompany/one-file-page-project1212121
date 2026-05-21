@@ -221,7 +221,7 @@ const Tickets = () => {
 
           {viewMode === 'list' && (
             <>
-              <div className="flex items-center gap-2 mt-3 px-1">
+              <div className="flex items-center gap-2 mt-3 px-1 justify-end">
                 <span className="text-sm text-muted-foreground">Сортировать по:</span>
                 <Select value={sortBy} onValueChange={handleSortByChange}>
                   <SelectTrigger className="h-9 w-[220px]">
@@ -247,6 +247,7 @@ const Tickets = () => {
               <TicketsFilters
                 value={searchFilters as TicketsFiltersValue}
                 onChange={handleFiltersChange}
+                align="right"
               />
             </>
           )}
