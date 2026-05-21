@@ -28,6 +28,7 @@ import { API_URL, apiFetch } from '@/utils/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import TicketsFilters, { type TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
 
 interface BulkUser {
   id: number;
@@ -77,6 +78,8 @@ const Tickets = () => {
     sortDir,
     setSortBy,
     setSortDir,
+    searchFilters,
+    setSearchFilters,
     toggleArchived,
     toggleHidden,
     toggleHideWaiting,
@@ -182,6 +185,15 @@ const Tickets = () => {
     loadTickets(1, undefined, undefined, undefined, undefined, undefined, undefined, sortBy, next);
   };
 
+  const handleFiltersChange = (next: TicketsFiltersValue) => {
+    const normalized: Record<string, string> = {};
+    Object.entries(next).forEach(([k, v]) => {
+      if (typeof v === 'string' && v.trim() !== '') normalized[k] = v.trim();
+    });
+    setSearchFilters(normalized);
+    loadTickets(1, undefined, undefined, undefined, undefined, undefined, undefined, sortBy, sortDir, normalized);
+  };
+
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
@@ -208,28 +220,35 @@ const Tickets = () => {
         />
 
           {viewMode === 'list' && (
-            <div className="flex items-center gap-2 mt-3 px-1">
-              <span className="text-sm text-muted-foreground">Сортировать по:</span>
-              <Select value={sortBy} onValueChange={handleSortByChange}>
-                <SelectTrigger className="h-9 w-[220px]">
-                  <SelectValue placeholder="Выберите поле" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={handleSortDirToggle}
-                title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}
-              >
-                <Icon name={sortDir === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={16} />
-              </Button>
-            </div>
+            <>
+              <div className="flex items-center gap-2 mt-3 px-1">
+                <span className="text-sm text-muted-foreground">Сортировать по:</span>
+                <Select value={sortBy} onValueChange={handleSortByChange}>
+                  <SelectTrigger className="h-9 w-[220px]">
+                    <SelectValue placeholder="Выберите поле" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  onClick={handleSortDirToggle}
+                  title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}
+                >
+                  <Icon name={sortDir === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={16} />
+                </Button>
+              </div>
+
+              <TicketsFilters
+                value={searchFilters as TicketsFiltersValue}
+                onChange={handleFiltersChange}
+              />
+            </>
           )}
 
           <TicketCountersBar />

@@ -394,6 +394,63 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 )
             """
             params.append(user_id)
+
+        # Поисковые фильтры по текстовым полям (ILIKE)
+        search_assignee = (query_params.get('search_assignee') or '').strip()
+        search_creator = (query_params.get('search_creator') or '').strip()
+        search_status = (query_params.get('search_status') or '').strip()
+        search_executor_group = (query_params.get('search_executor_group') or '').strip()
+        search_service = (query_params.get('search_service') or '').strip()
+        search_ticket_service = (query_params.get('search_ticket_service') or '').strip()
+        due_from = (query_params.get('due_from') or '').strip()
+        due_to = (query_params.get('due_to') or '').strip()
+
+        if search_assignee:
+            where_clause += f""" AND EXISTS (
+                SELECT 1 FROM {SCHEMA}.users uf
+                WHERE uf.id = t.assigned_to
+                  AND (uf.full_name ILIKE %s OR uf.username ILIKE %s)
+            )"""
+            params.extend([f"%{search_assignee}%", f"%{search_assignee}%"])
+        if search_creator:
+            where_clause += f""" AND EXISTS (
+                SELECT 1 FROM {SCHEMA}.users uc
+                WHERE uc.id = t.created_by
+                  AND (uc.full_name ILIKE %s OR uc.username ILIKE %s)
+            )"""
+            params.extend([f"%{search_creator}%", f"%{search_creator}%"])
+        if search_status:
+            where_clause += f""" AND EXISTS (
+                SELECT 1 FROM {SCHEMA}.ticket_statuses sf
+                WHERE sf.id = t.status_id AND sf.name ILIKE %s
+            )"""
+            params.append(f"%{search_status}%")
+        if search_executor_group:
+            where_clause += f""" AND EXISTS (
+                SELECT 1 FROM {SCHEMA}.executor_groups egf
+                WHERE egf.id = t.executor_group_id AND egf.name ILIKE %s
+            )"""
+            params.append(f"%{search_executor_group}%")
+        if search_service:
+            where_clause += f""" AND EXISTS (
+                SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsmf
+                JOIN {SCHEMA}.services sff ON sff.id = tsmf.service_id
+                WHERE tsmf.ticket_id = t.id AND sff.name ILIKE %s
+            )"""
+            params.append(f"%{search_service}%")
+        if search_ticket_service:
+            where_clause += f""" AND EXISTS (
+                SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsmf2
+                JOIN {SCHEMA}.ticket_services tsf ON tsf.id = tsmf2.ticket_service_id
+                WHERE tsmf2.ticket_id = t.id AND tsf.name ILIKE %s
+            )"""
+            params.append(f"%{search_ticket_service}%")
+        if due_from:
+            where_clause += " AND t.due_date >= %s"
+            params.append(due_from)
+        if due_to:
+            where_clause += " AND t.due_date <= %s"
+            params.append(due_to)
         
         count_query = f"SELECT COUNT(*) AS total FROM {SCHEMA}.tickets t {where_clause}"
         cur.execute(count_query, params)

@@ -40,6 +40,7 @@ export const useTicketsData = () => {
   const [showWatching, setShowWatching] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [searchFilters, setSearchFilters] = useState<Record<string, string>>({});
 
   const loadHiddenCount = useCallback(async () => {
     if (!token) return;
@@ -73,7 +74,7 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
-  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean, showAllArg?: boolean, showWatchingArg?: boolean, sortByArg?: string, sortDirArg?: 'asc' | 'desc') => {
+  const loadTickets = useCallback(async (targetPage = 1, isArchived?: boolean, isHidden?: boolean, hideWaitingArg?: boolean, needsMyReplyArg?: boolean, showAllArg?: boolean, showWatchingArg?: boolean, sortByArg?: string, sortDirArg?: 'asc' | 'desc', filtersArg?: Record<string, string>) => {
     if (!token) return;
 
     const archived = isArchived !== undefined ? isArchived : showArchived;
@@ -84,9 +85,19 @@ export const useTicketsData = () => {
     const watching = showWatchingArg !== undefined ? showWatchingArg : showWatching;
     const sortByValue = sortByArg !== undefined ? sortByArg : sortBy;
     const sortDirValue = sortDirArg !== undefined ? sortDirArg : sortDir;
+    const filters = filtersArg !== undefined ? filtersArg : searchFilters;
     setLoading(true);
     try {
       let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}&sort_by=${encodeURIComponent(sortByValue)}&sort_dir=${sortDirValue}`;
+      const allowedFilterKeys = [
+        'search_assignee', 'search_creator', 'search_status',
+        'search_executor_group', 'search_service', 'search_ticket_service',
+        'due_from', 'due_to',
+      ];
+      for (const key of allowedFilterKeys) {
+        const v = (filters?.[key] || '').trim();
+        if (v) url += `&${key}=${encodeURIComponent(v)}`;
+      }
       if (watching) {
         url += `&is_archived=${archived}&is_watcher=true`;
         if (skipWaiting) {
@@ -122,7 +133,7 @@ export const useTicketsData = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, showArchived, showHidden, hideWaiting, needsMyReply, showAll, showWatching, sortBy, sortDir]);
+  }, [token, showArchived, showHidden, hideWaiting, needsMyReply, showAll, showWatching, sortBy, sortDir, searchFilters]);
 
   const loadServices = useCallback(async () => {
     if (!token) return;
@@ -279,6 +290,8 @@ export const useTicketsData = () => {
     sortDir,
     setSortBy,
     setSortDir,
+    searchFilters,
+    setSearchFilters,
     loadTickets,
     loadDictionaries,
     loadServices,
