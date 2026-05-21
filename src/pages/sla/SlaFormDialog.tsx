@@ -19,7 +19,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SlaGroupBudgets, { GroupBudgetItem } from '@/components/sla/SlaGroupBudgets';
-import { InlineTimeInput, CompactTimeInput } from './SlaTimeInputs';
+import { useState } from 'react';
+import { InlineTimeInput } from './SlaTimeInputs';
 import {
   PriorityTime,
   SLAItem,
@@ -224,52 +225,19 @@ const SlaFormDialog = ({
                   <p className="text-xs mt-1">Сейчас используются общие значения со вкладки «Сроки»</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {priorityTimes.map((pt) => {
                     const priority = priorities.find(p => p.id === pt.priority_id);
                     if (!priority) return null;
 
                     return (
-                      <div key={pt.priority_id} className="p-3 rounded-lg bg-muted/30 border border-border space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: priority.color }} />
-                            <span className="text-sm font-medium">{priority.name}</span>
-                            <span className="text-xs text-muted-foreground">(ур. {priority.level})</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-red-500 hover:bg-red-500/10"
-                            onClick={() => removePriorityTime(pt.priority_id)}
-                          >
-                            <Icon name="Trash2" size={14} />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <CompactTimeInput
-                            label="Реакция"
-                            value={pt.response_time_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { response_time_minutes: m })}
-                          />
-                          <CompactTimeInput
-                            label="Уведом. реакции"
-                            value={pt.response_notification_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { response_notification_minutes: m })}
-                          />
-                          <CompactTimeInput
-                            label="Решение"
-                            value={pt.resolution_time_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { resolution_time_minutes: m })}
-                          />
-                          <CompactTimeInput
-                            label="Уведом. решения"
-                            value={pt.resolution_notification_minutes}
-                            onChange={(m) => updatePriorityTime(pt.priority_id, { resolution_notification_minutes: m })}
-                          />
-                        </div>
-                      </div>
+                      <PriorityRow
+                        key={pt.priority_id}
+                        pt={pt}
+                        priority={priority}
+                        onUpdate={(updates) => updatePriorityTime(pt.priority_id, updates)}
+                        onRemove={() => removePriorityTime(pt.priority_id)}
+                      />
                     );
                   })}
 
@@ -346,6 +314,98 @@ const SlaFormDialog = ({
         </form>
       </DialogContent>
     </Dialog>
+  );
+};
+
+const formatTime = (m: number) => {
+  if (!m) return '—';
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  if (h === 0) return `${min} мин`;
+  if (min === 0) return `${h} ч`;
+  return `${h} ч ${min} мин`;
+};
+
+const PriorityRow = ({
+  pt,
+  priority,
+  onUpdate,
+  onRemove,
+}: {
+  pt: PriorityTime;
+  priority: TicketPriority;
+  onUpdate: (updates: Partial<PriorityTime>) => void;
+  onRemove: () => void;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+      <div className="flex items-center gap-2 p-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+        >
+          <Icon
+            name={open ? 'ChevronDown' : 'ChevronRight'}
+            size={14}
+            className="text-muted-foreground flex-shrink-0"
+          />
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: priority.color }} />
+          <span className="text-sm font-medium truncate">{priority.name}</span>
+          <span className="text-[10px] text-muted-foreground flex-shrink-0">ур. {priority.level}</span>
+        </button>
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-shrink-0">
+          <span className="flex items-center gap-1">
+            <Icon name="Timer" size={11} />
+            {formatTime(pt.response_time_minutes)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Icon name="CheckCircle2" size={11} />
+            {formatTime(pt.resolution_time_minutes)}
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-red-500 hover:bg-red-500/10 flex-shrink-0"
+          onClick={onRemove}
+        >
+          <Icon name="Trash2" size={14} />
+        </Button>
+      </div>
+
+      {open && (
+        <div className="px-3 pb-2 border-t border-border/50 bg-background/40 divide-y divide-border/40">
+          <InlineTimeInput
+            label="Реакция"
+            value={pt.response_time_minutes}
+            onChange={(m) => onUpdate({ response_time_minutes: m })}
+            description="Максимальное время для первого ответа на заявку этого приоритета"
+          />
+          <InlineTimeInput
+            label="Уведомление о реакции"
+            value={pt.response_notification_minutes}
+            onChange={(m) => onUpdate({ response_notification_minutes: m })}
+            description="За сколько до окончания времени реакции отправить уведомление"
+          />
+          <InlineTimeInput
+            label="Решение"
+            value={pt.resolution_time_minutes}
+            onChange={(m) => onUpdate({ resolution_time_minutes: m })}
+            description="Максимальное время для полного решения заявки этого приоритета"
+          />
+          <InlineTimeInput
+            label="Уведомление о решении"
+            value={pt.resolution_notification_minutes}
+            onChange={(m) => onUpdate({ resolution_notification_minutes: m })}
+            description="За сколько до окончания времени решения отправить уведомление"
+          />
+        </div>
+      )}
+    </div>
   );
 };
 
