@@ -178,6 +178,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_confirmation(method, event, conn)
         elif endpoint == 'ticket-watchers':
             return handle_ticket_watchers(method, event, conn)
+        elif endpoint == 'tickets-full':
+            return handle_tickets_full(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
@@ -2029,3 +2031,79 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
 
     finally:
         cur.close()
+
+
+def handle_tickets_full(method: str, event: dict, conn) -> dict:
+    """Объединённая загрузка данных заявки одним вызовом.
+
+    Возвращает: ticket, history, approvals — за один поход в БД,
+    чтобы снизить нагрузку и количество параллельных запросов от фронта.
+    """
+    if method != 'GET':
+        return response(405, {'error': 'Only GET method allowed'})
+
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    params = event.get('queryStringParameters', {}) or {}
+    ticket_id_raw = params.get('ticket_id')
+    if not ticket_id_raw:
+        return response(400, {'error': 'ticket_id parameter required'})
+
+    try:
+        ticket_id = int(ticket_id_raw)
+    except (TypeError, ValueError):
+        return response(400, {'error': 'ticket_id must be integer'})
+
+    ticket_data = None
+    history: list = []
+    approvals: list = []
+
+    try:
+        ticket_event = dict(event)
+        ticket_event['queryStringParameters'] = {
+            **(event.get('queryStringParameters') or {}),
+            'ticket_id': str(ticket_id),
+        }
+        tickets_resp = handle_tickets('GET', ticket_event, conn)
+        if tickets_resp.get('statusCode') == 200:
+            try:
+                body = json.loads(tickets_resp.get('body') or '{}')
+                tickets_list = body.get('tickets') or []
+                if tickets_list:
+                    ticket_data = tickets_list[0]
+            except (json.JSONDecodeError, TypeError):
+                ticket_data = None
+        elif tickets_resp.get('statusCode') in (401, 403, 404):
+            return tickets_resp
+
+        approvals_resp = handle_ticket_approvals('GET', ticket_event, conn)
+        if approvals_resp.get('statusCode') == 200:
+            try:
+                approvals = json.loads(approvals_resp.get('body') or '[]') or []
+            except (json.JSONDecodeError, TypeError):
+                approvals = []
+
+        cur = conn.cursor()
+        try:
+            cur.execute(f"""
+                SELECT th.id, th.ticket_id, th.user_id, th.field_name,
+                       th.old_value, th.new_value, th.created_at,
+                       u.username as user_name, u.full_name as user_full_name
+                FROM {SCHEMA}.ticket_history th
+                LEFT JOIN {SCHEMA}.users u ON th.user_id = u.id
+                WHERE th.ticket_id = %s
+                ORDER BY th.created_at DESC
+            """, (ticket_id,))
+            history = [dict(row) for row in cur.fetchall()]
+        finally:
+            cur.close()
+    except Exception as e:
+        return response(500, {'error': f'tickets-full failed: {str(e)}'})
+
+    return response(200, {
+        'ticket': ticket_data,
+        'history': history,
+        'approvals': approvals,
+    })

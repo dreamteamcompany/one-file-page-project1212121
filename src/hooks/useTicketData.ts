@@ -1,7 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL, apiFetch } from '@/utils/api';
+import { API_URL, apiFetch, cachedJsonFetch } from '@/utils/api';
 import type { Ticket, TicketComment, TicketAuditLog, TicketStatus, User } from '@/types';
+
+interface ApprovalRow {
+  id: number;
+  ticket_id: number;
+  approver_id: number;
+  status: string;
+  comment: string | null;
+  created_at: string;
+  updated_at: string | null;
+  approver_name?: string;
+  approver_email?: string;
+  approver_photo_url?: string | null;
+}
 
 interface ExecutorGroup {
   id: number;
@@ -16,6 +29,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [users, setUsers] = useState<User[]>([]);
   const [executorGroups, setExecutorGroups] = useState<ExecutorGroup[]>([]);
   const [auditLogs, setAuditLogs] = useState<TicketAuditLog[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -48,22 +62,38 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     }
   };
 
+  const loadTicketFull = async (showLoader = true) => {
+    if (!id) return;
+    try {
+      if (showLoader) setLoading(true);
+      setLoadingHistory(true);
+      const response = await apiFetch(`${API_URL}?endpoint=tickets-full&ticket_id=${id}`, {
+        headers: { 'X-Auth-Token': token },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ticket) setTicket(data.ticket);
+        setAuditLogs(Array.isArray(data.history) ? data.history : []);
+        setApprovals(Array.isArray(data.approvals) ? data.approvals : []);
+      }
+    } catch (error) {
+      console.error('Error loading ticket-full:', error);
+    } finally {
+      if (showLoader) setLoading(false);
+      setLoadingHistory(false);
+    }
+  };
+
   const loadStatuses = async () => {
     let firstOk = false;
     let loaded: TicketStatus[] = [];
     try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-dictionaries-api`, {
-        headers: {
-          'X-Auth-Token': token,
-        },
-      });
-      if (response.ok) {
-        firstOk = true;
-        const data = await response.json();
-        loaded = Array.isArray(data.statuses) ? data.statuses : [];
-      } else {
-        console.warn('[loadStatuses] dictionaries-api HTTP', response.status);
-      }
+      const data = await cachedJsonFetch<{ statuses?: TicketStatus[] }>(
+        `${API_URL}?endpoint=ticket-dictionaries-api`,
+        { headers: { 'X-Auth-Token': token } },
+      );
+      firstOk = true;
+      loaded = Array.isArray(data?.statuses) ? data.statuses : [];
     } catch (error) {
       console.error('Error loading statuses (primary):', error);
     }
@@ -72,16 +102,12 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     // (например, фильтр по ролям всё срезал). При сетевой ошибке/rate-limit не добиваем бэк.
     if (firstOk && loaded.length === 0) {
       try {
-        const fallback = await apiFetch(`${API_URL}?endpoint=ticket-statuses`, {
-          headers: { 'X-Auth-Token': token },
-        });
-        if (fallback.ok) {
-          const fbData = await fallback.json();
-          if (Array.isArray(fbData)) {
-            loaded = fbData;
-          }
-        } else {
-          console.warn('[loadStatuses] fallback ticket-statuses HTTP', fallback.status);
+        const fbData = await cachedJsonFetch<TicketStatus[]>(
+          `${API_URL}?endpoint=ticket-statuses`,
+          { headers: { 'X-Auth-Token': token } },
+        );
+        if (Array.isArray(fbData)) {
+          loaded = fbData;
         }
       } catch (fbErr) {
         console.error('[loadStatuses] fallback error:', fbErr);
@@ -92,36 +118,21 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   };
 
   const loadUsers = async () => {
-    const maxRetries = 3;
-    let attempt = 0;
-    while (attempt <= maxRetries) {
-      try {
-        const response = await apiFetch(`${API_URL}?endpoint=users`, {
-          headers: {
-            'X-Auth-Token': token,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const adaptedUsers = Array.isArray(data) ? data.map((u: { id: number; full_name?: string; username?: string; photo_url?: string }) => ({
-            id: u.id,
-            name: u.full_name || u.username || '',
-            email: u.username || '',
-            role: '',
-            photo_url: u.photo_url || ''
-          })) : [];
-          setUsers(adaptedUsers);
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      } catch (error) {
-        attempt += 1;
-        if (attempt > maxRetries) {
-          console.error('Error loading users:', error);
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
-      }
+    try {
+      const data = await cachedJsonFetch<Array<{ id: number; full_name?: string; username?: string; photo_url?: string }>>(
+        `${API_URL}?endpoint=users`,
+        { headers: { 'X-Auth-Token': token } },
+      );
+      const adaptedUsers = Array.isArray(data) ? data.map((u) => ({
+        id: u.id,
+        name: u.full_name || u.username || '',
+        email: u.username || '',
+        role: '',
+        photo_url: u.photo_url || ''
+      })) : [];
+      setUsers(adaptedUsers);
+    } catch (error) {
+      console.error('Error loading users:', error);
     }
   };
 
@@ -266,52 +277,40 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
 
   const loadExecutorGroups = async () => {
     const EXECUTOR_GROUPS_URL = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
-    const maxRetries = 3;
-    let attempt = 0;
-    while (attempt <= maxRetries) {
-      try {
-        const response = await apiFetch(EXECUTOR_GROUPS_URL, {
-          headers: {
-            'X-Auth-Token': token,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setExecutorGroups(Array.isArray(data) ? data : data.groups || []);
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      } catch (error) {
-        attempt += 1;
-        if (attempt > maxRetries) {
-          console.error('Error loading executor groups:', error);
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+    try {
+      const data = await cachedJsonFetch<ExecutorGroup[] | { groups?: ExecutorGroup[] }>(
+        EXECUTOR_GROUPS_URL,
+        { headers: { 'X-Auth-Token': token } },
+      );
+      if (Array.isArray(data)) {
+        setExecutorGroups(data);
+      } else {
+        setExecutorGroups(data?.groups || []);
       }
+    } catch (error) {
+      console.error('Error loading executor groups:', error);
     }
   };
 
   useEffect(() => {
     setComments([]);
     setAuditLogs([]);
+    setApprovals([]);
     setParticipantIds([]);
     setMyLastSeenAt(null);
 
     if (id && token) {
-      // Сначала — то, что нужно для немедленной отрисовки заявки.
-      loadTicket();
-      // Чуть разносим параллельные тяжёлые запросы, чтобы не упереться в rate-limit БД.
+      // Один объединённый запрос: ticket + history + approvals.
+      loadTicketFull();
+      // Справочники грузятся с кэшем (TTL 5 минут) — не дёргают БД при повторных открытиях заявок.
       loadStatuses();
       loadExecutorGroups();
       loadUsers();
-      // Эти грузим с небольшой задержкой — они тяжелее и не нужны для первого экрана.
+      // Комментарии — отдельным небольшим запросом.
       const tComments = setTimeout(() => { loadComments(); }, 150);
-      const tHistory = setTimeout(() => { loadHistory(); }, 300);
 
       return () => {
         clearTimeout(tComments);
-        clearTimeout(tHistory);
         if (commentsAbortRef.current) {
           commentsAbortRef.current.abort();
         }
@@ -342,10 +341,12 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     users,
     executorGroups,
     auditLogs,
+    approvals,
     loading,
     loadingComments,
     loadingHistory,
     loadTicket,
+    loadTicketFull,
     loadComments,
     loadHistory,
     participantIds,

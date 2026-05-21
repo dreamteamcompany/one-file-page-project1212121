@@ -31,6 +31,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'customer_departments': GENERAL_API,
   'system_settings': GENERAL_API,
   'tickets': TICKETS_API,
+  'tickets-full': TICKETS_API,
   'api-tickets': TICKETS_API,
   'service_categories': TICKETS_API,
   'ticket-dictionaries-api': TICKETS_API,
@@ -81,6 +82,49 @@ const getAuthToken = (): string | null => {
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 400;
+
+type CacheEntry = { data: unknown; expiresAt: number };
+const responseCache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, Promise<unknown>>();
+
+export const cachedJsonFetch = async <T = unknown>(
+  url: string,
+  options: RequestInit = {},
+  ttlMs: number = 5 * 60 * 1000,
+): Promise<T> => {
+  const key = url;
+  const now = Date.now();
+  const cached = responseCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.data as T;
+  }
+  const existing = inFlight.get(key);
+  if (existing) return existing as Promise<T>;
+
+  const promise = (async () => {
+    try {
+      const resp = await apiFetch(url, options);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      responseCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+      return data;
+    } finally {
+      inFlight.delete(key);
+    }
+  })();
+  inFlight.set(key, promise);
+  return promise as Promise<T>;
+};
+
+export const invalidateCache = (urlSubstring?: string) => {
+  if (!urlSubstring) {
+    responseCache.clear();
+    return;
+  }
+  for (const k of Array.from(responseCache.keys())) {
+    if (k.includes(urlSubstring)) responseCache.delete(k);
+  }
+};
 
 const isRetryableMethod = (method?: string): boolean => {
   const m = (method || 'GET').toUpperCase();
