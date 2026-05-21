@@ -30,6 +30,7 @@ const SLA = () => {
   const [priorityTimes, setPriorityTimes] = useState<PriorityTime[]>([]);
   const [priorityTimesEnabled, setPriorityTimesEnabled] = useState(false);
   const [groupBudgets, setGroupBudgets] = useState<GroupBudgetItem[]>([]);
+  const [groupBudgetsValid, setGroupBudgetsValid] = useState(true);
   const [expandedSla, setExpandedSla] = useState<number | null>(null);
 
   useEffect(() => {
@@ -78,6 +79,11 @@ const SLA = () => {
 
     if (priorityTimesEnabled && priorityTimes.length === 0) {
       alert('Включены времена по приоритетам, но ни один приоритет не добавлен');
+      return;
+    }
+
+    if (!groupBudgetsValid) {
+      alert('Сумма бюджетов групп превышает общий SLA. Уменьшите время у одной из групп.');
       return;
     }
 
@@ -308,6 +314,8 @@ const SLA = () => {
         availablePriorities={availablePriorities}
         groupBudgets={groupBudgets}
         setGroupBudgets={setGroupBudgets}
+        onGroupBudgetsValidChange={setGroupBudgetsValid}
+        groupBudgetsValid={groupBudgetsValid}
         onSubmit={handleSubmit}
         onClose={() => handleDialogClose(false)}
       />

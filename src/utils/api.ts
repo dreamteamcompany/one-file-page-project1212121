@@ -43,6 +43,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'sla-service-mappings': TICKETS_API,
   'sla-group-budgets': TICKETS_API,
   'sla-priority-times': TICKETS_API,
+  'sla-analytics': TICKETS_API,
   'ticket-approvals': TICKETS_API,
   'ticket-confirmation': TICKETS_API,
   'ticket-watchers': TICKETS_API,

@@ -99,6 +99,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get ticket SLA info (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=sla-analytics&action=ticket_sla_info&ticket_id=1",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

@@ -24,7 +24,7 @@ def handle_sla_analytics(method: str, event: Dict[str, Any], conn) -> Dict[str, 
     elif action == 'ticket_violations':
         return _get_ticket_violations(cur, params)
     elif action == 'ticket_sla_info':
-        return _get_ticket_sla_info(cur, params)
+        return _get_ticket_sla_info(cur, params, payload)
 
     return response(400, {'error': 'Неизвестный action'})
 
@@ -170,14 +170,14 @@ def _get_ticket_violations(cur, params: dict) -> Dict[str, Any]:
     return response(200, [dict(row) for row in cur.fetchall()])
 
 
-def _get_ticket_sla_info(cur, params: dict) -> Dict[str, Any]:
+def _get_ticket_sla_info(cur, params: dict, payload: dict | None = None) -> Dict[str, Any]:
     ticket_id = params.get('ticket_id')
     if not ticket_id:
         return response(400, {'error': 'ticket_id обязателен'})
 
     cur.execute(f"""
-        SELECT t.due_date, t.response_due_date, t.created_at,
-               t.assigned_to, t.closed_at
+        SELECT t.id, t.due_date, t.response_due_date, t.created_at,
+               t.assigned_to, t.closed_at, t.priority_id, t.sla_id
         FROM {SCHEMA}.tickets t
         WHERE t.id = %s
     """, (int(ticket_id),))
@@ -208,9 +208,114 @@ def _get_ticket_sla_info(cur, params: dict) -> Dict[str, Any]:
     """, (int(ticket_id),))
     violations = [dict(row) for row in cur.fetchall()]
 
+    group_chain: list = []
+    if ticket.get('sla_id'):
+        cur.execute(f"""
+            SELECT gb.executor_group_id, eg.name AS group_name,
+                   gb.resolution_minutes, gb.response_minutes, gb.sort_order
+            FROM {SCHEMA}.sla_group_budgets gb
+            JOIN {SCHEMA}.executor_groups eg ON gb.executor_group_id = eg.id
+            WHERE gb.sla_id = %s
+              AND (gb.priority_id = %s OR gb.priority_id IS NULL)
+            ORDER BY gb.sort_order, eg.name
+        """, (ticket['sla_id'], ticket.get('priority_id')))
+        chain_rows = [dict(r) for r in cur.fetchall()]
+
+        seen: dict = {}
+        for row in chain_rows:
+            gid = row['executor_group_id']
+            if gid not in seen:
+                seen[gid] = row
+        group_chain = list(seen.values())
+
+        cur.execute(f"""
+            SELECT gl.executor_group_id,
+                   SUM(gl.time_spent_minutes) AS total_spent,
+                   MAX(gl.released_at) AS last_released_at,
+                   BOOL_OR(gl.released_at IS NULL) AS is_active
+            FROM {SCHEMA}.ticket_group_log gl
+            WHERE gl.ticket_id = %s
+            GROUP BY gl.executor_group_id
+        """, (int(ticket_id),))
+        log_map = {r['executor_group_id']: dict(r) for r in cur.fetchall()}
+
+        for item in group_chain:
+            gid = item['executor_group_id']
+            log = log_map.get(gid)
+            if log and log.get('is_active'):
+                item['status'] = 'active'
+            elif log and log.get('total_spent') is not None:
+                item['status'] = 'done'
+            else:
+                item['status'] = 'pending'
+            item['actual_minutes'] = (log or {}).get('total_spent')
+
+    my_group = None
+    user_id = (payload or {}).get('user_id') if payload else None
+    if user_id and ticket.get('sla_id'):
+        cur.execute(f"""
+            SELECT egm.group_id, eg.name AS group_name
+            FROM {SCHEMA}.executor_group_members egm
+            JOIN {SCHEMA}.executor_groups eg ON eg.id = egm.group_id
+            WHERE egm.user_id = %s
+            LIMIT 1
+        """, (int(user_id),))
+        user_group_row = cur.fetchone()
+        if user_group_row:
+            user_group = dict(user_group_row)
+            ug_id = user_group['group_id']
+            cur.execute(f"""
+                SELECT resolution_minutes, response_minutes
+                FROM {SCHEMA}.sla_group_budgets
+                WHERE sla_id = %s AND executor_group_id = %s
+                  AND priority_id = %s
+                LIMIT 1
+            """, (ticket['sla_id'], ug_id, ticket.get('priority_id')))
+            budget_row = cur.fetchone()
+            if not budget_row:
+                cur.execute(f"""
+                    SELECT resolution_minutes, response_minutes
+                    FROM {SCHEMA}.sla_group_budgets
+                    WHERE sla_id = %s AND executor_group_id = %s
+                      AND priority_id IS NULL
+                    LIMIT 1
+                """, (ticket['sla_id'], ug_id))
+                budget_row = cur.fetchone()
+            if budget_row:
+                budget_row = dict(budget_row)
+                cur.execute(f"""
+                    SELECT
+                        SUM(gl.time_spent_minutes) AS total_spent,
+                        BOOL_OR(gl.released_at IS NULL) AS is_active,
+                        MAX(gl.assigned_at) AS last_assigned_at
+                    FROM {SCHEMA}.ticket_group_log gl
+                    WHERE gl.ticket_id = %s AND gl.executor_group_id = %s
+                """, (int(ticket_id), ug_id))
+                stat = cur.fetchone()
+                stat = dict(stat) if stat else {}
+                elapsed = stat.get('total_spent') or 0
+                if stat.get('is_active') and stat.get('last_assigned_at'):
+                    cur.execute("""
+                        SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - %s)) / 60
+                    """, (stat['last_assigned_at'],))
+                    extra = cur.fetchone()
+                    if extra:
+                        extra_min = list(extra.values())[0] or 0
+                        elapsed = (elapsed or 0) + float(extra_min)
+                my_group = {
+                    'executor_group_id': ug_id,
+                    'group_name': user_group['group_name'],
+                    'resolution_minutes': budget_row.get('resolution_minutes'),
+                    'response_minutes': budget_row.get('response_minutes'),
+                    'elapsed_minutes': float(elapsed or 0),
+                    'is_active': bool(stat.get('is_active')),
+                }
+
     return response(200, {
         'ticket': ticket,
         'active_group': dict(active_group) if active_group else None,
         'violations': violations,
         'has_violations': len(violations) > 0,
+        'my_group': my_group,
+        'group_chain': group_chain,
     })

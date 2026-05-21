@@ -45,6 +45,8 @@ interface Props {
   availablePriorities: TicketPriority[];
   groupBudgets: GroupBudgetItem[];
   setGroupBudgets: (budgets: GroupBudgetItem[]) => void;
+  onGroupBudgetsValidChange?: (valid: boolean) => void;
+  groupBudgetsValid?: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
@@ -66,6 +68,8 @@ const SlaFormDialog = ({
   availablePriorities,
   groupBudgets,
   setGroupBudgets,
+  onGroupBudgetsValidChange,
+  groupBudgetsValid = true,
   onSubmit,
   onClose,
 }: Props) => {
@@ -293,6 +297,12 @@ const SlaFormDialog = ({
                 slaId={editingSla?.id}
                 budgets={groupBudgets}
                 onBudgetsChange={setGroupBudgets}
+                totalResolutionMinutes={formData.resolution_time_minutes}
+                totalResponseMinutes={formData.response_time_minutes}
+                priorities={priorities}
+                priorityTimes={priorityTimes}
+                priorityTimesEnabled={priorityTimesEnabled}
+                onValidationChange={onGroupBudgetsValidChange}
               />
             </TabsContent>
 
@@ -327,7 +337,7 @@ const SlaFormDialog = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Отмена
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={!groupBudgetsValid}>
               {editingSla ? 'Сохранить' : 'Создать'}
             </Button>
           </div>
