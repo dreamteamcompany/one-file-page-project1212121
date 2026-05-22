@@ -84,6 +84,36 @@ const RETRYABLE_STATUSES = new Set([502, 503, 504]);
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 400;
 
+const DISABLED_ENDPOINTS = new Set(['payments']);
+const DISABLED_FUNCTION_IDS = new Set(['42303a3a-efd9-4863-9d99-b41962f017dc']);
+
+const isDisabledUrl = (url: string): boolean => {
+  if (!url) return false;
+  if (url.startsWith('/')) {
+    const parts = url.split('?');
+    const pathParts = parts[0].split('/').filter(Boolean);
+    if (pathParts[0] && DISABLED_ENDPOINTS.has(pathParts[0])) return true;
+  }
+  for (const id of DISABLED_FUNCTION_IDS) {
+    if (url.includes(id)) return true;
+  }
+  try {
+    const u = new URL(url, 'https://placeholder.local');
+    const endpoint = u.searchParams.get('endpoint');
+    if (endpoint && DISABLED_ENDPOINTS.has(endpoint)) return true;
+  } catch {
+    // ignore
+  }
+  return false;
+};
+
+const makeStubResponse = (): Response => {
+  return new Response(JSON.stringify([]), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
 type CacheEntry = { data: unknown; expiresAt: number };
 const responseCache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<unknown>>();
@@ -135,6 +165,10 @@ const isRetryableMethod = (method?: string): boolean => {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const apiFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  if (isDisabledUrl(url)) {
+    return makeStubResponse();
+  }
+
   const token = getAuthToken();
   
   const headers: HeadersInit = {
