@@ -1,6 +1,10 @@
+import { Fragment } from 'react';
 import Icon from '@/components/ui/icon';
 import { renderRichText } from '@/components/shared/RichText';
+import InlineCommentImage from '@/components/shared/InlineCommentImage';
 import { Comment, User, getAvatarColor, getInitials, formatDate } from './TicketCommentsTypes';
+
+const INLINE_COMMENT_RE = /!\[([^\]]*)\]\(inline:\/\/comment\/(\d+)\)/g;
 
 interface TicketCommentItemProps {
   comment: Comment;
@@ -23,12 +27,12 @@ interface TicketCommentItemProps {
   observeRef: (el: HTMLDivElement | null) => void;
 }
 
-const renderCommentText = (text: string, mentioned: number[] | undefined, availableUsers: User[]) => {
+const renderHtmlPart = (text: string, mentioned: number[] | undefined, availableUsers: User[]) => {
   let result = renderRichText(text);
 
   if (mentioned && mentioned.length > 0) {
-    mentioned.forEach(userId => {
-      const user = availableUsers.find(u => u.id === userId);
+    mentioned.forEach((userId) => {
+      const user = availableUsers.find((u) => u.id === userId);
       if (user) {
         result = result.replace(
           new RegExp(`@${user.name}`, 'g'),
@@ -38,7 +42,49 @@ const renderCommentText = (text: string, mentioned: number[] | undefined, availa
     });
   }
 
-  return <span dangerouslySetInnerHTML={{ __html: result }} />;
+  return result;
+};
+
+const renderCommentText = (
+  text: string,
+  mentioned: number[] | undefined,
+  availableUsers: User[],
+) => {
+  const parts: Array<{ type: 'html'; html: string } | { type: 'inline'; id: number; alt: string }> = [];
+  let lastIndex = 0;
+
+  INLINE_COMMENT_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = INLINE_COMMENT_RE.exec(text)) !== null) {
+    const before = text.slice(lastIndex, match.index);
+    if (before) {
+      parts.push({ type: 'html', html: renderHtmlPart(before, mentioned, availableUsers) });
+    }
+    parts.push({ type: 'inline', id: Number(match[2]), alt: match[1] || 'image' });
+    lastIndex = match.index + match[0].length;
+  }
+  const tail = text.slice(lastIndex);
+  if (tail) {
+    parts.push({ type: 'html', html: renderHtmlPart(tail, mentioned, availableUsers) });
+  }
+
+  if (parts.length === 0) {
+    return <span dangerouslySetInnerHTML={{ __html: renderHtmlPart(text, mentioned, availableUsers) }} />;
+  }
+
+  return (
+    <>
+      {parts.map((part, idx) =>
+        part.type === 'html' ? (
+          <span key={idx} dangerouslySetInnerHTML={{ __html: part.html }} />
+        ) : (
+          <Fragment key={idx}>
+            <InlineCommentImage commentId={part.id} alt={part.alt} />
+          </Fragment>
+        ),
+      )}
+    </>
+  );
 };
 
 const TicketCommentItem = ({
