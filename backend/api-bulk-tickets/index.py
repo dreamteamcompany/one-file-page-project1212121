@@ -187,22 +187,48 @@ def handler(event, context):
             status_id = body.get('status_id')
             if not status_id:
                 return response(400, {'error': 'Не указан status_id'})
-            
-            cur.execute(f"SELECT is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s", (status_id,))
+
+            try:
+                status_id_int = int(status_id)
+            except (TypeError, ValueError):
+                return response(400, {'error': 'status_id должен быть числом'})
+
+            cur.execute(f"SELECT id, is_closed FROM {SCHEMA}.ticket_statuses WHERE id = %s", (status_id_int,))
             status_row = cur.fetchone()
-            archive_val = bool(status_row[0]) if status_row else False
-            
-            placeholders = ','.join(['%s'] * len(ticket_ids))
-            cur.execute(f"""
-                UPDATE {SCHEMA}.tickets 
-                SET status_id = %s, is_archived = %s, updated_at = NOW() 
-                WHERE id IN ({placeholders})
-            """, [status_id, archive_val] + ticket_ids)
-            successful = cur.rowcount
-            conn.commit()
-            
+            if not status_row:
+                log(f"[BULK-TICKETS] Status {status_id_int} not found in ticket_statuses")
+                return response(400, {
+                    'error': f'Статус #{status_id_int} не существует. Обновите страницу и выберите статус заново.'
+                })
+            archive_val = bool(status_row[1])
+
+            try:
+                ticket_ids_int = [int(x) for x in ticket_ids]
+            except (TypeError, ValueError):
+                return response(400, {'error': 'ticket_ids должны быть числами'})
+
+            placeholders = ','.join(['%s'] * len(ticket_ids_int))
+            try:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET status_id = %s, is_archived = %s, updated_at = NOW()
+                    WHERE id IN ({placeholders})
+                """, [status_id_int, archive_val] + ticket_ids_int)
+                successful = cur.rowcount
+                conn.commit()
+            except psycopg2.errors.ForeignKeyViolation as fk_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] FK violation on change_status: {fk_err}")
+                return response(400, {
+                    'error': 'Невозможно применить статус: связанные данные некорректны. Обновите страницу.'
+                })
+            except Exception as upd_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] Update error on change_status: {upd_err}")
+                return response(500, {'error': f'Ошибка обновления: {upd_err}'})
+
             return response(200, {
-                'total': len(ticket_ids),
+                'total': len(ticket_ids_int),
                 'successful': successful,
                 'message': f'Обновлено {successful} заявок'
             })
