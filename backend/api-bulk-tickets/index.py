@@ -34,6 +34,78 @@ def get_db_connection():
         raise Exception('DATABASE_URL not found')
     return psycopg2.connect(dsn, options=f'-c search_path={SCHEMA},public')
 
+def get_name_by_id(cur, table: str, id_val) -> Optional[str]:
+    """Получить name по id из справочной таблицы (ticket_statuses, ticket_priorities, executor_groups)"""
+    if id_val is None:
+        return None
+    try:
+        cur.execute(f"SELECT name FROM {SCHEMA}.{table} WHERE id = %s", (id_val,))
+        row = cur.fetchone()
+        if not row:
+            return str(id_val)
+        return row[0] if not isinstance(row, dict) else row['name']
+    except Exception:
+        return str(id_val)
+
+
+def get_user_full_name(cur, user_id) -> Optional[str]:
+    """Получить full_name пользователя по id"""
+    if user_id is None:
+        return None
+    try:
+        cur.execute(f"SELECT full_name FROM {SCHEMA}.users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            return str(user_id)
+        return row[0] if not isinstance(row, dict) else row['full_name']
+    except Exception:
+        return str(user_id)
+
+
+def log_bulk_history(cur, ticket_ids: list, user_id: int, field_name: str,
+                     old_values_by_ticket: Dict[int, Optional[str]],
+                     new_value: Optional[str]) -> None:
+    """Записать одинаковое изменение поля для группы заявок в ticket_history.
+
+    old_values_by_ticket: {ticket_id: старое_значение_строкой}
+    new_value: новое значение строкой (одинаковое для всех)
+    """
+    if not ticket_ids:
+        return
+    try:
+        for tid in ticket_ids:
+            old_val = old_values_by_ticket.get(tid)
+            if old_val == new_value:
+                continue
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.ticket_history
+                    (ticket_id, user_id, field_name, old_value, new_value, created_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW())""",
+                (tid, user_id, field_name, old_val, new_value)
+            )
+    except Exception as e:
+        log(f"[BULK-TICKETS] history insert error: {e}")
+
+
+def fetch_old_values(cur, ticket_ids: list, column: str) -> Dict[int, Any]:
+    """Получить старые значения поля для пакета заявок: {ticket_id: value}"""
+    if not ticket_ids:
+        return {}
+    placeholders = ','.join(['%s'] * len(ticket_ids))
+    cur.execute(
+        f"SELECT id, {column} FROM {SCHEMA}.tickets WHERE id IN ({placeholders})",
+        ticket_ids
+    )
+    rows = cur.fetchall()
+    result = {}
+    for r in rows:
+        if isinstance(r, dict):
+            result[r['id']] = r.get(column)
+        else:
+            result[r[0]] = r[1]
+    return result
+
+
 def verify_token(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     token = event.get('headers', {}).get('X-Auth-Token') or event.get('headers', {}).get('x-auth-token')
     if not token:
@@ -207,6 +279,13 @@ def handler(event, context):
             except (TypeError, ValueError):
                 return response(400, {'error': 'ticket_ids должны быть числами'})
 
+            old_status_ids = fetch_old_values(cur, ticket_ids_int, 'status_id')
+            new_status_name = get_name_by_id(cur, 'ticket_statuses', status_id_int)
+            old_status_names = {
+                tid: get_name_by_id(cur, 'ticket_statuses', old_id) if old_id else None
+                for tid, old_id in old_status_ids.items()
+            }
+
             placeholders = ','.join(['%s'] * len(ticket_ids_int))
             try:
                 cur.execute(f"""
@@ -215,6 +294,12 @@ def handler(event, context):
                     WHERE id IN ({placeholders})
                 """, [status_id_int, archive_val] + ticket_ids_int)
                 successful = cur.rowcount
+
+                log_bulk_history(
+                    cur, ticket_ids_int, payload.get('user_id'),
+                    'status_id', old_status_names, new_status_name
+                )
+
                 conn.commit()
             except psycopg2.errors.ForeignKeyViolation as fk_err:
                 conn.rollback()
@@ -237,52 +322,161 @@ def handler(event, context):
             priority_id = body.get('priority_id')
             if not priority_id:
                 return response(400, {'error': 'Не указан priority_id'})
-            
-            placeholders = ','.join(['%s'] * len(ticket_ids))
-            cur.execute(f"""
-                UPDATE {SCHEMA}.tickets 
-                SET priority_id = %s, updated_at = NOW() 
-                WHERE id IN ({placeholders})
-            """, [priority_id] + ticket_ids)
-            successful = cur.rowcount
-            conn.commit()
-            
+
+            try:
+                priority_id_int = int(priority_id)
+                ticket_ids_int = [int(x) for x in ticket_ids]
+            except (TypeError, ValueError):
+                return response(400, {'error': 'priority_id и ticket_ids должны быть числами'})
+
+            cur.execute(f"SELECT 1 FROM {SCHEMA}.ticket_priorities WHERE id = %s", (priority_id_int,))
+            if not cur.fetchone():
+                return response(400, {
+                    'error': f'Приоритет #{priority_id_int} не существует. Обновите страницу.'
+                })
+
+            old_priority_ids = fetch_old_values(cur, ticket_ids_int, 'priority_id')
+            new_priority_name = get_name_by_id(cur, 'ticket_priorities', priority_id_int)
+            old_priority_names = {
+                tid: get_name_by_id(cur, 'ticket_priorities', old_id) if old_id else None
+                for tid, old_id in old_priority_ids.items()
+            }
+
+            placeholders = ','.join(['%s'] * len(ticket_ids_int))
+            try:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET priority_id = %s, updated_at = NOW()
+                    WHERE id IN ({placeholders})
+                """, [priority_id_int] + ticket_ids_int)
+                successful = cur.rowcount
+
+                log_bulk_history(
+                    cur, ticket_ids_int, payload.get('user_id'),
+                    'priority_id', old_priority_names, new_priority_name
+                )
+
+                conn.commit()
+            except psycopg2.errors.ForeignKeyViolation as fk_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] FK violation on change_priority: {fk_err}")
+                return response(400, {
+                    'error': 'Невозможно применить приоритет: связанные данные некорректны.'
+                })
+            except Exception as upd_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] Update error on change_priority: {upd_err}")
+                return response(500, {'error': f'Ошибка обновления: {upd_err}'})
+
             return response(200, {
-                'total': len(ticket_ids),
+                'total': len(ticket_ids_int),
                 'successful': successful,
                 'message': f'Обновлено {successful} заявок'
             })
 
         elif action == 'change_executor':
             user_id = body.get('user_id')
-            placeholders = ','.join(['%s'] * len(ticket_ids))
-            cur.execute(f"""
-                UPDATE {SCHEMA}.tickets
-                SET assigned_to = %s, updated_at = NOW()
-                WHERE id IN ({placeholders})
-            """, [user_id if user_id else None] + ticket_ids)
-            successful = cur.rowcount
-            conn.commit()
+
+            try:
+                ticket_ids_int = [int(x) for x in ticket_ids]
+                user_id_int = int(user_id) if user_id else None
+            except (TypeError, ValueError):
+                return response(400, {'error': 'user_id и ticket_ids должны быть числами'})
+
+            if user_id_int is not None:
+                cur.execute(f"SELECT 1 FROM {SCHEMA}.users WHERE id = %s", (user_id_int,))
+                if not cur.fetchone():
+                    return response(400, {
+                        'error': f'Пользователь #{user_id_int} не найден.'
+                    })
+
+            old_executor_ids = fetch_old_values(cur, ticket_ids_int, 'assigned_to')
+            new_executor_name = get_user_full_name(cur, user_id_int) if user_id_int else 'Снят с назначения'
+            old_executor_names = {
+                tid: (get_user_full_name(cur, old_id) if old_id else 'Не назначен')
+                for tid, old_id in old_executor_ids.items()
+            }
+
+            placeholders = ','.join(['%s'] * len(ticket_ids_int))
+            try:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET assigned_to = %s, updated_at = NOW()
+                    WHERE id IN ({placeholders})
+                """, [user_id_int] + ticket_ids_int)
+                successful = cur.rowcount
+
+                log_bulk_history(
+                    cur, ticket_ids_int, payload.get('user_id'),
+                    'assigned_to', old_executor_names, new_executor_name
+                )
+
+                conn.commit()
+            except psycopg2.errors.ForeignKeyViolation as fk_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] FK violation on change_executor: {fk_err}")
+                return response(400, {'error': 'Невозможно назначить исполнителя.'})
+            except Exception as upd_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] Update error on change_executor: {upd_err}")
+                return response(500, {'error': f'Ошибка обновления: {upd_err}'})
 
             return response(200, {
-                'total': len(ticket_ids),
+                'total': len(ticket_ids_int),
                 'successful': successful,
                 'message': f'Обновлено {successful} заявок'
             })
 
         elif action == 'change_executor_group':
             group_id = body.get('group_id')
-            placeholders = ','.join(['%s'] * len(ticket_ids))
-            cur.execute(f"""
-                UPDATE {SCHEMA}.tickets
-                SET executor_group_id = %s, updated_at = NOW()
-                WHERE id IN ({placeholders})
-            """, [group_id if group_id else None] + ticket_ids)
-            successful = cur.rowcount
-            conn.commit()
+
+            try:
+                ticket_ids_int = [int(x) for x in ticket_ids]
+                group_id_int = int(group_id) if group_id else None
+            except (TypeError, ValueError):
+                return response(400, {'error': 'group_id и ticket_ids должны быть числами'})
+
+            if group_id_int is not None:
+                cur.execute(f"SELECT 1 FROM {SCHEMA}.executor_groups WHERE id = %s", (group_id_int,))
+                if not cur.fetchone():
+                    return response(400, {
+                        'error': f'Группа #{group_id_int} не существует.'
+                    })
+
+            old_group_ids = fetch_old_values(cur, ticket_ids_int, 'executor_group_id')
+            new_group_name = (get_name_by_id(cur, 'executor_groups', group_id_int)
+                              if group_id_int else 'Снята')
+            old_group_names = {
+                tid: (get_name_by_id(cur, 'executor_groups', old_id) if old_id else 'Не назначена')
+                for tid, old_id in old_group_ids.items()
+            }
+
+            placeholders = ','.join(['%s'] * len(ticket_ids_int))
+            try:
+                cur.execute(f"""
+                    UPDATE {SCHEMA}.tickets
+                    SET executor_group_id = %s, updated_at = NOW()
+                    WHERE id IN ({placeholders})
+                """, [group_id_int] + ticket_ids_int)
+                successful = cur.rowcount
+
+                log_bulk_history(
+                    cur, ticket_ids_int, payload.get('user_id'),
+                    'executor_group_id', old_group_names, new_group_name
+                )
+
+                conn.commit()
+            except psycopg2.errors.ForeignKeyViolation as fk_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] FK violation on change_executor_group: {fk_err}")
+                return response(400, {'error': 'Невозможно назначить группу.'})
+            except Exception as upd_err:
+                conn.rollback()
+                log(f"[BULK-TICKETS] Update error on change_executor_group: {upd_err}")
+                return response(500, {'error': f'Ошибка обновления: {upd_err}'})
 
             return response(200, {
-                'total': len(ticket_ids),
+                'total': len(ticket_ids_int),
                 'successful': successful,
                 'message': f'Обновлено {successful} заявок'
             })
