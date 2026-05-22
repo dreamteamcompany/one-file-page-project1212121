@@ -4,6 +4,8 @@ API для работы с комментариями к заявкам
 import json
 import os
 import re
+import gzip
+import base64
 import urllib.request
 import urllib.parse
 from typing import Dict, Any, List, Set
@@ -11,6 +13,56 @@ from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
 
 MENTION_RE = re.compile(r'@([a-zA-Z0-9_.\-]+)')
+
+# Если JSON-ответ больше этого порога — сжимаем gzip-ом и возвращаем base64.
+# Решает проблему лимита размера ответа Cloud Functions для заявок с большими
+# inline-картинками (data:image/...;base64,...) в комментариях.
+_GZIP_THRESHOLD_BYTES = 256 * 1024  # 256 КБ
+
+
+def _client_accepts_gzip(event: Dict[str, Any]) -> bool:
+    headers = event.get('headers') or {}
+    for key in ('Accept-Encoding', 'accept-encoding', 'ACCEPT-ENCODING'):
+        v = headers.get(key)
+        if v and 'gzip' in v.lower():
+            return True
+    return False
+
+
+def response_maybe_gzip(event: Dict[str, Any], status_code: int, body: Any) -> Dict[str, Any]:
+    """Возвращает обычный ответ, либо gzip-сжатый base64, если тело крупное и клиент поддерживает gzip."""
+    payload = json.dumps(body, ensure_ascii=False, default=str)
+    raw_bytes = payload.encode('utf-8')
+
+    if len(raw_bytes) < _GZIP_THRESHOLD_BYTES or not _client_accepts_gzip(event):
+        return {
+            'statusCode': status_code,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, X-User-Id, Authorization',
+                'Access-Control-Max-Age': '86400',
+            },
+            'body': payload,
+            'isBase64Encoded': False,
+        }
+
+    compressed = gzip.compress(raw_bytes, compresslevel=6)
+    return {
+        'statusCode': status_code,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Content-Encoding': 'gzip',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Expose-Headers': 'Content-Encoding',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, X-User-Id, Authorization',
+            'Access-Control-Max-Age': '86400',
+        },
+        'body': base64.b64encode(compressed).decode('ascii'),
+        'isBase64Encoded': True,
+    }
 
 
 def _participants(cur, ticket_id: int, ticket: Dict[str, Any]) -> Set[int]:
@@ -333,7 +385,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
 
     cur.close()
 
-    return response(200, {
+    return response_maybe_gzip(event, 200, {
         'comments': comments,
         'my_last_seen_at': my_last_seen_at.isoformat() if my_last_seen_at else None,
         'participants_seen': participants_seen,
