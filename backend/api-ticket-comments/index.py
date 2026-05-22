@@ -14,54 +14,52 @@ from shared_utils import response, get_db_connection, verify_token, handle_optio
 
 MENTION_RE = re.compile(r'@([a-zA-Z0-9_.\-]+)')
 
-# Если JSON-ответ больше этого порога — сжимаем gzip-ом и возвращаем base64.
-# Решает проблему лимита размера ответа Cloud Functions для заявок с большими
-# inline-картинками (data:image/...;base64,...) в комментариях.
-_GZIP_THRESHOLD_BYTES = 256 * 1024  # 256 КБ
+# Лимит размера ответа Cloud Functions (~4 МБ). Чтобы гарантированно влезть,
+# вырезаем огромные inline base64-изображения из текста комментариев и заменяем
+# их специальным маркером. Фронтенд (если потребуется) подгрузит оригиналы
+# отдельным запросом по id комментария (action=get-inline).
+_MAX_INLINE_DATA_URI_BYTES = 30 * 1024  # 30 КБ — порог, выше — заменяем плейсхолдером
+_DATA_URI_RE = re.compile(r'!\[([^\]]*)\]\((data:[^;)]+;base64,[^\)]+)\)')
+_RAW_DATA_URI_RE = re.compile(r'(data:[^;)\s]+;base64,[A-Za-z0-9+/=]+)')
 
 
-def _client_accepts_gzip(event: Dict[str, Any]) -> bool:
-    headers = event.get('headers') or {}
-    for key in ('Accept-Encoding', 'accept-encoding', 'ACCEPT-ENCODING'):
-        v = headers.get(key)
-        if v and 'gzip' in v.lower():
-            return True
-    return False
+def _strip_heavy_inline_images(text: str, comment_id: int) -> str:
+    """Заменяет тяжёлые data:base64 картинки в markdown-тексте плейсхолдером."""
+    if not text or 'base64,' not in text:
+        return text
+
+    def md_repl(m):
+        alt = m.group(1) or 'image'
+        data_uri = m.group(2)
+        if len(data_uri) > _MAX_INLINE_DATA_URI_BYTES:
+            return f'![{alt}](inline://comment/{comment_id})'
+        return m.group(0)
+
+    out = _DATA_URI_RE.sub(md_repl, text)
+
+    def raw_repl(m):
+        data_uri = m.group(1)
+        if len(data_uri) > _MAX_INLINE_DATA_URI_BYTES:
+            return f'[вложение слишком большое — открыть из заявки]'
+        return data_uri
+
+    out = _RAW_DATA_URI_RE.sub(raw_repl, out)
+    return out
 
 
-def response_maybe_gzip(event: Dict[str, Any], status_code: int, body: Any) -> Dict[str, Any]:
-    """Возвращает обычный ответ, либо gzip-сжатый base64, если тело крупное и клиент поддерживает gzip."""
-    payload = json.dumps(body, ensure_ascii=False, default=str)
-    raw_bytes = payload.encode('utf-8')
-
-    if len(raw_bytes) < _GZIP_THRESHOLD_BYTES or not _client_accepts_gzip(event):
-        return {
-            'statusCode': status_code,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, X-User-Id, Authorization',
-                'Access-Control-Max-Age': '86400',
-            },
-            'body': payload,
-            'isBase64Encoded': False,
-        }
-
-    compressed = gzip.compress(raw_bytes, compresslevel=6)
+def response_safe(status_code: int, body: Any) -> Dict[str, Any]:
+    """Обычный JSON-ответ с CORS заголовками."""
     return {
         'statusCode': status_code,
         'headers': {
             'Content-Type': 'application/json',
-            'Content-Encoding': 'gzip',
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Expose-Headers': 'Content-Encoding',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token, X-User-Id, Authorization',
             'Access-Control-Max-Age': '86400',
         },
-        'body': base64.b64encode(compressed).decode('ascii'),
-        'isBase64Encoded': True,
+        'body': json.dumps(body, ensure_ascii=False, default=str),
+        'isBase64Encoded': False,
     }
 
 
@@ -171,8 +169,17 @@ def handler(event: dict, context) -> dict:
         if method == 'POST' and action == 'toggle-pin':
             return handle_toggle_pin(event, conn, payload)
 
+        if method == 'GET' and action == 'get-inline':
+            return handle_get_inline(event, conn, payload)
+
         if method == 'GET':
-            return handle_get_comments(event, conn, payload)
+            try:
+                return handle_get_comments(event, conn, payload)
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                print(f"[api-ticket-comments][GET] FATAL: {e}\n{tb}")
+                return response(500, {'error': f'Internal error: {type(e).__name__}: {e}'})
         elif method == 'POST':
             return handle_create_comment(event, conn, payload)
         elif method == 'PUT':
@@ -284,6 +291,32 @@ def handle_toggle_pin(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> D
     })
 
 
+def handle_get_inline(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Возвращает полный текст комментария с inline base64 картинками.
+    Используется фронтендом для подгрузки картинок по требованию (когда has_inline_images=true).
+    """
+    params = event.get('queryStringParameters') or {}
+    try:
+        comment_id = int(params.get('comment_id'))
+    except (TypeError, ValueError):
+        return response(400, {'error': 'comment_id required'})
+
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT id, comment FROM {SCHEMA}.ticket_comments WHERE id = %s",
+        (comment_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    if not row:
+        return response(404, {'error': 'Comment not found'})
+
+    return response(200, {
+        'id': row['id'],
+        'comment': row['comment'],
+    })
+
+
 def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Получение комментариев к заявке"""
     params = event.get('queryStringParameters', {}) or {}
@@ -312,6 +345,17 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
     """, (tid,))
 
     comments = [dict(row) for row in cur.fetchall()]
+
+    # Вырезаем тяжёлые inline base64-картинки, чтобы ответ влез в лимит Cloud Functions.
+    # Помечаем такие комментарии флагом has_inline_images=true, фронтенд может
+    # запросить полный текст отдельным запросом ?action=get-inline&comment_id=...
+    for c in comments:
+        original = c.get('comment') or ''
+        if 'base64,' in original:
+            stripped = _strip_heavy_inline_images(original, c['id'])
+            if stripped != original:
+                c['comment'] = stripped
+                c['has_inline_images'] = True
 
     comment_ids = [c['id'] for c in comments]
     reads_map: Dict[int, List[int]] = {cid: [] for cid in comment_ids}
@@ -385,7 +429,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
 
     cur.close()
 
-    return response_maybe_gzip(event, 200, {
+    return response(200, {
         'comments': comments,
         'my_last_seen_at': my_last_seen_at.isoformat() if my_last_seen_at else None,
         'participants_seen': participants_seen,
