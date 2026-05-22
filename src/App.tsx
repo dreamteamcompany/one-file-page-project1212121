@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PushNotificationPrompt from "@/components/notifications/PushNotificationPrompt";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { ImageLightboxProvider } from "@/components/shared/ImageLightbox";
 import Login from "./pages/Login";
 import Dashboard2 from "./pages/Dashboard2";
 import Users from "./pages/Users";
@@ -51,6 +52,7 @@ const App = () => {
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <ImageLightboxProvider>
         <Toaster />
         <Sonner />
         <PushNotificationPrompt />
@@ -93,6 +95,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </ImageLightboxProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

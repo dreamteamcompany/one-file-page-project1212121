@@ -487,6 +487,8 @@ def handler(event, context):
                 return response(400, {'error': 'Не указаны пользователи-наблюдатели'})
 
             inserted = 0
+            # Список реальных вставок для последующих уведомлений в Битрикс
+            actually_added: list = []  # [(ticket_id, user_id), ...]
             for tid in ticket_ids:
                 for uid in user_ids:
                     try:
@@ -495,7 +497,10 @@ def handler(event, context):
                             f"VALUES (%s, %s) ON CONFLICT (ticket_id, user_id) DO NOTHING",
                             (tid, uid)
                         )
-                        inserted += cur.rowcount
+                        rc = cur.rowcount
+                        inserted += rc
+                        if rc > 0:
+                            actually_added.append((int(tid), int(uid)))
                     except Exception as e:
                         log(f"[BULK-TICKETS] watcher insert error t={tid} u={uid}: {e}")
 
@@ -504,6 +509,27 @@ def handler(event, context):
                 ticket_ids
             )
             conn.commit()
+
+            # Битрикс-уведомления для реально добавленных наблюдателей
+            if actually_added:
+                try:
+                    from bitrix_bot_notifier import notify_watcher_added
+                    headers = event.get('headers') or {}
+                    app_origin = headers.get('Origin') or headers.get('origin') or ''
+                    actor_id = int(payload.get('user_id') or 0)
+                    for t_id, u_id in actually_added:
+                        if u_id == actor_id:
+                            continue
+                        try:
+                            notify_watcher_added(
+                                cur, SCHEMA, t_id, u_id,
+                                actor_user_id=actor_id,
+                                app_origin=app_origin,
+                            )
+                        except Exception as bot_err:
+                            log(f"[bitrix-bot] watcher_added (bulk) failed t={t_id} u={u_id}: {bot_err}")
+                except Exception as imp_err:
+                    log(f"[bitrix-bot] import notifier failed: {imp_err}")
 
             return response(200, {
                 'total': len(ticket_ids),

@@ -7,12 +7,18 @@ interface RichTextProps {
 
 const IMAGE_RE = /!\[([^\]]*)\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g;
 
+declare global {
+  interface Window {
+    __openImageLightbox?: (src: string, alt?: string) => void;
+  }
+}
+
 export function renderRichText(text: string): string {
   return text.replace(IMAGE_RE, (_match, alt, url) => {
     const safeAlt = alt.replace(/"/g, '&quot;');
     const isBase64 = url.startsWith('data:image/');
     const safeUrl = isBase64 ? url : url.replace(/"/g, '&quot;');
-    return `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;max-height:400px;border-radius:6px;display:block;margin:4px 0;cursor:pointer" loading="lazy" onclick="window.open(this.src,'_blank')" />`;
+    return `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;max-height:400px;border-radius:6px;display:block;margin:4px 0;cursor:pointer" loading="lazy" onclick="(window.__openImageLightbox ? window.__openImageLightbox(this.src, this.alt) : window.open(this.src, '_blank'))" />`;
   });
 }
 

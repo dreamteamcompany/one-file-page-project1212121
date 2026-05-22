@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, memo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/utils/api';
+import { useImageLightbox } from '@/components/shared/ImageLightbox';
 
 const COMMENTS_API = 'https://functions.poehali.dev/5de559ba-3637-4418-aea0-26c373f191c3';
 const IMAGE_RE = /!\[([^\]]*)\]\((data:image\/[^;)]+;base64,[^\s)]+)\)/g;
@@ -14,6 +15,7 @@ interface InlineCommentImageProps {
 
 const InlineCommentImage = memo(({ commentId, alt = 'image' }: InlineCommentImageProps) => {
   const { token } = useAuth();
+  const lightbox = useImageLightbox();
   const [src, setSrc] = useState<string | null>(() => inlineCache.get(commentId) || null);
   const [error, setError] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -83,10 +85,7 @@ const InlineCommentImage = memo(({ commentId, alt = 'image' }: InlineCommentImag
       src={src}
       alt={alt}
       loading="lazy"
-      onClick={(e) => {
-        const target = e.currentTarget;
-        window.open(target.src, '_blank');
-      }}
+      onClick={() => lightbox.open(src, alt)}
       style={{
         maxWidth: '100%',
         maxHeight: 400,

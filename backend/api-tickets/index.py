@@ -2073,6 +2073,8 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
                 ON CONFLICT (ticket_id, user_id) DO NOTHING
                 RETURNING id
             """, (ticket_id, watcher_user_id))
+            inserted_row = cur.fetchone()
+            really_inserted = bool(inserted_row)
             conn.commit()
 
             # Уведомление новому наблюдателю
@@ -2084,6 +2086,20 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
                     VALUES (%s, %s, 'watcher_added', %s, false, NOW())
                 """, (watcher_user_id, ticket_id, f'Вы добавлены как наблюдатель к заявке: {ticket_row["title"]}'))
                 conn.commit()
+
+            # Уведомление в Битрикс-бот (только если реально добавили нового, не сами себя)
+            if really_inserted and int(watcher_user_id) != int(payload.get('user_id') or 0):
+                try:
+                    from bitrix_bot_notifier import notify_watcher_added
+                    headers = event.get('headers') or {}
+                    app_origin = headers.get('Origin') or headers.get('origin') or ''
+                    notify_watcher_added(
+                        cur, SCHEMA, int(ticket_id), int(watcher_user_id),
+                        actor_user_id=int(payload.get('user_id') or 0),
+                        app_origin=app_origin,
+                    )
+                except Exception as bot_err:
+                    print(f"[bitrix-bot] watcher_added notification failed: {bot_err}")
 
             cur.execute(f"""
                 SELECT tw.id, tw.user_id, tw.added_at,

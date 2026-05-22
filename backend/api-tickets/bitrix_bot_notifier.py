@@ -191,3 +191,62 @@ def notify_executor_assigned(cur, schema: str, ticket_id: int, assigned_to_user_
 
     _send_bot_message(access_token, row['executor_bitrix_id'], message, keyboard)
     print(f"[bitrix-bot] Assignment notification sent for ticket {ticket_id} to user {assigned_to_user_id}")
+
+
+def notify_watcher_added(cur, schema: str, ticket_id: int, watcher_user_id: int,
+                          actor_user_id: int = None, app_origin: str = ''):
+    """Уведомляет пользователя о том, что его назначили наблюдателем в заявке.
+    Краткое сообщение + кнопка 'Открыть заявку'.
+    """
+    if not BITRIX_BOT_ID or not BITRIX_PORTAL_URL:
+        print("[bitrix-bot] Bot not configured, skipping watcher notification")
+        return
+
+    if not watcher_user_id or watcher_user_id == actor_user_id:
+        return
+
+    cur.execute(f"""
+        SELECT t.id, t.title,
+               watcher.bitrix_user_id AS watcher_bitrix_id,
+               watcher.full_name AS watcher_name
+        FROM {schema}.tickets t
+        JOIN {schema}.users watcher ON watcher.id = %s
+        WHERE t.id = %s
+    """, (watcher_user_id, ticket_id))
+
+    row = cur.fetchone()
+    if not row:
+        print(f"[bitrix-bot] Ticket {ticket_id} or watcher {watcher_user_id} not found")
+        return
+
+    if not row.get('watcher_bitrix_id'):
+        print(f"[bitrix-bot] Watcher {watcher_user_id} has no bitrix_user_id, skipping")
+        return
+
+    access_token = _get_bot_token()
+    if not access_token:
+        print("[bitrix-bot] Failed to get token for watcher notification")
+        return
+
+    title = row.get('title') or f"Заявка #{row['id']}"
+    message = (
+        f"👀 [b]Вы назначены наблюдателем в заявке #{row['id']}[/b]\n"
+        f"{title}"
+    )
+
+    keyboard = []
+    if app_origin:
+        ticket_url = f"{app_origin}/tickets/{row['id']}"
+        keyboard = [
+            {
+                "TEXT": f"📋 Открыть заявку #{row['id']}",
+                "LINK": ticket_url,
+                "BG_COLOR": "#3B82F6",
+                "TEXT_COLOR": "#FFFFFF",
+                "DISPLAY": "LINE",
+                "BLOCK": "Y",
+            }
+        ]
+
+    _send_bot_message(access_token, row['watcher_bitrix_id'], message, keyboard)
+    print(f"[bitrix-bot] Watcher notification sent for ticket {ticket_id} to user {watcher_user_id}")
