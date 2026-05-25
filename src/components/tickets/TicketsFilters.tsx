@@ -94,16 +94,16 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left', com
                 </Button>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {FIELDS.map((f) => (
                 <div key={f.key} className="flex flex-col gap-0.5">
-                  <label className="text-[10px] text-muted-foreground leading-tight">{f.label}</label>
+                  <label className="text-[9px] text-muted-foreground leading-tight uppercase tracking-wide">{f.label}</label>
                   <Input
                     type={f.type || 'text'}
                     value={local[f.key] || ''}
                     placeholder={f.placeholder}
                     onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                    className="h-7 text-xs px-2"
+                    className="h-6 text-[11px] px-2 rounded-md placeholder:text-[10px]"
                   />
                 </div>
               ))}
