@@ -9,6 +9,7 @@ import AssignmentSection from './sidebar/ticket-info/AssignmentSection';
 import type { Ticket as AssignTicket, User as AssignUser, ExecutorGroup as AssignGroup } from './sidebar/ticket-info/types';
 import ApprovalDialog from './sidebar/ApprovalDialog';
 import RecentTicketsBlock from './sidebar/RecentTicketsBlock';
+import TicketGroupBudget from './sidebar/TicketGroupBudget';
 
 interface User {
   id: number;
@@ -180,7 +181,9 @@ const TicketDetailsSidebar = ({
           <TicketTimerCard dueDate={ticket.due_date} />
           {!hidePing && <TicketPingCard onSendPing={onSendPing} sendingPing={sendingPing} />}
         </div>
-        
+
+        <TicketGroupBudget ticketId={ticket.id} />
+
         <TicketInfoFields
           ticket={ticket}
           statuses={statuses}
