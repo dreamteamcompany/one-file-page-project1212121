@@ -17,7 +17,7 @@ import { useTicketsView } from '@/hooks/useTicketsView';
 import { useBulkTicketOperations } from '@/hooks/useBulkTicketOperations';
 import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
-import TicketsSearch from '@/components/tickets/TicketsSearch';
+import TicketsSearchBar from '@/components/tickets/TicketsSearchBar';
 import TicketsViewToggle from '@/components/tickets/TicketsViewToggle';
 import TicketCountersBar from '@/components/tickets/TicketCountersBar';
 import TicketForm from '@/components/tickets/TicketForm';
@@ -25,10 +25,7 @@ import TicketsList from '@/components/tickets/TicketsList';
 import TicketsKanban from '@/components/tickets/TicketsKanban';
 import BulkActionsBar from '@/components/tickets/BulkActionsBar';
 import { API_URL, apiFetch } from '@/utils/api';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import Icon from '@/components/ui/icon';
-import TicketsFilters, { type TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
+import type { TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
 
 interface BulkUser {
   id: number;
@@ -199,38 +196,19 @@ const Tickets = () => {
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full flex flex-col flex-1 overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4 sm:mb-6">
-          <div className="flex-1 min-w-0">
-            <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-          </div>
-          {viewMode === 'list' && (
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end self-start lg:self-auto">
-              <Select value={sortBy} onValueChange={handleSortByChange}>
-                <SelectTrigger className="h-9 w-[220px]">
-                  <SelectValue placeholder="Выберите поле" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={handleSortDirToggle}
-                title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}
-              >
-                <Icon name={sortDir === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={16} />
-              </Button>
-              <TicketsFilters
-                value={searchFilters as TicketsFiltersValue}
-                onChange={handleFiltersChange}
-                align="right"
-              />
-            </div>
-          )}
+        <div className="mb-4 sm:mb-6">
+          <TicketsSearchBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortBy={sortBy}
+            onSortByChange={handleSortByChange}
+            sortDir={sortDir}
+            onSortDirToggle={handleSortDirToggle}
+            sortOptions={SORT_OPTIONS}
+            filtersValue={searchFilters as TicketsFiltersValue}
+            onFiltersChange={handleFiltersChange}
+            showControls={viewMode === 'list'}
+          />
         </div>
 
         <TicketsViewToggle

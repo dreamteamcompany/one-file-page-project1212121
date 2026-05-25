@@ -20,6 +20,7 @@ interface Props {
   onChange: (next: TicketsFiltersValue) => void;
   debounceMs?: number;
   align?: 'left' | 'right';
+  compact?: boolean;
 }
 
 const FIELDS: { key: keyof TicketsFiltersValue; label: string; placeholder: string; type?: 'text' | 'date' }[] = [
@@ -34,7 +35,7 @@ const FIELDS: { key: keyof TicketsFiltersValue; label: string; placeholder: stri
   { key: 'due_to', label: 'Дедлайн по', placeholder: '', type: 'date' },
 ];
 
-const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left' }: Props) => {
+const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left', compact = false }: Props) => {
   const [local, setLocal] = useState<TicketsFiltersValue>(value);
   const [expanded, setExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,17 +70,24 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left' }: P
     <>
       <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
         <Button
-          variant="outline"
-          size="sm"
-          className="h-9"
+          variant={compact ? 'ghost' : 'outline'}
+          size={compact ? 'icon' : 'sm'}
+          className={compact ? 'h-8 w-8 relative' : 'h-9'}
           onClick={() => setExpanded((s) => !s)}
+          title="Фильтры"
         >
-          <Icon name="Filter" size={16} className="mr-2" />
-          Фильтры
+          <Icon name="Filter" size={compact ? 18 : 16} className={compact ? '' : 'mr-2'} />
+          {!compact && 'Фильтры'}
           {activeCount > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center text-xs rounded-full bg-primary text-primary-foreground px-2 py-0.5">
-              {activeCount}
-            </span>
+            compact ? (
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center text-[10px] leading-none rounded-full bg-primary text-primary-foreground w-4 h-4">
+                {activeCount}
+              </span>
+            ) : (
+              <span className="ml-2 inline-flex items-center justify-center text-xs rounded-full bg-primary text-primary-foreground px-2 py-0.5">
+                {activeCount}
+              </span>
+            )
           )}
         </Button>
         {activeCount > 0 && (

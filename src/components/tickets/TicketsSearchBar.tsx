@@ -1,0 +1,104 @@
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import Icon from '@/components/ui/icon';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import TicketsFilters, { TicketsFiltersValue } from './TicketsFilters';
+
+interface SortOption {
+  value: string;
+  label: string;
+}
+
+interface TicketsSearchBarProps {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  sortBy: string;
+  onSortByChange: (value: string) => void;
+  sortDir: 'asc' | 'desc';
+  onSortDirToggle: () => void;
+  sortOptions: SortOption[];
+  filtersValue: TicketsFiltersValue;
+  onFiltersChange: (next: TicketsFiltersValue) => void;
+  showControls?: boolean;
+}
+
+const TicketsSearchBar = ({
+  searchQuery,
+  onSearchChange,
+  sortBy,
+  onSortByChange,
+  sortDir,
+  onSortDirToggle,
+  sortOptions,
+  filtersValue,
+  onFiltersChange,
+  showControls = true,
+}: TicketsSearchBarProps) => {
+  const currentSortLabel = sortOptions.find((o) => o.value === sortBy)?.label || 'Сортировка';
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-card border border-border rounded-[15px] px-3 sm:px-5 py-2 sm:py-3">
+      <Icon name="Search" size={18} className="text-muted-foreground sm:w-5 sm:h-5 shrink-0" />
+      <Input
+        type="text"
+        placeholder="Поиск по заявкам..."
+        value={searchQuery}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto text-sm sm:text-base flex-1 min-w-[120px]"
+      />
+
+      {showControls && (
+        <div className="flex items-center gap-1 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title={`Сортировка: ${currentSortLabel}`}
+              >
+                <Icon name="ArrowUpDown" size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-[60vh] overflow-y-auto">
+              {sortOptions.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  onClick={() => onSortByChange(opt.value)}
+                  className={opt.value === sortBy ? 'bg-accent' : ''}
+                >
+                  {opt.label}
+                  {opt.value === sortBy && <Icon name="Check" size={14} className="ml-auto" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onSortDirToggle}
+            title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}
+          >
+            <Icon name={sortDir === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={18} />
+          </Button>
+
+          <TicketsFilters
+            value={filtersValue}
+            onChange={onFiltersChange}
+            align="right"
+            compact
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TicketsSearchBar;
