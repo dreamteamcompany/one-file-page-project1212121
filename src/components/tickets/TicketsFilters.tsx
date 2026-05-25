@@ -64,7 +64,7 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left' }: P
   const activeCount = Object.values(local).filter((v) => (v || '').trim() !== '').length;
 
   return (
-    <div className="mt-3 px-1">
+    <>
       <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
         <Button
           variant="outline"
@@ -89,7 +89,7 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left' }: P
       </div>
 
       {expanded && (
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="basis-full mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {FIELDS.map((f) => (
             <div key={f.key} className="flex flex-col gap-1">
               <label className="text-xs text-muted-foreground">{f.label}</label>
@@ -104,7 +104,7 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left' }: P
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 };
 
