@@ -1,34 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
 import { apiFetch } from '@/utils/api';
@@ -43,16 +14,18 @@ import {
   BitrixSearchUser,
   ReportListItem,
   DeactivateMode,
-  MODE_LABELS,
 } from './bitrix-inactive-users/types';
 import InactiveUsersTab from './bitrix-inactive-users/InactiveUsersTab';
 import ExceptionsTab from './bitrix-inactive-users/ExceptionsTab';
 import ReportsTab from './bitrix-inactive-users/ReportsTab';
+import BitrixPageHeader from './bitrix-inactive-users/BitrixPageHeader';
+import DeactivateConfirmDialog from './bitrix-inactive-users/DeactivateConfirmDialog';
+import RemoveExceptionDialog from './bitrix-inactive-users/RemoveExceptionDialog';
+import AddExceptionDialog from './bitrix-inactive-users/AddExceptionDialog';
 
 const API_URL = func2url['bitrix-inactive-users'];
 
 const BitrixInactiveUsers = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const { hasSystemRole } = useAuth();
   const isAdmin = hasSystemRole('admin');
@@ -333,212 +306,54 @@ const BitrixInactiveUsers = () => {
 
   return (
     <PageLayout>
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
-            <Icon name="ArrowLeft" size={20} />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Неактивные пользователи Битрикс24</h1>
-            <p className="text-sm text-muted-foreground">
-              Сотрудники, которые не заходили в Битрикс за указанный период
-            </p>
-          </div>
-        </div>
-        {tab === 'inactive' && data && visibleInactiveCount > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="destructive" size="sm" className="gap-2" disabled={deactivating}>
-                {deactivating ? (
-                  <Icon name="Loader2" size={16} className="animate-spin" />
-                ) : (
-                  <Icon name="UserMinus" size={16} />
-                )}
-                Уволить
-                <Icon name="ChevronDown" size={14} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setConfirmMode('all')} className="gap-2">
-                <Icon name="Users" size={14} />
-                Всех ({visibleInactiveCount})
-              </DropdownMenuItem>
-              {neverLoggedCount > 0 && (
-                <DropdownMenuItem onClick={() => setConfirmMode('never_logged')} className="gap-2">
-                  <Icon name="UserX" size={14} />
-                  Никогда не заходили ({neverLoggedCount})
-                </DropdownMenuItem>
-              )}
-              {longInactiveCount > 0 && (
-                <DropdownMenuItem onClick={() => setConfirmMode('long_inactive')} className="gap-2">
-                  <Icon name="Clock" size={14} />
-                  Долго не заходили ({longInactiveCount})
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {tab === 'exceptions' && isAdmin && (
-          <Button size="sm" className="gap-2" onClick={() => setAddModalOpen(true)}>
-            <Icon name="Plus" size={16} />
-            Добавить в исключения
-          </Button>
-        )}
-      </header>
+      <BitrixPageHeader
+        tab={tab}
+        data={data}
+        visibleInactiveCount={visibleInactiveCount}
+        neverLoggedCount={neverLoggedCount}
+        longInactiveCount={longInactiveCount}
+        deactivating={deactivating}
+        isAdmin={isAdmin}
+        onConfirmDeactivate={setConfirmMode}
+        onOpenAddException={() => setAddModalOpen(true)}
+      />
 
-      <AlertDialog open={confirmMode !== null} onOpenChange={(open) => { if (!open) setConfirmMode(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Подтвердите деактивацию</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmMode && (
-                <>
-                  Будет деактивировано <strong>{getConfirmCount(confirmMode)}</strong> пользователей
-                  ({MODE_LABELS[confirmMode].toLowerCase()}).
-                  <br /><br />
-                  Пользователи из списка исключений будут пропущены.
-                  <br /><br />
-                  Учётные записи будут отключены в Битрикс24. Это действие можно отменить вручную через админку Битрикса.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deactivating}>Отмена</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeactivate}
-              disabled={deactivating}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deactivating ? (
-                <><Icon name="Loader2" size={16} className="animate-spin mr-2" />Деактивация...</>
-              ) : (
-                'Деактивировать'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeactivateConfirmDialog
+        confirmMode={confirmMode}
+        deactivating={deactivating}
+        getConfirmCount={getConfirmCount}
+        onOpenChange={(open) => { if (!open) setConfirmMode(null); }}
+        onDeactivate={handleDeactivate}
+      />
 
-      <AlertDialog open={removeTarget !== null} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Убрать из исключений?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {removeTarget && (
-                <>Пользователь <strong>{removeTarget.full_name}</strong> снова сможет попасть под автоблокировку.</>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemoveException}>Убрать</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RemoveExceptionDialog
+        removeTarget={removeTarget}
+        onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}
+        onConfirmRemove={handleRemoveException}
+      />
 
-      <Dialog open={addModalOpen} onOpenChange={(open) => {
-        setAddModalOpen(open);
-        if (!open) {
-          setBxQuery('');
-          setBxResults([]);
-          setSelectedBx(null);
-          setReason('');
-        }
-      }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Добавить в исключения</DialogTitle>
-            <DialogDescription>
-              Найдите сотрудника в Битрикс24 и добавьте его в список исключений.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="relative">
-              <Icon
-                name="Search"
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                placeholder="Начните вводить фамилию, имя, email..."
-                value={bxQuery}
-                onChange={e => setBxQuery(e.target.value)}
-                className="pl-9 pr-9"
-                autoFocus
-              />
-              {bxSearching && (
-                <Icon
-                  name="Loader2"
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground"
-                />
-              )}
-            </div>
-
-            <div className="max-h-60 overflow-y-auto border rounded-md min-h-[60px]">
-              {bxQuery.trim().length < 2 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Введите минимум 2 символа для поиска
-                </div>
-              ) : bxSearching && bxResults.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Идёт поиск...
-                </div>
-              ) : bxResults.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Никого не нашли
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {bxResults.map(u => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => !u.already_excluded && setSelectedBx(u)}
-                      disabled={u.already_excluded}
-                      className={`w-full text-left p-2 text-sm hover:bg-muted/50 transition-colors ${
-                        selectedBx?.id === u.id ? 'bg-primary/10' : ''
-                      } ${u.already_excluded ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <div className="font-medium">{u.name}</div>
-                      <div className="text-xs text-muted-foreground flex flex-wrap gap-2 items-center">
-                        {u.email && <span>{u.email}</span>}
-                        {u.position && <span>· {u.position}</span>}
-                        {u.already_excluded && <Badge variant="secondary" className="text-xs">Уже в исключениях</Badge>}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {selectedBx && (
-              <div className="p-3 rounded-md bg-muted/40 border">
-                <p className="text-xs text-muted-foreground mb-1">Выбран:</p>
-                <p className="font-medium text-sm">{selectedBx.name}</p>
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Причина (необязательно)</label>
-              <Textarea
-                value={reason}
-                onChange={e => setReason(e.target.value)}
-                placeholder="Например: в декрете, удалённый сотрудник, директор..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddModalOpen(false)}>Отмена</Button>
-            <Button onClick={handleSaveException} disabled={!selectedBx || savingException}>
-              {savingException ? <Icon name="Loader2" size={16} className="animate-spin mr-2" /> : null}
-              Добавить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddExceptionDialog
+        open={addModalOpen}
+        onOpenChange={(open) => {
+          setAddModalOpen(open);
+          if (!open) {
+            setBxQuery('');
+            setBxResults([]);
+            setSelectedBx(null);
+            setReason('');
+          }
+        }}
+        bxQuery={bxQuery}
+        setBxQuery={setBxQuery}
+        bxResults={bxResults}
+        bxSearching={bxSearching}
+        selectedBx={selectedBx}
+        setSelectedBx={setSelectedBx}
+        reason={reason}
+        setReason={setReason}
+        savingException={savingException}
+        onSave={handleSaveException}
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'inactive' | 'exceptions' | 'reports')} className="mb-4">
         <TabsList>
