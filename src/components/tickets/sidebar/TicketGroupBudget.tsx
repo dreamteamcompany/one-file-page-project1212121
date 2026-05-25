@@ -122,7 +122,7 @@ const TicketGroupBudget = ({ ticketId }: Props) => {
   const totalDeadline = ticket?.due_date || null;
 
   return (
-    <>
+    <div className="rounded-lg bg-card border divide-y">
       {hasMy && (
         <div className="p-4">
           <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
@@ -181,7 +181,7 @@ const TicketGroupBudget = ({ ticketId }: Props) => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
