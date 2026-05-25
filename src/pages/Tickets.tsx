@@ -196,21 +196,6 @@ const Tickets = () => {
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full flex flex-col flex-1 overflow-hidden">
-        <div className="mb-4 sm:mb-6">
-          <TicketsSearchBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            sortBy={sortBy}
-            onSortByChange={handleSortByChange}
-            sortDir={sortDir}
-            onSortDirToggle={handleSortDirToggle}
-            sortOptions={SORT_OPTIONS}
-            filtersValue={searchFilters as TicketsFiltersValue}
-            onFiltersChange={handleFiltersChange}
-            showControls={viewMode === 'list'}
-          />
-        </div>
-
         <TicketsViewToggle
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -251,8 +236,23 @@ const Tickets = () => {
             />
           </div>}
 
+          <div className="mt-4 sm:mt-6">
+            <TicketsSearchBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              sortBy={sortBy}
+              onSortByChange={handleSortByChange}
+              sortDir={sortDir}
+              onSortDirToggle={handleSortDirToggle}
+              sortOptions={SORT_OPTIONS}
+              filtersValue={searchFilters as TicketsFiltersValue}
+              onFiltersChange={handleFiltersChange}
+              showControls={viewMode === 'list'}
+            />
+          </div>
+
           {viewMode === 'list' ? (
-            <div className="mt-6">
+            <div className="mt-4">
               <TicketsList
                 tickets={filteredTickets}
                 loading={loading}
