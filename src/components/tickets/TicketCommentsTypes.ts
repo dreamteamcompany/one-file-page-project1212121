@@ -72,6 +72,7 @@ export interface TicketCommentsProps {
   myLastSeenAt?: string | null;
   onMarkRead?: (commentIds: number[]) => void;
   auditLogs?: import('./TicketEventItem').HistoryLog[];
+  canUseTemplates?: boolean;
 }
 
 export const AVATAR_COLORS = [

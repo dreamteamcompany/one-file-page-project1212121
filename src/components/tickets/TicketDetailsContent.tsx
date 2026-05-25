@@ -445,6 +445,7 @@ const TicketDetailsContent = ({
             myLastSeenAt={myLastSeenAt}
             onMarkRead={onMarkRead}
             auditLogs={auditLogs}
+            canUseTemplates={hasSystemRole('admin', 'executor')}
           />
         )}
         
