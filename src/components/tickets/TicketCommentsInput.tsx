@@ -1,10 +1,17 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
 import { Comment, User } from './TicketCommentsTypes';
+import { apiFetch } from '@/utils/api';
+import func2url from '../../../backend/func2url.json';
+
+const TEMPLATES_URL = (func2url as Record<string, string>)['api-reply-templates'];
+
+interface ReplyTemplate { id: number; title: string; content: string; is_shared: boolean; }
 
 const MAX_IMG_HEIGHT = 320;
 
@@ -39,6 +46,7 @@ interface TicketCommentsInputProps {
   onSendPing: () => void;
   /** Итоговый HTML для отправки — собирается внутри редактора */
   onEditorChange?: (html: string, text: string) => void;
+  canUseTemplates?: boolean;
 }
 
 /** Конвертирует File в data URL */
@@ -93,9 +101,72 @@ const TicketCommentsInput = ({
   onEmojiClick,
   onMention,
   onSubmit,
+  canUseTemplates = false,
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const templatesRef = useRef<HTMLDivElement>(null);
+
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templates, setTemplates] = useState<ReplyTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+
+  const loadTemplates = async (q = '') => {
+    setTemplatesLoading(true);
+    try {
+      const url = q ? `${TEMPLATES_URL}?q=${encodeURIComponent(q)}` : TEMPLATES_URL;
+      const res = await apiFetch(url);
+      if (res.ok) setTemplates(await res.json());
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const handleOpenTemplates = () => {
+    if (!showTemplates) {
+      setTemplateSearch('');
+      loadTemplates();
+    }
+    setShowTemplates((s) => !s);
+  };
+
+  const handleTemplateSelect = (tmpl: ReplyTemplate) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        const text = document.createTextNode(tmpl.content);
+        range.insertNode(text);
+        range.setStartAfter(text);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        editor.innerHTML = tmpl.content;
+      }
+    } else {
+      editor.innerHTML = tmpl.content;
+    }
+    onCommentChange(tmpl.content);
+    setShowTemplates(false);
+  };
+
+  // Закрытие попапа шаблонов по клику вне
+  useEffect(() => {
+    if (!showTemplates) return;
+    const handleClick = (e: MouseEvent) => {
+      if (templatesRef.current && !templatesRef.current.contains(e.target as Node)) {
+        setShowTemplates(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showTemplates]);
 
   const isEmpty = (el: HTMLElement) => {
     const text = el.innerText.trim();
@@ -356,6 +427,65 @@ const TicketCommentsInput = ({
               className="hidden"
               disabled={uploadingFile}
             />
+
+            {canUseTemplates && (
+              <div className="relative" ref={templatesRef}>
+                <Button
+                  onClick={handleOpenTemplates}
+                  disabled={submittingComment}
+                  variant={showTemplates ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="flex-shrink-0"
+                  title="Шаблоны ответов"
+                >
+                  <Icon name="LayoutTemplate" size={16} />
+                </Button>
+                {showTemplates && (
+                  <div className="absolute bottom-full right-0 mb-2 z-50 w-72 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
+                    <div className="p-2 border-b border-border">
+                      <Input
+                        value={templateSearch}
+                        onChange={(e) => {
+                          setTemplateSearch(e.target.value);
+                          loadTemplates(e.target.value);
+                        }}
+                        placeholder="Поиск шаблона..."
+                        className="h-7 text-xs"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {templatesLoading ? (
+                        <div className="flex justify-center py-4">
+                          <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
+                        </div>
+                      ) : templates.length === 0 ? (
+                        <div className="py-4 text-center text-xs text-muted-foreground">
+                          {templateSearch ? 'Ничего не найдено' : 'Шаблонов пока нет'}
+                        </div>
+                      ) : (
+                        templates.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => handleTemplateSelect(t)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border/50 last:border-b-0"
+                          >
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <p className="text-xs font-medium truncate">{t.title}</p>
+                              {t.is_shared && (
+                                <Icon name="Globe" size={10} className="text-muted-foreground shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground line-clamp-2">{t.content}</p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button
               onClick={() => fileInputRef.current?.click()}

@@ -43,6 +43,7 @@ import BitrixCallback from "./pages/BitrixCallback";
 import AiTraining from "./pages/AiTraining";
 import BitrixInactiveUsers from "./pages/BitrixInactiveUsers";
 import OrgChart from "./pages/OrgChart";
+import ReplyTemplates from "./pages/ReplyTemplates";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -92,6 +93,7 @@ const App = () => {
             <Route path="/ai-training" element={<ProtectedRoute><AiTraining /></ProtectedRoute>} />
             <Route path="/bitrix-inactive-users" element={<ProtectedRoute><BitrixInactiveUsers /></ProtectedRoute>} />
             <Route path="/org-chart" element={<ProtectedRoute><OrgChart /></ProtectedRoute>} />
+            <Route path="/reply-templates" element={<ProtectedRoute><ReplyTemplates /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
