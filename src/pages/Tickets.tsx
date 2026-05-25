@@ -17,6 +17,7 @@ import { useTicketsView } from '@/hooks/useTicketsView';
 import { useBulkTicketOperations } from '@/hooks/useBulkTicketOperations';
 import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
+import TicketsSearch from '@/components/tickets/TicketsSearch';
 import TicketsViewToggle from '@/components/tickets/TicketsViewToggle';
 import TicketCountersBar from '@/components/tickets/TicketCountersBar';
 import TicketForm from '@/components/tickets/TicketForm';
@@ -46,7 +47,7 @@ const Tickets = () => {
   const { user, hasPermission, hasSystemRole, token } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const searchQuery = '';
+  const [searchQuery, setSearchQuery] = useState('');
   const [bulkUsers, setBulkUsers] = useState<BulkUser[]>([]);
   const [bulkExecutorGroups, setBulkExecutorGroups] = useState<BulkExecutorGroup[]>([]);
   const isAdmin = hasSystemRole('admin');
@@ -198,6 +199,8 @@ const Tickets = () => {
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full flex flex-col flex-1 overflow-hidden">
+        <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+
         <TicketsViewToggle
           viewMode={viewMode}
           onViewModeChange={setViewMode}
