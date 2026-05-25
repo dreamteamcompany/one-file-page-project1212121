@@ -5,6 +5,7 @@ import json
 from typing import Dict, Any, Optional, Set, List
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
+from group_tracking_service import open_log_entry, track_assignment_change, track_ticket_closed
 
 
 def _get_user_role_info(cur, user_id: int) -> Dict[str, Any]:
@@ -725,7 +726,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             print(f"[TICKETS] notify on create error: {e}")
 
         conn.commit()
-        
+
+        # Фиксируем начало работы группы в ticket_group_log
+        if executor_group_id:
+            try:
+                open_log_entry(cur, ticket['id'], executor_group_id, payload['user_id'])
+                conn.commit()
+            except Exception as e:
+                print(f"[TICKETS] group_log open error on create: {e}")
+
         # Загружаем связанные сервисы для ответа
         cur.execute(f"""
             SELECT s.id, s.name, sc.name as category_name
@@ -917,6 +926,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             if new_status:
                 update_fields.append("is_archived = %s")
                 params.append(bool(new_status['is_closed']))
+
+                if new_status['is_closed'] and not old_ticket.get('is_archived'):
+                    try:
+                        track_ticket_closed(cur, ticket_id, payload['user_id'])
+                    except Exception as e:
+                        print(f"[TICKETS] group_log close error: {e}")
 
                 is_going_to_waiting = bool(new_status['is_waiting_response'])
                 was_in_waiting = bool(old_ticket.get('current_is_waiting'))
@@ -1239,6 +1254,28 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             """, (payload['user_id'], ticket_id))
         except Exception as e:
             print(f"[TICKETS] ticket_views update error: {e}")
+
+        # Обновляем ticket_group_log при смене группы или исполнителя
+        try:
+            group_changed = 'executor_group_id' in body and body['executor_group_id'] != old_ticket.get('executor_group_id')
+            assignee_changed = 'assigned_to' in body and body['assigned_to'] != old_ticket.get('assigned_to')
+            if group_changed:
+                old_gid = old_ticket.get('executor_group_id')
+                new_gid = body.get('executor_group_id')
+                if old_gid:
+                    from group_tracking_service import close_active_log_entry
+                    close_active_log_entry(cur, ticket_id, payload['user_id'])
+                if new_gid:
+                    open_log_entry(cur, ticket_id, new_gid, payload['user_id'])
+            elif assignee_changed:
+                track_assignment_change(
+                    cur, ticket_id,
+                    old_ticket.get('assigned_to'),
+                    body.get('assigned_to'),
+                    payload['user_id']
+                )
+        except Exception as e:
+            print(f"[TICKETS] group_log update error: {e}")
 
         conn.commit()
         
