@@ -220,36 +220,33 @@ const Tickets = () => {
         />
 
           {viewMode === 'list' && (
-            <>
-              <div className="flex items-center gap-2 mt-3 px-1 justify-end">
-                <span className="text-sm text-muted-foreground">Сортировать по:</span>
-                <Select value={sortBy} onValueChange={handleSortByChange}>
-                  <SelectTrigger className="h-9 w-[220px]">
-                    <SelectValue placeholder="Выберите поле" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SORT_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                  onClick={handleSortDirToggle}
-                  title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}
-                >
-                  <Icon name={sortDir === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={16} />
-                </Button>
-              </div>
-
+            <div className="flex flex-wrap items-center gap-2 mt-3 px-1 justify-end">
+              <span className="text-sm text-muted-foreground">Сортировать по:</span>
+              <Select value={sortBy} onValueChange={handleSortByChange}>
+                <SelectTrigger className="h-9 w-[220px]">
+                  <SelectValue placeholder="Выберите поле" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={handleSortDirToggle}
+                title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}
+              >
+                <Icon name={sortDir === 'asc' ? 'ArrowUp' : 'ArrowDown'} size={16} />
+              </Button>
               <TicketsFilters
                 value={searchFilters as TicketsFiltersValue}
                 onChange={handleFiltersChange}
                 align="right"
               />
-            </>
+            </div>
           )}
 
           <TicketCountersBar />
