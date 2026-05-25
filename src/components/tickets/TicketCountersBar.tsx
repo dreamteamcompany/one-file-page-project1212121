@@ -7,7 +7,7 @@ import Icon from '@/components/ui/icon';
 import { useTicketCounters } from '@/hooks/useTicketCounters';
 
 interface TicketCountersBarProps {
-  onSelectRole?: (role: 'assignee' | 'customer' | 'watcher' | 'approver' | 'mentions' | 'overdue' | null) => void;
+  onSelectRole?: (role: 'assignee' | 'customer' | 'approver' | 'mentions' | 'overdue' | null) => void;
   activeRole?: string | null;
 }
 
@@ -15,7 +15,7 @@ const TicketCountersBar = ({ onSelectRole, activeRole }: TicketCountersBarProps)
   const { counters } = useTicketCounters();
 
   const items: Array<{
-    key: 'assignee' | 'customer' | 'watcher' | 'approver' | 'mentions' | 'overdue';
+    key: 'assignee' | 'customer' | 'approver' | 'mentions' | 'overdue';
     label: string;
     count: number;
     icon: string;
@@ -34,13 +34,6 @@ const TicketCountersBar = ({ onSelectRole, activeRole }: TicketCountersBarProps)
       count: counters.by_role.customer,
       icon: 'User',
       color: 'bg-emerald-600 text-white border-emerald-600',
-    },
-    {
-      key: 'watcher',
-      label: 'Наблюдаю',
-      count: counters.by_role.watcher,
-      icon: 'Eye',
-      color: 'bg-cyan-600 text-white border-cyan-600',
     },
     {
       key: 'approver',
