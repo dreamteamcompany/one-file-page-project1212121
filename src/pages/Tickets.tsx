@@ -199,28 +199,12 @@ const Tickets = () => {
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full flex flex-col flex-1 overflow-hidden">
-        <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-
-        <TicketsViewToggle
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          bulkMode={bulkMode}
-          onBulkModeToggle={handleBulkModeToggle}
-          showArchived={showArchived}
-          onToggleArchived={toggleArchived}
-          showHidden={showHidden}
-          onToggleHidden={toggleHidden}
-          hiddenCount={hiddenCount}
-          hideWaiting={hideWaiting}
-          onToggleHideWaiting={toggleHideWaiting}
-          showAll={showAll}
-          onToggleShowAll={toggleShowAll}
-          showWatching={showWatching}
-          onToggleWatching={toggleWatching}
-        />
-
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-4 sm:mb-6">
+          <div className="flex-1 min-w-0">
+            <TicketsSearch searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+          </div>
           {viewMode === 'list' && (
-            <div className="flex flex-wrap items-center gap-2 mt-3 px-1 justify-end">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end self-start lg:self-auto">
               <Select value={sortBy} onValueChange={handleSortByChange}>
                 <SelectTrigger className="h-9 w-[220px]">
                   <SelectValue placeholder="Выберите поле" />
@@ -247,6 +231,26 @@ const Tickets = () => {
               />
             </div>
           )}
+        </div>
+
+        <TicketsViewToggle
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          bulkMode={bulkMode}
+          onBulkModeToggle={handleBulkModeToggle}
+          showArchived={showArchived}
+          onToggleArchived={toggleArchived}
+          showHidden={showHidden}
+          onToggleHidden={toggleHidden}
+          hiddenCount={hiddenCount}
+          hideWaiting={hideWaiting}
+          onToggleHideWaiting={toggleHideWaiting}
+          showAll={showAll}
+          onToggleShowAll={toggleShowAll}
+          showWatching={showWatching}
+          onToggleWatching={toggleWatching}
+        />
+
 
           <TicketCountersBar />
 
