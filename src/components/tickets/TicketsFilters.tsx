@@ -66,28 +66,70 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left', com
 
   const activeCount = Object.values(local).filter((v) => (v || '').trim() !== '').length;
 
+  if (compact) {
+    return (
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 relative"
+          onClick={() => setExpanded((s) => !s)}
+          title="Фильтры"
+        >
+          <Icon name="Filter" size={18} />
+          {activeCount > 0 && (
+            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center text-[10px] leading-none rounded-full bg-primary text-primary-foreground w-4 h-4">
+              {activeCount}
+            </span>
+          )}
+        </Button>
+
+        {expanded && (
+          <div className="absolute right-0 top-full mt-2 z-30 bg-card border border-border rounded-xl shadow-xl p-3 w-[min(340px,90vw)]">
+            {activeCount > 0 && (
+              <div className="flex justify-end mb-2">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleReset}>
+                  <Icon name="X" size={12} className="mr-1" />
+                  Сбросить
+                </Button>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              {FIELDS.map((f) => (
+                <div key={f.key} className="flex flex-col gap-0.5">
+                  <label className="text-[10px] text-muted-foreground leading-tight">{f.label}</label>
+                  <Input
+                    type={f.type || 'text'}
+                    value={local[f.key] || ''}
+                    placeholder={f.placeholder}
+                    onChange={(e) => handleFieldChange(f.key, e.target.value)}
+                    className="h-7 text-xs px-2"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className={`flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
         <Button
-          variant={compact ? 'ghost' : 'outline'}
-          size={compact ? 'icon' : 'sm'}
-          className={compact ? 'h-8 w-8 relative' : 'h-9'}
+          variant="outline"
+          size="sm"
+          className="h-9"
           onClick={() => setExpanded((s) => !s)}
           title="Фильтры"
         >
-          <Icon name="Filter" size={compact ? 18 : 16} className={compact ? '' : 'mr-2'} />
-          {!compact && 'Фильтры'}
+          <Icon name="Filter" size={16} className="mr-2" />
+          Фильтры
           {activeCount > 0 && (
-            compact ? (
-              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center text-[10px] leading-none rounded-full bg-primary text-primary-foreground w-4 h-4">
-                {activeCount}
-              </span>
-            ) : (
-              <span className="ml-2 inline-flex items-center justify-center text-xs rounded-full bg-primary text-primary-foreground px-2 py-0.5">
-                {activeCount}
-              </span>
-            )
+            <span className="ml-2 inline-flex items-center justify-center text-xs rounded-full bg-primary text-primary-foreground px-2 py-0.5">
+              {activeCount}
+            </span>
           )}
         </Button>
         {activeCount > 0 && (
