@@ -99,16 +99,16 @@ const TicketsFilters = ({ value, onChange, debounceMs = 400, align = 'left', com
       </div>
 
       {expanded && (
-        <div className="basis-full mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="basis-full mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {FIELDS.map((f) => (
-            <div key={f.key} className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">{f.label}</label>
+            <div key={f.key} className="flex flex-col gap-0.5">
+              <label className="text-[10px] text-muted-foreground leading-tight">{f.label}</label>
               <Input
                 type={f.type || 'text'}
                 value={local[f.key] || ''}
                 placeholder={f.placeholder}
                 onChange={(e) => handleFieldChange(f.key, e.target.value)}
-                className="h-9"
+                className="h-7 text-xs px-2"
               />
             </div>
           ))}
