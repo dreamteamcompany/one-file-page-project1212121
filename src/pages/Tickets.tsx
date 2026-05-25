@@ -236,7 +236,7 @@ const Tickets = () => {
             />
           </div>}
 
-          <div className="mt-4 sm:mt-6">
+          <div className="sticky top-0 z-20 mt-4 sm:mt-6 bg-[#0f1535] [.light_&]:bg-[#f3f3f9] py-2 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-[30px] lg:px-[30px]">
             <TicketsSearchBar
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
