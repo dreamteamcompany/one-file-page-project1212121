@@ -10,6 +10,7 @@ export type TicketsFiltersValue = {
   search_executor_group?: string;
   search_service?: string;
   search_ticket_service?: string;
+  search_content?: string;
   due_from?: string;
   due_to?: string;
 };
@@ -22,6 +23,7 @@ interface Props {
 }
 
 const FIELDS: { key: keyof TicketsFiltersValue; label: string; placeholder: string; type?: 'text' | 'date' }[] = [
+  { key: 'search_content', label: 'Содержание', placeholder: 'Поиск по заголовку, описанию и доп. полям' },
   { key: 'search_assignee', label: 'Исполнитель', placeholder: 'ФИО или email' },
   { key: 'search_creator', label: 'Заказчик', placeholder: 'ФИО или email' },
   { key: 'search_status', label: 'Статус', placeholder: 'Название статуса' },

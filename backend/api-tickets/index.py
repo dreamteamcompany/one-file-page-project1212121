@@ -406,6 +406,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         search_executor_group = (query_params.get('search_executor_group') or '').strip()
         search_service = (query_params.get('search_service') or '').strip()
         search_ticket_service = (query_params.get('search_ticket_service') or '').strip()
+        search_content = (query_params.get('search_content') or '').strip()
         due_from = (query_params.get('due_from') or '').strip()
         due_to = (query_params.get('due_to') or '').strip()
 
@@ -449,6 +450,17 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 WHERE tsmf2.ticket_id = t.id AND tsf.name ILIKE %s
             )"""
             params.append(f"%{search_ticket_service}%")
+        if search_content:
+            # Ищем по содержанию: title, description заявки + значения её доп. полей
+            where_clause += f""" AND (
+                t.title ILIKE %s
+                OR t.description ILIKE %s
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_custom_field_values tcfv
+                    WHERE tcfv.ticket_id = t.id AND tcfv.value ILIKE %s
+                )
+            )"""
+            params.extend([f"%{search_content}%", f"%{search_content}%", f"%{search_content}%"])
         if due_from:
             where_clause += " AND t.due_date >= %s"
             params.append(due_from)

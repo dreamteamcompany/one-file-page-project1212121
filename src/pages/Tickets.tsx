@@ -250,7 +250,7 @@ const Tickets = () => {
 
           <TicketCountersBar />
 
-          {!showArchived && !showHidden && <div className="w-fit">
+          {!showArchived && !showHidden && <div className="w-fit mt-3">
             <TicketForm
               dialogOpen={dialogOpen}
               setDialogOpen={setDialogOpen}
