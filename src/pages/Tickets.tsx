@@ -221,7 +221,6 @@ const Tickets = () => {
 
           {viewMode === 'list' && (
             <div className="flex flex-wrap items-center gap-2 mt-3 px-1 justify-end">
-              <span className="text-sm text-muted-foreground">Сортировать по:</span>
               <Select value={sortBy} onValueChange={handleSortByChange}>
                 <SelectTrigger className="h-9 w-[220px]">
                   <SelectValue placeholder="Выберите поле" />
