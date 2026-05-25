@@ -1,133 +1,94 @@
 import Icon from '@/components/ui/icon';
 import { formatDateTimeMSK } from '@/utils/dateFormat';
 
-interface AuditLog {
+interface HistoryLog {
   id: number;
-  action: string;
-  username: string;
-  changed_fields?: any;
-  old_values?: any;
-  new_values?: any;
-  metadata?: any;
+  field_name?: string;
+  old_value?: string;
+  new_value?: string;
+  user_name?: string;
+  user_full_name?: string;
   created_at: string;
 }
 
 interface TicketHistoryProps {
-  logs: AuditLog[];
+  logs: HistoryLog[];
   loading?: boolean;
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  status_id: 'Статус',
+  priority_id: 'Приоритет',
+  assigned_to: 'Исполнитель',
+  executor_group_id: 'Группа исполнителей',
+  title: 'Заголовок',
+  description: 'Описание',
+  due_date: 'Дедлайн',
+  category: 'Категория',
+  comment: 'Комментарий',
+  reopen_reason: 'Причина повторного открытия',
+  content: 'Содержание',
+  watchers: 'Наблюдатели',
+};
+
+const getIcon = (fieldName?: string): string => {
+  switch (fieldName) {
+    case 'status_id': return 'RefreshCw';
+    case 'priority_id': return 'Flag';
+    case 'assigned_to': return 'UserCheck';
+    case 'executor_group_id': return 'Users';
+    case 'comment': return 'MessageSquare';
+    case 'reopen_reason': return 'RotateCcw';
+    case 'due_date': return 'Calendar';
+    case 'title': return 'FileText';
+    case 'description':
+    case 'content': return 'AlignLeft';
+    default: return 'Activity';
+  }
+};
+
+const getColor = (fieldName?: string): string => {
+  switch (fieldName) {
+    case 'status_id': return 'text-orange-400';
+    case 'priority_id': return 'text-yellow-400';
+    case 'assigned_to': return 'text-green-400';
+    case 'executor_group_id': return 'text-cyan-400';
+    case 'comment': return 'text-blue-400';
+    case 'reopen_reason': return 'text-amber-400';
+    case 'due_date': return 'text-purple-400';
+    default: return 'text-muted-foreground';
+  }
+};
+
+const getActionText = (log: HistoryLog): string => {
+  const label = FIELD_LABELS[log.field_name || ''] || log.field_name || 'поле';
+
+  if (log.field_name === 'comment') {
+    const text = log.new_value || '';
+    const preview = text.startsWith('Добавлен комментарий: ')
+      ? text.slice('Добавлен комментарий: '.length)
+      : text;
+    return `оставил комментарий: ${preview.slice(0, 80)}${preview.length > 80 ? '…' : ''}`;
+  }
+
+  if (log.field_name === 'reopen_reason') {
+    return `повторно открыл заявку: ${log.new_value || ''}`;
+  }
+
+  if (log.old_value && log.new_value) {
+    return `изменил ${label}: ${log.old_value} → ${log.new_value}`;
+  }
+  if (!log.old_value && log.new_value) {
+    return `установил ${label}: ${log.new_value}`;
+  }
+  if (log.old_value && !log.new_value) {
+    return `сбросил ${label} (было: ${log.old_value})`;
+  }
+  return `изменил ${label}`;
+};
+
 const TicketHistory = ({ logs, loading }: TicketHistoryProps) => {
   const formatDateTime = (dateStr: string) => formatDateTimeMSK(dateStr);
-
-  const getActionIcon = (action: string) => {
-    switch (action) {
-      case 'created': return 'Plus';
-      case 'updated': return 'Edit';
-      case 'status_changed': return 'RefreshCw';
-      case 'assigned': return 'UserPlus';
-      case 'comment_added': return 'MessageSquare';
-      case 'approval_sent': return 'Send';
-      case 'approved': return 'CheckCircle';
-      case 'rejected': return 'XCircle';
-      default: return 'Activity';
-    }
-  };
-
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case 'created': return 'text-blue-500';
-      case 'updated': return 'text-purple-500';
-      case 'status_changed': return 'text-orange-500';
-      case 'assigned': return 'text-green-500';
-      case 'approved': return 'text-green-600';
-      case 'rejected': return 'text-red-600';
-      case 'approval_sent': return 'text-indigo-500';
-      default: return 'text-muted-foreground';
-    }
-  };
-
-  const getActionText = (log: AuditLog) => {
-    switch (log.action) {
-      case 'created':
-        return 'создал заявку';
-      case 'updated':
-        if (log.changed_fields) {
-          const fields = Object.keys(log.changed_fields);
-          if (fields.length === 1) {
-            const field = fields[0];
-            const fieldNames: Record<string, string> = {
-              title: 'заголовок',
-              description: 'описание',
-              priority: 'приоритет',
-              category: 'категорию',
-              department: 'отдел',
-              due_date: 'дедлайн'
-            };
-            return `изменил ${fieldNames[field] || field}`;
-          }
-          return `изменил ${fields.length} ${fields.length === 2 ? 'поля' : 'полей'}`;
-        }
-        return 'изменил заявку';
-      case 'status_changed':
-        if (log.changed_fields?.status) {
-          return `изменил статус: ${log.changed_fields.status.old || '—'} → ${log.changed_fields.status.new}`;
-        }
-        return 'изменил статус';
-      case 'assigned':
-        if (log.changed_fields?.assigned_to) {
-          return `назначил исполнителя: ${log.changed_fields.assigned_to.new || 'не назначен'}`;
-        }
-        return 'назначил исполнителя';
-      case 'comment_added':
-        return 'добавил комментарий';
-      case 'approval_sent':
-        return `отправил на согласование${log.metadata?.approvers ? ' (' + log.metadata.approvers + ')' : ''}`;
-      case 'approved':
-        return 'согласовал заявку';
-      case 'rejected':
-        return `отклонил заявку${log.metadata?.comment ? ': ' + log.metadata.comment : ''}`;
-      default:
-        return log.action;
-    }
-  };
-
-  const renderChangedFields = (log: AuditLog) => {
-    if (!log.changed_fields || Object.keys(log.changed_fields).length === 0) {
-      return null;
-    }
-
-    const fieldNames: Record<string, string> = {
-      title: 'Заголовок',
-      description: 'Описание',
-      priority: 'Приоритет',
-      category: 'Категория',
-      department: 'Отдел',
-      due_date: 'Дедлайн',
-      status: 'Статус',
-      assigned_to: 'Исполнитель'
-    };
-
-    return (
-      <div className="mt-2 ml-8 space-y-1">
-        {Object.entries(log.changed_fields).map(([field, change]: [string, any]) => {
-          if (field === 'status' || field === 'assigned_to') return null;
-          
-          const oldValue = change.old || '—';
-          const newValue = change.new || '—';
-          
-          return (
-            <div key={field} className="text-xs text-muted-foreground">
-              <span className="font-medium">{fieldNames[field] || field}:</span>{' '}
-              <span className="line-through opacity-60">{oldValue}</span>
-              {' → '}
-              <span className="font-medium">{newValue}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   if (loading) {
     return (
@@ -137,7 +98,7 @@ const TicketHistory = ({ logs, loading }: TicketHistoryProps) => {
     );
   }
 
-  if (logs.length === 0) {
+  if (!logs || logs.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Icon name="History" size={48} className="mx-auto mb-2 opacity-30" />
@@ -147,37 +108,36 @@ const TicketHistory = ({ logs, loading }: TicketHistoryProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      {logs.map((log, index) => (
-        <div key={log.id} className="flex gap-3 relative">
-          {/* Timeline line */}
-          {index < logs.length - 1 && (
-            <div className="absolute left-4 top-8 bottom-0 w-px bg-border" />
-          )}
-          
-          {/* Icon */}
-          <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-background border-2 flex items-center justify-center z-10 ${getActionColor(log.action)}`}>
-            <Icon name={getActionIcon(log.action)} size={14} />
-          </div>
+    <div className="space-y-1">
+      {logs.map((log, index) => {
+        const author = log.user_full_name || log.user_name || 'Система';
+        const actionText = getActionText(log);
+        const iconName = getIcon(log.field_name);
+        const color = getColor(log.field_name);
 
-          {/* Content */}
-          <div className="flex-1 pb-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <p className="text-sm">
-                  <span className="font-medium">{log.username}</span>
-                  {' '}
-                  <span className="text-muted-foreground">{getActionText(log)}</span>
-                </p>
-                {renderChangedFields(log)}
-              </div>
-              <time className="text-xs text-muted-foreground whitespace-nowrap">
+        return (
+          <div key={log.id} className="flex gap-3 relative py-2">
+            {index < logs.length - 1 && (
+              <div className="absolute left-4 top-9 bottom-0 w-px bg-border/50" />
+            )}
+
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center z-10 ${color}`}>
+              <Icon name={iconName} size={13} />
+            </div>
+
+            <div className="flex-1 flex items-start justify-between gap-4 min-w-0">
+              <p className="text-sm leading-relaxed min-w-0">
+                <span className="font-medium text-foreground">{author}</span>
+                {' '}
+                <span className="text-muted-foreground break-words">{actionText}</span>
+              </p>
+              <time className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 mt-0.5">
                 {formatDateTime(log.created_at)}
               </time>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
