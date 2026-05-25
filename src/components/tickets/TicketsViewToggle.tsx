@@ -4,12 +4,6 @@
  */
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TicketsViewToggleProps {
@@ -52,7 +46,6 @@ const TicketsViewToggle = ({
   const { hasSystemRole } = useAuth();
   const isPlainUser = hasSystemRole('user') && !hasSystemRole('admin', 'manager');
   const isOpenOrAllActive = !showArchived && !showHidden;
-  const currentLabel = showAll ? 'Все' : 'Открытые';
 
   const handleSelectOpen = () => {
     onViewModeChange('list');
@@ -61,41 +54,18 @@ const TicketsViewToggle = ({
     if (showAll && onToggleShowAll) onToggleShowAll(false);
   };
 
-  const handleSelectAll = () => {
-    onViewModeChange('list');
-    if (onToggleShowAll) onToggleShowAll(true);
-  };
-
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={isOpenOrAllActive ? 'default' : 'outline'}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Icon name="List" size={16} />
-              <span className="hidden sm:inline">{currentLabel}</span>
-              <Icon name="ChevronDown" size={14} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={handleSelectOpen}>
-              <Icon name="List" size={14} className="mr-2" />
-              Открытые
-              {isOpenOrAllActive && !showAll && (
-                <Icon name="Check" size={14} className="ml-auto" />
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSelectAll}>
-              <Icon name="LayoutList" size={14} className="mr-2" />
-              Все
-              {showAll && <Icon name="Check" size={14} className="ml-auto" />}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          variant={isOpenOrAllActive && !showAll ? 'default' : 'outline'}
+          size="sm"
+          onClick={handleSelectOpen}
+          className="flex items-center gap-2"
+        >
+          <Icon name="List" size={16} />
+          <span className="hidden sm:inline">Открытые</span>
+        </Button>
         <Button
           variant={showWatching ? 'default' : 'outline'}
           size="sm"
