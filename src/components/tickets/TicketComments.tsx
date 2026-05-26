@@ -97,12 +97,39 @@ const TicketComments = ({
       .map(log => ({ kind: 'event' as const, data: log })),
   ].sort((a, b) => getMskTimestamp(a.data.created_at) - getMskTimestamp(b.data.created_at));
 
-  // Скролл вниз после загрузки комментариев
+  // Скролл вниз после загрузки комментариев — при первом заходе/обновлении страницы
+  const didInitialScrollRef = useRef(false);
   useEffect(() => {
-    if (!loadingComments && comments.length > 0) {
-      commentsEndRef.current?.scrollIntoView({ behavior: 'instant' });
-    }
-  }, [loadingComments]);
+    if (loadingComments) return;
+    if (comments.length === 0) return;
+    if (didInitialScrollRef.current) return;
+
+    const scrollToBottom = () => {
+      const list = commentsListRef.current;
+      if (list) {
+        list.scrollTop = list.scrollHeight;
+      }
+      commentsEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+    };
+
+    // Несколько попыток: контент (картинки, длинный текст) догружается асинхронно
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      requestAnimationFrame(scrollToBottom);
+    });
+    const t1 = setTimeout(scrollToBottom, 150);
+    const t2 = setTimeout(scrollToBottom, 500);
+    const t3 = setTimeout(() => {
+      scrollToBottom();
+      didInitialScrollRef.current = true;
+    }, 1000);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [loadingComments, comments.length]);
 
   const firstNewIndex = (() => {
     if (!frozenLastSeen || !currentUserId) return -1;
