@@ -1,316 +1,359 @@
 import json
 import os
 import requests
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
-def fetch_bitrix_departments(batch_number: int = 0, batch_size: int = 500) -> tuple[List[Dict[str, Any]], bool]:
-    """Получает подразделения из Bitrix24 порциями
-    
-    Args:
-        batch_number: Номер порции (0, 1, 2...)
-        batch_size: Размер порции (по умолчанию 500)
-    
-    Returns:
-        Tuple из (список подразделений, есть_ли_еще_данные)
+CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, Authorization',
+    'Access-Control-Max-Age': '86400',
+}
+
+
+def fetch_all_bitrix_departments() -> List[Dict[str, Any]]:
+    """Получает ВСЕ подразделения из Bitrix24 с автоматической пагинацией.
+
+    Bitrix24 REST API ограничивает выдачу 50 элементами за запрос.
+    Используем параметр START для пагинации, пока не получим все.
     """
     webhook_url = os.environ.get('BITRIX24_WEBHOOK_URL')
     if not webhook_url:
         raise ValueError('BITRIX24_WEBHOOK_URL не настроен')
-    
-    all_departments = []
-    start_offset = batch_number * batch_size
-    
-    print(f"Starting Bitrix24 fetch, batch={batch_number}, offset={start_offset}")
-    
-    while len(all_departments) < batch_size:
+
+    all_departments: List[Dict[str, Any]] = []
+    start = 0
+    max_iterations = 200  # защита от бесконечного цикла (до 10 000 отделов)
+    iteration = 0
+
+    print(f"[bitrix-sync] Загружаем все отделы из Bitrix24")
+
+    while iteration < max_iterations:
+        iteration += 1
         url = f"{webhook_url}department.get"
-        current_start = start_offset + len(all_departments)
-        
-        payload = {
-            'START': current_start,
-            'sort': 'ID',
-            'order': 'ASC'
-        }
-        
-        print(f"POST request to {url} with START={current_start}")
-        
+        payload = {'START': start, 'sort': 'ID', 'order': 'ASC'}
+
         response = requests.post(
             url,
             json=payload,
             headers={'Content-Type': 'application/json'},
-            timeout=15
+            timeout=20,
         )
         response.raise_for_status()
-        
         data = response.json()
-        print(f"Response: {json.dumps(data, ensure_ascii=False)[:200]}")
-        
-        if 'result' not in data or not data['result']:
-            print(f"No result in response, stopping")
-            break
-        
-        departments = data['result']
+
+        result = data.get('result') or []
         total = data.get('total', 0)
-        
-        all_departments.extend(departments)
-        print(f"Fetched {len(departments)}/{total} departments, accumulated: {len(all_departments)}")
-        
-        if current_start + len(departments) >= total:
-            print(f"All data fetched (start={current_start} + count={len(departments)} >= total={total})")
-            return all_departments, False
-        
-        if len(all_departments) >= batch_size:
-            print(f"Batch limit reached: {len(all_departments)}")
+
+        if not result:
+            print(f"[bitrix-sync] Пустой ответ на START={start}, завершаем")
             break
-    
-    has_more = len(all_departments) == batch_size
-    print(f"Batch completed: {len(all_departments)} departments, has_more: {has_more}")
-    return all_departments, has_more
+
+        all_departments.extend(result)
+        print(f"[bitrix-sync] START={start}: получено {len(result)}, всего {len(all_departments)}/{total}")
+
+        next_start = data.get('next')
+        if next_start is None:
+            break
+        start = int(next_start)
+
+        if len(all_departments) >= total > 0:
+            break
+
+    print(f"[bitrix-sync] Итого загружено отделов: {len(all_departments)}")
+    return all_departments
 
 
-def sync_departments_to_db(departments: List[Dict[str, Any]], company_id: int) -> Dict[str, int]:
-    """Синхронизирует подразделения из Bitrix24 в базу данных"""
-    print(f"Starting DB sync for {len(departments)} departments")
-    
+def topological_sort(
+    departments: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Топологически сортирует отделы: родители идут перед детьми.
+
+    Возвращает (отсортированный_список, проблемные_отделы).
+    Проблемные — это отделы, чьи родители не найдены в списке (или циклы).
+    """
+    by_id: Dict[str, Dict[str, Any]] = {}
+    for dept in departments:
+        bid = str(dept.get('ID'))
+        by_id[bid] = dept
+
+    sorted_list: List[Dict[str, Any]] = []
+    problematic: List[Dict[str, Any]] = []
+    visited: Dict[str, str] = {}  # bid -> "white" / "gray" / "black"
+
+    def visit(bid: str, path: List[str]) -> bool:
+        """DFS-обход. Возвращает True если успех, False если цикл."""
+        state = visited.get(bid, 'white')
+        if state == 'black':
+            return True
+        if state == 'gray':
+            print(f"[bitrix-sync] ЦИКЛ обнаружен в иерархии: {' -> '.join(path + [bid])}")
+            return False
+
+        visited[bid] = 'gray'
+        dept = by_id.get(bid)
+        if dept is None:
+            visited[bid] = 'black'
+            return True
+
+        parent_bid = str(dept.get('PARENT')) if dept.get('PARENT') else None
+        if parent_bid and parent_bid in by_id:
+            if not visit(parent_bid, path + [bid]):
+                visited[bid] = 'black'
+                return False
+
+        visited[bid] = 'black'
+        sorted_list.append(dept)
+        return True
+
+    for dept in departments:
+        bid = str(dept.get('ID'))
+        ok = visit(bid, [])
+        if not ok:
+            problematic.append(dept)
+
+    return sorted_list, problematic
+
+
+def sync_departments_to_db(
+    departments: List[Dict[str, Any]],
+    company_id: int,
+) -> Dict[str, Any]:
+    """Синхронизирует подразделения из Bitrix24 в базу данных.
+
+    Алгоритм:
+    1. Топологически сортируем отделы (родители впереди).
+    2. UPSERT в один проход: всегда сохраняем bitrix_id, name, parent_id (если родитель уже в БД).
+    3. Дополнительный проход: для отделов, у которых родитель появился позже, обновляем parent_id.
+    4. Архивация: отделы с bitrix_id, которых нет в выгрузке, помечаем is_archived=true.
+    5. Отделы без bitrix_id (созданные вручную) НЕ ТРОГАЕМ.
+    """
+    print(f"[bitrix-sync] Начинаем sync в БД для {len(departments)} отделов, company_id={company_id}")
+
     dsn = os.environ.get('DATABASE_URL')
     schema = os.environ.get('MAIN_DB_SCHEMA', 'public')
-    
+
     conn = psycopg2.connect(dsn)
     conn.autocommit = False
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
+
+    stats = {
+        'created': 0,
+        'updated': 0,
+        'archived': 0,
+        'restored': 0,
+        'orphaned': 0,
+        'cycles': 0,
+    }
+
     try:
-        # Загружаем все существующие подразделения одним запросом
-        print("Loading existing departments from DB")
-        cursor.execute(f'''
-            SELECT id, bitrix_id FROM {schema}.departments 
+        # 1) Загружаем существующие отделы из БД (только с bitrix_id и в той же компании)
+        cursor.execute(
+            f'''
+            SELECT id, bitrix_id, parent_id, name, is_archived
+            FROM {schema}.departments
             WHERE company_id = %s AND bitrix_id IS NOT NULL
-        ''', (company_id,))
-        
-        existing_map = {row['bitrix_id']: row['id'] for row in cursor.fetchall()}
-        print(f"Found {len(existing_map)} existing departments in DB")
-        
-        # Сортируем подразделения: сначала корневые, потом по SORT
-        departments_sorted = sorted(departments, key=lambda d: (d.get('PARENT') is not None, d.get('SORT', 500)))
-        
-        # Инициализируем bitrix_id_map существующими записями
-        bitrix_id_map = existing_map.copy()
-        updates = []
-        inserts = []
-        
-        # Подготавливаем данные для batch операций
-        print("Preparing batch operations")
-        for dept in departments_sorted:
-            bitrix_id = str(dept.get('ID'))
-            name = dept.get('NAME', '')
-            parent_bitrix_id = str(dept.get('PARENT')) if dept.get('PARENT') else None
-            
-            if bitrix_id in existing_map:
-                dept_id = existing_map[bitrix_id]
-                updates.append((name, None, dept_id))  # parent_id установим во втором проходе
+            ''',
+            (company_id,),
+        )
+        existing_rows = cursor.fetchall()
+        existing_by_bid: Dict[str, Dict[str, Any]] = {
+            row['bitrix_id']: dict(row) for row in existing_rows
+        }
+        print(f"[bitrix-sync] В БД уже {len(existing_by_bid)} отделов c bitrix_id")
+
+        # 2) Топологическая сортировка отделов из Битрикса
+        sorted_depts, problematic = topological_sort(departments)
+        if problematic:
+            stats['cycles'] = len(problematic)
+            print(f"[bitrix-sync] Проблемных (циклы/недостающие родители): {len(problematic)}")
+
+        # bitrix_id -> наш departments.id (заполняется по мере UPSERT)
+        bitrix_id_map: Dict[str, int] = {
+            bid: row['id'] for bid, row in existing_by_bid.items()
+        }
+
+        # 3) Проход в топологическом порядке: для каждого отдела — UPDATE или INSERT
+        for dept in sorted_depts:
+            bid = str(dept.get('ID'))
+            name = (dept.get('NAME') or '').strip() or f'Отдел {bid}'
+            parent_bid = str(dept.get('PARENT')) if dept.get('PARENT') else None
+
+            # Маппим parent_id из bitrix_id_map (родитель уже обработан благодаря топологии)
+            our_parent_id: Optional[int] = None
+            if parent_bid:
+                our_parent_id = bitrix_id_map.get(parent_bid)
+                if our_parent_id is None:
+                    # Родитель не найден (его нет в Битриксе и в нашей БД) — оставляем как корневой
+                    stats['orphaned'] += 1
+                    print(f"[bitrix-sync] WARN: отдел bitrix_id={bid} ('{name}') — родитель bitrix_id={parent_bid} не найден")
+
+            existing = existing_by_bid.get(bid)
+            if existing:
+                # UPDATE: имя, parent_id, активность, разархивируем если был архивный
+                was_archived = existing.get('is_archived', False)
+                cursor.execute(
+                    f'''
+                    UPDATE {schema}.departments
+                    SET name = %s,
+                        parent_id = %s,
+                        is_active = true,
+                        is_archived = false,
+                        archived_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    ''',
+                    (name, our_parent_id, existing['id']),
+                )
+                stats['updated'] += 1
+                if was_archived:
+                    stats['restored'] += 1
             else:
-                inserts.append((company_id, name, f'BITRIX_{bitrix_id}', bitrix_id))
-        
-        # Batch UPDATE через executemany по чанкам (избегаем таймаутов)
-        if updates:
-            chunk_size = 500
-            total_chunks = (len(updates) + chunk_size - 1) // chunk_size
-            print(f"Updating {len(updates)} departments in {total_chunks} chunks")
-            
-            for i in range(0, len(updates), chunk_size):
-                chunk = updates[i:i+chunk_size]
-                cursor.executemany(f'''
-                    UPDATE {schema}.departments 
-                    SET name = %s, parent_id = %s, is_active = true, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                ''', chunk)
-                print(f"Updated chunk {i//chunk_size + 1}/{total_chunks}")
-        
-        # Batch INSERT через executemany по чанкам
-        if inserts:
-            chunk_size = 500
-            total_chunks = (len(inserts) + chunk_size - 1) // chunk_size
-            print(f"Inserting {len(inserts)} departments in {total_chunks} chunks")
-            
-            for i in range(0, len(inserts), chunk_size):
-                chunk = inserts[i:i+chunk_size]
-                cursor.executemany(f'''
-                    INSERT INTO {schema}.departments 
-                    (company_id, name, code, bitrix_id, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                ''', chunk)
-                print(f"Inserted chunk {i//chunk_size + 1}/{total_chunks}")
-            
-            # Загружаем созданные ID
-            cursor.execute(f'''
-                SELECT id, bitrix_id FROM {schema}.departments
-                WHERE company_id = %s AND bitrix_id IS NOT NULL
-            ''', (company_id,))
-            bitrix_id_map = {row['bitrix_id']: row['id'] for row in cursor.fetchall()}
-        
-        # Второй проход - устанавливаем parent_id по чанкам
-        print("Setting parent relationships (second pass)")
-        parent_updates = []
-        for dept in departments_sorted:
-            bitrix_id = str(dept.get('ID'))
-            parent_bitrix_id = str(dept.get('PARENT')) if dept.get('PARENT') else None
-            
-            if parent_bitrix_id and parent_bitrix_id in bitrix_id_map:
-                parent_id = bitrix_id_map[parent_bitrix_id]
-                dept_id = bitrix_id_map.get(bitrix_id)
-                
-                if dept_id:
-                    parent_updates.append((parent_id, dept_id))
-        
-        if parent_updates:
-            chunk_size = 500
-            total_chunks = (len(parent_updates) + chunk_size - 1) // chunk_size
-            print(f"Updating {len(parent_updates)} parent relationships in {total_chunks} chunks")
-            
-            for i in range(0, len(parent_updates), chunk_size):
-                chunk = parent_updates[i:i+chunk_size]
-                cursor.executemany(f'''
-                    UPDATE {schema}.departments 
-                    SET parent_id = %s
-                    WHERE id = %s
-                ''', chunk)
-                print(f"Updated parents chunk {i//chunk_size + 1}/{total_chunks}")
-        
+                # INSERT нового отдела
+                cursor.execute(
+                    f'''
+                    INSERT INTO {schema}.departments
+                        (company_id, name, code, bitrix_id, parent_id, is_active, is_archived, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    RETURNING id
+                    ''',
+                    (company_id, name, f'BITRIX_{bid}', bid, our_parent_id),
+                )
+                new_id = cursor.fetchone()['id']
+                bitrix_id_map[bid] = new_id
+                stats['created'] += 1
+
+        # 4) Архивация: отделы, у которых есть bitrix_id, но которых нет в свежей выгрузке
+        synced_bids = {str(d.get('ID')) for d in departments}
+        to_archive_ids = [
+            row['id']
+            for bid, row in existing_by_bid.items()
+            if bid not in synced_bids and not row.get('is_archived', False)
+        ]
+        if to_archive_ids:
+            cursor.execute(
+                f'''
+                UPDATE {schema}.departments
+                SET is_archived = true,
+                    archived_at = CURRENT_TIMESTAMP,
+                    is_active = false,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ANY(%s)
+                ''',
+                (to_archive_ids,),
+            )
+            stats['archived'] = len(to_archive_ids)
+            print(f"[bitrix-sync] Архивировано {stats['archived']} отделов, которых больше нет в Битриксе")
+
         conn.commit()
-        print(f"DB sync completed, {len(bitrix_id_map)} departments synced")
-        return bitrix_id_map
-        
+        print(f"[bitrix-sync] Sync ОК: {stats}")
+        return {
+            'stats': stats,
+            'total_in_bitrix': len(departments),
+            'synced_count': stats['created'] + stats['updated'],
+        }
+
     except Exception as e:
-        print(f"DB sync error: {e}")
+        print(f"[bitrix-sync] ОШИБКА в sync_departments_to_db: {e}")
         conn.rollback()
-        raise e
+        raise
     finally:
         cursor.close()
         conn.close()
 
 
 def handler(event: dict, context) -> dict:
-    """API endpoint для синхронизации подразделений из Bitrix24"""
+    """API синхронизации подразделений из Bitrix24 в нашу БД с сохранением иерархии.
+
+    POST body: { "company_id": int }
+    Загружает все отделы из Битрикса, топологически сортирует, делает UPSERT,
+    архивирует те, которых больше нет в Bitrix.
+    """
     if isinstance(event, str):
         event = json.loads(event)
-    
+
     method = event.get('httpMethod', 'GET')
-    
+
     if method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token, Authorization',
-                'Access-Control-Max-Age': '86400'
-            },
-            'body': '',
-            'isBase64Encoded': False
-        }
-    
+        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': '', 'isBase64Encoded': False}
+
     if method != 'POST':
         return {
             'statusCode': 405,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({'error': 'Method not allowed'}),
-            'isBase64Encoded': False
+            'isBase64Encoded': False,
         }
-    
+
     try:
         body_str = event.get('body', '{}')
-        if isinstance(body_str, str):
-            body = json.loads(body_str)
-        else:
-            body = body_str
+        body = json.loads(body_str) if isinstance(body_str, str) else (body_str or {})
         company_id = body.get('company_id')
-        batch_number = body.get('batch_number', 0)
-        batch_size = body.get('batch_size', 500)
-        
+
         if not company_id:
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'company_id обязателен'}),
-                'isBase64Encoded': False
+                'isBase64Encoded': False,
             }
-        
+
         webhook_url = os.environ.get('BITRIX24_WEBHOOK_URL')
         if not webhook_url:
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'BITRIX24_WEBHOOK_URL не настроен в секретах'}),
-                'isBase64Encoded': False
+                'isBase64Encoded': False,
             }
-        
-        departments, has_more = fetch_bitrix_departments(batch_number, batch_size)
-        
+
+        departments = fetch_all_bitrix_departments()
+
         if not departments:
             return {
                 'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({
                     'success': True,
                     'synced_count': 0,
                     'has_more': False,
-                    'batch_number': batch_number,
-                    'message': 'Нет подразделений для синхронизации'
+                    'stats': {'created': 0, 'updated': 0, 'archived': 0, 'restored': 0, 'orphaned': 0, 'cycles': 0},
+                    'message': 'Нет отделов в Bitrix24 для синхронизации',
                 }),
-                'isBase64Encoded': False
+                'isBase64Encoded': False,
             }
-        
-        bitrix_id_map = sync_departments_to_db(departments, company_id)
-        
+
+        result = sync_departments_to_db(departments, int(company_id))
+
         return {
             'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({
                 'success': True,
-                'synced_count': len(bitrix_id_map),
-                'has_more': has_more,
-                'batch_number': batch_number,
-                'next_batch': batch_number + 1 if has_more else None,
-                'departments': list(bitrix_id_map.values())
+                'synced_count': result['synced_count'],
+                'total_in_bitrix': result['total_in_bitrix'],
+                'stats': result['stats'],
+                'has_more': False,
             }),
-            'isBase64Encoded': False
+            'isBase64Encoded': False,
         }
-        
+
     except ValueError as e:
         return {
             'statusCode': 400,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({'error': str(e)}),
-            'isBase64Encoded': False
+            'isBase64Encoded': False,
         }
     except Exception as e:
+        print(f"[bitrix-sync] handler error: {e}")
         return {
             'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({'error': f'Ошибка синхронизации: {str(e)}'}),
-            'isBase64Encoded': False
+            'isBase64Encoded': False,
         }

@@ -12,6 +12,7 @@ interface DepartmentTreeProps {
   canEdit?: boolean;
   canDelete?: boolean;
   canCreate?: boolean;
+  showArchived?: boolean;
 }
 
 interface TreeNodeProps {
@@ -46,7 +47,7 @@ const TreeNode = ({
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-border"
+        className={`flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-border ${department.is_archived ? 'opacity-60' : ''}`}
         style={{ paddingLeft: `${level * 24 + 12}px` }}
       >
         <button
@@ -71,6 +72,17 @@ const TreeNode = ({
             <span className="font-medium">{department.name}</span>
             {department.code && (
               <span className="ml-2 text-xs text-muted-foreground">({department.code})</span>
+            )}
+            {department.is_archived && (
+              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                <Icon name="Archive" className="h-3 w-3" />
+                В архиве
+              </span>
+            )}
+            {department.bitrix_id && (
+              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-blue-500/10 text-blue-700 dark:text-blue-400">
+                Bitrix
+              </span>
             )}
             {department.description && (
               <p className="text-sm text-muted-foreground mt-0.5">{department.description}</p>
@@ -154,10 +166,14 @@ export const DepartmentTree = ({
   canEdit,
   canDelete,
   canCreate,
+  showArchived = false,
 }: DepartmentTreeProps) => {
-  const rootDepartments = departments.filter((d) => !d.parent_id);
+  const visibleDepartments = showArchived
+    ? departments
+    : departments.filter((d) => !d.is_archived);
+  const rootDepartments = visibleDepartments.filter((d) => !d.parent_id);
 
-  if (departments.length === 0) {
+  if (visibleDepartments.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Icon name="Building2" className="mx-auto h-12 w-12 mb-2 opacity-20" />
@@ -172,7 +188,7 @@ export const DepartmentTree = ({
         <TreeNode
           key={department.id}
           department={department}
-          allDepartments={departments}
+          allDepartments={visibleDepartments}
           level={0}
           onEdit={onEdit}
           onDelete={onDelete}

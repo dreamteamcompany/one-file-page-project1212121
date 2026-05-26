@@ -37,6 +37,7 @@ const Departments = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<string>('');
+  const [showArchived, setShowArchived] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [parentIdForNew, setParentIdForNew] = useState<number | null>(null);
@@ -190,67 +191,56 @@ const Departments = () => {
     }
 
     setSyncing(true);
-    let totalSynced = 0;
-    let batchNumber = 0;
 
     try {
       console.log('Starting Bitrix24 sync for company:', companyId);
 
-      while (true) {
-        console.log(`Syncing batch ${batchNumber}...`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('Request timeout, aborting...');
+        controller.abort();
+      }, 120000);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log('Request timeout, aborting...');
-          controller.abort();
-        }, 60000);
+      try {
+        const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
+          method: 'POST',
+          body: JSON.stringify({ company_id: parseInt(companyId) }),
+          signal: controller.signal,
+        });
 
-        try {
-          const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
-            method: 'POST',
-            body: JSON.stringify({
-              company_id: parseInt(companyId),
-              batch_number: batchNumber,
-              batch_size: 500,
-            }),
-            signal: controller.signal,
-          });
+        clearTimeout(timeoutId);
 
-          clearTimeout(timeoutId);
-
-          console.log(`Batch ${batchNumber} response status:`, response.status);
-
-          if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Network error' }));
-            console.error('Sync error response:', error);
-            throw new Error(error.error || 'Ошибка синхронизации');
-          }
-
-          const result = await response.json();
-          console.log(`Batch ${batchNumber} result:`, result);
-
-          totalSynced += result.synced_count;
-
-          if (!result.has_more) {
-            console.log('All batches synced, stopping');
-            break;
-          }
-
-          batchNumber++;
-        } catch (fetchError: unknown) {
-          clearTimeout(timeoutId);
-
-          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-            console.error('Request aborted due to timeout');
-            throw new Error('Превышен лимит ожидания. Попробуйте позже.');
-          }
-          throw fetchError;
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ error: 'Network error' }));
+          console.error('Sync error response:', error);
+          throw new Error(error.error || 'Ошибка синхронизации');
         }
-      }
 
-      console.log(`Sync completed! Total: ${totalSynced}`);
-      alert(`Синхронизация завершена! Обработано ${totalSynced} подразделений из Bitrix24`);
-      loadData();
+        const result = await response.json();
+        console.log('Sync result:', result);
+
+        const stats = result.stats || {};
+        const parts: string[] = [];
+        if (stats.created) parts.push(`создано: ${stats.created}`);
+        if (stats.updated) parts.push(`обновлено: ${stats.updated}`);
+        if (stats.archived) parts.push(`архивировано: ${stats.archived}`);
+        if (stats.restored) parts.push(`восстановлено из архива: ${stats.restored}`);
+        if (stats.orphaned) parts.push(`без родителя: ${stats.orphaned}`);
+        if (stats.cycles) parts.push(`циклов пропущено: ${stats.cycles}`);
+        const summary = parts.length > 0 ? parts.join(', ') : 'без изменений';
+        const total = result.total_in_bitrix ?? result.synced_count ?? 0;
+
+        alert(`Синхронизация завершена!\nОтделов в Bitrix24: ${total}\n${summary}`);
+        loadData();
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId);
+
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('Request aborted due to timeout');
+          throw new Error('Превышен лимит ожидания. Попробуйте позже.');
+        }
+        throw fetchError;
+      }
     } catch (error) {
       console.error('Sync error:', error);
       alert(`Ошибка при синхронизации с Bitrix24: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
@@ -320,6 +310,8 @@ const Departments = () => {
           selectedCompany={selectedCompany}
           onCompanyChange={setSelectedCompany}
           companies={companies}
+          showArchived={showArchived}
+          onShowArchivedChange={setShowArchived}
         />
 
         <DepartmentFormDialog
@@ -343,6 +335,7 @@ const Departments = () => {
           onDelete={canDelete ? handleDelete : undefined}
           onDeactivate={canDelete ? handleDeactivate : undefined}
           onAddChild={canCreate ? handleAddChild : undefined}
+          showArchived={showArchived}
         />
       </div>
     </PageLayout>

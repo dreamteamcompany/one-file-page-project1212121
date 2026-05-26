@@ -17,6 +17,9 @@ export interface Department {
   code?: string;
   description?: string;
   is_active: boolean;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  bitrix_id?: string | null;
   created_at: string;
   updated_at: string;
   children?: Department[];

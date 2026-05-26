@@ -6,6 +6,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import Icon from '@/components/ui/icon';
 import { Company } from '@/types';
 
@@ -15,6 +17,8 @@ interface DepartmentsFiltersProps {
   selectedCompany: string;
   onCompanyChange: (value: string) => void;
   companies: Company[];
+  showArchived?: boolean;
+  onShowArchivedChange?: (value: boolean) => void;
 }
 
 const DepartmentsFilters = ({
@@ -23,10 +27,12 @@ const DepartmentsFilters = ({
   selectedCompany,
   onCompanyChange,
   companies,
+  showArchived = false,
+  onShowArchivedChange,
 }: DepartmentsFiltersProps) => {
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative flex-1">
+    <div className="flex items-center gap-4 flex-wrap">
+      <div className="relative flex-1 min-w-[240px]">
         <Icon name="Search" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Поиск по названию или коду..."
@@ -51,6 +57,18 @@ const DepartmentsFilters = ({
           ))}
         </SelectContent>
       </Select>
+      {onShowArchivedChange && (
+        <div className="flex items-center gap-2">
+          <Switch
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={onShowArchivedChange}
+          />
+          <Label htmlFor="show-archived" className="text-sm cursor-pointer whitespace-nowrap">
+            Показать архивные
+          </Label>
+        </div>
+      )}
     </div>
   );
 };
