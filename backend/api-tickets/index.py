@@ -169,7 +169,7 @@ def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '
 
         trigger_field = 'trigger_on_create' if trigger == 'create' else 'trigger_on_update'
         cur.execute(f"""
-            SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
+            SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id, match_mode
             FROM {SCHEMA}.ticket_watcher_rules
             WHERE is_active = true AND {trigger_field} = true
         """)
@@ -177,16 +177,23 @@ def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '
 
         matched_ids: List[int] = []
         for r in rules:
-            if r['category_id'] and r['category_id'] != ticket['category_id']:
+            mode = str(r.get('match_mode') or 'AND').upper()
+            conditions = [
+                (r.get('category_id'), ticket.get('category_id')),
+                (r.get('department_id'), ticket.get('department_id')),
+                (r.get('priority_id'), ticket.get('priority_id')),
+                (r.get('executor_group_id'), ticket.get('executor_group_id')),
+                (r.get('assignee_id'), ticket.get('assigned_to')),
+            ]
+            non_empty = [(rv, tv) for rv, tv in conditions if rv]
+            if not non_empty:
                 continue
-            if r['department_id'] and r['department_id'] != ticket['department_id']:
-                continue
-            if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
-                continue
-            if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
-                continue
-            if r.get('assignee_id') and r['assignee_id'] != ticket.get('assigned_to'):
-                continue
+            if mode == 'OR':
+                if not any(rv == tv for rv, tv in non_empty):
+                    continue
+            else:
+                if not all(rv == tv for rv, tv in non_empty):
+                    continue
             matched_ids.append(r['id'])
 
         if not matched_ids:

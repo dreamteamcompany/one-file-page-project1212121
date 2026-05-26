@@ -115,6 +115,7 @@ def list_rules(conn):
                r.priority_id, p.name AS priority_name,
                r.executor_group_id, g.name AS executor_group_name,
                r.assignee_id, u.full_name AS assignee_name,
+               r.match_mode,
                r.created_at, r.updated_at
         FROM {SCHEMA}.ticket_watcher_rules r
         LEFT JOIN {SCHEMA}.ticket_categories c ON c.id = r.category_id
@@ -140,6 +141,7 @@ def get_rule(conn, rule_id: int):
                r.trigger_on_create, r.trigger_on_update, r.trigger_on_executor_change,
                r.category_id, r.department_id, r.priority_id, r.executor_group_id,
                r.assignee_id,
+               r.match_mode,
                r.created_at, r.updated_at
         FROM {SCHEMA}.ticket_watcher_rules r WHERE r.id = %s
     """, (rule_id,))
@@ -189,7 +191,34 @@ def _validate_rule_payload(body: Dict[str, Any]) -> Optional[str]:
     targets = _normalize_targets(body.get('targets'))
     if not targets and not on_executor_change:
         return 'Укажите хотя бы одного наблюдателя в блоке «То»'
+    mode = str(body.get('match_mode') or 'AND').upper()
+    if mode not in ('AND', 'OR'):
+        return 'match_mode должен быть AND или OR'
     return None
+
+
+def _normalize_match_mode(value) -> str:
+    mode = str(value or 'AND').upper()
+    return 'OR' if mode == 'OR' else 'AND'
+
+
+def _rule_matches_ticket(rule: Dict[str, Any], ticket: Dict[str, Any], assignee_override: Optional[int] = None) -> bool:
+    """Возвращает True, если условия правила совпадают с заявкой согласно match_mode."""
+    mode = _normalize_match_mode(rule.get('match_mode'))
+    assignee_value = assignee_override if assignee_override is not None else ticket.get('assigned_to')
+    conditions = [
+        (rule.get('category_id'), ticket.get('category_id')),
+        (rule.get('department_id'), ticket.get('department_id')),
+        (rule.get('priority_id'), ticket.get('priority_id')),
+        (rule.get('executor_group_id'), ticket.get('executor_group_id')),
+        (rule.get('assignee_id'), assignee_value),
+    ]
+    non_empty = [(rv, tv) for rv, tv in conditions if rv]
+    if not non_empty:
+        return False
+    if mode == 'OR':
+        return any(rv == tv for rv, tv in non_empty)
+    return all(rv == tv for rv, tv in non_empty)
 
 
 def create_rule(conn, body: Dict[str, Any]):
@@ -201,8 +230,8 @@ def create_rule(conn, body: Dict[str, Any]):
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_watcher_rules
         (name, description, is_active, trigger_on_create, trigger_on_update, trigger_on_executor_change,
-         category_id, department_id, priority_id, executor_group_id, assignee_id)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+         category_id, department_id, priority_id, executor_group_id, assignee_id, match_mode)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING id
     """, (
         (body.get('name') or '').strip(),
@@ -216,6 +245,7 @@ def create_rule(conn, body: Dict[str, Any]):
         safe_int(body.get('priority_id')),
         safe_int(body.get('executor_group_id')),
         safe_int(body.get('assignee_id')),
+        _normalize_match_mode(body.get('match_mode')),
     ))
     rule_id = cur.fetchone()['id']
 
@@ -248,7 +278,7 @@ def update_rule(conn, rule_id: int, body: Dict[str, Any]):
         SET name=%s, description=%s, is_active=%s,
             trigger_on_create=%s, trigger_on_update=%s, trigger_on_executor_change=%s,
             category_id=%s, department_id=%s, priority_id=%s, executor_group_id=%s,
-            assignee_id=%s,
+            assignee_id=%s, match_mode=%s,
             updated_at = NOW()
         WHERE id = %s
     """, (
@@ -263,6 +293,7 @@ def update_rule(conn, rule_id: int, body: Dict[str, Any]):
         safe_int(body.get('priority_id')),
         safe_int(body.get('executor_group_id')),
         safe_int(body.get('assignee_id')),
+        _normalize_match_mode(body.get('match_mode')),
         rule_id,
     ))
 
@@ -373,25 +404,13 @@ def apply_rules(conn, body: Dict[str, Any]):
 
     trigger_field = 'trigger_on_create' if trigger == 'create' else 'trigger_on_update'
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id, match_mode
         FROM {SCHEMA}.ticket_watcher_rules
         WHERE is_active = true AND {trigger_field} = true
     """)
     rules = [dict(r) for r in cur.fetchall()]
 
-    matched_ids: List[int] = []
-    for r in rules:
-        if r['category_id'] and r['category_id'] != ticket['category_id']:
-            continue
-        if r['department_id'] and r['department_id'] != ticket['department_id']:
-            continue
-        if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
-            continue
-        if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
-            continue
-        if r.get('assignee_id') and r['assignee_id'] != ticket.get('assigned_to'):
-            continue
-        matched_ids.append(r['id'])
+    matched_ids: List[int] = [r['id'] for r in rules if _rule_matches_ticket(r, ticket)]
 
     added: List[int] = []
     if matched_ids:
@@ -465,7 +484,7 @@ def apply_executor_change(conn, body: Dict[str, Any]):
         return response(404, {'error': 'Заявка не найдена'})
 
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id, match_mode
         FROM {SCHEMA}.ticket_watcher_rules
         WHERE is_active = true AND trigger_on_executor_change = true
     """)
@@ -474,19 +493,9 @@ def apply_executor_change(conn, body: Dict[str, Any]):
     # Для триггера смены исполнителя сравниваем условие assignee_id с НОВЫМ исполнителем.
     compare_assignee = new_assignee if new_assignee else ticket.get('assigned_to')
 
-    matched_ids: List[int] = []
-    for r in rules:
-        if r['category_id'] and r['category_id'] != ticket['category_id']:
-            continue
-        if r['department_id'] and r['department_id'] != ticket['department_id']:
-            continue
-        if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
-            continue
-        if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
-            continue
-        if r.get('assignee_id') and r['assignee_id'] != compare_assignee:
-            continue
-        matched_ids.append(r['id'])
+    matched_ids: List[int] = [
+        r['id'] for r in rules if _rule_matches_ticket(r, ticket, assignee_override=compare_assignee)
+    ]
 
     if not matched_ids:
         cur.close()
@@ -584,7 +593,7 @@ def backfill_rules(conn, body: Dict[str, Any]):
     if rule_id:
         rule_filter_sql = f' AND id = {int(rule_id)}'
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id, match_mode
         FROM {SCHEMA}.ticket_watcher_rules
         WHERE is_active = true AND trigger_on_create = true{rule_filter_sql}
     """)
@@ -637,19 +646,9 @@ def backfill_rules(conn, body: Dict[str, Any]):
 
     for ticket in tickets:
         processed += 1
-        matched_rule_ids: List[int] = []
-        for r in rules:
-            if r['category_id'] and r['category_id'] != ticket['category_id']:
-                continue
-            if r['department_id'] and r['department_id'] != ticket['department_id']:
-                continue
-            if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
-                continue
-            if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
-                continue
-            if r.get('assignee_id') and r['assignee_id'] != ticket.get('assigned_to'):
-                continue
-            matched_rule_ids.append(int(r['id']))
+        matched_rule_ids: List[int] = [
+            int(r['id']) for r in rules if _rule_matches_ticket(r, ticket)
+        ]
 
         if not matched_rule_ids:
             continue

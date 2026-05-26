@@ -69,6 +69,9 @@ const WatcherRuleCard = ({
                 <div className="text-xs uppercase text-muted-foreground mb-1.5 flex items-center gap-1">
                   <Icon name="GitBranch" size={12} />
                   Если
+                  <Badge variant="outline" className="text-[10px] ml-1 py-0 h-4">
+                    {rule.match_mode === 'OR' ? 'любое (ИЛИ)' : 'все (И)'}
+                  </Badge>
                 </div>
                 {renderConditions(rule)}
               </div>

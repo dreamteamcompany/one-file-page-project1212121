@@ -135,11 +135,44 @@ const WatcherRuleDialog = ({
           </div>
 
           <div className="rounded-lg border p-3 space-y-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Icon name="GitBranch" size={16} />
               <Label className="font-medium">Если у заявки</Label>
               <span className="text-xs text-muted-foreground">
                 (укажите 1+ условие, пустые игнорируются)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap text-sm">
+              <span className="text-xs text-muted-foreground">Объединять условия:</span>
+              <div className="inline-flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, match_mode: 'AND' }))}
+                  className={`px-3 py-1 text-xs transition-colors ${
+                    form.match_mode === 'AND'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-transparent hover:bg-muted'
+                  }`}
+                >
+                  Все (И)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, match_mode: 'OR' }))}
+                  className={`px-3 py-1 text-xs border-l transition-colors ${
+                    form.match_mode === 'OR'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-transparent hover:bg-muted'
+                  }`}
+                >
+                  Любое (ИЛИ)
+                </button>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {form.match_mode === 'AND'
+                  ? '— правило сработает, если совпадут все указанные'
+                  : '— правило сработает, если совпадёт хотя бы одно'}
               </span>
             </div>
 

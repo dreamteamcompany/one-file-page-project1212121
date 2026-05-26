@@ -39,6 +39,7 @@ export interface WatcherRule {
   executor_group_name?: string | null;
   assignee_id: number | null;
   assignee_name?: string | null;
+  match_mode: 'AND' | 'OR';
   targets: RuleTarget[];
 }
 
@@ -54,6 +55,7 @@ export type FormState = {
   priority_id: string;
   executor_group_id: string;
   assignee_id: string;
+  match_mode: 'AND' | 'OR';
   targets: RuleTarget[];
 };
 
@@ -69,6 +71,7 @@ export const EMPTY_FORM: FormState = {
   priority_id: '',
   executor_group_id: '',
   assignee_id: '',
+  match_mode: 'AND',
   targets: [],
 };
 
