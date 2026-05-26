@@ -32,10 +32,7 @@ def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket
 
     plain = _strip_bbcode(text)
 
-    params = {
-        'access_token': MAX_BOT_TOKEN,
-        'user_id': str(max_user_id),
-    }
+    params = {'user_id': str(max_user_id)}
     url = f"{MAX_API_BASE}/messages?{urllib.parse.urlencode(params)}"
 
     payload = {'text': plain}
@@ -60,7 +57,10 @@ def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket
         req = urllib.request.Request(
             url,
             data=data,
-            headers={'Content-Type': 'application/json; charset=utf-8'},
+            headers={
+                'Content-Type': 'application/json; charset=utf-8',
+                'Authorization': f'Bearer {MAX_BOT_TOKEN}',
+            },
             method='POST',
         )
         with urllib.request.urlopen(req, timeout=8) as resp:
@@ -81,10 +81,7 @@ def _send_max_message_chat(chat_id: str, text: str, ticket_id: int = None, ticke
     """Фолбэк-отправка через chat_id вместо user_id."""
     if not MAX_BOT_TOKEN:
         return
-    params = {
-        'access_token': MAX_BOT_TOKEN,
-        'chat_id': str(chat_id),
-    }
+    params = {'chat_id': str(chat_id)}
     url = f"{MAX_API_BASE}/messages?{urllib.parse.urlencode(params)}"
     payload = {'text': text}
     if ticket_url:
@@ -100,9 +97,15 @@ def _send_max_message_chat(chat_id: str, text: str, ticket_id: int = None, ticke
         }]
     data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     try:
-        req = urllib.request.Request(url, data=data,
-                                     headers={'Content-Type': 'application/json; charset=utf-8'},
-                                     method='POST')
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                'Content-Type': 'application/json; charset=utf-8',
+                'Authorization': f'Bearer {MAX_BOT_TOKEN}',
+            },
+            method='POST',
+        )
         with urllib.request.urlopen(req, timeout=8) as resp:
             print(f'[max-bot] Sent via chat_id to {chat_id}: HTTP {resp.status}')
     except Exception as e:

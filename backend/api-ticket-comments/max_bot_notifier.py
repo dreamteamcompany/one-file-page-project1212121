@@ -20,7 +20,7 @@ def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket
     if not MAX_BOT_TOKEN or not max_user_id:
         return
     plain = _strip_bbcode(text)
-    params = {'access_token': MAX_BOT_TOKEN, 'user_id': str(max_user_id)}
+    params = {'user_id': str(max_user_id)}
     url = f"{MAX_API_BASE}/messages?{urllib.parse.urlencode(params)}"
     payload = {'text': plain}
     if ticket_url:
@@ -36,9 +36,15 @@ def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket
         }]
     data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
     try:
-        req = urllib.request.Request(url, data=data,
-                                     headers={'Content-Type': 'application/json; charset=utf-8'},
-                                     method='POST')
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                'Content-Type': 'application/json; charset=utf-8',
+                'Authorization': f'Bearer {MAX_BOT_TOKEN}',
+            },
+            method='POST',
+        )
         with urllib.request.urlopen(req, timeout=8) as resp:
             print(f'[max-bot] Sent to {max_user_id}: HTTP {resp.status}')
     except urllib.error.HTTPError as e:
