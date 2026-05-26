@@ -51,6 +51,8 @@ def handler(event, context):
                 return apply_rules(conn, body)
             if action == 'apply_executor_change':
                 return apply_executor_change(conn, body)
+            if action == 'backfill':
+                return backfill_rules(conn, body)
             return create_rule(conn, body)
 
         if method == 'PUT':
@@ -531,4 +533,177 @@ def apply_executor_change(conn, body: Dict[str, Any]):
         'ticket_id': ticket_id,
         'matched_rules': matched_ids,
         'added_user_ids': added,
+    })
+
+
+def backfill_rules(conn, body: Dict[str, Any]):
+    """Однократный прогон правил trigger_on_create по уже существующим заявкам.
+
+    Параметры body (опционально):
+      - rule_id (int): применить только одно правило (иначе — все активные с trigger_on_create=true)
+      - ticket_status_ids (list[int]): ограничить статусами заявок (по умолчанию — все)
+      - dry_run (bool): только посчитать совпадения, не вставлять в ticket_watchers
+      - send_notifications (bool, default false): слать ли Битрикс-уведомления добавленным наблюдателям
+      - limit (int): максимум заявок (по умолчанию без лимита)
+    """
+    rule_id = safe_int(body.get('rule_id'))
+    raw_statuses = body.get('ticket_status_ids') or []
+    status_ids: List[int] = []
+    if isinstance(raw_statuses, list):
+        for v in raw_statuses:
+            try:
+                iv = int(v)
+                if iv > 0:
+                    status_ids.append(iv)
+            except (TypeError, ValueError):
+                continue
+    dry_run = bool(body.get('dry_run', False))
+    send_notifications = bool(body.get('send_notifications', False))
+    app_origin = (body.get('app_origin') or '').rstrip('/')
+    try:
+        limit = int(body.get('limit') or 0)
+    except (TypeError, ValueError):
+        limit = 0
+
+    cur = conn.cursor()
+
+    rule_filter_sql = ''
+    if rule_id:
+        rule_filter_sql = f' AND id = {int(rule_id)}'
+    cur.execute(f"""
+        SELECT id, category_id, department_id, priority_id, executor_group_id
+        FROM {SCHEMA}.ticket_watcher_rules
+        WHERE is_active = true AND trigger_on_create = true{rule_filter_sql}
+    """)
+    rules = [dict(r) for r in cur.fetchall()]
+    if not rules:
+        cur.close()
+        return response(200, {
+            'success': True,
+            'message': 'Активных правил с trigger_on_create не найдено',
+            'processed_tickets': 0,
+            'matched_tickets': 0,
+            'added_watchers_total': 0,
+            'rules_count': 0,
+        })
+
+    rule_ids_csv = ','.join(str(int(r['id'])) for r in rules)
+    cur.execute(f"""
+        SELECT rule_id, target_type, target_id
+        FROM {SCHEMA}.ticket_watcher_rule_targets
+        WHERE rule_id IN ({rule_ids_csv})
+    """)
+    all_targets = [dict(t) for t in cur.fetchall()]
+
+    targets_by_rule: Dict[int, List[Dict[str, Any]]] = {}
+    for t in all_targets:
+        targets_by_rule.setdefault(int(t['rule_id']), []).append(t)
+    resolved_by_rule: Dict[int, List[int]] = {}
+    for r_id, t_list in targets_by_rule.items():
+        resolved_by_rule[r_id] = _resolve_target_user_ids(cur, t_list)
+
+    status_filter_sql = ''
+    if status_ids:
+        status_filter_sql = f" AND status_id IN ({','.join(str(s) for s in status_ids)})"
+    limit_sql = f' LIMIT {int(limit)}' if limit > 0 else ''
+
+    cur.execute(f"""
+        SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+        FROM {SCHEMA}.tickets
+        WHERE 1=1{status_filter_sql}
+        ORDER BY id ASC
+        {limit_sql}
+    """)
+    tickets = [dict(t) for t in cur.fetchall()]
+
+    processed = 0
+    matched_tickets = 0
+    added_total = 0
+    per_ticket_added: List[Dict[str, Any]] = []
+    notify_queue: List[Dict[str, int]] = []
+
+    for ticket in tickets:
+        processed += 1
+        matched_rule_ids: List[int] = []
+        for r in rules:
+            if r['category_id'] and r['category_id'] != ticket['category_id']:
+                continue
+            if r['department_id'] and r['department_id'] != ticket['department_id']:
+                continue
+            if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
+                continue
+            if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+                continue
+            matched_rule_ids.append(int(r['id']))
+
+        if not matched_rule_ids:
+            continue
+        matched_tickets += 1
+
+        candidates: set = set()
+        for r_id in matched_rule_ids:
+            for uid in resolved_by_rule.get(r_id, []):
+                if uid:
+                    candidates.add(int(uid))
+
+        creator_id = ticket.get('created_by')
+        ticket_added: List[int] = []
+        for uid in candidates:
+            if creator_id and uid == creator_id:
+                continue
+            if dry_run:
+                cur.execute(f"""
+                    SELECT 1 FROM {SCHEMA}.ticket_watchers
+                    WHERE ticket_id = %s AND user_id = %s
+                """, (ticket['id'], uid))
+                if cur.fetchone():
+                    continue
+                ticket_added.append(uid)
+            else:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT (ticket_id, user_id) DO NOTHING
+                    RETURNING user_id
+                """, (ticket['id'], uid))
+                row = cur.fetchone()
+                if row:
+                    ticket_added.append(int(row['user_id']))
+
+        if ticket_added:
+            added_total += len(ticket_added)
+            per_ticket_added.append({
+                'ticket_id': ticket['id'],
+                'matched_rules': matched_rule_ids,
+                'added_user_ids': ticket_added,
+            })
+            if send_notifications and not dry_run:
+                for uid in ticket_added:
+                    notify_queue.append({'ticket_id': int(ticket['id']), 'user_id': int(uid)})
+
+    if not dry_run:
+        conn.commit()
+
+    if notify_queue:
+        try:
+            from bitrix_bot_notifier import notify_watcher_added
+            for item in notify_queue:
+                try:
+                    notify_watcher_added(cur, SCHEMA, item['ticket_id'], item['user_id'], app_origin=app_origin)
+                except Exception as bot_err:
+                    print(f"[backfill] notify failed t={item['ticket_id']} u={item['user_id']}: {bot_err}")
+        except Exception as imp_err:
+            print(f"[backfill] notifier import failed: {imp_err}")
+
+    cur.close()
+    return response(200, {
+        'success': True,
+        'dry_run': dry_run,
+        'rule_id': rule_id,
+        'rules_count': len(rules),
+        'processed_tickets': processed,
+        'matched_tickets': matched_tickets,
+        'added_watchers_total': added_total,
+        'notifications_sent': len(notify_queue),
+        'per_ticket': per_ticket_added[:500],
     })

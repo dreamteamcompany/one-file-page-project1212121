@@ -116,7 +116,121 @@ from sla_group_budgets_handler import handle_sla_group_budgets
 from sla_service_mappings_handler import handle_sla_service_mappings, resolve_sla_for_ticket
 from sla_analytics_handler import handle_sla_analytics
 from executor_assignment_resolver import resolve_executor, resolve_executor_group
-from bitrix_bot_notifier import notify_executor_assigned
+from bitrix_bot_notifier import notify_executor_assigned, notify_watcher_added
+
+
+def _resolve_watcher_target_user_ids(cur, targets: List[Dict[str, Any]]) -> List[int]:
+    """Разворачивает targets правил (user/group/role) в плоский список user_id."""
+    user_ids: Set[int] = set()
+    user_targets = [t['target_id'] for t in targets if t['target_type'] == 'user']
+    group_targets = [t['target_id'] for t in targets if t['target_type'] == 'group']
+    role_targets = [t['target_id'] for t in targets if t['target_type'] == 'role']
+
+    for uid in user_targets:
+        if uid:
+            user_ids.add(int(uid))
+
+    if group_targets:
+        ids_csv = ','.join(str(int(x)) for x in group_targets)
+        cur.execute(f"""
+            SELECT user_id FROM {SCHEMA}.executor_group_members
+            WHERE group_id IN ({ids_csv})
+        """)
+        for r in cur.fetchall():
+            user_ids.add(int(r['user_id']))
+
+    if role_targets:
+        ids_csv = ','.join(str(int(x)) for x in role_targets)
+        cur.execute(f"""
+            SELECT ur.user_id FROM {SCHEMA}.user_roles ur
+            WHERE ur.role_id IN ({ids_csv})
+        """)
+        for r in cur.fetchall():
+            user_ids.add(int(r['user_id']))
+
+    return list(user_ids)
+
+
+def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '') -> List[int]:
+    """Применяет правила наблюдателей к заявке (trigger='create' или 'update').
+    Возвращает список добавленных user_id."""
+    if trigger not in ('create', 'update'):
+        return []
+
+    cur = conn.cursor()
+    try:
+        cur.execute(f"""
+            SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+            FROM {SCHEMA}.tickets WHERE id = %s
+        """, (ticket_id,))
+        ticket = cur.fetchone()
+        if not ticket:
+            return []
+
+        trigger_field = 'trigger_on_create' if trigger == 'create' else 'trigger_on_update'
+        cur.execute(f"""
+            SELECT id, category_id, department_id, priority_id, executor_group_id
+            FROM {SCHEMA}.ticket_watcher_rules
+            WHERE is_active = true AND {trigger_field} = true
+        """)
+        rules = [dict(r) for r in cur.fetchall()]
+
+        matched_ids: List[int] = []
+        for r in rules:
+            if r['category_id'] and r['category_id'] != ticket['category_id']:
+                continue
+            if r['department_id'] and r['department_id'] != ticket['department_id']:
+                continue
+            if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
+                continue
+            if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+                continue
+            matched_ids.append(r['id'])
+
+        if not matched_ids:
+            return []
+
+        ids_csv = ','.join(str(int(x)) for x in matched_ids)
+        cur.execute(f"""
+            SELECT rule_id, target_type, target_id
+            FROM {SCHEMA}.ticket_watcher_rule_targets
+            WHERE rule_id IN ({ids_csv})
+        """)
+        targets = [dict(t) for t in cur.fetchall()]
+        user_ids = _resolve_watcher_target_user_ids(cur, targets)
+        creator_id = ticket.get('created_by')
+
+        added: List[int] = []
+        for uid in user_ids:
+            if not uid:
+                continue
+            if creator_id and uid == creator_id:
+                continue
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.ticket_watchers (ticket_id, user_id)
+                VALUES (%s, %s)
+                ON CONFLICT (ticket_id, user_id) DO NOTHING
+                RETURNING user_id
+            """, (ticket_id, uid))
+            row = cur.fetchone()
+            if row:
+                added.append(int(row['user_id']))
+
+        conn.commit()
+
+        for uid in added:
+            try:
+                notify_watcher_added(cur, SCHEMA, int(ticket_id), int(uid), app_origin=app_origin)
+            except Exception as bot_err:
+                print(f"[watcher-rules] bitrix notif failed t={ticket_id} u={uid}: {bot_err}")
+
+        return added
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+
 
 class TicketRequest(BaseModel):
     title: str = Field(..., min_length=1)
@@ -783,7 +897,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 notify_executor_assigned(cur, SCHEMA, ticket['id'], ticket['assigned_to'], origin)
             except Exception as e:
                 print(f"[TICKETS] Bitrix notification error on create: {e}")
-        
+
+        try:
+            origin_for_rules = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
+            added_watchers = _apply_watcher_rules(conn, ticket['id'], 'create', app_origin=origin_for_rules)
+            if added_watchers:
+                print(f"[watcher-rules] CREATE ticket {ticket['id']}: added watchers {added_watchers}")
+        except Exception as wr_err:
+            print(f"[watcher-rules] CREATE error for ticket {ticket['id']}: {wr_err}")
+
         cur.close()
         
         return response(201, ticket)
@@ -1297,7 +1419,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 notify_executor_assigned(cur, SCHEMA, ticket_id, body['assigned_to'], origin)
             except Exception as e:
                 print(f"[TICKETS] Bitrix notification error on assign: {e}")
-        
+
+        try:
+            origin_for_rules = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
+            added_watchers = _apply_watcher_rules(conn, ticket_id, 'update', app_origin=origin_for_rules)
+            if added_watchers:
+                print(f"[watcher-rules] UPDATE ticket {ticket_id}: added watchers {added_watchers}")
+        except Exception as wr_err:
+            print(f"[watcher-rules] UPDATE error for ticket {ticket_id}: {wr_err}")
+
         cur.close()
         
         return response(200, ticket)
