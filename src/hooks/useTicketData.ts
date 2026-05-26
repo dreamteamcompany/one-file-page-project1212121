@@ -39,6 +39,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const commentsRequestIdRef = useRef<string | null>(null);
   const historyAbortRef = useRef<AbortController | null>(null);
   const historyRequestIdRef = useRef<string | null>(null);
+  // Флаг: bundle уже отдал нам комментарии (значит fallback-запрос не нужен).
+  const bundleCommentsReceivedRef = useRef<boolean>(false);
 
   const loadTicket = async (showLoader = true) => {
     try {
@@ -83,6 +85,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
         if (Array.isArray(data.comments)) {
           setComments(data.comments);
           setLoadingComments(false);
+          bundleCommentsReceivedRef.current = true;
         }
         if (Array.isArray(data.participant_ids)) {
           setParticipantIds(data.participant_ids);
@@ -329,6 +332,8 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     if (id && token) {
       setLoadingComments(true);
       setLoadingHistory(true);
+      // Сбрасываем флаг — bundle для новой заявки ещё не пришёл.
+      bundleCommentsReceivedRef.current = false;
     }
 
     if (id && token) {
@@ -339,11 +344,18 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       loadStatuses();
       loadExecutorGroups();
       loadUsers();
-      // Комментарии уже пришли в bundle (loadTicketFull). Отдельный fallback-запрос
-      // нужен только если bundle не вернул comments (старая версия backend / частичный ответ).
-      // Поэтому делаем его не сразу, а через 1.5 секунды — за это время bundle обычно успевает.
+
+      // Fallback: если bundle через 3с НЕ вернул комментарии
+      // (старая версия backend / ретраи всё ещё идут) — догрузим отдельным запросом.
+      // В нормальном режиме bundle отвечает за 200-500мс и этот fallback пропускается.
+      const tCommentsFallback = setTimeout(() => {
+        if (!bundleCommentsReceivedRef.current) {
+          loadComments({ silent: true });
+        }
+      }, 3000);
 
       return () => {
+        clearTimeout(tCommentsFallback);
         if (commentsAbortRef.current) {
           commentsAbortRef.current.abort();
         }
