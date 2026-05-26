@@ -17,7 +17,7 @@ const CommentReadIndicator = ({ comment }: Props) => {
   const restCount = rest.length;
 
   return (
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-12 pt-9 mt-4 mb-0 pb-0">
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-12 pt-9 mt-4 -mb-6 pb-0">
       <Icon name="CheckCheck" size={13} className="text-sky-500" />
       <span>Просмотрено:</span>
       <span className="text-foreground/80 font-medium">
