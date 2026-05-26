@@ -18,6 +18,7 @@ const renderConditions = (rule: WatcherRule) => {
   if (rule.department_name) chips.push({ label: 'Отдел', value: rule.department_name });
   if (rule.priority_name) chips.push({ label: 'Приоритет', value: rule.priority_name });
   if (rule.executor_group_name) chips.push({ label: 'Группа', value: rule.executor_group_name });
+  if (rule.assignee_name) chips.push({ label: 'Исполнитель', value: rule.assignee_name });
   if (!chips.length) return <span className="text-muted-foreground text-sm">условий нет</span>;
   return (
     <div className="flex flex-wrap gap-1.5">

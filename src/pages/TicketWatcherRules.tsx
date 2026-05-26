@@ -79,6 +79,7 @@ const TicketWatcherRules = () => {
       department_id: rule.department_id ? String(rule.department_id) : '',
       priority_id: rule.priority_id ? String(rule.priority_id) : '',
       executor_group_id: rule.executor_group_id ? String(rule.executor_group_id) : '',
+      assignee_id: rule.assignee_id ? String(rule.assignee_id) : '',
       targets: rule.targets.map((t) => ({ ...t })),
     });
     setNewTargetType('user');
@@ -114,7 +115,7 @@ const TicketWatcherRules = () => {
       toast({ title: 'Укажите название правила', variant: 'destructive' });
       return;
     }
-    const hasCondition = ['category_id', 'department_id', 'priority_id', 'executor_group_id']
+    const hasCondition = ['category_id', 'department_id', 'priority_id', 'executor_group_id', 'assignee_id']
       .some((k) => form[k as keyof FormState]);
     if (!form.trigger_on_create && !form.trigger_on_update && !form.trigger_on_executor_change) {
       toast({ title: 'Выберите хотя бы один триггер срабатывания', variant: 'destructive' });
@@ -145,6 +146,7 @@ const TicketWatcherRules = () => {
         department_id: form.department_id ? Number(form.department_id) : null,
         priority_id: form.priority_id ? Number(form.priority_id) : null,
         executor_group_id: form.executor_group_id ? Number(form.executor_group_id) : null,
+        assignee_id: form.assignee_id ? Number(form.assignee_id) : null,
         targets: form.targets.map((t) => ({ target_type: t.target_type, target_id: t.target_id })),
       };
       const res = await apiFetch(editing ? `${url}?id=${editing.id}` : url, {
@@ -196,6 +198,7 @@ const TicketWatcherRules = () => {
         department_id: rule.department_id,
         priority_id: rule.priority_id,
         executor_group_id: rule.executor_group_id,
+        assignee_id: rule.assignee_id,
         targets: rule.targets.map((t) => ({ target_type: t.target_type, target_id: t.target_id })),
       };
       const res = await apiFetch(`${url}?id=${rule.id}`, {

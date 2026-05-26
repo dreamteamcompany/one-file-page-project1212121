@@ -160,7 +160,7 @@ def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '
     cur = conn.cursor()
     try:
         cur.execute(f"""
-            SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+            SELECT id, category_id, department_id, priority_id, executor_group_id, assigned_to, created_by
             FROM {SCHEMA}.tickets WHERE id = %s
         """, (ticket_id,))
         ticket = cur.fetchone()
@@ -169,7 +169,7 @@ def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '
 
         trigger_field = 'trigger_on_create' if trigger == 'create' else 'trigger_on_update'
         cur.execute(f"""
-            SELECT id, category_id, department_id, priority_id, executor_group_id
+            SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
             FROM {SCHEMA}.ticket_watcher_rules
             WHERE is_active = true AND {trigger_field} = true
         """)
@@ -184,6 +184,8 @@ def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '
             if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
                 continue
             if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+                continue
+            if r.get('assignee_id') and r['assignee_id'] != ticket.get('assigned_to'):
                 continue
             matched_ids.append(r['id'])
 

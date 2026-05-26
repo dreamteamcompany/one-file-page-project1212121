@@ -37,6 +37,8 @@ export interface WatcherRule {
   priority_name?: string | null;
   executor_group_id: number | null;
   executor_group_name?: string | null;
+  assignee_id: number | null;
+  assignee_name?: string | null;
   targets: RuleTarget[];
 }
 
@@ -51,6 +53,7 @@ export type FormState = {
   department_id: string;
   priority_id: string;
   executor_group_id: string;
+  assignee_id: string;
   targets: RuleTarget[];
 };
 
@@ -65,6 +68,7 @@ export const EMPTY_FORM: FormState = {
   department_id: '',
   priority_id: '',
   executor_group_id: '',
+  assignee_id: '',
   targets: [],
 };
 

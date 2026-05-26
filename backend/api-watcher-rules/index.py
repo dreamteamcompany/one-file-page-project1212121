@@ -114,12 +114,14 @@ def list_rules(conn):
                r.department_id, d.name AS department_name,
                r.priority_id, p.name AS priority_name,
                r.executor_group_id, g.name AS executor_group_name,
+               r.assignee_id, u.full_name AS assignee_name,
                r.created_at, r.updated_at
         FROM {SCHEMA}.ticket_watcher_rules r
         LEFT JOIN {SCHEMA}.ticket_categories c ON c.id = r.category_id
         LEFT JOIN {SCHEMA}.departments d ON d.id = r.department_id
         LEFT JOIN {SCHEMA}.ticket_priorities p ON p.id = r.priority_id
         LEFT JOIN {SCHEMA}.executor_groups g ON g.id = r.executor_group_id
+        LEFT JOIN {SCHEMA}.users u ON u.id = r.assignee_id
         ORDER BY r.created_at DESC
     """)
     rules = [dict(r) for r in cur.fetchall()]
@@ -137,6 +139,7 @@ def get_rule(conn, rule_id: int):
         SELECT r.id, r.name, r.description, r.is_active,
                r.trigger_on_create, r.trigger_on_update, r.trigger_on_executor_change,
                r.category_id, r.department_id, r.priority_id, r.executor_group_id,
+               r.assignee_id,
                r.created_at, r.updated_at
         FROM {SCHEMA}.ticket_watcher_rules r WHERE r.id = %s
     """, (rule_id,))
@@ -179,7 +182,7 @@ def _validate_rule_payload(body: Dict[str, Any]) -> Optional[str]:
     if not (on_create or on_update or on_executor_change):
         return 'Выберите хотя бы один триггер срабатывания'
     has_condition = any(safe_int(body.get(k)) for k in (
-        'category_id', 'department_id', 'priority_id', 'executor_group_id'
+        'category_id', 'department_id', 'priority_id', 'executor_group_id', 'assignee_id'
     ))
     if (on_create or on_update) and not has_condition:
         return 'Для триггеров «При создании»/«При изменении» укажите хотя бы одно условие в блоке «Если»'
@@ -198,8 +201,8 @@ def create_rule(conn, body: Dict[str, Any]):
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_watcher_rules
         (name, description, is_active, trigger_on_create, trigger_on_update, trigger_on_executor_change,
-         category_id, department_id, priority_id, executor_group_id)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+         category_id, department_id, priority_id, executor_group_id, assignee_id)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING id
     """, (
         (body.get('name') or '').strip(),
@@ -212,6 +215,7 @@ def create_rule(conn, body: Dict[str, Any]):
         safe_int(body.get('department_id')),
         safe_int(body.get('priority_id')),
         safe_int(body.get('executor_group_id')),
+        safe_int(body.get('assignee_id')),
     ))
     rule_id = cur.fetchone()['id']
 
@@ -244,6 +248,7 @@ def update_rule(conn, rule_id: int, body: Dict[str, Any]):
         SET name=%s, description=%s, is_active=%s,
             trigger_on_create=%s, trigger_on_update=%s, trigger_on_executor_change=%s,
             category_id=%s, department_id=%s, priority_id=%s, executor_group_id=%s,
+            assignee_id=%s,
             updated_at = NOW()
         WHERE id = %s
     """, (
@@ -257,6 +262,7 @@ def update_rule(conn, rule_id: int, body: Dict[str, Any]):
         safe_int(body.get('department_id')),
         safe_int(body.get('priority_id')),
         safe_int(body.get('executor_group_id')),
+        safe_int(body.get('assignee_id')),
         rule_id,
     ))
 
@@ -357,7 +363,7 @@ def apply_rules(conn, body: Dict[str, Any]):
 
     cur = conn.cursor()
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assigned_to, created_by
         FROM {SCHEMA}.tickets WHERE id = %s
     """, (ticket_id,))
     ticket = cur.fetchone()
@@ -367,7 +373,7 @@ def apply_rules(conn, body: Dict[str, Any]):
 
     trigger_field = 'trigger_on_create' if trigger == 'create' else 'trigger_on_update'
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
         FROM {SCHEMA}.ticket_watcher_rules
         WHERE is_active = true AND {trigger_field} = true
     """)
@@ -382,6 +388,8 @@ def apply_rules(conn, body: Dict[str, Any]):
         if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
             continue
         if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+            continue
+        if r.get('assignee_id') and r['assignee_id'] != ticket.get('assigned_to'):
             continue
         matched_ids.append(r['id'])
 
@@ -448,7 +456,7 @@ def apply_executor_change(conn, body: Dict[str, Any]):
 
     cur = conn.cursor()
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assigned_to, created_by
         FROM {SCHEMA}.tickets WHERE id = %s
     """, (ticket_id,))
     ticket = cur.fetchone()
@@ -457,11 +465,14 @@ def apply_executor_change(conn, body: Dict[str, Any]):
         return response(404, {'error': 'Заявка не найдена'})
 
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
         FROM {SCHEMA}.ticket_watcher_rules
         WHERE is_active = true AND trigger_on_executor_change = true
     """)
     rules = [dict(r) for r in cur.fetchall()]
+
+    # Для триггера смены исполнителя сравниваем условие assignee_id с НОВЫМ исполнителем.
+    compare_assignee = new_assignee if new_assignee else ticket.get('assigned_to')
 
     matched_ids: List[int] = []
     for r in rules:
@@ -472,6 +483,8 @@ def apply_executor_change(conn, body: Dict[str, Any]):
         if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
             continue
         if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+            continue
+        if r.get('assignee_id') and r['assignee_id'] != compare_assignee:
             continue
         matched_ids.append(r['id'])
 
@@ -571,7 +584,7 @@ def backfill_rules(conn, body: Dict[str, Any]):
     if rule_id:
         rule_filter_sql = f' AND id = {int(rule_id)}'
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assignee_id
         FROM {SCHEMA}.ticket_watcher_rules
         WHERE is_active = true AND trigger_on_create = true{rule_filter_sql}
     """)
@@ -608,7 +621,7 @@ def backfill_rules(conn, body: Dict[str, Any]):
     limit_sql = f' LIMIT {int(limit)}' if limit > 0 else ''
 
     cur.execute(f"""
-        SELECT id, category_id, department_id, priority_id, executor_group_id, created_by
+        SELECT id, category_id, department_id, priority_id, executor_group_id, assigned_to, created_by
         FROM {SCHEMA}.tickets
         WHERE 1=1{status_filter_sql}
         ORDER BY id ASC
@@ -633,6 +646,8 @@ def backfill_rules(conn, body: Dict[str, Any]):
             if r['priority_id'] and r['priority_id'] != ticket['priority_id']:
                 continue
             if r['executor_group_id'] and r['executor_group_id'] != ticket['executor_group_id']:
+                continue
+            if r.get('assignee_id') and r['assignee_id'] != ticket.get('assigned_to'):
                 continue
             matched_rule_ids.append(int(r['id']))
 

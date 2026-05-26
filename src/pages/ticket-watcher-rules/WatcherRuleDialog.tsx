@@ -215,6 +215,24 @@ const WatcherRuleDialog = ({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Исполнитель</Label>
+                <Select
+                  value={form.assignee_id || 'any'}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, assignee_id: v === 'any' ? '' : v }))
+                  }
+                >
+                  <SelectTrigger><SelectValue placeholder="Любой" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Любой</SelectItem>
+                    {reference?.users.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
