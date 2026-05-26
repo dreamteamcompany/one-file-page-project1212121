@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, API_URL } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,76 +37,94 @@ export interface Service {
   created_at: string;
 }
 
+const STALE_TIME = 5 * 60 * 1000;
+
+const fetchJson = async <T>(endpoint: string): Promise<T[]> => {
+  const response = await apiFetch(`${API_URL}?endpoint=${endpoint}`);
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+};
+
+const fetchUsers = async (): Promise<User[]> => {
+  const response = await apiFetch(`${API_URL}?endpoint=users`);
+  const data = await response.json();
+  if (Array.isArray(data)) return data as User[];
+  return (data.users as User[]) || [];
+};
+
+const fetchDepartments = async (): Promise<CustomerDepartment[]> => {
+  const response = await apiFetch(`${API_URL}?endpoint=customer-departments`);
+  const data = await response.json();
+  if (Array.isArray(data)) return data as CustomerDepartment[];
+  return (data.departments as CustomerDepartment[]) || [];
+};
+
 export const useServices = () => {
-  const [services, setServices] = useState<Service[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<CustomerDepartment[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadServices();
-    loadUsers();
-    loadDepartments();
-    loadCategories();
-  }, []);
+  const servicesQuery = useQuery({
+    queryKey: ['services-list'],
+    queryFn: async () => {
+      try {
+        return await fetchJson<Service>('services');
+      } catch (error) {
+        console.error('[Services] Failed to load services:', error);
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось загрузить сервисы',
+          variant: 'destructive',
+        });
+        return [] as Service[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadServices = async () => {
-    try {
-      console.log('[Services] Loading services...');
-      const response = await apiFetch(`${API_URL}?endpoint=services`);
-      console.log('[Services] Response status:', response.status);
-      const data = await response.json();
-      console.log('[Services] Data received:', data);
-      const services = Array.isArray(data) ? data : [];
-      console.log('[Services] Setting services:', services.length, 'items');
-      setServices(services);
-    } catch (error) {
-      console.error('[Services] Failed to load services:', error);
-      setServices([]);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить сервисы',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const usersQuery = useQuery({
+    queryKey: ['services-users'],
+    queryFn: async () => {
+      try {
+        return await fetchUsers();
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        return [] as User[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadUsers = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=users`);
-      const data = await response.json();
-      setUsers(Array.isArray(data) ? data : data.users || []);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-      setUsers([]);
-    }
-  };
+  const departmentsQuery = useQuery({
+    queryKey: ['customer-departments'],
+    queryFn: async () => {
+      try {
+        return await fetchDepartments();
+      } catch (error) {
+        console.error('Failed to load departments:', error);
+        return [] as CustomerDepartment[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadDepartments = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=customer-departments`);
-      const data = await response.json();
-      setDepartments(Array.isArray(data) ? data : data.departments || []);
-    } catch (error) {
-      console.error('Failed to load departments:', error);
-      setDepartments([]);
-    }
-  };
+  const categoriesQuery = useQuery({
+    queryKey: ['ticket-service-categories'],
+    queryFn: async () => {
+      try {
+        return await fetchJson<Category>('ticket-service-categories');
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+        return [] as Category[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadCategories = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-service-categories`);
-      const data = await response.json();
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-      setCategories([]);
-    }
-  };
+  const services = servicesQuery.data ?? [];
+  const users = usersQuery.data ?? [];
+  const departments = departmentsQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const loading = servicesQuery.isLoading;
 
   const saveService = async (
     formData: {
@@ -152,7 +170,7 @@ export const useServices = () => {
           title: 'Успешно',
           description: editingService ? 'Сервис обновлён' : 'Сервис создан',
         });
-        loadServices();
+        await queryClient.invalidateQueries({ queryKey: ['services-list'] });
         return true;
       } else {
         throw new Error('Failed to save service');
@@ -181,7 +199,7 @@ export const useServices = () => {
           title: 'Успешно',
           description: 'Сервис удалён',
         });
-        loadServices();
+        await queryClient.invalidateQueries({ queryKey: ['services-list'] });
         return true;
       } else {
         throw new Error('Failed to delete service');

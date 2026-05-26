@@ -22,7 +22,9 @@ import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { usePasteImage } from '@/hooks/usePasteImage';
 import { renderCustomField } from './TicketFormStep4';
-import { useTicketServices } from '@/hooks/useTicketServices';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch, API_URL } from '@/utils/api';
+import type { TicketService } from '@/hooks/useTicketServices';
 
 interface CustomFieldOnTicket {
   id: number;
@@ -65,7 +67,18 @@ const EditTicketContentDialog = ({
   onSave,
 }: EditTicketContentDialogProps) => {
   const { toast } = useToast();
-  const { ticketServices, loading: servicesLoading } = useTicketServices();
+  const ticketServicesQuery = useQuery({
+    queryKey: ['ticket-services'],
+    queryFn: async () => {
+      const response = await apiFetch(`${API_URL}?endpoint=ticket_services`);
+      const data = await response.json();
+      return (Array.isArray(data) ? data : []) as TicketService[];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: open,
+  });
+  const ticketServices = ticketServicesQuery.data ?? [];
+  const servicesLoading = ticketServicesQuery.isLoading;
 
   const initialCustomFields = useMemo(() => {
     const acc: Record<string, string> = {};

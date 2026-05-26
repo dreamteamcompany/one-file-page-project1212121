@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, API_URL } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,59 +28,66 @@ export interface Category {
   icon: string;
 }
 
+const STALE_TIME = 5 * 60 * 1000;
+
+const fetchJson = async <T>(endpoint: string): Promise<T[]> => {
+  const response = await apiFetch(`${API_URL}?endpoint=${endpoint}`);
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+};
+
 export const useTicketServices = () => {
-  const [ticketServices, setTicketServices] = useState<TicketService[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadTicketServices();
-    loadServices();
-    loadCategories();
-  }, []);
+  const ticketServicesQuery = useQuery({
+    queryKey: ['ticket-services'],
+    queryFn: async () => {
+      try {
+        return await fetchJson<TicketService>('ticket_services');
+      } catch (error) {
+        console.error('Failed to load ticket services:', error);
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось загрузить услуги заявок',
+          variant: 'destructive',
+        });
+        return [] as TicketService[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadTicketServices = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket_services`);
-      const data = await response.json();
-      console.log('Loaded ticket services:', data);
-      setTicketServices(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load ticket services:', error);
-      setTicketServices([]);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить услуги заявок',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const servicesQuery = useQuery({
+    queryKey: ['services-list'],
+    queryFn: async () => {
+      try {
+        return await fetchJson<Service>('services');
+      } catch (error) {
+        console.error('Failed to load services:', error);
+        return [] as Service[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadServices = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=services`);
-      const data = await response.json();
-      setServices(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load services:', error);
-      setServices([]);
-    }
-  };
+  const categoriesQuery = useQuery({
+    queryKey: ['ticket-service-categories'],
+    queryFn: async () => {
+      try {
+        return await fetchJson<Category>('ticket-service-categories');
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+        return [] as Category[];
+      }
+    },
+    staleTime: STALE_TIME,
+  });
 
-  const loadCategories = async () => {
-    try {
-      const response = await apiFetch(`${API_URL}?endpoint=ticket-service-categories`);
-      const data = await response.json();
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-      setCategories([]);
-    }
-  };
+  const ticketServices = ticketServicesQuery.data ?? [];
+  const services = servicesQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const loading = ticketServicesQuery.isLoading;
 
   const saveTicketService = async (
     formData: {
@@ -110,8 +117,6 @@ export const useTicketServices = () => {
       service_ids: selectedServiceIds,
       visible_to_user_ids: visibleToUserIds,
     };
-    
-    console.log('Saving ticket service with payload:', payload);
 
     try {
       const url = editingService
@@ -125,14 +130,13 @@ export const useTicketServices = () => {
       });
 
       const responseData = await response.json();
-      console.log('Response from server:', responseData);
 
       if (response.ok) {
         toast({
           title: 'Успешно',
           description: editingService ? 'Услуга обновлена' : 'Услуга создана',
         });
-        await loadTicketServices();
+        await queryClient.invalidateQueries({ queryKey: ['ticket-services'] });
         return true;
       } else {
         throw new Error(responseData.error || 'Failed to save ticket service');
@@ -161,7 +165,7 @@ export const useTicketServices = () => {
           title: 'Успешно',
           description: 'Услуга удалена',
         });
-        loadTicketServices();
+        await queryClient.invalidateQueries({ queryKey: ['ticket-services'] });
         return true;
       } else {
         const errorData = await response.json();
