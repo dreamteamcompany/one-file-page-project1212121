@@ -2307,6 +2307,18 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
                 except Exception as bot_err:
                     print(f"[bitrix-bot] watcher_added notification failed: {bot_err}")
 
+                # Уведомление в MAX-бот
+                try:
+                    headers = event.get('headers') or {}
+                    app_origin = headers.get('Origin') or headers.get('origin') or ''
+                    max_notify_watcher_added(
+                        cur, SCHEMA, int(ticket_id), int(watcher_user_id),
+                        actor_user_id=int(payload.get('user_id') or 0),
+                        app_origin=app_origin,
+                    )
+                except Exception as bot_err:
+                    print(f"[max-bot] watcher_added notification failed: {bot_err}")
+
             cur.execute(f"""
                 SELECT tw.id, tw.user_id, tw.added_at,
                        u.full_name, u.username as email, u.photo_url
