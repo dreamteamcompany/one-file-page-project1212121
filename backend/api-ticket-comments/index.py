@@ -392,6 +392,30 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
         explicit.add(author)
         c['read_by'] = sorted(explicit)
 
+    # Для последнего (самого нового) комментария отдаём расширенную информацию
+    # о прочитавших: ФИО, фото, время прочтения — для индикатора «Просмотрено: ...».
+    # Автора комментария в этот список не включаем (он не «читал» — он написал).
+    if comments:
+        latest = comments[0]  # ORDER BY created_at DESC => первый — самый новый
+        latest_id = latest['id']
+        cur.execute(f"""
+            SELECT r.user_id, r.read_at,
+                   u.full_name, u.username, u.photo_url
+            FROM {SCHEMA}.ticket_comment_reads r
+            LEFT JOIN {SCHEMA}.users u ON u.id = r.user_id
+            WHERE r.comment_id = %s AND r.user_id <> %s
+            ORDER BY r.read_at ASC
+        """, (latest_id, latest['user_id']))
+        latest['read_by_users'] = [
+            {
+                'user_id': r['user_id'],
+                'full_name': r.get('full_name') or r.get('username') or '',
+                'photo_url': r.get('photo_url'),
+                'read_at': r['read_at'].isoformat() if r.get('read_at') else None,
+            }
+            for r in cur.fetchall()
+        ]
+
     attachments_map: Dict[int, List[Dict[str, Any]]] = {cid: [] for cid in comment_ids}
     if comment_ids:
         ids_csv = ','.join(str(int(i)) for i in comment_ids)

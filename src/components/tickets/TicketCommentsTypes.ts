@@ -16,6 +16,12 @@ export interface Comment {
   parent_comment_id?: number;
   mentioned_user_ids?: number[];
   read_by?: number[];
+  read_by_users?: {
+    user_id: number;
+    full_name: string;
+    photo_url?: string | null;
+    read_at?: string | null;
+  }[];
   is_pinned?: boolean;
   pinned_at?: string;
   pinned_by?: number;

@@ -20,6 +20,7 @@ import TicketCommentsPinned from './TicketCommentsPinned';
 import TicketCommentItem from './TicketCommentItem';
 import TicketCommentsInput from './TicketCommentsInput';
 import TicketEventItem from './TicketEventItem';
+import CommentReadIndicator from './CommentReadIndicator';
 import type { HistoryLog } from './TicketEventItem';
 
 const TicketComments = ({
@@ -81,6 +82,7 @@ const TicketComments = ({
   const frozenLastSeen = frozenLastSeenRef.current;
 
   const sortedAsc = [...comments].sort((a, b) => getMskTimestamp(a.created_at) - getMskTimestamp(b.created_at));
+  const latestCommentId = sortedAsc.length > 0 ? sortedAsc[sortedAsc.length - 1].id : null;
 
   type FeedItem =
     | { kind: 'comment'; data: Comment; idx: number }
@@ -348,25 +350,28 @@ const TicketComments = ({
             const showNewDivider = item.idx === firstNewIndex;
             const status = isOwn ? getReadStatus(comment) : null;
 
+            const isLatest = comment.id === latestCommentId;
             return (
-              <TicketCommentItem
-                key={comment.id}
-                comment={comment}
-                parentComment={parentComment ?? null}
-                isOwn={isOwn}
-                showNewDivider={showNewDivider}
-                status={status}
-                availableUsers={availableUsers}
-                canEditComments={canEditComments}
-                canDeleteComments={canDeleteComments}
-                onTogglePin={onTogglePin}
-                onEditComment={onEditComment}
-                onDeleteComment={onDeleteComment}
-                onReply={handleReply}
-                onSetEditTarget={setEditTarget}
-                onSetDeleteTargetId={setDeleteTargetId}
-                observeRef={(el) => observeComment(el, comment)}
-              />
+              <div key={comment.id}>
+                <TicketCommentItem
+                  comment={comment}
+                  parentComment={parentComment ?? null}
+                  isOwn={isOwn}
+                  showNewDivider={showNewDivider}
+                  status={status}
+                  availableUsers={availableUsers}
+                  canEditComments={canEditComments}
+                  canDeleteComments={canDeleteComments}
+                  onTogglePin={onTogglePin}
+                  onEditComment={onEditComment}
+                  onDeleteComment={onDeleteComment}
+                  onReply={handleReply}
+                  onSetEditTarget={setEditTarget}
+                  onSetDeleteTargetId={setDeleteTargetId}
+                  observeRef={(el) => observeComment(el, comment)}
+                />
+                {isLatest && <CommentReadIndicator comment={comment} />}
+              </div>
             );
           })
         )}
