@@ -1,139 +1,12 @@
 import { useState, useEffect } from 'react';
-import Icon from '@/components/ui/icon';
-import { Button } from '@/components/ui/button';
-import RichText from '@/components/shared/RichText';
-import TicketComments from '@/components/tickets/TicketComments';
-import TicketHistory from '@/components/tickets/TicketHistory';
-import TicketFiles from '@/components/tickets/TicketFiles';
 import EditTicketContentDialog from '@/components/tickets/EditTicketContentDialog';
-import { isoToDisplay } from '@/components/ui/date-masked-input';
-import { displayFromStorage as phoneDisplay } from '@/components/ui/phone-masked-input';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseServerDate, getDeadlineSeverity } from '@/utils/dateFormat';
-
-interface CustomField {
-  id: number;
-  name: string;
-  field_type: string;
-  value: string;
-  display_value?: string;
-  hide_label?: boolean;
-}
-
-interface Ticket {
-  id: number;
-  title: string;
-  description?: string;
-  category_id?: number;
-  category_name?: string;
-  category_icon?: string;
-  priority_id?: number;
-  priority_name?: string;
-  priority_color?: string;
-  status_id?: number;
-  status_name?: string;
-  status_color?: string;
-  department_id?: number;
-  department_name?: string;
-  created_by: number;
-  creator_name?: string;
-  creator_email?: string;
-  creator_photo_url?: string;
-  assigned_to?: number;
-  assignee_name?: string;
-  assignee_email?: string;
-  assignee_photo_url?: string;
-  due_date?: string;
-  created_at?: string;
-  updated_at?: string;
-  closed_at?: string;
-  custom_fields?: CustomField[];
-  ticket_service?: {
-    id: number;
-    name: string;
-  };
-  services?: Array<{
-    id: number;
-    name: string;
-    category_name?: string;
-  }>;
-}
-
-interface Comment {
-  id: number;
-  ticket_id: number;
-  user_id: number;
-  user_name?: string;
-  user_full_name?: string;
-  user_photo_url?: string;
-  user_email?: string;
-  comment: string;
-  is_internal: boolean;
-  created_at?: string;
-  attachments?: {
-    id: number;
-    filename: string;
-    url: string;
-    size: number;
-  }[];
-  reactions?: {
-    emoji: string;
-    count: number;
-    users: number[];
-  }[];
-}
-
-interface AuditLog {
-  id: number;
-  field_name: string;
-  user_name?: string;
-  user_full_name?: string;
-  old_value?: string;
-  new_value?: string;
-  created_at: string;
-}
-
-interface TicketDetailsContentProps {
-  ticket: Ticket;
-  comments: Comment[];
-  loadingComments: boolean;
-  newComment: string;
-  submittingComment: boolean;
-  sendingPing: boolean;
-  userId?: number;
-  onCommentChange: (value: string) => void;
-  onSubmitComment: (parentCommentId?: number, mentionedUserIds?: number[], overrideText?: string) => void;
-  onSendPing: () => void;
-  onReaction: (commentId: number, emoji: string) => void;
-  onTogglePin?: (commentId: number) => void;
-  onDeleteComment?: (commentId: number) => void | Promise<void | boolean>;
-  onEditComment?: (
-    commentId: number,
-    data: { comment?: string; created_at?: string },
-  ) => Promise<boolean>;
-  canDeleteComments?: boolean;
-  canEditComments?: boolean;
-  availableUsers?: Array<{id: number; name: string; email: string}>;
-  onFileUpload?: (fileOrFiles: File | FileList | File[]) => Promise<void>;
-  uploadingFile?: boolean;
-  pendingAttachments?: import('@/hooks/useFileUploader').UploadedAttachment[];
-  onRemoveAttachment?: (id: string) => void;
-  auditLogs?: AuditLog[];
-  loadingHistory?: boolean;
-  commentsBlocked?: boolean;
-  commentsBlockedMessage?: string;
-  participantIds?: number[];
-  myLastSeenAt?: string | null;
-  onMarkRead?: (commentIds: number[]) => void;
-  onUpdateContent?: (payload: {
-    title?: string;
-    description?: string;
-    custom_fields?: Record<string, string>;
-    ticket_service_id?: number | null;
-  }) => Promise<boolean>;
-  updating?: boolean;
-  headerSlot?: React.ReactNode;
-}
+import { TicketDetailsContentProps } from './TicketDetailsContent.types';
+import TicketContentHeader from './TicketContentHeader';
+import TicketCustomFields from './TicketCustomFields';
+import TicketDescription from './TicketDescription';
+import TicketContentTabs from './TicketContentTabs';
 
 const TicketDetailsContent = ({
   ticket,
@@ -182,7 +55,7 @@ const TicketDetailsContent = ({
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -211,267 +84,77 @@ const TicketDetailsContent = ({
 
   return (
     <>
-    <div className="flex-1 min-w-0 lg:pl-6 lg:flex lg:flex-col lg:min-h-0">
-      {/* Суть заявки */}
-      <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
-        {/* Строка: заголовок + метаданные + дополнительные поля */}
-        <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
-          <div className="flex-1 min-w-0">
-            {headerSlot && (
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                {headerSlot}
-              </div>
-            )}
-            <div className="flex items-start gap-2 mb-4 md:mb-6">
-              <h1 className="text-xl md:text-2xl font-bold text-foreground flex-1 min-w-0 break-words">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-base font-semibold mr-2 align-middle">#{ticket.id}</span>{ticket.title}
-              </h1>
-              {canEditContent && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground"
-                  title="Редактировать содержание"
-                  onClick={() => setEditContentOpen(true)}
-                >
-                  <Icon name="Pencil" size={16} />
-                </Button>
-              )}
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm">
-              {ticket.due_date && deadlineInfo && (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Дедлайн</span>
-                  <div className="flex items-center gap-2">
-                    <Icon name="Clock" size={16} style={{ color: deadlineInfo.color }} />
-                    <span style={{ color: deadlineInfo.color }} className="font-medium">{deadlineInfo.label}</span>
-                  </div>
-                </div>
-              )}
-              {ticket.created_at && (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Дата создания</span>
-                  <div className="flex items-center gap-2">
-                    <Icon name="Calendar" size={16} className="text-muted-foreground" />
-                    <span className="text-muted-foreground">{formatDate(ticket.created_at)}</span>
-                  </div>
-                </div>
-              )}
-              {ticket.creator_name && (
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Заказчик</span>
-                  <div className="flex items-center gap-2">
-                    {ticket.creator_photo_url ? (
-                      <img src={ticket.creator_photo_url} alt={ticket.creator_name} className="w-5 h-5 rounded-full object-cover" />
-                    ) : (
-                      <Icon name="User" size={16} className="text-muted-foreground" />
-                    )}
-                    <span className="font-medium text-foreground">{ticket.creator_name}</span>
-                  </div>
-                </div>
-              )}
-            </div>
+      <div className="flex-1 min-w-0 lg:pl-6 lg:flex lg:flex-col lg:min-h-0">
+        {/* Суть заявки */}
+        <div className="mb-6 border rounded-lg p-4 md:p-6 lg:pl-[18px] lg:pr-2 bg-card overflow-hidden">
+          {/* Строка: заголовок + метаданные + дополнительные поля */}
+          <div className={`flex flex-col ${isShortDescription ? '' : 'md:flex-row'} gap-6`}>
+            <TicketContentHeader
+              ticket={ticket}
+              canEditContent={canEditContent}
+              onOpenEdit={() => setEditContentOpen(true)}
+              deadlineInfo={deadlineInfo}
+              formatDate={formatDate}
+              headerSlot={headerSlot}
+            />
+
+            <TicketCustomFields
+              ticket={ticket}
+              isShortDescription={isShortDescription}
+              copiedFieldId={copiedFieldId}
+              setCopiedFieldId={setCopiedFieldId}
+              canCallPhone={canCallPhone}
+            />
           </div>
 
-          {((ticket.custom_fields && ticket.custom_fields.length > 0) || ticket.ticket_service || (ticket.services && ticket.services.length > 0)) && (
-            <div className={`w-full ${isShortDescription ? '' : 'md:w-[420px]'} flex-shrink-0 flex flex-col self-stretch`}>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Icon name="Settings" size={16} className="text-muted-foreground" />
-                Дополнительные поля
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {ticket.ticket_service && (
-                  <div className="p-3 rounded-lg bg-muted/30 border col-span-2">
-                    <p className="text-xs text-muted-foreground mb-1">Услуга</p>
-                    <p className="text-sm font-medium text-foreground">{ticket.ticket_service.name}</p>
-                  </div>
-                )}
-                {ticket.services && ticket.services.length > 0 && ticket.services.map((service) => (
-                  <div key={service.id} className="p-3 rounded-lg bg-muted/30 border col-span-2">
-                    <p className="text-xs text-muted-foreground mb-1">Сервис</p>
-                    <p className="text-sm font-medium text-foreground">{service.name}</p>
-                    {service.category_name && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{service.category_name}</p>
-                    )}
-                  </div>
-                ))}
-                {ticket.custom_fields?.map((field) => {
-                  const rawValue = field.display_value || field.value || '—';
-                  const displayText = (field.field_type === 'checkbox' || field.field_type === 'toggle')
-                    ? (rawValue === 'true' || rawValue === 'True' ? 'Да' : rawValue === 'false' || rawValue === 'False' ? 'Нет' : rawValue)
-                    : field.field_type === 'date' && rawValue !== '—'
-                      ? (isoToDisplay(rawValue) || rawValue)
-                      : field.field_type === 'phone' && rawValue !== '—'
-                        ? phoneDisplay(rawValue)
-                        : rawValue;
-                  const isLongValue = displayText.length > 25 || field.name.length > 20;
-                  const isChain = field.field_type === 'company_structure' && displayText.includes('→');
-                  const isPhone = field.field_type === 'phone';
-                  const canCopy = rawValue !== '—';
-                  const isCopied = copiedFieldId === field.id;
-                  const phoneRaw = isPhone ? (field.value || '').replace(/\D/g, '') : '';
-                  const handleFieldCopy = () => {
-                    if (!canCopy) return;
-                    navigator.clipboard.writeText(isPhone ? phoneRaw : displayText);
-                    setCopiedFieldId(field.id);
-                    setTimeout(() => setCopiedFieldId(null), 1500);
-                  };
-                  return (
-                    <div
-                      key={field.id}
-                      onClick={handleFieldCopy}
-                      className={`p-3 rounded-lg bg-muted/30 border ${isLongValue ? 'col-span-2' : ''} ${canCopy ? 'cursor-pointer hover:bg-muted/50 active:bg-muted/70 transition-colors relative group' : ''}`}
-                    >
-                      {!field.hide_label && <p className="text-xs text-muted-foreground mb-1 truncate">{field.name}</p>}
-                      {isChain ? (
-                        <p className="text-sm text-foreground break-words">
-                          {displayText.split('→').slice(0, -1).map((part, i) => (
-                            <span key={i} className="text-muted-foreground">{part.trim()}{' → '}</span>
-                          ))}
-                          <span className="font-bold text-foreground">{displayText.split('→').pop()?.trim()}</span>
-                        </p>
-                      ) : isPhone ? (
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-foreground break-words">{displayText}</p>
-                          {canCallPhone && phoneRaw && (
-                            <a
-                              href={`tel:+${phoneRaw}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="shrink-0 w-7 h-7 rounded-full bg-green-500/15 hover:bg-green-500/25 active:bg-green-500/35 flex items-center justify-center transition-colors"
-                            >
-                              <Icon name="Phone" size={14} className="text-green-600" />
-                            </a>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium text-foreground break-words">{displayText}</p>
-                      )}
-                      {canCopy && (
-                        <span className={`absolute top-2 right-2 transition-opacity ${isCopied ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}>
-                          {isCopied ? (
-                            <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded">
-                              <Icon name="Check" size={12} />
-                              Скопировано
-                            </span>
-                          ) : (
-                            <Icon name="Copy" size={14} className="text-muted-foreground" />
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <TicketDescription description={ticket.description} />
         </div>
 
-        {ticket.description && (
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Содержание</h3>
-            <RichText text={ticket.description} className="text-sm leading-relaxed text-foreground" />
-          </div>
-        )}
+        {/* Комментарии, Файлы и История (вкладки) */}
+        <TicketContentTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          ticket={ticket}
+          comments={comments}
+          loadingComments={loadingComments}
+          newComment={newComment}
+          submittingComment={submittingComment}
+          sendingPing={sendingPing}
+          userId={userId}
+          onCommentChange={onCommentChange}
+          onSubmitComment={onSubmitComment}
+          onSendPing={onSendPing}
+          onReaction={onReaction}
+          onTogglePin={onTogglePin}
+          onDeleteComment={onDeleteComment}
+          onEditComment={onEditComment}
+          canDeleteComments={canDeleteComments}
+          canEditComments={canEditComments}
+          availableUsers={availableUsers}
+          onFileUpload={onFileUpload}
+          uploadingFile={uploadingFile}
+          pendingAttachments={pendingAttachments}
+          onRemoveAttachment={onRemoveAttachment}
+          auditLogs={auditLogs}
+          loadingHistory={loadingHistory}
+          commentsBlocked={commentsBlocked}
+          commentsBlockedMessage={commentsBlockedMessage}
+          participantIds={participantIds}
+          myLastSeenAt={myLastSeenAt}
+          onMarkRead={onMarkRead}
+          canUseTemplates={hasSystemRole('admin', 'executor')}
+          canUseAI={hasSystemRole('admin', 'executor')}
+        />
       </div>
-
-      {/* Комментарии, Файлы и История (вкладки) */}
-      <div
-        className="rounded-lg bg-card border mb-6 lg:mb-0 flex flex-col w-full max-w-full overflow-x-hidden"
-        style={{ height: '820px', minHeight: '400px', maxHeight: '85vh', touchAction: 'pan-y' }}
-      >
-        <div className="flex gap-6 px-4 pt-3 border-b shrink-0">
-          <button 
-            onClick={() => setActiveTab('comments')}
-            className={`pb-2 border-b-2 text-sm font-semibold transition-all ${
-              activeTab === 'comments' 
-                ? 'border-primary text-foreground' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Комментарии {loadingComments && comments.length === 0 ? '' : `(${comments.length})`}
-          </button>
-          <button 
-            onClick={() => setActiveTab('files')}
-            className={`pb-2 border-b-2 text-sm transition-all ${
-              activeTab === 'files' 
-                ? 'border-primary text-foreground font-semibold' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Файлы {loadingComments && comments.length === 0 ? '' : `(${comments.reduce((s, c) => s + (c.attachments?.length || 0), 0)})`}
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`pb-2 border-b-2 text-sm transition-all ${
-              activeTab === 'history' 
-                ? 'border-primary text-foreground font-semibold' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            История ({auditLogs.length})
-          </button>
-        </div>
-
-      {/* Контент вкладок */}
-      <div className="p-4 flex-1 min-h-0 flex flex-col w-full max-w-full overflow-x-hidden">
-        {activeTab === 'comments' && (
-          <TicketComments
-            comments={comments}
-            loadingComments={loadingComments}
-            newComment={newComment}
-            submittingComment={submittingComment}
-            onCommentChange={onCommentChange}
-            onSubmitComment={onSubmitComment}
-            isCustomer={ticket.created_by === userId}
-            hasAssignee={!!ticket.assigned_to}
-            sendingPing={sendingPing}
-            onSendPing={onSendPing}
-            currentUserId={userId}
-            onReaction={onReaction}
-            onTogglePin={onTogglePin}
-            onDeleteComment={onDeleteComment}
-            onEditComment={onEditComment}
-            canDeleteComments={canDeleteComments}
-            canEditComments={canEditComments}
-            availableUsers={availableUsers}
-            onFileUpload={onFileUpload}
-            uploadingFile={uploadingFile}
-            pendingAttachments={pendingAttachments}
-            onRemoveAttachment={onRemoveAttachment}
-            commentsBlocked={commentsBlocked}
-            commentsBlockedMessage={commentsBlockedMessage}
-            participantIds={participantIds}
-            myLastSeenAt={myLastSeenAt}
-            onMarkRead={onMarkRead}
-            auditLogs={auditLogs}
-            canUseTemplates={hasSystemRole('admin', 'executor')}
-            canUseAI={hasSystemRole('admin', 'executor')}
-          />
-        )}
-        
-        {activeTab === 'files' && (
-          <TicketFiles comments={comments} />
-        )}
-        
-        {activeTab === 'history' && (
-          <TicketHistory 
-            logs={auditLogs} 
-            loading={loadingHistory}
-          />
-        )}
-      </div>
-      </div>
-    </div>
-    {canEditContent && onUpdateContent && (
-      <EditTicketContentDialog
-        open={editContentOpen}
-        onOpenChange={setEditContentOpen}
-        ticket={ticket}
-        updating={updating}
-        onSave={onUpdateContent}
-      />
-    )}
+      {canEditContent && onUpdateContent && (
+        <EditTicketContentDialog
+          open={editContentOpen}
+          onOpenChange={setEditContentOpen}
+          ticket={ticket}
+          updating={updating}
+          onSave={onUpdateContent}
+        />
+      )}
     </>
   );
 };
