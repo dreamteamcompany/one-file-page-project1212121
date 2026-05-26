@@ -451,6 +451,17 @@ def apply_rules(conn, body: Dict[str, Any]):
         except Exception as imp_err:
             print(f"[bitrix-bot] import notifier failed: {imp_err}")
 
+        try:
+            from max_bot_notifier import notify_watcher_added as max_notify_watcher_added
+            app_origin = (body.get('app_origin') if isinstance(body, dict) else '') or ''
+            for uid in added:
+                try:
+                    max_notify_watcher_added(cur, SCHEMA, int(ticket_id), int(uid), app_origin=app_origin)
+                except Exception as bot_err:
+                    print(f"[max-bot] watcher rule notification failed t={ticket_id} u={uid}: {bot_err}")
+        except Exception as imp_err:
+            print(f"[max-bot] import notifier failed: {imp_err}")
+
     cur.close()
     return response(200, {
         'success': True,
@@ -548,6 +559,17 @@ def apply_executor_change(conn, body: Dict[str, Any]):
                     print(f"[bitrix-bot] exec change watcher notif failed t={ticket_id} u={uid}: {bot_err}")
         except Exception as imp_err:
             print(f"[bitrix-bot] import notifier failed: {imp_err}")
+
+        try:
+            from max_bot_notifier import notify_watcher_added as max_notify_watcher_added
+            app_origin = (body.get('app_origin') if isinstance(body, dict) else '') or ''
+            for uid in added:
+                try:
+                    max_notify_watcher_added(cur, SCHEMA, int(ticket_id), int(uid), app_origin=app_origin)
+                except Exception as bot_err:
+                    print(f"[max-bot] exec change watcher notif failed t={ticket_id} u={uid}: {bot_err}")
+        except Exception as imp_err:
+            print(f"[max-bot] import notifier failed: {imp_err}")
 
     cur.close()
     return response(200, {
@@ -708,6 +730,16 @@ def backfill_rules(conn, body: Dict[str, Any]):
                     print(f"[backfill] notify failed t={item['ticket_id']} u={item['user_id']}: {bot_err}")
         except Exception as imp_err:
             print(f"[backfill] notifier import failed: {imp_err}")
+
+        try:
+            from max_bot_notifier import notify_watcher_added as max_notify_watcher_added
+            for item in notify_queue:
+                try:
+                    max_notify_watcher_added(cur, SCHEMA, item['ticket_id'], item['user_id'], app_origin=app_origin)
+                except Exception as bot_err:
+                    print(f"[backfill][max] notify failed t={item['ticket_id']} u={item['user_id']}: {bot_err}")
+        except Exception as imp_err:
+            print(f"[backfill][max] notifier import failed: {imp_err}")
 
     cur.close()
     return response(200, {
