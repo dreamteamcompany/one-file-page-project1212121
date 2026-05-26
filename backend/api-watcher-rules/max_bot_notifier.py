@@ -44,7 +44,7 @@ def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket
             data=data,
             headers={
                 'Content-Type': 'application/json; charset=utf-8',
-                'Authorization': f'Bearer {MAX_BOT_TOKEN}',
+                'Authorization': MAX_BOT_TOKEN,
             },
             method='POST',
         )

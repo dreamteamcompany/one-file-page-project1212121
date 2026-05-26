@@ -7,7 +7,8 @@ import urllib.parse
 import urllib.error
 
 MAX_BOT_TOKEN = os.environ.get('MAX_BOT_TOKEN', '')
-MAX_API_BASE = 'https://botapi.max.ru'
+MAX_API_BASE = 'https://botapi.max.ru'  # старый домен, всё ещё рабочий
+# MAX требует токен в заголовке Authorization БЕЗ префикса Bearer
 
 
 def _strip_bbcode(text: str) -> str:
@@ -59,7 +60,7 @@ def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket
             data=data,
             headers={
                 'Content-Type': 'application/json; charset=utf-8',
-                'Authorization': f'Bearer {MAX_BOT_TOKEN}',
+                'Authorization': MAX_BOT_TOKEN,
             },
             method='POST',
         )
@@ -102,7 +103,7 @@ def _send_max_message_chat(chat_id: str, text: str, ticket_id: int = None, ticke
             data=data,
             headers={
                 'Content-Type': 'application/json; charset=utf-8',
-                'Authorization': f'Bearer {MAX_BOT_TOKEN}',
+                'Authorization': MAX_BOT_TOKEN,
             },
             method='POST',
         )
