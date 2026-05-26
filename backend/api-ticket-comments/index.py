@@ -14,6 +14,24 @@ from shared_utils import response, get_db_connection, verify_token, handle_optio
 
 MENTION_RE = re.compile(r'@([a-zA-Z0-9_.\-]+)')
 
+# Удаление markdown-изображений из текста (для уведомлений в Битрикс).
+# Покрывает: ![alt](data:...), ![alt](url), <img src="...">, голые data:...;base64,...
+_MD_IMG_RE = re.compile(r'!\[[^\]]*\]\([^)]*\)')
+_HTML_IMG_RE = re.compile(r'<img\b[^>]*>', re.IGNORECASE)
+_BARE_DATA_URI_RE = re.compile(r'data:[^;\s)]+;base64,[A-Za-z0-9+/=]+')
+
+
+def _strip_markdown_images(text: str) -> str:
+    """Полностью вырезает изображения (markdown/html/base64) из текста без замены."""
+    if not text:
+        return text
+    out = _MD_IMG_RE.sub('', text)
+    out = _HTML_IMG_RE.sub('', out)
+    out = _BARE_DATA_URI_RE.sub('', out)
+    out = re.sub(r'[ \t]+\n', '\n', out)
+    out = re.sub(r'\n{3,}', '\n\n', out)
+    return out.strip()
+
 # Лимит размера ответа Cloud Functions (~4 МБ). Чтобы гарантированно влезть,
 # вырезаем огромные inline base64-изображения из текста комментариев и заменяем
 # их специальным маркером. Фронтенд (если потребуется) подгрузит оригиналы
@@ -556,9 +574,10 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     try:
         comment_id = comment.get('id')
         comment_text = data.comment or ''
-        preview = (comment_text[:120] + '...') if len(comment_text) > 120 else comment_text
+        clean_preview_text = _strip_markdown_images(comment_text)
+        preview = (clean_preview_text[:120] + '...') if len(clean_preview_text) > 120 else clean_preview_text
 
-        mentioned = _resolve_mentions(cur, comment_text)
+        mentioned = _resolve_mentions(cur, clean_preview_text)
         mentioned_ids = {m['id'] for m in mentioned if m['id'] != user_id}
 
         for m_id in mentioned_ids:
@@ -860,7 +879,8 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
         print(f"[bitrix-bot] No recipients for ticket {ticket_id}")
         return
 
-    preview = comment_text[:150] + ('...' if len(comment_text) > 150 else '')
+    clean_text = _strip_markdown_images(comment_text or '')
+    preview = clean_text[:150] + ('...' if len(clean_text) > 150 else '')
     ticket_title = row['title'] or f"Заявка #{row['id']}"
 
     ticket_url = ''
