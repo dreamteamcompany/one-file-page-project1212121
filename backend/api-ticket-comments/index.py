@@ -11,6 +11,7 @@ import urllib.parse
 from typing import Dict, Any, List, Set
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, SCHEMA
+from max_bot_notifier import send_comment_notifications as max_send_comment_notifications
 
 MENTION_RE = re.compile(r'@([a-zA-Z0-9_.\-]+)')
 
@@ -655,6 +656,20 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
     except Exception as e:
         import traceback
         print(f"[bitrix-bot] Error: {e}\n{traceback.format_exc()}")
+
+    try:
+        headers = event.get('headers', {})
+        origin = headers.get('Origin') or headers.get('origin') or headers.get('Referer') or headers.get('referer') or ''
+        if origin:
+            origin = origin.rstrip('/')
+            parts = origin.replace('https://', '').replace('http://', '')
+            if '/' in parts:
+                origin = origin.split('/')[0] + '//' + origin.split('/')[2]
+        print(f"[max-bot] Sending notification for ticket {data.ticket_id}, author {user_id}")
+        max_send_comment_notifications(cur, SCHEMA, data.ticket_id, user_id, data.comment, data.is_internal, origin)
+    except Exception as e:
+        import traceback
+        print(f"[max-bot] Error: {e}\n{traceback.format_exc()}")
 
     cur.close()
     return response(201, comment)

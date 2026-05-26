@@ -21,6 +21,7 @@ interface User {
   position: string;
   email?: string;
   bitrix_user_id?: string;
+  max_user_id?: string;
   is_active: boolean;
   created_at: string;
   last_login: string | null;
@@ -49,6 +50,7 @@ interface UserFormDialogProps {
     photo_url: string;
     email: string;
     bitrix_user_id: string;
+    max_user_id: string;
     is_active?: boolean;
   };
   setFormData: (data: Record<string, string | number[] | boolean>) => void;
@@ -153,6 +155,7 @@ const UserFormDialog = ({
           photo_url: '',
           email: '',
           bitrix_user_id: '',
+          max_user_id: '',
         });
       }
     }}>
@@ -243,6 +246,18 @@ const UserFormDialog = ({
             />
             <p className="text-xs text-muted-foreground">
               Используется для привязки к аккаунту Битрикс24
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="max_user_id">MAX ID</Label>
+            <Input
+              id="max_user_id"
+              value={formData.max_user_id}
+              onChange={(e) => setFormData({ ...formData, max_user_id: e.target.value })}
+              placeholder="12345"
+            />
+            <p className="text-xs text-muted-foreground">
+              ID пользователя в мессенджере MAX для уведомлений от бота
             </p>
           </div>
           <div className="space-y-2">

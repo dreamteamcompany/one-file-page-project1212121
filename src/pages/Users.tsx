@@ -15,6 +15,7 @@ interface User {
   position: string;
   email?: string;
   bitrix_user_id?: string;
+  max_user_id?: string;
   is_active: boolean;
   created_at: string;
   last_login: string | null;
@@ -51,6 +52,7 @@ const Users = () => {
     photo_url: '',
     email: '',
     bitrix_user_id: '',
+    max_user_id: '',
   });
 
   const loadUsers = async () => {
@@ -149,6 +151,7 @@ const Users = () => {
         role_ids: formData.role_ids,
         email: formData.email,
         bitrix_user_id: formData.bitrix_user_id,
+        max_user_id: formData.max_user_id,
       };
       
       if (formData.password) {
@@ -180,6 +183,7 @@ const Users = () => {
           photo_url: '',
           email: '',
           bitrix_user_id: '',
+          max_user_id: '',
         });
         loadUsers();
       } else {
@@ -288,6 +292,7 @@ const Users = () => {
       photo_url: user.photo_url || '',
       email: emailVal,
       bitrix_user_id: user.bitrix_user_id || '',
+      max_user_id: user.max_user_id || '',
     });
     setDialogOpen(true);
   };

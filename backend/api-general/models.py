@@ -9,6 +9,7 @@ class UserRequest(BaseModel):
     photo_url: str = Field(default='')
     email: str = Field(default='')
     bitrix_user_id: str = Field(default='')
+    max_user_id: str = Field(default='')
 
 class RoleRequest(BaseModel):
     name: str = Field(..., min_length=1)

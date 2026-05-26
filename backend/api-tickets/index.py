@@ -117,6 +117,10 @@ from sla_service_mappings_handler import handle_sla_service_mappings, resolve_sl
 from sla_analytics_handler import handle_sla_analytics
 from executor_assignment_resolver import resolve_executor, resolve_executor_group
 from bitrix_bot_notifier import notify_executor_assigned, notify_watcher_added
+from max_bot_notifier import (
+    notify_executor_assigned as max_notify_executor_assigned,
+    notify_watcher_added as max_notify_watcher_added,
+)
 
 
 def _resolve_watcher_target_user_ids(cur, targets: List[Dict[str, Any]]) -> List[int]:
@@ -232,6 +236,10 @@ def _apply_watcher_rules(conn, ticket_id: int, trigger: str, app_origin: str = '
                 notify_watcher_added(cur, SCHEMA, int(ticket_id), int(uid), app_origin=app_origin)
             except Exception as bot_err:
                 print(f"[watcher-rules] bitrix notif failed t={ticket_id} u={uid}: {bot_err}")
+            try:
+                max_notify_watcher_added(cur, SCHEMA, int(ticket_id), int(uid), app_origin=app_origin)
+            except Exception as bot_err:
+                print(f"[watcher-rules] MAX notif failed t={ticket_id} u={uid}: {bot_err}")
 
         return added
     finally:
@@ -906,6 +914,11 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 notify_executor_assigned(cur, SCHEMA, ticket['id'], ticket['assigned_to'], origin)
             except Exception as e:
                 print(f"[TICKETS] Bitrix notification error on create: {e}")
+            try:
+                origin = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
+                max_notify_executor_assigned(cur, SCHEMA, ticket['id'], ticket['assigned_to'], origin)
+            except Exception as e:
+                print(f"[TICKETS] MAX notification error on create: {e}")
 
         try:
             origin_for_rules = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
@@ -1428,6 +1441,11 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 notify_executor_assigned(cur, SCHEMA, ticket_id, body['assigned_to'], origin)
             except Exception as e:
                 print(f"[TICKETS] Bitrix notification error on assign: {e}")
+            try:
+                origin = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
+                max_notify_executor_assigned(cur, SCHEMA, ticket_id, body['assigned_to'], origin)
+            except Exception as e:
+                print(f"[TICKETS] MAX notification error on assign: {e}")
 
         try:
             origin_for_rules = (event.get('headers', {}).get('Origin') or event.get('headers', {}).get('origin') or '').rstrip('/')
