@@ -1,20 +1,21 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import Icon from '@/components/ui/icon';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import { EmojiClickData } from 'emoji-picker-react';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
 import { Comment, User } from './TicketCommentsTypes';
 import { apiFetch } from '@/utils/api';
-import func2url from '../../../backend/func2url.json';
-
-const TEMPLATES_URL = (func2url as Record<string, string>)['api-reply-templates'];
-const IMPROVE_COMMENT_URL = (func2url as Record<string, string>)['api-improve-comment'];
-
-interface ReplyTemplate { id: number; title: string; content: string; is_shared: boolean; }
-
-const MAX_IMG_HEIGHT = 320;
+import TicketCommentsBlocked from './TicketCommentsBlocked';
+import TicketCommentsReplyBanner from './TicketCommentsReplyBanner';
+import TicketCommentsEditor from './TicketCommentsEditor';
+import TicketCommentsToolbar from './TicketCommentsToolbar';
+import {
+  TEMPLATES_URL,
+  IMPROVE_COMMENT_URL,
+  MAX_IMG_HEIGHT,
+  ReplyTemplate,
+  fileToDataUrl,
+  serializeEditor,
+} from './TicketCommentsInput.utils';
 
 interface TicketCommentsInputProps {
   newComment: string;
@@ -49,35 +50,6 @@ interface TicketCommentsInputProps {
   onEditorChange?: (html: string, text: string) => void;
   canUseTemplates?: boolean;
   canUseAI?: boolean;
-}
-
-/** Конвертирует File в data URL */
-const fileToDataUrl = (file: File): Promise<string> =>
-  new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res(reader.result as string);
-    reader.onerror = rej;
-    reader.readAsDataURL(file);
-  });
-
-/** Сериализует contenteditable → plain-text + markdown изображений */
-function serializeEditor(el: HTMLElement): string {
-  let result = '';
-  el.childNodes.forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      result += node.textContent;
-    } else if (node.nodeName === 'BR') {
-      result += '\n';
-    } else if (node.nodeName === 'IMG') {
-      const src = (node as HTMLImageElement).src;
-      result += `\n![](${src})\n`;
-    } else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
-      result += '\n' + serializeEditor(node as HTMLElement);
-    } else {
-      result += serializeEditor(node as HTMLElement);
-    }
-  });
-  return result;
 }
 
 const TicketCommentsInput = ({
@@ -193,12 +165,6 @@ const TicketCommentsInput = ({
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showTemplates]);
-
-  const isEmpty = (el: HTMLElement) => {
-    const text = el.innerText.trim();
-    const hasImg = el.querySelector('img') !== null;
-    return text === '' && !hasImg;
-  };
 
   const handleInput = useCallback(() => {
     const el = editorRef.current;
@@ -330,90 +296,39 @@ const TicketCommentsInput = ({
   const hasContent = newComment.trim().length > 0 ||
     pendingAttachments.filter((a) => a.status === 'done').length > 0;
 
+  const handleTemplateSearchChange = (value: string) => {
+    setTemplateSearch(value);
+    loadTemplates(value);
+  };
+
   return (
     <div className="space-y-3 mt-6 pt-4 border-t shrink-0 w-full max-w-full overflow-x-hidden">
       {commentsBlocked && (
-        <div className="rounded-lg border border-orange-500/40 bg-orange-500/10 p-4 flex items-start gap-3">
-          <Icon name="AlertTriangle" size={20} className="text-orange-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-orange-400">Комментирование заблокировано</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {commentsBlockedMessage || 'Для продолжения работы необходимо изменить статус заявки.'}
-            </p>
-          </div>
-        </div>
+        <TicketCommentsBlocked commentsBlockedMessage={commentsBlockedMessage} />
       )}
 
       {!commentsBlocked && replyToComment && (
-        <div className="p-3 bg-primary/5 rounded-lg border border-primary">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Icon name="CornerDownRight" size={14} className="text-primary" />
-                <span className="text-xs font-medium text-primary">Ответ на комментарий</span>
-                <span className="text-xs text-muted-foreground">{replyToComment.user_name}</span>
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-2">{replyToComment.comment}</p>
-            </div>
-            <button onClick={onCancelReply} className="p-1 hover:bg-destructive/20 rounded transition-colors">
-              <Icon name="X" size={14} className="text-muted-foreground" />
-            </button>
-          </div>
-        </div>
+        <TicketCommentsReplyBanner
+          replyToComment={replyToComment}
+          onCancelReply={onCancelReply}
+        />
       )}
 
       {!commentsBlocked && (
         <>
-          <div className="relative">
-            {/* contenteditable редактор */}
-            <div
-              ref={editorRef}
-              contentEditable={!submittingComment}
-              suppressContentEditableWarning
-              onInput={handleInput}
-              onPaste={handlePaste}
-              onKeyDown={handleKeyDown}
-              data-placeholder="Напишите комментарий... (используйте @ для упоминания, Ctrl+V для вставки фото)"
-              className={[
-                'min-h-[90px] lg:min-h-[120px] w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
-                'overflow-y-auto overflow-x-hidden max-h-[400px]',
-                submittingComment ? 'opacity-50 pointer-events-none' : '',
-                'empty-editor',
-              ].join(' ')}
-              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', touchAction: 'pan-y' }}
-            />
-
-            {showMentions && (
-              <div
-                ref={mentionsRef}
-                className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-popover border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto"
-              >
-                {searchingUsers && filteredUsers.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
-                    <Icon name="Loader2" size={14} className="animate-spin" />
-                    Поиск пользователей...
-                  </div>
-                )}
-                {!searchingUsers && filteredUsers.length === 0 && mentionSearch && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">Никого не найдено</div>
-                )}
-                {filteredUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    onClick={() => onMention(user)}
-                    className="w-full px-3 py-2 text-left hover:bg-accent transition-colors flex items-center gap-2"
-                  >
-                    <Icon name="User" size={14} className="text-muted-foreground" />
-                    <div>
-                      <div className="text-sm font-medium">{user.name}</div>
-                      <div className="text-xs text-muted-foreground">{user.email}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <TicketCommentsEditor
+            editorRef={editorRef}
+            submittingComment={submittingComment}
+            onInput={handleInput}
+            onPaste={handlePaste}
+            onKeyDown={handleKeyDown}
+            showMentions={showMentions}
+            mentionsRef={mentionsRef}
+            filteredUsers={filteredUsers}
+            searchingUsers={searchingUsers}
+            mentionSearch={mentionSearch}
+            onMention={onMention}
+          />
 
           {pendingAttachments.length > 0 && onRemoveAttachment && (
             <AttachmentUploader
@@ -425,145 +340,33 @@ const TicketCommentsInput = ({
             />
           )}
 
-          <div className="flex flex-wrap gap-2 items-center">
-            <Button
-              onClick={handleSubmitWrapper}
-              disabled={!hasContent || submittingComment || uploadingFile}
-              size="sm"
-              className="flex-1 min-w-[120px]"
-            >
-              {submittingComment ? (
-                <>
-                  <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                  Отправка...
-                </>
-              ) : (
-                <>
-                  <Icon name="Send" size={16} className="mr-2" />
-                  {replyToComment ? 'Ответить' : 'Отправить'}
-                </>
-              )}
-            </Button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              disabled={uploadingFile}
-            />
-
-            {canUseTemplates && (
-              <div className="relative" ref={templatesRef}>
-                <Button
-                  onClick={handleOpenTemplates}
-                  disabled={submittingComment}
-                  variant={showTemplates ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="flex-shrink-0"
-                  title="Шаблоны ответов"
-                >
-                  <Icon name="LayoutTemplate" size={16} />
-                </Button>
-                {showTemplates && (
-                  <div className="absolute bottom-full right-0 mb-2 z-50 w-72 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
-                    <div className="p-2 border-b border-border">
-                      <Input
-                        value={templateSearch}
-                        onChange={(e) => {
-                          setTemplateSearch(e.target.value);
-                          loadTemplates(e.target.value);
-                        }}
-                        placeholder="Поиск шаблона..."
-                        className="h-7 text-xs"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {templatesLoading ? (
-                        <div className="flex justify-center py-4">
-                          <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
-                        </div>
-                      ) : templates.length === 0 ? (
-                        <div className="py-4 text-center text-xs text-muted-foreground">
-                          {templateSearch ? 'Ничего не найдено' : 'Шаблонов пока нет'}
-                        </div>
-                      ) : (
-                        templates.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => handleTemplateSelect(t)}
-                            className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border/50 last:border-b-0"
-                          >
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <p className="text-xs font-medium truncate">{t.title}</p>
-                              {t.is_shared && (
-                                <Icon name="Globe" size={10} className="text-muted-foreground shrink-0" />
-                              )}
-                            </div>
-                            <p className="text-[11px] text-muted-foreground line-clamp-2">{t.content}</p>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {canUseAI && (
-              <Button
-                onClick={handleImproveText}
-                disabled={!newComment.trim() || improvingText || submittingComment}
-                variant="ghost"
-                size="sm"
-                className="flex-shrink-0"
-                title="Улучшить текст с помощью AI"
-              >
-                {improvingText ? (
-                  <Icon name="Loader2" size={16} className="animate-spin" />
-                ) : (
-                  <Icon name="Sparkles" size={16} />
-                )}
-              </Button>
-            )}
-
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingFile || submittingComment}
-              variant="ghost"
-              size="sm"
-              className="flex-shrink-0"
-              title="Прикрепить файл"
-            >
-              {uploadingFile ? (
-                <Icon name="Loader2" size={16} className="animate-spin" />
-              ) : (
-                <Icon name="Paperclip" size={16} />
-              )}
-            </Button>
-
-            <div className="relative">
-              <Button
-                onClick={onToggleEmojiPicker}
-                disabled={submittingComment}
-                variant="ghost"
-                size="sm"
-                className="flex-shrink-0"
-                title="Добавить эмодзи"
-              >
-                <Icon name="Smile" size={16} />
-              </Button>
-
-              {showEmojiPicker && (
-                <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50">
-                  <EmojiPicker onEmojiClick={handleEmojiClickLocal} />
-                </div>
-              )}
-            </div>
-          </div>
+          <TicketCommentsToolbar
+            fileInputRef={fileInputRef}
+            templatesRef={templatesRef}
+            emojiPickerRef={emojiPickerRef}
+            hasContent={hasContent}
+            submittingComment={submittingComment}
+            uploadingFile={uploadingFile}
+            replyToComment={replyToComment}
+            onSubmit={handleSubmitWrapper}
+            onFileSelect={handleFileSelect}
+            onFilePickerClick={() => fileInputRef.current?.click()}
+            canUseTemplates={canUseTemplates}
+            showTemplates={showTemplates}
+            templates={templates}
+            templatesLoading={templatesLoading}
+            templateSearch={templateSearch}
+            onOpenTemplates={handleOpenTemplates}
+            onTemplateSearchChange={handleTemplateSearchChange}
+            onTemplateSelect={handleTemplateSelect}
+            canUseAI={canUseAI}
+            improvingText={improvingText}
+            newComment={newComment}
+            onImproveText={handleImproveText}
+            showEmojiPicker={showEmojiPicker}
+            onToggleEmojiPicker={onToggleEmojiPicker}
+            onEmojiClick={handleEmojiClickLocal}
+          />
         </>
       )}
     </div>
