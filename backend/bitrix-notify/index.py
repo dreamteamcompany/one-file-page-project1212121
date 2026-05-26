@@ -26,7 +26,9 @@ def handler(event, context):
     if event.get('httpMethod') != 'POST':
         return resp(405, {'error': 'Method not allowed'})
 
-    raw_body = event.get('body') or '{}'
+    raw_body = event.get('body') or ''
+    if not raw_body or not raw_body.strip():
+        return resp(400, {'error': 'Empty body'})
     body = json.loads(raw_body) if isinstance(raw_body, str) else raw_body
     action = body.get('action', '')
 
@@ -73,7 +75,16 @@ def handle_comment_notification(body):
             cur.close()
             return resp(404, {'error': 'Ticket not found'})
 
-        recipients = collect_recipients(row, author_user_id, is_internal)
+        # Загружаем наблюдателей с их bitrix_user_id
+        cur.execute(f"""
+            SELECT tw.user_id, u.bitrix_user_id
+            FROM {SCHEMA}.ticket_watchers tw
+            JOIN {SCHEMA}.users u ON u.id = tw.user_id
+            WHERE tw.ticket_id = %s AND u.bitrix_user_id IS NOT NULL
+        """, (ticket_id,))
+        watchers = cur.fetchall()
+
+        recipients = collect_recipients(row, author_user_id, is_internal, watchers)
 
         if not recipients:
             cur.close()
@@ -109,29 +120,30 @@ def handle_comment_notification(body):
         conn.close()
 
 
-def collect_recipients(row, author_user_id, is_internal):
+def collect_recipients(row, author_user_id, is_internal, watchers=None):
     """Определяет, кому отправить уведомление"""
     recipients = []
+    seen_bitrix_ids = set()
+
+    def add(bitrix_id, role):
+        if bitrix_id and bitrix_id not in seen_bitrix_ids:
+            seen_bitrix_ids.add(bitrix_id)
+            recipients.append({'bitrix_id': bitrix_id, 'role': role})
 
     if is_internal:
-        if row['assigned_to'] and row['assigned_to'] != author_user_id and row.get('executor_bitrix_id'):
-            recipients.append({
-                'bitrix_id': row['executor_bitrix_id'],
-                'role': 'executor'
-            })
+        if row['assigned_to'] and row['assigned_to'] != author_user_id:
+            add(row.get('executor_bitrix_id'), 'executor')
         return recipients
 
-    if row['created_by'] != author_user_id and row.get('creator_bitrix_id'):
-        recipients.append({
-            'bitrix_id': row['creator_bitrix_id'],
-            'role': 'creator'
-        })
+    if row['created_by'] != author_user_id:
+        add(row.get('creator_bitrix_id'), 'creator')
 
-    if row['assigned_to'] and row['assigned_to'] != author_user_id and row.get('executor_bitrix_id'):
-        recipients.append({
-            'bitrix_id': row['executor_bitrix_id'],
-            'role': 'executor'
-        })
+    if row['assigned_to'] and row['assigned_to'] != author_user_id:
+        add(row.get('executor_bitrix_id'), 'executor')
+
+    for w in (watchers or []):
+        if w['user_id'] != author_user_id:
+            add(w['bitrix_user_id'], 'watcher')
 
     return recipients
 
