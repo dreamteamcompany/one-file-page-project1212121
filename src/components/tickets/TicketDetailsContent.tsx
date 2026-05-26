@@ -389,7 +389,7 @@ const TicketDetailsContent = ({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Комментарии ({comments.length})
+            Комментарии {loadingComments && comments.length === 0 ? '' : `(${comments.length})`}
           </button>
           <button 
             onClick={() => setActiveTab('files')}
@@ -399,7 +399,7 @@ const TicketDetailsContent = ({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Файлы ({comments.reduce((s, c) => s + (c.attachments?.length || 0), 0)})
+            Файлы {loadingComments && comments.length === 0 ? '' : `(${comments.reduce((s, c) => s + (c.attachments?.length || 0), 0)})`}
           </button>
           <button 
             onClick={() => setActiveTab('history')}

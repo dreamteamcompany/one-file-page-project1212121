@@ -2,10 +2,42 @@
 API для работы с заявками (tickets) и категориями сервисов (service_categories)
 """
 import json
+import re
 from typing import Dict, Any, Optional, Set, List
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
 from group_tracking_service import open_log_entry, track_assignment_change, track_ticket_closed
+
+
+# Лимит размера ответа Cloud Functions (~4 МБ). Чтобы гарантированно влезть,
+# вырезаем огромные inline base64-изображения из текста комментариев в bundle-ответе.
+_MAX_INLINE_DATA_URI_BYTES = 30 * 1024
+_DATA_URI_RE = re.compile(r'!\[([^\]]*)\]\((data:[^;)]+;base64,[^\)]+)\)')
+_RAW_DATA_URI_RE = re.compile(r'(data:[^;)\s]+;base64,[A-Za-z0-9+/=]+)')
+
+
+def _strip_heavy_inline_images(text: str, comment_id: int) -> str:
+    """Заменяет тяжёлые data:base64 картинки в markdown-тексте плейсхолдером."""
+    if not text or 'base64,' not in text:
+        return text
+
+    def md_repl(m):
+        alt = m.group(1) or 'image'
+        data_uri = m.group(2)
+        if len(data_uri) > _MAX_INLINE_DATA_URI_BYTES:
+            return f'![{alt}](inline://comment/{comment_id})'
+        return m.group(0)
+
+    out = _DATA_URI_RE.sub(md_repl, text)
+
+    def raw_repl(m):
+        data_uri = m.group(1)
+        if len(data_uri) > _MAX_INLINE_DATA_URI_BYTES:
+            return '[вложение слишком большое — открыть из заявки]'
+        return data_uri
+
+    out = _RAW_DATA_URI_RE.sub(raw_repl, out)
+    return out
 
 
 def _get_user_role_info(cur, user_id: int) -> Dict[str, Any]:
@@ -2353,8 +2385,13 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
 def handle_tickets_full(method: str, event: dict, conn) -> dict:
     """Объединённая загрузка данных заявки одним вызовом.
 
-    Возвращает: ticket, history, approvals — за один поход в БД,
-    чтобы снизить нагрузку и количество параллельных запросов от фронта.
+    Возвращает: ticket, history, approvals, comments, participant_ids, my_last_seen_at
+    — за один поход в БД, чтобы снизить нагрузку и количество параллельных
+    запросов от фронта (защищает от rate-limit PostgreSQL).
+
+    Параметры:
+      ticket_id (обязателен) — id заявки
+      include_comments (опционально, default=true) — выключатель для лёгкого режима
     """
     if method != 'GET':
         return response(405, {'error': 'Only GET method allowed'})
@@ -2373,9 +2410,17 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
     except (TypeError, ValueError):
         return response(400, {'error': 'ticket_id must be integer'})
 
+    include_comments_raw = (params.get('include_comments') or 'true').lower()
+    include_comments = include_comments_raw not in ('false', '0', 'no')
+
+    user_id = payload.get('user_id')
+
     ticket_data = None
     history: list = []
     approvals: list = []
+    comments: list = []
+    participant_ids: list = []
+    my_last_seen_at = None
 
     try:
         ticket_event = dict(event)
@@ -2404,6 +2449,7 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
 
         cur = conn.cursor()
         try:
+            # История изменений
             cur.execute(f"""
                 SELECT th.id, th.ticket_id, th.user_id, th.field_name,
                        th.old_value, th.new_value, th.created_at,
@@ -2414,6 +2460,81 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
                 ORDER BY th.created_at DESC
             """, (ticket_id,))
             history = [dict(row) for row in cur.fetchall()]
+
+            # Комментарии (облегчённый формат, без read_by/read_by_users —
+            # эти данные не критичны для рендера переписки и догружаются
+            # отдельным запросом при необходимости)
+            if include_comments:
+                cur.execute(f"""
+                    SELECT 
+                        tc.id, tc.ticket_id, tc.user_id, tc.comment,
+                        tc.is_internal, tc.created_at,
+                        tc.is_pinned, tc.pinned_at, tc.pinned_by,
+                        tc.edited_at, tc.edited_by,
+                        u.username as user_name,
+                        u.full_name as user_full_name,
+                        u.photo_url as user_photo_url
+                    FROM {SCHEMA}.ticket_comments tc
+                    LEFT JOIN {SCHEMA}.users u ON tc.user_id = u.id
+                    WHERE tc.ticket_id = %s
+                    ORDER BY tc.created_at DESC
+                """, (ticket_id,))
+                comments = [dict(row) for row in cur.fetchall()]
+
+                # Вырезаем тяжёлые inline base64-картинки, помечая флагом
+                for c in comments:
+                    original = c.get('comment') or ''
+                    if 'base64,' in original:
+                        stripped = _strip_heavy_inline_images(original, c['id'])
+                        if stripped != original:
+                            c['comment'] = stripped
+                            c['has_inline_images'] = True
+
+                comment_ids = [c['id'] for c in comments]
+                if comment_ids:
+                    ids_csv = ','.join(str(int(i)) for i in comment_ids)
+                    attachments_map: Dict[int, List[Dict[str, Any]]] = {cid: [] for cid in comment_ids}
+                    cur.execute(f"""
+                        SELECT id, comment_id, filename, url, size
+                        FROM {SCHEMA}.comment_attachments
+                        WHERE comment_id IN ({ids_csv})
+                        ORDER BY id ASC
+                    """)
+                    for r in cur.fetchall():
+                        attachments_map.setdefault(r['comment_id'], []).append({
+                            'id': r['id'],
+                            'filename': r['filename'],
+                            'url': r['url'],
+                            'size': r['size'],
+                        })
+                    for c in comments:
+                        c['attachments'] = attachments_map.get(c['id'], [])
+                else:
+                    for c in comments:
+                        c['attachments'] = []
+
+                # participant_ids
+                pids: Set[int] = set()
+                if ticket_data:
+                    if ticket_data.get('created_by'):
+                        pids.add(ticket_data['created_by'])
+                    if ticket_data.get('assigned_to'):
+                        pids.add(ticket_data['assigned_to'])
+                cur.execute(f"SELECT user_id FROM {SCHEMA}.ticket_watchers WHERE ticket_id = %s", (ticket_id,))
+                pids.update(r['user_id'] for r in cur.fetchall())
+                cur.execute(f"SELECT approver_id FROM {SCHEMA}.ticket_approvers WHERE ticket_id = %s", (ticket_id,))
+                pids.update(r['approver_id'] for r in cur.fetchall())
+                participant_ids = sorted(pids)
+
+                # my_last_seen_at
+                if user_id:
+                    cur.execute(f"""
+                        SELECT last_seen_at FROM {SCHEMA}.ticket_views
+                        WHERE user_id = %s AND ticket_id = %s
+                    """, (user_id, ticket_id))
+                    row = cur.fetchone()
+                    if row and row.get('last_seen_at'):
+                        my_last_seen_at = row['last_seen_at'].isoformat()
         finally:
             cur.close()
     except Exception as e:
@@ -2423,4 +2544,7 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
         'ticket': ticket_data,
         'history': history,
         'approvals': approvals,
+        'comments': comments,
+        'participant_ids': participant_ids,
+        'my_last_seen_at': my_last_seen_at,
     })

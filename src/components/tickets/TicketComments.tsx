@@ -342,7 +342,9 @@ const TicketComments = ({
       <div className="flex items-center gap-2 mb-4 shrink-0">
         <Icon name="MessageSquare" size={18} className="text-muted-foreground" />
         <h3 className="text-base font-semibold">Комментарии</h3>
-        <span className="text-sm text-muted-foreground">({comments.length})</span>
+        {loadingComments && comments.length === 0 ? null : (
+          <span className="text-sm text-muted-foreground">({comments.length})</span>
+        )}
       </div>
 
       <TicketCommentsPinned

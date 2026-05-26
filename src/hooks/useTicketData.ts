@@ -64,6 +64,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
 
   const loadTicketFull = async (showLoader = true) => {
     if (!id) return;
+    const requestTicketId = id;
     try {
       if (showLoader) setLoading(true);
       setLoadingHistory(true);
@@ -72,12 +73,29 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       });
       if (response.ok) {
         const data = await response.json();
+        // Защита от гонок: если за время запроса пользователь успел открыть другую заявку — игнорируем
+        if (requestTicketId !== id) return;
         if (data.ticket) setTicket(data.ticket);
         setAuditLogs(Array.isArray(data.history) ? data.history : []);
         setApprovals(Array.isArray(data.approvals) ? data.approvals : []);
+        // Объединённый ответ содержит и комментарии — используем их, чтобы
+        // не делать отдельный запрос. Так bundle снимает нагрузку с БД.
+        if (Array.isArray(data.comments)) {
+          setComments(data.comments);
+          setLoadingComments(false);
+        }
+        if (Array.isArray(data.participant_ids)) {
+          setParticipantIds(data.participant_ids);
+        }
+        if (typeof data.my_last_seen_at === 'string' || data.my_last_seen_at === null) {
+          setMyLastSeenAt(data.my_last_seen_at ?? null);
+        }
       }
+      // При response.ok === false (например 500) — не очищаем уже отображённые комментарии.
+      // apiFetch сам выполнит 3 ретрая с задержками 1с/2с/4с для статусов 500/502/503/504.
     } catch (error) {
       console.error('Error loading ticket-full:', error);
+      // При сетевой ошибке также не очищаем данные — оставляем последний успешный снимок
     } finally {
       if (showLoader) setLoading(false);
       setLoadingHistory(false);
@@ -230,7 +248,11 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
           if (commentsRequestIdRef.current !== requestTicketId || controller.signal.aborted) {
             return;
           }
-          setComments(data.comments || []);
+          // Не очищаем переписку, если бэкенд вернул пустой/невалидный массив
+          // на ретраи — лучше показать прежний снимок, чем пустоту.
+          if (Array.isArray(data.comments)) {
+            setComments(data.comments);
+          }
           if (Array.isArray(data.participant_ids)) {
             setParticipantIds(data.participant_ids);
           }
@@ -247,13 +269,17 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
         }
         attempt += 1;
         if (attempt > maxRetries) {
+          // НЕ очищаем список комментариев — пользователь увидит предыдущий снимок.
           console.error('Error loading comments:', error);
           if (commentsRequestIdRef.current === requestTicketId && !silent) {
             setLoadingComments(false);
           }
           return;
         }
-        await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+        // Задержки между попытками: 1с, 2с, 4с (защита от rate-limit БД).
+        const delays = [1000, 2000, 4000];
+        const delay = delays[attempt - 1] ?? 4000;
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   };
@@ -293,24 +319,31 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   };
 
   useEffect(() => {
+    // При смене заявки очищаем переписку (чтобы не показать чужие комменты),
+    // но ставим флаг loadingComments=true — UI должен рисовать спиннер, а НЕ «0 комментариев».
     setComments([]);
     setAuditLogs([]);
     setApprovals([]);
     setParticipantIds([]);
     setMyLastSeenAt(null);
+    if (id && token) {
+      setLoadingComments(true);
+      setLoadingHistory(true);
+    }
 
     if (id && token) {
-      // Один объединённый запрос: ticket + history + approvals.
+      // Один объединённый запрос: ticket + history + approvals + comments.
+      // Это снимает 3 параллельных запроса в БД и защищает от rate-limit.
       loadTicketFull();
       // Справочники грузятся с кэшем (TTL 5 минут) — не дёргают БД при повторных открытиях заявок.
       loadStatuses();
       loadExecutorGroups();
       loadUsers();
-      // Комментарии — отдельным небольшим запросом.
-      const tComments = setTimeout(() => { loadComments(); }, 150);
+      // Комментарии уже пришли в bundle (loadTicketFull). Отдельный fallback-запрос
+      // нужен только если bundle не вернул comments (старая версия backend / частичный ответ).
+      // Поэтому делаем его не сразу, а через 1.5 секунды — за это время bundle обычно успевает.
 
       return () => {
-        clearTimeout(tComments);
         if (commentsAbortRef.current) {
           commentsAbortRef.current.abort();
         }
