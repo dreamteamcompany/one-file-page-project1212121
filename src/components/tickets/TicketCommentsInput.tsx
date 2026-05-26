@@ -10,6 +10,7 @@ import { apiFetch } from '@/utils/api';
 import func2url from '../../../backend/func2url.json';
 
 const TEMPLATES_URL = (func2url as Record<string, string>)['api-reply-templates'];
+const IMPROVE_COMMENT_URL = (func2url as Record<string, string>)['api-improve-comment'];
 
 interface ReplyTemplate { id: number; title: string; content: string; is_shared: boolean; }
 
@@ -47,6 +48,7 @@ interface TicketCommentsInputProps {
   /** Итоговый HTML для отправки — собирается внутри редактора */
   onEditorChange?: (html: string, text: string) => void;
   canUseTemplates?: boolean;
+  canUseAI?: boolean;
 }
 
 /** Конвертирует File в data URL */
@@ -102,6 +104,7 @@ const TicketCommentsInput = ({
   onMention,
   onSubmit,
   canUseTemplates = false,
+  canUseAI = false,
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -111,6 +114,7 @@ const TicketCommentsInput = ({
   const [templates, setTemplates] = useState<ReplyTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
+  const [improvingText, setImprovingText] = useState(false);
 
   const loadTemplates = async (q = '') => {
     setTemplatesLoading(true);
@@ -154,6 +158,28 @@ const TicketCommentsInput = ({
     }
     onCommentChange(tmpl.content);
     setShowTemplates(false);
+  };
+
+  const handleImproveText = async () => {
+    const el = editorRef.current;
+    if (!el) return;
+    const text = serializeEditor(el).trim();
+    if (!text) return;
+    setImprovingText(true);
+    try {
+      const res = await apiFetch(IMPROVE_COMMENT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (data.improved_text) {
+        el.innerText = data.improved_text;
+        onCommentChange(data.improved_text);
+      }
+    } finally {
+      setImprovingText(false);
+    }
   };
 
   // Закрытие попапа шаблонов по клику вне
@@ -485,6 +511,23 @@ const TicketCommentsInput = ({
                   </div>
                 )}
               </div>
+            )}
+
+            {canUseAI && (
+              <Button
+                onClick={handleImproveText}
+                disabled={!newComment.trim() || improvingText || submittingComment}
+                variant="ghost"
+                size="sm"
+                className="flex-shrink-0"
+                title="Улучшить текст с помощью AI"
+              >
+                {improvingText ? (
+                  <Icon name="Loader2" size={16} className="animate-spin" />
+                ) : (
+                  <Icon name="Sparkles" size={16} />
+                )}
+              </Button>
             )}
 
             <Button

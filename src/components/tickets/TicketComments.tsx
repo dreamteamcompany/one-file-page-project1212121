@@ -51,6 +51,7 @@ const TicketComments = ({
   onMarkRead,
   auditLogs = [],
   canUseTemplates = false,
+  canUseAI = false,
 }: TicketCommentsProps) => {
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -402,6 +403,7 @@ const TicketComments = ({
         sendingPing={sendingPing}
         onSendPing={onSendPing}
         canUseTemplates={canUseTemplates}
+        canUseAI={canUseAI}
       />
 
       <AlertDialog

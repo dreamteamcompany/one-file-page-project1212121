@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "Улучшение грубого текста",
+      "method": "POST",
+      "path": "/",
+      "body": {"text": "Скинь свой AnyDesk, ебанашка"},
+      "expectedStatus": 200,
+      "expectedBody": {"improved_text": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Пустой текст — ошибка",
+      "method": "POST",
+      "path": "/",
+      "body": {"text": ""},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

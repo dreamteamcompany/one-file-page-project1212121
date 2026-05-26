@@ -446,6 +446,7 @@ const TicketDetailsContent = ({
             onMarkRead={onMarkRead}
             auditLogs={auditLogs}
             canUseTemplates={hasSystemRole('admin', 'executor')}
+            canUseAI={hasSystemRole('admin', 'executor')}
           />
         )}
         
