@@ -26,8 +26,9 @@ def fetch_all_bitrix_departments() -> List[Dict[str, Any]]:
         raise ValueError('BITRIX24_WEBHOOK_URL не настроен')
 
     all_departments: List[Dict[str, Any]] = []
+    seen_ids: set = set()
     start = 0
-    max_iterations = 200  # защита от бесконечного цикла (до 10 000 отделов)
+    max_iterations = 200
     iteration = 0
 
     print(f"[bitrix-sync] Загружаем все отделы из Bitrix24")
@@ -53,8 +54,25 @@ def fetch_all_bitrix_departments() -> List[Dict[str, Any]]:
             print(f"[bitrix-sync] Пустой ответ на START={start}, завершаем")
             break
 
-        all_departments.extend(result)
-        print(f"[bitrix-sync] START={start}: получено {len(result)}, всего {len(all_departments)}/{total}")
+        batch_ids = [str(d.get('ID')) for d in result]
+        new_in_batch = [bid for bid in batch_ids if bid not in seen_ids]
+
+        if not new_in_batch:
+            msg = (
+                f"Bitrix REST возвращает повторяющиеся ID на START={start}. "
+                f"Пагинация не работает. Уникальных отделов получено: {len(seen_ids)}. "
+                f"Проверьте, что вебхук создан под админом портала и имеет право 'department'."
+            )
+            print(f"[bitrix-sync] STOP: {msg}")
+            raise RuntimeError(msg)
+
+        for d in result:
+            bid = str(d.get('ID'))
+            if bid not in seen_ids:
+                seen_ids.add(bid)
+                all_departments.append(d)
+
+        print(f"[bitrix-sync] START={start}: получено {len(result)} (новых {len(new_in_batch)}), всего {len(all_departments)}/{total}")
 
         next_start = data.get('next')
         if next_start is None:
