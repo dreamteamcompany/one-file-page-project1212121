@@ -215,6 +215,14 @@ const Settings = () => {
       permission: { resource: 'settings', action: 'read' },
     },
     {
+      title: 'Автоматизация',
+      description: 'Периодический запуск синхронизации и проверок',
+      icon: 'Zap',
+      color: 'hsl(160, 70%, 45%)',
+      path: '/settings/automation',
+      permission: { resource: 'settings', action: 'read' },
+    },
+    {
       title: 'Анализатор логов',
       description: 'Просмотр и анализ системных логов',
       icon: 'FileText',

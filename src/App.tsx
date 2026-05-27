@@ -17,6 +17,7 @@ import CustomFields from "./pages/CustomFields";
 import LogAnalyzer from "./pages/LogAnalyzer";
 import Settings from "./pages/Settings";
 import VsdeskSettings from "./pages/VsdeskSettings";
+import AutomationSettings from "./pages/AutomationSettings";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Tickets from "./pages/Tickets";
 import TicketDetails from "./pages/TicketDetails";
@@ -68,6 +69,7 @@ const App = () => {
             <Route path="/log-analyzer" element={<ProtectedRoute><LogAnalyzer /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/settings/vsdesk" element={<ProtectedRoute><VsdeskSettings /></ProtectedRoute>} />
+            <Route path="/settings/automation" element={<ProtectedRoute><AutomationSettings /></ProtectedRoute>} />
             <Route path="/knowledge-base" element={<ProtectedRoute><KnowledgeBase /></ProtectedRoute>} />
             <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
             <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetails /></ProtectedRoute>} />

@@ -1,4 +1,6 @@
 {
+  "automation-dispatcher": "https://functions.poehali.dev/221a303b-b060-4700-bdef-8995e6de915d",
+  "automation": "https://functions.poehali.dev/2aacfd88-8589-4d6e-ace1-540fb6324434",
   "bitrix-sync-positions": "https://functions.poehali.dev/554d2115-1c37-4955-b544-bc0a5df0b466",
   "api-improve-comment": "https://functions.poehali.dev/1af31b9b-b0f5-4104-9def-0de1fcd0d53d",
   "api-reply-templates": "https://functions.poehali.dev/e8c6cf6d-aedc-4045-a4ba-aa51437849c1",
