@@ -248,7 +248,7 @@ const Departments = () => {
       const timeoutId = setTimeout(() => {
         console.log('Request timeout, aborting...');
         controller.abort();
-      }, 120000);
+      }, 300000);
 
       try {
         const response = await apiFetch('https://functions.poehali.dev/1f366079-778d-425e-a0ba-378f356dceae', {
@@ -279,7 +279,20 @@ const Departments = () => {
         const summary = parts.length > 0 ? parts.join(', ') : 'без изменений';
         const total = result.total_in_bitrix ?? result.synced_count ?? 0;
 
-        alert(`Синхронизация завершена!\nОтделов в Bitrix24: ${total}\n${summary}`);
+        const ps = result.positions_stats || {};
+        const posParts: string[] = [];
+        if (ps.positions_created) posParts.push(`создано: ${ps.positions_created}`);
+        if (ps.positions_updated) posParts.push(`обновлено: ${ps.positions_updated}`);
+        if (ps.department_links_created) posParts.push(`связей с отделами: ${ps.department_links_created}`);
+        if (ps.users_updated) posParts.push(`сотрудников обновлено: ${ps.users_updated}`);
+        const posSummary = posParts.length > 0 ? posParts.join(', ') : 'без изменений';
+        const posError = result.positions_error ? `\nОшибка должностей: ${result.positions_error}` : '';
+
+        alert(
+          `Синхронизация завершена!\n` +
+          `Отделов в Bitrix24: ${total}\n${summary}\n\n` +
+          `Должности: ${posSummary}${posError}`,
+        );
         loadData();
       } catch (fetchError: unknown) {
         clearTimeout(timeoutId);
