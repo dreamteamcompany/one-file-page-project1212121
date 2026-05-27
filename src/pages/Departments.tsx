@@ -8,6 +8,7 @@ import AppHeader from '@/components/layout/AppHeader';
 import DepartmentsHeader from '@/components/departments/DepartmentsHeader';
 import DepartmentsFilters from '@/components/departments/DepartmentsFilters';
 import DepartmentFormDialog from '@/components/departments/DepartmentFormDialog';
+import DeleteDepartmentDialog from '@/components/departments/DeleteDepartmentDialog';
 
 interface FormData {
   company_id: string;
@@ -44,6 +45,8 @@ const Departments = () => {
   const [parentIdForNew, setParentIdForNew] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [syncing, setSyncing] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
 
   useEffect(() => {
     loadData();
@@ -144,15 +147,34 @@ const Departments = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Удалить подразделение и все дочерние? Это действие необратимо.')) return;
+  const handleDelete = (id: number) => {
+    const dept = departments.find((d) => d.id === id) || null;
+    setDepartmentToDelete(dept);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async (mode: 'cascade' | 'reparent') => {
+    if (!departmentToDelete) return;
     try {
-      const response = await apiFetch(`/departments/${id}`, { method: 'DELETE' });
+      const response = await apiFetch(
+        `/departments/${departmentToDelete.id}?mode=${mode}`,
+        { method: 'DELETE' },
+      );
       if (response.ok) {
+        setDeleteDialogOpen(false);
+        setDepartmentToDelete(null);
         loadData();
+        return;
+      }
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 409 && data?.error === 'department_has_users') {
+        alert(data.message || 'В подразделении есть сотрудники. Сначала перенесите их в другой отдел.');
+      } else {
+        alert(data?.message || data?.error || 'Не удалось удалить подразделение');
       }
     } catch (error) {
       console.error('Failed to delete department:', error);
+      alert('Ошибка соединения при удалении подразделения');
     }
   };
 
@@ -290,9 +312,9 @@ const Departments = () => {
     return passes;
   });
 
-  const canCreate = hasPermission('departments', 'create');
-  const canEdit = hasPermission('departments', 'update');
-  const canDelete = hasPermission('departments', 'delete');
+  const canCreate = hasPermission('departments', 'create') || isAdmin;
+  const canEdit = hasPermission('departments', 'update') || isAdmin;
+  const canDelete = hasPermission('departments', 'delete') || isAdmin;
 
   const availableParents = editingDepartment
     ? departments.filter(
@@ -365,6 +387,20 @@ const Departments = () => {
           onAddChild={canCreate ? handleAddChild : undefined}
           canHide={isAdmin}
           showArchived={showArchived}
+        />
+
+        <DeleteDepartmentDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            setDeleteDialogOpen(open);
+            if (!open) setDepartmentToDelete(null);
+          }}
+          department={departmentToDelete}
+          hasChildren={
+            !!departmentToDelete &&
+            departments.some((d) => d.parent_id === departmentToDelete.id)
+          }
+          onConfirm={confirmDelete}
         />
       </div>
     </PageLayout>

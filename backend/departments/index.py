@@ -143,19 +143,75 @@ def handle_patch(cur, conn, dept_id, data):
     return make_response(200, {'message': f'{action_word} подразделений: {affected}', 'affected_ids': ids})
 
 
-def handle_delete(cur, conn, dept_id):
-    """Физическое удаление подразделения и всех дочерних."""
+def _count_users_in_departments(cur, dept_ids):
+    """Сколько активных сотрудников привязано к данным отделам."""
+    if not dept_ids:
+        return 0
+    placeholders = ','.join(['%s'] * len(dept_ids))
+    cur.execute(
+        f'SELECT COUNT(*) AS cnt FROM users WHERE department_id IN ({placeholders}) AND COALESCE(is_active, true) = true',
+        dept_ids
+    )
+    row = cur.fetchone()
+    return int(row['cnt']) if row else 0
+
+
+def handle_delete(cur, conn, dept_id, query_params=None):
+    """
+    Физическое удаление подразделения.
+    mode=cascade (по умолчанию) — удалить отдел вместе со всеми дочерними.
+    mode=reparent — удалить только сам отдел, прямых детей перевести на его родителя.
+    Блокируется, если в затрагиваемых отделах есть активные сотрудники.
+    """
     if not dept_id:
         return make_response(400, {'error': 'Department ID required'})
 
-    cur.execute('SELECT id FROM departments WHERE id = %s', (dept_id,))
-    if not cur.fetchone():
+    mode = (query_params or {}).get('mode', 'cascade')
+    if mode not in ('cascade', 'reparent'):
+        return make_response(400, {'error': 'mode must be cascade or reparent'})
+
+    cur.execute('SELECT id, parent_id FROM departments WHERE id = %s', (dept_id,))
+    target = cur.fetchone()
+    if not target:
         return make_response(404, {'error': 'Department not found'})
 
-    ids = get_descendant_ids(cur, int(dept_id))
-    placeholders = ','.join(['%s'] * len(ids))
+    dept_id_int = int(dept_id)
 
-    cur.execute(f'DELETE FROM department_positions WHERE department_id IN ({placeholders})', ids)
+    if mode == 'reparent':
+        # Удаляем только сам отдел. Проверяем сотрудников только в нём.
+        affected_ids = [dept_id_int]
+    else:
+        affected_ids = get_descendant_ids(cur, dept_id_int)
+
+    users_count = _count_users_in_departments(cur, affected_ids)
+    if users_count > 0:
+        return make_response(409, {
+            'error': 'department_has_users',
+            'message': f'В подразделении есть сотрудники ({users_count}). Сначала перенесите их в другой отдел.',
+            'users_count': users_count,
+        })
+
+    if mode == 'reparent':
+        new_parent = target['parent_id']
+        # Дети текущего отдела переходят к его родителю
+        cur.execute(
+            'UPDATE departments SET parent_id = %s, updated_at = CURRENT_TIMESTAMP WHERE parent_id = %s',
+            (new_parent, dept_id_int)
+        )
+        cur.execute('DELETE FROM department_positions WHERE department_id = %s', (dept_id_int,))
+        # Разрываем самоссылку на всякий случай и удаляем сам отдел
+        cur.execute('UPDATE departments SET parent_id = NULL WHERE id = %s', (dept_id_int,))
+        cur.execute('DELETE FROM departments WHERE id = %s', (dept_id_int,))
+        conn.commit()
+        return make_response(200, {
+            'message': 'Подразделение удалено, дочерние перепривязаны',
+            'deleted_ids': [dept_id_int],
+            'mode': 'reparent',
+        })
+
+    # cascade — старое поведение
+    placeholders = ','.join(['%s'] * len(affected_ids))
+    cur.execute(f'DELETE FROM department_positions WHERE department_id IN ({placeholders})', affected_ids)
     cur.execute(
         f"""
         WITH RECURSIVE ordered AS (
@@ -170,10 +226,14 @@ def handle_delete(cur, conn, dept_id):
     ordered_ids = [row['id'] for row in cur.fetchall()]
     for did in ordered_ids:
         cur.execute('UPDATE departments SET parent_id = NULL WHERE id = %s', (did,))
-    cur.execute(f'DELETE FROM departments WHERE id IN ({placeholders})', ids)
+    cur.execute(f'DELETE FROM departments WHERE id IN ({placeholders})', affected_ids)
 
     conn.commit()
-    return make_response(200, {'message': f'Удалено подразделений: {len(ids)}', 'deleted_ids': ids})
+    return make_response(200, {
+        'message': f'Удалено подразделений: {len(affected_ids)}',
+        'deleted_ids': affected_ids,
+        'mode': 'cascade',
+    })
 
 
 def handler(event: dict, context) -> dict:
@@ -206,7 +266,7 @@ def handler(event: dict, context) -> dict:
             data = json.loads(event.get('body', '{}'))
             return handle_patch(cur, conn, dept_id, data)
         elif method == 'DELETE':
-            return handle_delete(cur, conn, dept_id)
+            return handle_delete(cur, conn, dept_id, query_params)
         else:
             return make_response(405, {'error': 'Method not allowed'})
 
