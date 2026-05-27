@@ -3,7 +3,7 @@ import os
 import requests
 from typing import Dict, Any, List, Optional, Tuple
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
 
 
 CORS_HEADERS = {
@@ -315,7 +315,12 @@ def fetch_all_bitrix_users() -> List[Dict[str, Any]]:
     while iteration < max_iterations:
         iteration += 1
         url = f"{webhook_url.rstrip('/')}/user.get"
-        payload = {'start': start, 'ACTIVE': True}
+        payload = {
+            'start': start,
+            'ACTIVE': True,
+            'FILTER': {'ACTIVE': True},
+            'SELECT': ['ID', 'WORK_POSITION', 'UF_DEPARTMENT'],
+        }
 
         response = requests.post(
             url,
@@ -445,56 +450,66 @@ def sync_positions_and_users(
 
         print(f"[bitrix-sync] Уникальных должностей из Битрикс: {len(position_to_depts)}")
 
-        # 3) UPSERT positions
-        # position_name -> positions.id
+        # 3) UPSERT positions одним батчем
         pos_id_map: Dict[str, int] = {}
         if position_to_depts:
+            all_names = list(position_to_depts.keys())
             cursor.execute(
                 f'SELECT id, name FROM {schema}.positions WHERE name = ANY(%s)',
-                (list(position_to_depts.keys()),),
+                (all_names,),
             )
             for row in cursor.fetchall():
                 pos_id_map[row['name']] = row['id']
 
-            for name in position_to_depts.keys():
-                if name in pos_id_map:
-                    # Просто отметим как обновлённую (имени менять не надо)
-                    cursor.execute(
-                        f'''UPDATE {schema}.positions
-                            SET is_active = true, updated_at = CURRENT_TIMESTAMP
-                            WHERE id = %s''',
-                        (pos_id_map[name],),
-                    )
-                    stats['positions_updated'] += 1
-                else:
-                    cursor.execute(
-                        f'''INSERT INTO {schema}.positions
-                            (name, is_active, created_at, updated_at)
-                            VALUES (%s, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                            RETURNING id''',
-                        (name,),
-                    )
-                    new_id = cursor.fetchone()['id']
-                    pos_id_map[name] = new_id
-                    stats['positions_created'] += 1
+            existing_ids = list(pos_id_map.values())
+            new_names = [n for n in all_names if n not in pos_id_map]
 
-        # 4) department_positions — связи
+            if existing_ids:
+                cursor.execute(
+                    f'''UPDATE {schema}.positions
+                        SET is_active = true, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ANY(%s)''',
+                    (existing_ids,),
+                )
+                stats['positions_updated'] = len(existing_ids)
+
+            if new_names:
+                rows = execute_values(
+                    cursor,
+                    f'''INSERT INTO {schema}.positions
+                        (name, is_active, created_at, updated_at)
+                        VALUES %s
+                        RETURNING id, name''',
+                    [(n, True) for n in new_names],
+                    template='(%s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+                    fetch=True,
+                )
+                for r in rows:
+                    pos_id_map[r[1]] = r[0]
+                stats['positions_created'] = len(new_names)
+
+        # 4) department_positions — все связи одним INSERT с ON CONFLICT
+        link_rows: List[Tuple[int, int]] = []
         for name, dept_ids in position_to_depts.items():
             pos_id = pos_id_map.get(name)
             if pos_id is None:
                 continue
             for did in dept_ids:
-                cursor.execute(
-                    f'''INSERT INTO {schema}.department_positions
-                        (department_id, position_id, created_at)
-                        VALUES (%s, %s, CURRENT_TIMESTAMP)
-                        ON CONFLICT (department_id, position_id) DO NOTHING''',
-                    (did, pos_id),
-                )
-                if cursor.rowcount > 0:
-                    stats['department_links_created'] += 1
+                link_rows.append((did, pos_id))
 
-        # 5) Обновляем users по bitrix_user_id
+        if link_rows:
+            execute_values(
+                cursor,
+                f'''INSERT INTO {schema}.department_positions
+                    (department_id, position_id, created_at)
+                    VALUES %s
+                    ON CONFLICT (department_id, position_id) DO NOTHING''',
+                link_rows,
+                template='(%s, %s, CURRENT_TIMESTAMP)',
+            )
+            stats['department_links_created'] = cursor.rowcount or 0
+
+        # 5) Обновляем users одним батчем через VALUES JOIN
         if user_to_info:
             bids = list(user_to_info.keys())
             cursor.execute(
@@ -505,6 +520,7 @@ def sync_positions_and_users(
             )
             our_users = {row['bitrix_user_id']: dict(row) for row in cursor.fetchall()}
 
+            update_rows: List[Tuple[int, Optional[int], Optional[int]]] = []
             for bid, (pos_name, primary_dept_id) in user_to_info.items():
                 row = our_users.get(bid)
                 if row is None:
@@ -515,15 +531,21 @@ def sync_positions_and_users(
                 new_pos_id = pos_id if pos_id is not None else row.get('position_id')
                 if new_pos_id == row.get('position_id') and new_dept_id == row.get('department_id'):
                     continue
-                cursor.execute(
-                    f'''UPDATE {schema}.users
-                        SET position_id = %s,
-                            department_id = %s,
+                update_rows.append((row['id'], new_pos_id, new_dept_id))
+
+            if update_rows:
+                execute_values(
+                    cursor,
+                    f'''UPDATE {schema}.users AS u
+                        SET position_id = v.position_id,
+                            department_id = v.department_id,
                             updated_at = CURRENT_TIMESTAMP
-                        WHERE id = %s''',
-                    (new_pos_id, new_dept_id, row['id']),
+                        FROM (VALUES %s) AS v(id, position_id, department_id)
+                        WHERE u.id = v.id''',
+                    update_rows,
+                    template='(%s, %s::int, %s::int)',
                 )
-                stats['users_updated'] += 1
+                stats['users_updated'] = len(update_rows)
 
         conn.commit()
         print(f"[bitrix-sync] Sync должностей ОК: {stats}")
