@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Department } from '@/types';
+import { Department, DepartmentPosition, Position } from '@/types';
 import Icon from '@/components/ui/icon';
 import { filterHiddenDepartments } from '@/utils/departmentTree';
 
 interface DepartmentTreeProps {
   departments: Department[];
+  departmentPositions?: DepartmentPosition[];
+  positions?: Position[];
   onEdit?: (department: Department) => void;
   onDelete?: (id: number) => void;
   onDeactivate?: (id: number) => void;

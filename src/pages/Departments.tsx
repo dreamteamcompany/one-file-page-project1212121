@@ -385,6 +385,9 @@ const Departments = () => {
           onDeactivate={canDelete ? handleDeactivate : undefined}
           onToggleHide={isAdmin ? handleToggleHide : undefined}
           onAddChild={canCreate ? handleAddChild : undefined}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          canCreate={canCreate}
           canHide={isAdmin}
           showArchived={showArchived}
         />
