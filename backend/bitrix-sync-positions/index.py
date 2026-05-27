@@ -94,6 +94,7 @@ def sync_positions_and_users(
         'positions_created': 0,
         'positions_updated': 0,
         'department_links_created': 0,
+        'department_links_deleted': 0,
         'users_updated': 0,
         'users_skipped': 0,
     }
@@ -175,13 +176,30 @@ def sync_positions_and_users(
                     pos_id_map[r[1]] = r[0]
                 stats['positions_created'] = len(new_names)
 
+        # Полная пересборка: удаляем все связи отделов компании, потом вставляем актуальные
+        company_dept_ids = list(dept_map.values())
+        if company_dept_ids:
+            cursor.execute(
+                f'''DELETE FROM {schema}.department_positions
+                    WHERE department_id = ANY(%s)''',
+                (company_dept_ids,),
+            )
+            deleted_links = cursor.rowcount or 0
+            stats['department_links_deleted'] = deleted_links
+            print(f"[bitrix-sync-positions] Удалено старых связей: {deleted_links}")
+
         link_rows: List[Tuple[int, int]] = []
+        seen_links: set = set()
         for name, dept_ids in position_to_depts.items():
             pos_id = pos_id_map.get(name)
             if pos_id is None:
                 continue
             for did in dept_ids:
-                link_rows.append((did, pos_id))
+                key = (did, pos_id)
+                if key in seen_links:
+                    continue
+                seen_links.add(key)
+                link_rows.append(key)
 
         if link_rows:
             execute_values(
@@ -295,6 +313,7 @@ def handler(event: dict, context) -> dict:
             'positions_created': 0,
             'positions_updated': 0,
             'department_links_created': 0,
+            'department_links_deleted': 0,
             'users_updated': 0,
             'users_skipped': 0,
         }
