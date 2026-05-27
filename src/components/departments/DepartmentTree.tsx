@@ -49,7 +49,7 @@ const TreeNode = ({
   canCreate,
   canHide,
 }: TreeNodeProps) => {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const children = allDepartments.filter((d) => d.parent_id === department.id);
   const hasChildren = children.length > 0;
 
