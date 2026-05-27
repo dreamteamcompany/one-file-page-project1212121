@@ -107,17 +107,28 @@ def handle_put(cur, conn, dept_id, data):
 
 
 def handle_patch(cur, conn, dept_id, data):
-    """Деактивация/активация подразделения с каскадом на дочерние."""
+    """PATCH: смена is_active (каскадно) или is_hidden (только сам отдел)."""
     if not dept_id:
         return make_response(400, {'error': 'Department ID required'})
-
-    is_active = data.get('is_active')
-    if is_active is None:
-        return make_response(400, {'error': 'is_active field required'})
 
     cur.execute('SELECT id FROM departments WHERE id = %s', (dept_id,))
     if not cur.fetchone():
         return make_response(404, {'error': 'Department not found'})
+
+    if 'is_hidden' in data:
+        is_hidden = bool(data.get('is_hidden'))
+        cur.execute(
+            'UPDATE departments SET is_hidden = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *',
+            (is_hidden, dept_id)
+        )
+        dept = cur.fetchone()
+        conn.commit()
+        action_word = 'скрыто' if is_hidden else 'показано'
+        return make_response(200, {'message': f'Подразделение {action_word}', 'department': dict(dept)})
+
+    is_active = data.get('is_active')
+    if is_active is None:
+        return make_response(400, {'error': 'is_active or is_hidden field required'})
 
     ids = get_descendant_ids(cur, int(dept_id))
     placeholders = ','.join(['%s'] * len(ids))

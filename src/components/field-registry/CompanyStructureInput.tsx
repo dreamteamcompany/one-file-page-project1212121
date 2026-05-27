@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiFetch } from '@/utils/api';
+import { filterHiddenDepartments } from '@/utils/departmentTree';
 
 interface Company {
   id: number;
@@ -19,6 +20,7 @@ interface Department {
   name: string;
   parent_id: number | null;
   company_id: number;
+  is_hidden?: boolean;
 }
 
 interface Position {
@@ -120,7 +122,9 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
       ]);
 
       setCompanies(Array.isArray(compsData) ? compsData : []);
-      setDepartments(Array.isArray(depsData) ? depsData : []);
+      // Скрываем "скрытые" отделы и поднимаем их детей к ближайшему видимому предку
+      const depsList: Department[] = Array.isArray(depsData) ? depsData : [];
+      setDepartments(filterHiddenDepartments(depsList));
       setPositions(Array.isArray(posData) ? posData : []);
       setDepartmentPositions(Array.isArray(depPosData) ? depPosData : []);
     } catch (error) {

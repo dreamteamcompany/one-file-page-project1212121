@@ -28,7 +28,8 @@ const emptyForm: FormData = {
 };
 
 const Departments = () => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasSystemRole } = useAuth();
+  const isAdmin = hasSystemRole('admin');
   const [menuOpen, setMenuOpen] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -152,6 +153,32 @@ const Departments = () => {
       }
     } catch (error) {
       console.error('Failed to delete department:', error);
+    }
+  };
+
+  const handleToggleHide = async (department: Department) => {
+    const next = !department.is_hidden;
+    // Оптимистичное обновление
+    setDepartments((prev) =>
+      prev.map((d) => (d.id === department.id ? { ...d, is_hidden: next } : d)),
+    );
+    try {
+      const response = await apiFetch(`/departments/${department.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_hidden: next }),
+      });
+      if (!response.ok) {
+        // Откат при ошибке
+        setDepartments((prev) =>
+          prev.map((d) => (d.id === department.id ? { ...d, is_hidden: !next } : d)),
+        );
+        alert('Не удалось изменить видимость подразделения');
+      }
+    } catch (error) {
+      console.error('Failed to toggle hide:', error);
+      setDepartments((prev) =>
+        prev.map((d) => (d.id === department.id ? { ...d, is_hidden: !next } : d)),
+      );
     }
   };
 
@@ -334,7 +361,9 @@ const Departments = () => {
           onEdit={canEdit ? handleEdit : undefined}
           onDelete={canDelete ? handleDelete : undefined}
           onDeactivate={canDelete ? handleDeactivate : undefined}
+          onToggleHide={isAdmin ? handleToggleHide : undefined}
           onAddChild={canCreate ? handleAddChild : undefined}
+          canHide={isAdmin}
           showArchived={showArchived}
         />
       </div>

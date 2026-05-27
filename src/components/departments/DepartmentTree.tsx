@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Department } from '@/types';
 import Icon from '@/components/ui/icon';
+import { filterHiddenDepartments } from '@/utils/departmentTree';
 
 interface DepartmentTreeProps {
   departments: Department[];
   onEdit?: (department: Department) => void;
   onDelete?: (id: number) => void;
   onDeactivate?: (id: number) => void;
+  onToggleHide?: (department: Department) => void;
   onAddChild?: (parentId: number) => void;
   canEdit?: boolean;
   canDelete?: boolean;
   canCreate?: boolean;
+  canHide?: boolean;
   showArchived?: boolean;
 }
 
@@ -22,10 +25,12 @@ interface TreeNodeProps {
   onEdit?: (department: Department) => void;
   onDelete?: (id: number) => void;
   onDeactivate?: (id: number) => void;
+  onToggleHide?: (department: Department) => void;
   onAddChild?: (parentId: number) => void;
   canEdit?: boolean;
   canDelete?: boolean;
   canCreate?: boolean;
+  canHide?: boolean;
 }
 
 const TreeNode = ({
@@ -35,10 +40,12 @@ const TreeNode = ({
   onEdit,
   onDelete,
   onDeactivate,
+  onToggleHide,
   onAddChild,
   canEdit,
   canDelete,
   canCreate,
+  canHide,
 }: TreeNodeProps) => {
   const [expanded, setExpanded] = useState(true);
   const children = allDepartments.filter((d) => d.parent_id === department.id);
@@ -47,7 +54,7 @@ const TreeNode = ({
   return (
     <div>
       <div
-        className={`flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-border ${department.is_archived ? 'opacity-60' : ''}`}
+        className={`flex items-center gap-2 py-3 px-3 hover:bg-muted/50 rounded-md group border-b border-border ${department.is_archived ? 'opacity-60' : ''} ${department.is_hidden ? 'opacity-50 italic' : ''}`}
         style={{ paddingLeft: `${level * 24 + 12}px` }}
       >
         <button
@@ -77,6 +84,12 @@ const TreeNode = ({
               <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400">
                 <Icon name="Archive" className="h-3 w-3" />
                 В архиве
+              </span>
+            )}
+            {department.is_hidden && (
+              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-slate-500/15 text-slate-700 dark:text-slate-300">
+                <Icon name="EyeOff" className="h-3 w-3" />
+                Скрыт в дереве
               </span>
             )}
             {department.bitrix_id && (
@@ -110,6 +123,19 @@ const TreeNode = ({
                 <Icon name="Edit" className="h-4 w-4" />
               </Button>
             )}
+            {canHide && onToggleHide && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onToggleHide(department)}
+                title={department.is_hidden ? 'Показать в дереве' : 'Скрыть в дереве (дети останутся видимыми)'}
+              >
+                <Icon
+                  name={department.is_hidden ? 'Eye' : 'EyeOff'}
+                  className={`h-4 w-4 ${department.is_hidden ? 'text-emerald-500' : 'text-slate-500'}`}
+                />
+              </Button>
+            )}
             {canEdit && onDeactivate && (
               <Button
                 variant="ghost"
@@ -117,7 +143,7 @@ const TreeNode = ({
                 onClick={() => onDeactivate(department.id)}
                 title="Деактивировать"
               >
-                <Icon name="EyeOff" className="h-4 w-4 text-yellow-500" />
+                <Icon name="PowerOff" className="h-4 w-4 text-yellow-500" />
               </Button>
             )}
             {canDelete && (
@@ -145,10 +171,12 @@ const TreeNode = ({
               onEdit={onEdit}
               onDelete={onDelete}
               onDeactivate={onDeactivate}
+              onToggleHide={onToggleHide}
               onAddChild={onAddChild}
               canEdit={canEdit}
               canDelete={canDelete}
               canCreate={canCreate}
+              canHide={canHide}
             />
           ))}
         </div>
@@ -162,15 +190,23 @@ export const DepartmentTree = ({
   onEdit,
   onDelete,
   onDeactivate,
+  onToggleHide,
   onAddChild,
   canEdit,
   canDelete,
   canCreate,
+  canHide,
   showArchived = false,
 }: DepartmentTreeProps) => {
-  const visibleDepartments = showArchived
+  const afterArchive = showArchived
     ? departments
     : departments.filter((d) => !d.is_archived);
+  // Для админов (canHide) показываем скрытые отделы как полупрозрачные,
+  // чтобы их можно было вернуть в видимость. Для остальных — прячем
+  // полностью, поднимая детей к ближайшему видимому предку.
+  const visibleDepartments = canHide
+    ? afterArchive
+    : filterHiddenDepartments(afterArchive);
   const rootDepartments = visibleDepartments.filter((d) => !d.parent_id);
 
   if (visibleDepartments.length === 0) {
@@ -193,10 +229,12 @@ export const DepartmentTree = ({
           onEdit={onEdit}
           onDelete={onDelete}
           onDeactivate={onDeactivate}
+          onToggleHide={onToggleHide}
           onAddChild={onAddChild}
           canEdit={canEdit}
           canDelete={canDelete}
           canCreate={canCreate}
+          canHide={canHide}
         />
       ))}
     </div>

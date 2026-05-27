@@ -19,6 +19,7 @@ export interface Department {
   is_active: boolean;
   is_archived?: boolean;
   archived_at?: string | null;
+  is_hidden?: boolean;
   bitrix_id?: string | null;
   created_at: string;
   updated_at: string;
