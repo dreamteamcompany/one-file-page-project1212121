@@ -626,23 +626,6 @@ def handler(event: dict, context) -> dict:
 
         result = sync_departments_to_db(departments, int(company_id))
 
-        # Шаг 2: должности + пользователи
-        positions_stats: Dict[str, Any] = {
-            'positions_created': 0,
-            'positions_updated': 0,
-            'department_links_created': 0,
-            'users_updated': 0,
-            'users_skipped': 0,
-        }
-        positions_error: Optional[str] = None
-        try:
-            bitrix_users = fetch_all_bitrix_users()
-            if bitrix_users:
-                positions_stats = sync_positions_and_users(bitrix_users, int(company_id))
-        except Exception as pe:
-            positions_error = str(pe)
-            print(f"[bitrix-sync] Ошибка sync должностей: {pe}")
-
         return {
             'statusCode': 200,
             'headers': CORS_HEADERS,
@@ -651,8 +634,6 @@ def handler(event: dict, context) -> dict:
                 'synced_count': result['synced_count'],
                 'total_in_bitrix': result['total_in_bitrix'],
                 'stats': result['stats'],
-                'positions_stats': positions_stats,
-                'positions_error': positions_error,
                 'has_more': False,
             }),
             'isBase64Encoded': False,

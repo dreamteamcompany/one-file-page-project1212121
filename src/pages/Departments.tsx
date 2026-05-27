@@ -279,19 +279,42 @@ const Departments = () => {
         const summary = parts.length > 0 ? parts.join(', ') : 'без изменений';
         const total = result.total_in_bitrix ?? result.synced_count ?? 0;
 
-        const ps = result.positions_stats || {};
-        const posParts: string[] = [];
-        if (ps.positions_created) posParts.push(`создано: ${ps.positions_created}`);
-        if (ps.positions_updated) posParts.push(`обновлено: ${ps.positions_updated}`);
-        if (ps.department_links_created) posParts.push(`связей с отделами: ${ps.department_links_created}`);
-        if (ps.users_updated) posParts.push(`сотрудников обновлено: ${ps.users_updated}`);
-        const posSummary = posParts.length > 0 ? posParts.join(', ') : 'без изменений';
-        const posError = result.positions_error ? `\nОшибка должностей: ${result.positions_error}` : '';
+        let posSummary = 'пропущено';
+        let posError = '';
+        let posTotalUsers = 0;
+        try {
+          const posController = new AbortController();
+          const posTimeoutId = setTimeout(() => posController.abort(), 300000);
+          const posResp = await apiFetch('https://functions.poehali.dev/554d2115-1c37-4955-b544-bc0a5df0b466', {
+            method: 'POST',
+            body: JSON.stringify({ company_id: parseInt(companyId) }),
+            signal: posController.signal,
+          });
+          clearTimeout(posTimeoutId);
+          if (!posResp.ok) {
+            const err = await posResp.json().catch(() => ({ error: 'Network error' }));
+            throw new Error(err.error || 'Ошибка синхронизации должностей');
+          }
+          const posResult = await posResp.json();
+          const ps = posResult.stats || {};
+          posTotalUsers = posResult.total_users_in_bitrix || 0;
+          const posParts: string[] = [];
+          if (ps.positions_created) posParts.push(`создано: ${ps.positions_created}`);
+          if (ps.positions_updated) posParts.push(`обновлено: ${ps.positions_updated}`);
+          if (ps.department_links_created) posParts.push(`связей с отделами: ${ps.department_links_created}`);
+          if (ps.users_updated) posParts.push(`сотрудников обновлено: ${ps.users_updated}`);
+          posSummary = posParts.length > 0 ? posParts.join(', ') : 'без изменений';
+        } catch (pe: unknown) {
+          posError = pe instanceof Error ? pe.message : 'Неизвестная ошибка';
+          console.error('Positions sync error:', pe);
+        }
 
         alert(
           `Синхронизация завершена!\n` +
           `Отделов в Bitrix24: ${total}\n${summary}\n\n` +
-          `Должности: ${posSummary}${posError}`,
+          `Пользователей в Bitrix24: ${posTotalUsers}\n` +
+          `Должности: ${posSummary}` +
+          (posError ? `\nОшибка должностей: ${posError}` : ''),
         );
         loadData();
       } catch (fetchError: unknown) {
