@@ -249,11 +249,10 @@ const CompanyStructureInput = ({ value, onChange }: CompanyStructureInputProps) 
         </div>
       ))}
 
-      {selectedPath.length > 0 && (() => {
-        const pathSet = new Set(selectedPath);
+      {deepestDepartmentId !== undefined && (() => {
         const linkedPositionIds = new Set(
           departmentPositions
-            .filter((dp) => pathSet.has(dp.department_id))
+            .filter((dp) => dp.department_id === deepestDepartmentId)
             .map((dp) => dp.position_id)
         );
         const filteredPositions = positions.filter((p) => linkedPositionIds.has(p.id));
