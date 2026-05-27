@@ -35,8 +35,10 @@ def fetch_all_bitrix_departments() -> List[Dict[str, Any]]:
 
     while iteration < max_iterations:
         iteration += 1
-        url = f"{webhook_url}department.get"
-        payload = {'START': start, 'sort': 'ID', 'order': 'ASC'}
+        url = f"{webhook_url.rstrip('/')}/department.get"
+        # Bitrix24 REST требует параметр пагинации именно строчными буквами: "start"
+        # Также НЕ добавляем sort/order — для department.get они ломают пагинацию
+        payload = {'start': start}
 
         response = requests.post(
             url,
@@ -49,19 +51,27 @@ def fetch_all_bitrix_departments() -> List[Dict[str, Any]]:
 
         result = data.get('result') or []
         total = data.get('total', 0)
+        next_start = data.get('next')
 
         if not result:
-            print(f"[bitrix-sync] Пустой ответ на START={start}, завершаем")
+            print(f"[bitrix-sync] Пустой ответ на start={start}, завершаем")
             break
 
         batch_ids = [str(d.get('ID')) for d in result]
+        first_id = batch_ids[0] if batch_ids else None
+        last_id = batch_ids[-1] if batch_ids else None
         new_in_batch = [bid for bid in batch_ids if bid not in seen_ids]
+
+        print(
+            f"[bitrix-sync] start={start}: получено {len(result)} (новых {len(new_in_batch)}), "
+            f"первый ID={first_id}, последний ID={last_id}, next={next_start}, всего {len(all_departments) + len(new_in_batch)}/{total}"
+        )
 
         if not new_in_batch:
             msg = (
-                f"Bitrix REST возвращает повторяющиеся ID на START={start}. "
+                f"Bitrix REST возвращает повторяющиеся ID на start={start}. "
                 f"Пагинация не работает. Уникальных отделов получено: {len(seen_ids)}. "
-                f"Проверьте, что вебхук создан под админом портала и имеет право 'department'."
+                f"Ответ Bitrix: total={total}, next={next_start}, first_id={first_id}, last_id={last_id}."
             )
             print(f"[bitrix-sync] STOP: {msg}")
             raise RuntimeError(msg)
@@ -72,14 +82,13 @@ def fetch_all_bitrix_departments() -> List[Dict[str, Any]]:
                 seen_ids.add(bid)
                 all_departments.append(d)
 
-        print(f"[bitrix-sync] START={start}: получено {len(result)} (новых {len(new_in_batch)}), всего {len(all_departments)}/{total}")
-
-        next_start = data.get('next')
         if next_start is None:
+            print(f"[bitrix-sync] next отсутствует — пагинация завершена")
             break
         start = int(next_start)
 
         if len(all_departments) >= total > 0:
+            print(f"[bitrix-sync] Собрали все {total} отделов — завершаем")
             break
 
     print(f"[bitrix-sync] Итого загружено отделов: {len(all_departments)}")
