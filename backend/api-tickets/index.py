@@ -1103,6 +1103,20 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
         elif 'status_id' in body:
             if body['status_id'] != old_ticket['status_id']:
+                # Проверка прав: имеет ли пользователь роль, которой разрешён новый статус.
+                # Админ может ставить любой статус. Для остальных статус должен быть привязан
+                # хотя бы к одной из ролей пользователя в ticket_status_roles.
+                role_info = _get_user_role_info(cur, user_id)
+                if not role_info.get('is_admin'):
+                    cur.execute(
+                        f"SELECT role_id FROM {SCHEMA}.ticket_status_roles WHERE status_id = %s",
+                        (body['status_id'],),
+                    )
+                    allowed_roles = {r['role_id'] for r in cur.fetchall()}
+                    user_roles = set(role_info.get('role_ids') or [])
+                    if not allowed_roles or not (allowed_roles & user_roles):
+                        cur.close()
+                        return response(403, {'error': 'Недостаточно прав для установки этого статуса'})
                 history_entries.append(('status_id', get_status_name(old_ticket['status_id']), get_status_name(body['status_id'])))
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
