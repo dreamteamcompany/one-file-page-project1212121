@@ -91,7 +91,10 @@ const DeadlineSection = ({
             </h3>
             {canEdit && (
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsEditingDueDate(!isEditingDueDate);
                   if (!isEditingDueDate) {
                     if (ticket.due_date) {
@@ -135,8 +138,11 @@ const DeadlineSection = ({
               </div>
               <div className="flex gap-2">
                 <Button
+                  type="button"
                   size="sm"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (dueDateValue) {
                       const combinedDateTime = `${dueDateValue}T${dueTimeValue}:00+03:00`;
                       onUpdateDueDate!(combinedDateTime);
@@ -151,9 +157,12 @@ const DeadlineSection = ({
                 </Button>
                 {ticket.due_date && (
                   <Button
+                    type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       onUpdateDueDate!(null);
                       setDueDateValue('');
                       setDueTimeValue('12:00');
