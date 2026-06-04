@@ -35,7 +35,7 @@ def handle_users(method, event, conn, payload):
                 "u.id, u.email, u.full_name, u.username, u.position, u.photo_url, "
                 "u.is_active, u.can_login, u.company_id, u.department_id, u.position_id, "
                 "u.bitrix_user_id, u.max_user_id, u.bypass_department_head_check, u.external_id, u.external_source, "
-                "u.auto_registered, u.last_login, u.created_at, u.updated_at"
+                "u.auto_registered, u.is_bitrix_head, u.last_login, u.created_at, u.updated_at"
             )
 
             if target_user_id:

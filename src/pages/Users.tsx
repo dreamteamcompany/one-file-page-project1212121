@@ -21,6 +21,7 @@ interface User {
   last_login: string | null;
   photo_url?: string;
   bypass_department_head_check?: boolean;
+  is_bitrix_head?: boolean;
   roles: { id: number; name: string }[];
 }
 

@@ -11,6 +11,7 @@ interface User {
   last_login: string | null;
   photo_url?: string;
   bypass_department_head_check?: boolean;
+  is_bitrix_head?: boolean;
   roles: { id: number; name: string }[];
 }
 
@@ -56,7 +57,15 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
                     </div>
                   )}
                   <div>
-                    <div className="font-medium">{user.full_name || 'Без имени'}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{user.full_name || 'Без имени'}</span>
+                      {user.is_bitrix_head && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-500 flex items-center gap-1" title="Добавлен автоматически как руководитель отдела из Bitrix24">
+                          <Icon name="Bot" size={12} />
+                          Руководитель из Bitrix
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">@{user.username}</div>
                   </div>
                 </div>
@@ -154,6 +163,12 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{user.full_name || 'Без имени'}</div>
                   <div className="text-sm text-muted-foreground truncate">@{user.username}</div>
+                  {user.is_bitrix_head && (
+                    <span className="mt-1 inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-500 items-center gap-1">
+                      <Icon name="Bot" size={12} />
+                      Руководитель из Bitrix
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
