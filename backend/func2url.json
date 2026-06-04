@@ -1,4 +1,5 @@
 {
+  "bitrix-sync-heads": "https://functions.poehali.dev/d76a8ec5-152f-427f-802c-ebf292c0f3e8",
   "automation-dispatcher": "https://functions.poehali.dev/221a303b-b060-4700-bdef-8995e6de915d",
   "automation": "https://functions.poehali.dev/2aacfd88-8589-4d6e-ace1-540fb6324434",
   "bitrix-sync-positions": "https://functions.poehali.dev/554d2115-1c37-4955-b544-bc0a5df0b466",

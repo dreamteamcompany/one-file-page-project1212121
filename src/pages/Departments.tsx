@@ -309,12 +309,42 @@ const Departments = () => {
           console.error('Positions sync error:', pe);
         }
 
+        let headsSummary = 'пропущено';
+        let headsError = '';
+        try {
+          const headsController = new AbortController();
+          const headsTimeoutId = setTimeout(() => headsController.abort(), 300000);
+          const headsResp = await apiFetch('https://functions.poehali.dev/d76a8ec5-152f-427f-802c-ebf292c0f3e8', {
+            method: 'POST',
+            body: JSON.stringify({ company_id: parseInt(companyId) }),
+            signal: headsController.signal,
+          });
+          clearTimeout(headsTimeoutId);
+          if (!headsResp.ok) {
+            const err = await headsResp.json().catch(() => ({ error: 'Network error' }));
+            throw new Error(err.error || 'Ошибка синхронизации руководителей');
+          }
+          const headsResult = await headsResp.json();
+          const hs = headsResult.stats || {};
+          const headsParts: string[] = [];
+          if (hs.heads_in_bitrix) headsParts.push(`руководителей в Bitrix: ${hs.heads_in_bitrix}`);
+          if (hs.users_created) headsParts.push(`создано: ${hs.users_created}`);
+          if (hs.users_updated) headsParts.push(`обновлено: ${hs.users_updated}`);
+          if (hs.users_deactivated) headsParts.push(`деактивировано: ${hs.users_deactivated}`);
+          headsSummary = headsParts.length > 0 ? headsParts.join(', ') : 'без изменений';
+        } catch (he: unknown) {
+          headsError = he instanceof Error ? he.message : 'Неизвестная ошибка';
+          console.error('Heads sync error:', he);
+        }
+
         alert(
           `Синхронизация завершена!\n` +
           `Отделов в Bitrix24: ${total}\n${summary}\n\n` +
           `Пользователей в Bitrix24: ${posTotalUsers}\n` +
           `Должности: ${posSummary}` +
-          (posError ? `\nОшибка должностей: ${posError}` : ''),
+          (posError ? `\nОшибка должностей: ${posError}` : '') +
+          `\n\nРуководители: ${headsSummary}` +
+          (headsError ? `\nОшибка руководителей: ${headsError}` : ''),
         );
         loadData();
       } catch (fetchError: unknown) {
