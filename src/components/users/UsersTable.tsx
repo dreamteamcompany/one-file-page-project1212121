@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import { buildDepartmentPath } from '@/utils/departmentPath';
 
 interface User {
   id: number;
@@ -12,11 +13,19 @@ interface User {
   photo_url?: string;
   bypass_department_head_check?: boolean;
   is_bitrix_head?: boolean;
+  department_id?: number | null;
   roles: { id: number; name: string }[];
+}
+
+interface Department {
+  id: number;
+  name: string;
+  parent_id?: number | null;
 }
 
 interface UsersTableProps {
   users: User[];
+  departments?: Department[];
   onEdit: (user: User) => void;
   onToggleStatus: (userId: number, currentStatus: boolean) => void;
   onDelete: (userId: number, userName: string) => void;
@@ -24,7 +33,7 @@ interface UsersTableProps {
   canDelete?: boolean;
 }
 
-const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true, canDelete = true }: UsersTableProps) => {
+const UsersTable = ({ users, departments = [], onEdit, onToggleStatus, onDelete, canUpdate = true, canDelete = true }: UsersTableProps) => {
   return (
     <>
       {/* Desktop version */}
@@ -34,6 +43,7 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
           <tr className="border-b border-border">
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Пользователь</th>
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Должность</th>
+            <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Отдел</th>
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Роли</th>
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Последний вход</th>
             <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Статус</th>
@@ -71,6 +81,9 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
                 </div>
               </td>
               <td className="p-4 text-muted-foreground">{user.position || '—'}</td>
+              <td className="p-4 text-muted-foreground text-sm">
+                {buildDepartmentPath(departments, user.department_id) || '—'}
+              </td>
               <td className="p-4">
                 <div className="flex flex-wrap gap-2">
                   {user.roles?.map((role) => (
@@ -192,6 +205,13 @@ const UsersTable = ({ users, onEdit, onToggleStatus, onDelete, canUpdate = true,
               <div className="text-sm">
                 <span className="text-muted-foreground/70">Должность: </span>
                 <span className="text-muted-foreground">{user.position}</span>
+              </div>
+            )}
+
+            {buildDepartmentPath(departments, user.department_id) && (
+              <div className="text-sm">
+                <span className="text-muted-foreground/70">Отдел: </span>
+                <span className="text-muted-foreground">{buildDepartmentPath(departments, user.department_id)}</span>
               </div>
             )}
 

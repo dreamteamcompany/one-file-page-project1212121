@@ -10,6 +10,7 @@ class UserRequest(BaseModel):
     email: str = Field(default='')
     bitrix_user_id: str = Field(default='')
     max_user_id: str = Field(default='')
+    department_id: int | None = Field(default=None)
 
 class RoleRequest(BaseModel):
     name: str = Field(..., min_length=1)

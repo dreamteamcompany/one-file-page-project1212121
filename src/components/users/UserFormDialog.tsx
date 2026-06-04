@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { UPLOAD_FILE_URL } from '@/utils/api';
+import { buildDepartmentPath } from '@/utils/departmentPath';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,12 @@ interface Role {
   description: string;
 }
 
+interface Department {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+}
+
 interface UserFormDialogProps {
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
@@ -51,10 +58,12 @@ interface UserFormDialogProps {
     email: string;
     bitrix_user_id: string;
     max_user_id: string;
+    department_id?: number | null;
     is_active?: boolean;
   };
-  setFormData: (data: Record<string, string | number[] | boolean>) => void;
+  setFormData: (data: Record<string, string | number[] | boolean | number | null>) => void;
   roles: Role[];
+  departments?: Department[];
   handleSubmit: (e: React.FormEvent) => void;
   canCreate?: boolean;
   onToggleStatus?: (userId: number, currentStatus: boolean) => void;
@@ -69,6 +78,7 @@ const UserFormDialog = ({
   formData,
   setFormData,
   roles,
+  departments = [],
   handleSubmit,
   canCreate = true,
   onToggleStatus,
@@ -156,6 +166,7 @@ const UserFormDialog = ({
           email: '',
           bitrix_user_id: '',
           max_user_id: '',
+          department_id: null,
         });
       }
     }}>
@@ -234,6 +245,25 @@ const UserFormDialog = ({
               onChange={(e) => setFormData({ ...formData, position: e.target.value })}
               placeholder="Менеджер"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="department">Отдел</Label>
+            <select
+              id="department"
+              value={formData.department_id ?? ''}
+              onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Без отдела</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {buildDepartmentPath(departments, dept.id)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Подтягивается автоматически из Битрикс24, можно изменить вручную
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

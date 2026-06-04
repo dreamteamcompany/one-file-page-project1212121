@@ -22,6 +22,7 @@ interface User {
   photo_url?: string;
   bypass_department_head_check?: boolean;
   is_bitrix_head?: boolean;
+  department_id?: number | null;
   roles: { id: number; name: string }[];
 }
 
@@ -31,11 +32,18 @@ interface Role {
   description: string;
 }
 
+interface Department {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+}
+
 const Users = () => {
   const { hasPermission, token } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -54,7 +62,20 @@ const Users = () => {
     email: '',
     bitrix_user_id: '',
     max_user_id: '',
+    department_id: null as number | null,
   });
+
+  const loadDepartments = async () => {
+    try {
+      const response = await apiFetch('/departments');
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to load departments:', err);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -108,6 +129,7 @@ const Users = () => {
     if (token) {
       loadUsers();
       loadRoles();
+      loadDepartments();
     }
   }, [token]);
 
@@ -145,7 +167,7 @@ const Users = () => {
       
       const method = editingUser ? 'PUT' : 'POST';
       
-      const body: Record<string, string | number[] | boolean> = {
+      const body: Record<string, string | number[] | boolean | number | null> = {
         username: formData.username,
         full_name: formData.full_name,
         position: formData.position,
@@ -153,6 +175,7 @@ const Users = () => {
         email: formData.email,
         bitrix_user_id: formData.bitrix_user_id,
         max_user_id: formData.max_user_id,
+        department_id: formData.department_id,
       };
       
       if (formData.password) {
@@ -185,6 +208,7 @@ const Users = () => {
           email: '',
           bitrix_user_id: '',
           max_user_id: '',
+          department_id: null,
         });
         loadUsers();
       } else {
@@ -294,6 +318,7 @@ const Users = () => {
       email: emailVal,
       bitrix_user_id: user.bitrix_user_id || '',
       max_user_id: user.max_user_id || '',
+      department_id: user.department_id ?? null,
     });
     setDialogOpen(true);
   };
@@ -336,6 +361,7 @@ const Users = () => {
             formData={formData}
             setFormData={setFormData}
             roles={roles}
+            departments={departments}
             handleSubmit={handleSubmit}
             canCreate={hasPermission('users', 'create')}
           />
@@ -352,6 +378,7 @@ const Users = () => {
             ) : (
               <UsersTable
                 users={users}
+                departments={departments}
                 onEdit={handleEditUser}
                 onToggleStatus={toggleUserStatus}
                 onDelete={handleDeleteUser}
