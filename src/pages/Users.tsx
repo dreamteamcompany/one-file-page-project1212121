@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Icon from '@/components/ui/icon';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URL, apiFetch } from '@/utils/api';
@@ -44,6 +46,7 @@ const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [showBlocked, setShowBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -323,6 +326,10 @@ const Users = () => {
     setDialogOpen(true);
   };
 
+  const activeUsers = users.filter((u) => u.is_active);
+  const blockedUsers = users.filter((u) => !u.is_active);
+  const visibleUsers = showBlocked ? blockedUsers : activeUsers;
+
   return (
     <div className="flex min-h-screen">
       <PaymentsSidebar
@@ -351,7 +358,21 @@ const Users = () => {
             <h1 className="text-2xl md:text-3xl font-bold mb-2">Пользователи</h1>
             <p className="text-sm md:text-base text-muted-foreground">Управление пользователями системы</p>
           </div>
-          <UserFormDialog
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant={showBlocked ? 'default' : 'outline'}
+              onClick={() => setShowBlocked((v) => !v)}
+              className="gap-2 w-full sm:w-auto"
+            >
+              <Icon name={showBlocked ? 'Users' : 'UserX'} size={18} />
+              <span>
+                {showBlocked
+                  ? `Активные (${activeUsers.length})`
+                  : `Заблокированные (${blockedUsers.length})`}
+              </span>
+            </Button>
+            <UserFormDialog
             onToggleStatus={toggleUserStatus}
             onToggleBypassDepartmentHead={toggleBypassDepartmentHead}
             dialogOpen={dialogOpen}
@@ -365,19 +386,22 @@ const Users = () => {
             handleSubmit={handleSubmit}
             canCreate={hasPermission('users', 'create')}
           />
+          </div>
         </div>
 
         <Card className="border-border bg-card shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
           <CardContent className="p-0">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
-            ) : users.length === 0 ? (
+            ) : visibleUsers.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                Нет пользователей. Добавьте первого пользователя.
+                {showBlocked
+                  ? 'Нет заблокированных пользователей.'
+                  : 'Нет активных пользователей. Добавьте первого пользователя.'}
               </div>
             ) : (
               <UsersTable
-                users={users}
+                users={visibleUsers}
                 departments={departments}
                 onEdit={handleEditUser}
                 onToggleStatus={toggleUserStatus}
