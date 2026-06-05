@@ -39,56 +39,24 @@ const ArticleCard = ({
 }) => (
   <button
     onClick={() => openArticle(a.id)}
-    className="group text-left rounded-xl border border-border/80 bg-muted/30 hover:bg-muted/50 hover:border-primary hover:shadow-lg transition-all flex flex-col overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/40"
+    className="group text-left p-4 rounded-lg border border-border bg-card hover:border-primary/60 transition-colors flex flex-col gap-2"
   >
-    <div className="p-4 flex-1 flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-[15px] leading-snug line-clamp-2 flex-1 text-foreground group-hover:text-primary transition-colors">
-          {a.title}
-        </h3>
-        {a.is_favorite && <Icon name="Star" size={15} className="text-amber-500 shrink-0 mt-0.5" />}
-      </div>
-      {a.summary && (
-        <p className="text-xs text-muted-foreground/90 line-clamp-2 leading-relaxed">{a.summary}</p>
-      )}
-      {(a.tags?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap gap-1 mt-0.5">
-          {a.tags.slice(0, 3).map((t) => (
-            <span
-              key={t.id}
-              className="text-[10px] px-2 py-0.5 rounded-full border font-medium"
-              style={t.color ? { borderColor: t.color, color: t.color } : undefined}
-            >
-              #{t.name}
-            </span>
-          ))}
-        </div>
-      )}
+    <div className="flex items-start justify-between gap-2">
+      <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1 group-hover:text-primary transition-colors">
+        {a.title}
+      </h3>
+      {a.is_favorite && <Icon name="Star" size={14} className="text-amber-500 shrink-0" />}
     </div>
-    <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-border/60 bg-background/40">
-      {a.category_name ? (
-        <span
-          className="text-[11px] font-medium px-2 py-0.5 rounded-md truncate max-w-[55%]"
-          style={
-            a.category_color
-              ? { backgroundColor: `${a.category_color}25`, color: a.category_color }
-              : { backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
-          }
-        >
-          {a.category_name}
-        </span>
-      ) : (
-        <span />
-      )}
-      <span className="flex items-center gap-3 text-[11px] text-muted-foreground shrink-0">
-        <span className="flex items-center gap-1">
-          <Icon name="Eye" size={12} />
-          {a.views_count}
-        </span>
-        <span className="flex items-center gap-1">
-          <Icon name="Heart" size={12} className={a.is_liked ? 'fill-red-500 text-red-500' : ''} />
-          {a.likes_count}
-        </span>
+    {a.summary && <p className="text-xs text-muted-foreground line-clamp-2">{a.summary}</p>}
+    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto pt-1">
+      {a.category_name && <span className="truncate">{a.category_name}</span>}
+      <span className="flex items-center gap-1">
+        <Icon name="Eye" size={12} />
+        {a.views_count}
+      </span>
+      <span className="flex items-center gap-1">
+        <Icon name="Heart" size={12} className={a.is_liked ? 'fill-red-500 text-red-500' : ''} />
+        {a.likes_count}
       </span>
     </div>
   </button>
