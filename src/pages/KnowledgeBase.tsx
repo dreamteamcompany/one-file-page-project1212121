@@ -9,7 +9,6 @@ import KBSidebar from './knowledge-base/KBSidebar';
 import KBArticleList from './knowledge-base/KBArticleList';
 import KBArticleView from './knowledge-base/KBArticleView';
 import KBArticleEditor from './knowledge-base/KBArticleEditor';
-import KBPopularSidebar from './knowledge-base/KBPopularSidebar';
 import {
   ArticleFull,
   ArticleListItem,
@@ -51,6 +50,7 @@ const KnowledgeBase = () => {
   const [filterCategory, setFilterCategory] = useState<number | null>(null);
   const [filterTag, setFilterTag] = useState<number | null>(null);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [sortBy, setSortBy] = useState<'new' | 'popular'>('new');
 
   const [mode, setMode] = useState<Mode>('list');
   const [activeArticle, setActiveArticle] = useState<ArticleFull | null>(null);
@@ -365,6 +365,20 @@ const KnowledgeBase = () => {
     return roots;
   }, [categories]);
 
+  const sortedArticles = useMemo(() => {
+    const list = [...articles];
+    if (sortBy === 'popular') {
+      list.sort(
+        (a, b) =>
+          (b.views_count || 0) + (b.likes_count || 0) -
+          ((a.views_count || 0) + (a.likes_count || 0)),
+      );
+    }
+    return list;
+  }, [articles, sortBy]);
+
+  const isHome = !search.trim() && !filterCategory && !filterTag && !showFavorites && mode === 'list';
+
   if (!canRead) return null;
 
   return (
@@ -398,35 +412,27 @@ const KnowledgeBase = () => {
 
         {/* === Main === */}
         <main className="flex-1 min-w-0">
-          {search.trim() ? (
+          {search.trim() || mode === 'list' ? (
             <KBArticleList
               search={search}
               setSearch={setSearch}
               searchResults={searchResults}
-              articles={articles}
+              articles={sortedArticles}
               loading={loading}
               canWrite={canWrite}
               showFavorites={showFavorites}
               filterCategory={filterCategory}
+              setFilterCategory={setFilterCategory}
               filterTag={filterTag}
+              setFilterTag={setFilterTag}
+              setShowFavorites={setShowFavorites}
               categories={categories}
+              categoryTree={categoryTree}
               tags={tags}
-              openArticle={openArticle}
-              startNewArticle={startNewArticle}
-            />
-          ) : mode === 'list' ? (
-            <KBArticleList
-              search={search}
-              setSearch={setSearch}
-              searchResults={searchResults}
-              articles={articles}
-              loading={loading}
-              canWrite={canWrite}
-              showFavorites={showFavorites}
-              filterCategory={filterCategory}
-              filterTag={filterTag}
-              categories={categories}
-              tags={tags}
+              isHome={isHome}
+              popular={popular}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
               openArticle={openArticle}
               startNewArticle={startNewArticle}
             />
@@ -470,11 +476,6 @@ const KnowledgeBase = () => {
             />
           ) : null}
         </main>
-
-        {/* === Right column: popular === */}
-        {mode === 'list' && !search.trim() && popular.length > 0 && (
-          <KBPopularSidebar popular={popular} openArticle={openArticle} />
-        )}
       </div>
     </PageLayout>
   );
