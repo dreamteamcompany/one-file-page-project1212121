@@ -39,7 +39,7 @@ const ArticleCard = ({
 }) => (
   <button
     onClick={() => openArticle(a.id)}
-    className="group text-left p-4 rounded-lg border border-border bg-card hover:border-primary/60 transition-colors flex flex-col gap-2"
+    className="group text-left p-4 rounded-lg border border-border bg-muted/40 hover:bg-muted/60 hover:border-primary/60 transition-colors flex flex-col gap-2 font-normal"
   >
     <div className="flex items-start justify-between gap-2">
       <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1 group-hover:text-primary transition-colors">
@@ -47,8 +47,8 @@ const ArticleCard = ({
       </h3>
       {a.is_favorite && <Icon name="Star" size={14} className="text-amber-500 shrink-0" />}
     </div>
-    {a.summary && <p className="text-xs text-muted-foreground line-clamp-2">{a.summary}</p>}
-    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto pt-1">
+    {a.summary && <p className="text-xs font-normal text-muted-foreground line-clamp-2">{a.summary}</p>}
+    <div className="flex items-center gap-3 text-xs font-normal text-muted-foreground mt-auto pt-1">
       {a.category_name && <span className="truncate">{a.category_name}</span>}
       <span className="flex items-center gap-1">
         <Icon name="Eye" size={12} />
