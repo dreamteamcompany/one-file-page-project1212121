@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 import func2url from '../../backend/func2url.json';
-import KBSidebar from './knowledge-base/KBSidebar';
 import KBArticleList from './knowledge-base/KBArticleList';
 import KBArticleView from './knowledge-base/KBArticleView';
 import KBArticleEditor from './knowledge-base/KBArticleEditor';
@@ -383,33 +382,7 @@ const KnowledgeBase = () => {
 
   return (
     <PageLayout>
-      <div className="flex flex-col lg:flex-row gap-4 h-full">
-        <KBSidebar
-          search={search}
-          setSearch={setSearch}
-          filterCategory={filterCategory}
-          setFilterCategory={setFilterCategory}
-          filterTag={filterTag}
-          setFilterTag={setFilterTag}
-          showFavorites={showFavorites}
-          setShowFavorites={setShowFavorites}
-          setMode={setMode}
-          articles={articles}
-          canWrite={canWrite}
-          categories={categories}
-          categoryTree={categoryTree}
-          tags={tags}
-          showCatManager={showCatManager}
-          setShowCatManager={setShowCatManager}
-          newCatName={newCatName}
-          setNewCatName={setNewCatName}
-          newCatParent={newCatParent}
-          setNewCatParent={setNewCatParent}
-          handleCreateCategory={handleCreateCategory}
-          handleDeleteCategory={handleDeleteCategory}
-          handleCreateTag={handleCreateTag}
-        />
-
+      <div className="max-w-5xl mx-auto w-full h-full">
         {/* === Main === */}
         <main className="flex-1 min-w-0">
           {search.trim() || mode === 'list' ? (

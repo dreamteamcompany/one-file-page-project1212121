@@ -176,58 +176,69 @@ const KBArticleList = ({
           </CardContent>
         </Card>
 
-        {/* Section tiles */}
-        {categoryTree.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Разделы</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {categoryTree.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    setFilterCategory(cat.id);
-                    setFilterTag(null);
-                    setShowFavorites(false);
-                  }}
-                  className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition text-left"
-                >
-                  <span
-                    className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0"
-                    style={{ backgroundColor: `${cat.color || '#7c3aed'}20` }}
-                  >
-                    <Icon name={cat.icon || 'Folder'} size={20} style={{ color: cat.color || '#7c3aed' }} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-medium text-sm truncate">{cat.name}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {cat.articles_count} {cat.articles_count === 1 ? 'статья' : 'статей'}
-                      {cat.children.length > 0 && ` · ${cat.children.length} подразделов`}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Popular articles */}
-        {popular.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-              <Icon name="TrendingUp" size={16} />
-              Популярное
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {popular.slice(0, 6).map((a) => (
-                <ArticleCard key={a.id} a={a} openArticle={openArticle} />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Compact filters: all / favorites / categories / tags */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setFilterCategory(null);
+              setFilterTag(null);
+              setShowFavorites(false);
+            }}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs border transition-colors',
+              !filterCategory && !filterTag && !showFavorites
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'border-border hover:bg-accent',
+            )}
+          >
+            Все статьи
+          </button>
+          <button
+            onClick={() => {
+              setShowFavorites(true);
+              setFilterCategory(null);
+              setFilterTag(null);
+            }}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs border transition-colors flex items-center gap-1',
+              showFavorites ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent',
+            )}
+          >
+            <Icon name="Star" size={12} />
+            Избранное
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => {
+                setFilterCategory(c.id);
+                setFilterTag(null);
+                setShowFavorites(false);
+              }}
+              className="px-3 py-1.5 rounded-full text-xs border border-border hover:bg-accent transition-colors flex items-center gap-1"
+            >
+              <Icon name={c.icon || 'Folder'} size={12} style={{ color: c.color || undefined }} />
+              {c.name}
+            </button>
+          ))}
+          {tags.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setFilterTag(t.id);
+                setFilterCategory(null);
+                setShowFavorites(false);
+              }}
+              className="px-3 py-1.5 rounded-full text-xs border border-border hover:bg-accent transition-colors"
+              style={t.color ? { borderColor: t.color, color: t.color } : undefined}
+            >
+              #{t.name}
+            </button>
+          ))}
+        </div>
 
         {/* All articles */}
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Все статьи</h2>
           {loading ? (
             <p className="text-sm text-muted-foreground">Загрузка...</p>
           ) : articles.length === 0 ? (
