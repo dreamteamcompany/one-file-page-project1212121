@@ -46,7 +46,7 @@ const ArticleCard = ({
       {a.is_favorite && <Icon name="Star" size={14} className="text-amber-500 shrink-0" />}
     </div>
     {a.summary && <p className="text-xs text-muted-foreground line-clamp-2">{a.summary}</p>}
-    {a.tags.length > 0 && (
+    {(a.tags?.length ?? 0) > 0 && (
       <div className="flex flex-wrap gap-1">
         {a.tags.slice(0, 3).map((t) => (
           <span
