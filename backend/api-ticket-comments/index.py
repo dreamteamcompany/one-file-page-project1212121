@@ -354,6 +354,7 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
             tc.is_internal, tc.created_at,
             tc.is_pinned, tc.pinned_at, tc.pinned_by,
             tc.edited_at, tc.edited_by,
+            tc.parent_comment_id, tc.mentioned_user_ids,
             u.username as user_name,
             u.full_name as user_full_name,
             u.photo_url as user_photo_url
@@ -514,10 +515,14 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_comments 
-        (ticket_id, user_id, comment, is_internal, created_at)
-        VALUES (%s, %s, %s, %s, NOW())
-        RETURNING id, ticket_id, user_id, comment, is_internal, created_at
-    """, (data.ticket_id, user_id, data.comment or '', data.is_internal))
+        (ticket_id, user_id, comment, is_internal, parent_comment_id, mentioned_user_ids, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+        RETURNING id, ticket_id, user_id, comment, is_internal, parent_comment_id, mentioned_user_ids, created_at
+    """, (
+        data.ticket_id, user_id, data.comment or '', data.is_internal,
+        data.parent_comment_id,
+        data.mentioned_user_ids or None,
+    ))
 
     comment = dict(cur.fetchone())
 
@@ -795,6 +800,7 @@ def handle_edit_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
             tc.is_internal, tc.created_at,
             tc.is_pinned, tc.pinned_at, tc.pinned_by,
             tc.edited_at, tc.edited_by,
+            tc.parent_comment_id, tc.mentioned_user_ids,
             u.username as user_name,
             u.full_name as user_full_name,
             u.photo_url as user_photo_url
