@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 interface Service {
@@ -38,38 +37,49 @@ const TicketFormStepServiceItems = ({
 
       <div className="space-y-3">
         <Label>Сервис *</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-2">
-          {filteredServices.map((service) => (
-            <Card
-              key={service.id}
-              className={`cursor-pointer transition-all duration-200 ${
-                selectedServices.includes(service.id)
-                  ? 'border-primary border-2 shadow-lg shadow-primary/20 bg-primary/5'
-                  : 'hover:border-primary/50 hover:shadow-md'
-              }`}
-              onClick={() => onToggleService(service.id)}
-            >
-              <CardHeader className="py-3 px-4">
-                <CardTitle className="text-sm flex items-start justify-between gap-2">
-                  <span className={selectedServices.includes(service.id) ? 'text-primary font-semibold' : ''}>
-                    {service.name}
-                  </span>
-                  {selectedServices.includes(service.id) && (
-                    <div className="rounded-full bg-primary p-0.5">
-                      <Icon name="Check" size={12} className="text-primary-foreground flex-shrink-0" />
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-2">
+          {filteredServices.map((service) => {
+            const isSelected = selectedServices.includes(service.id);
+            return (
+              <button
+                type="button"
+                key={service.id}
+                onClick={() => onToggleService(service.id)}
+                className={`group flex items-start gap-3 text-left rounded-xl border-2 px-3.5 py-3 transition-all duration-150 ${
+                  isSelected
+                    ? 'border-primary bg-primary/15 shadow-md shadow-primary/20'
+                    : 'border-border bg-muted/40 hover:border-primary/60 hover:bg-muted/70 hover:shadow-sm'
+                }`}
+              >
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    isSelected
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background/60 text-muted-foreground group-hover:text-primary'
+                  }`}
+                >
+                  <Icon name="Building2" size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className={`text-sm leading-tight ${isSelected ? 'font-semibold text-primary' : 'font-medium text-foreground'}`}>
+                      {service.name}
+                    </span>
+                    {isSelected && (
+                      <div className="rounded-full bg-primary p-0.5 shrink-0">
+                        <Icon name="Check" size={12} className="text-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  {service.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                      {service.description}
+                    </p>
                   )}
-                </CardTitle>
-              </CardHeader>
-              {service.description && (
-                <CardContent className="pt-0 px-4 pb-3">
-                  <CardDescription className="text-xs line-clamp-1">
-                    {service.description}
-                  </CardDescription>
-                </CardContent>
-              )}
-            </Card>
-          ))}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
