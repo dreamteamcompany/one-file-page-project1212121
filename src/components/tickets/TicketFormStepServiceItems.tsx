@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 
 interface Service {
@@ -27,17 +26,10 @@ const TicketFormStepServiceItems = ({
   onBack,
 }: TicketFormStepServiceItemsProps) => {
   return (
-    <div className="space-y-4 mt-4">
-      <div className="p-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
-        <div className="flex items-center gap-2">
-          <Icon name="Building2" size={18} />
-          <span className="font-medium text-sm">Выберите сервис</span>
-        </div>
-      </div>
-
+    <div className="space-y-5 mt-2">
       <div className="space-y-3">
-        <Label>Сервис *</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-2">
+        <h3 className="text-lg font-semibold">Выберите сервис</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {filteredServices.map((service) => {
             const isSelected = selectedServices.includes(service.id);
             return (
@@ -45,36 +37,40 @@ const TicketFormStepServiceItems = ({
                 type="button"
                 key={service.id}
                 onClick={() => onToggleService(service.id)}
-                className={`group flex items-start gap-3 text-left rounded-xl border-2 px-3.5 py-3 transition-all duration-150 ${
+                className={`group relative flex items-center lg:items-start gap-4 lg:gap-3 text-left rounded-2xl border px-4 py-4 pr-14 lg:pr-4 transition-all duration-150 ${
                   isSelected
-                    ? 'border-primary bg-primary/15 shadow-md shadow-primary/20'
-                    : 'border-border bg-muted/40 hover:border-primary/60 hover:bg-muted/70 hover:shadow-sm'
+                    ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
+                    : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
                 }`}
               >
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                    isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background/60 text-muted-foreground group-hover:text-primary'
+                  className={`flex h-12 w-12 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                    isSelected ? 'bg-primary/15 text-primary' : 'bg-muted text-primary/80'
                   }`}
                 >
-                  <Icon name="Building2" size={18} />
+                  <Icon name="Building2" size={22} className="lg:hidden" />
+                  <Icon name="Building2" size={20} className="hidden lg:block" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={`text-sm leading-tight ${isSelected ? 'font-semibold text-primary' : 'font-medium text-foreground'}`}>
-                      {service.name}
-                    </span>
-                    {isSelected && (
-                      <div className="rounded-full bg-primary p-0.5 shrink-0">
-                        <Icon name="Check" size={12} className="text-primary-foreground" />
-                      </div>
-                    )}
-                  </div>
+                <div className="min-w-0 flex-1 lg:pr-7">
+                  <p className="text-base lg:text-sm font-semibold leading-tight text-foreground">
+                    {service.name}
+                  </p>
                   {service.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                    <p className="mt-1 text-sm lg:text-xs leading-snug text-muted-foreground line-clamp-2">
                       {service.description}
                     </p>
+                  )}
+                </div>
+                <div
+                  className={`absolute right-4 top-1/2 -translate-y-1/2 lg:right-3 lg:top-3 lg:translate-y-0 flex h-7 w-7 lg:h-5 lg:w-5 items-center justify-center rounded-full border-2 transition-colors ${
+                    isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30 bg-transparent'
+                  }`}
+                >
+                  {isSelected && (
+                    <>
+                      <Icon name="Check" size={15} className="text-primary-foreground lg:hidden" />
+                      <Icon name="Check" size={12} className="text-primary-foreground hidden lg:block" />
+                    </>
                   )}
                 </div>
               </button>
