@@ -1,5 +1,7 @@
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 interface Service {
@@ -17,6 +19,8 @@ interface TicketFormStepServiceItemsProps {
   onBack: () => void;
 }
 
+const PAGE_SIZE = 12;
+
 const TicketFormStepServiceItems = ({
   filteredServices,
   allServices,
@@ -25,12 +29,61 @@ const TicketFormStepServiceItems = ({
   onNext,
   onBack,
 }: TicketFormStepServiceItemsProps) => {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const searched = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return filteredServices;
+    return filteredServices.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q),
+    );
+  }, [filteredServices, search]);
+
+  const totalPages = Math.max(1, Math.ceil(searched.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = searched.slice(start, start + PAGE_SIZE);
+  const rangeFrom = searched.length === 0 ? 0 : start + 1;
+  const rangeTo = Math.min(start + PAGE_SIZE, searched.length);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-5 mt-2">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Icon
+            name="Search"
+            size={18}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Поиск по сервисам..."
+            className="h-12 rounded-xl pl-11 text-sm"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 rounded-xl gap-2 px-5 text-muted-foreground"
+        >
+          <Icon name="SlidersHorizontal" size={18} />
+          Фильтры
+        </Button>
+      </div>
+
       <div className="space-y-3">
         <h3 className="text-lg font-semibold">Выберите сервис</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {filteredServices.map((service) => {
+          {pageItems.map((service) => {
             const isSelected = selectedServices.includes(service.id);
             return (
               <button
@@ -76,6 +129,46 @@ const TicketFormStepServiceItems = ({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Показано {rangeFrom}–{rangeTo} из {searched.length} сервисов
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <Icon name="ChevronLeft" size={16} />
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <Button
+              key={p}
+              type="button"
+              variant={p === currentPage ? 'default' : 'outline'}
+              size="icon"
+              className="h-9 w-9 rounded-lg"
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            <Icon name="ChevronRight" size={16} />
+          </Button>
         </div>
       </div>
 
