@@ -113,40 +113,40 @@ const TicketFormStepService = ({
                 type="button"
                 key={service.id}
                 onClick={() => onChangeTicketService(service.id)}
-                className={`group relative flex items-center lg:items-start gap-4 lg:gap-3 text-left rounded-2xl border px-4 py-4 pr-12 lg:pr-4 transition-all duration-150 ${
+                className={`group relative flex items-center lg:items-start gap-3 lg:gap-2.5 text-left rounded-2xl border px-3 py-3 pr-11 lg:pr-3 transition-all duration-150 ${
                   isSelected
                     ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
                     : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
                 }`}
               >
                 <div
-                  className={`flex h-12 w-12 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                  className={`flex h-9 w-9 lg:h-8 lg:w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                     isSelected ? 'bg-primary/15 text-primary' : 'bg-muted text-primary/80'
                   }`}
                 >
-                  <Icon name={getServiceIcon(service.name)} size={22} className="lg:hidden" />
-                  <Icon name={getServiceIcon(service.name)} size={20} className="hidden lg:block" />
+                  <Icon name={getServiceIcon(service.name)} size={18} className="lg:hidden" />
+                  <Icon name={getServiceIcon(service.name)} size={16} className="hidden lg:block" />
                 </div>
-                <div className="min-w-0 flex-1 lg:pr-5">
-                  <p className="text-base lg:text-sm font-semibold leading-tight text-foreground">
+                <div className="min-w-0 flex-1 lg:pr-4">
+                  <p className="text-sm lg:text-[13px] font-semibold leading-tight text-foreground">
                     {service.name}
                   </p>
                   {service.description && (
-                    <p className="mt-1 text-sm lg:text-xs leading-snug text-muted-foreground line-clamp-2">
+                    <p className="mt-0.5 text-xs lg:text-[11px] leading-snug text-muted-foreground line-clamp-2">
                       {service.description}
                     </p>
                   )}
                 </div>
                 {isSelected ? (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 lg:right-3 lg:top-3 lg:translate-y-0 flex h-7 w-7 lg:h-5 lg:w-5 items-center justify-center rounded-full bg-primary">
-                    <Icon name="Check" size={15} className="text-primary-foreground lg:hidden" />
-                    <Icon name="Check" size={12} className="text-primary-foreground hidden lg:block" />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 lg:right-2.5 lg:top-2.5 lg:translate-y-0 flex h-5 w-5 lg:h-4 lg:w-4 items-center justify-center rounded-full bg-primary">
+                    <Icon name="Check" size={12} className="text-primary-foreground lg:hidden" />
+                    <Icon name="Check" size={10} className="text-primary-foreground hidden lg:block" />
                   </div>
                 ) : (
                   <Icon
                     name="ChevronRight"
-                    size={22}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 lg:hidden"
+                    size={18}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 lg:hidden"
                   />
                 )}
               </button>
@@ -156,17 +156,17 @@ const TicketFormStepService = ({
           <button
             type="button"
             onClick={onBack}
-            className="group flex items-center lg:items-start gap-4 lg:gap-3 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-4 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
+            className="group flex items-center lg:items-start gap-3 lg:gap-2.5 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-3 py-3 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
           >
-            <div className="flex h-12 w-12 lg:h-10 lg:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-              <Icon name="Headset" size={22} className="lg:hidden" />
-              <Icon name="Headset" size={20} className="hidden lg:block" />
+            <div className="flex h-9 w-9 lg:h-8 lg:w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Icon name="Headset" size={18} className="lg:hidden" />
+              <Icon name="Headset" size={16} className="hidden lg:block" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-base lg:text-sm font-semibold leading-tight text-primary">
+              <p className="text-sm lg:text-[13px] font-semibold leading-tight text-primary">
                 Не нашли нужную услугу?
               </p>
-              <p className="mt-1 text-sm lg:text-xs leading-snug text-muted-foreground">
+              <p className="mt-0.5 text-xs lg:text-[11px] leading-snug text-muted-foreground">
                 Мы поможем вам
               </p>
             </div>
