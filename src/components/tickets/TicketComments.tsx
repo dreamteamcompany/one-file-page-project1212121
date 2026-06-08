@@ -325,12 +325,39 @@ const TicketComments = ({
     return true;
   });
 
+  const scrollAfterSendRef = useRef(false);
+  const prevCommentsCountRef = useRef(comments.length);
+
   const handleSubmit = () => {
     const mentionedUserIds = mentionedUsers.map(u => u.id);
+    scrollAfterSendRef.current = true;
     onSubmitComment(replyToComment?.id, mentionedUserIds);
     setReplyToComment(null);
     setMentionedUsers([]);
   };
+
+  useEffect(() => {
+    if (!scrollAfterSendRef.current) {
+      prevCommentsCountRef.current = comments.length;
+      return;
+    }
+    if (comments.length <= prevCommentsCountRef.current) return;
+    prevCommentsCountRef.current = comments.length;
+    scrollAfterSendRef.current = false;
+
+    const scrollToBottom = () => {
+      const list = commentsListRef.current;
+      if (list) list.scrollTop = list.scrollHeight;
+      commentsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    };
+    requestAnimationFrame(scrollToBottom);
+    const t1 = setTimeout(scrollToBottom, 200);
+    const t2 = setTimeout(scrollToBottom, 600);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [comments.length]);
 
   const getParentComment = (parentId?: number) => {
     if (!parentId) return null;
