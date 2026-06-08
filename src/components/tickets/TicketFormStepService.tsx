@@ -113,19 +113,19 @@ const TicketFormStepService = ({
                 type="button"
                 key={service.id}
                 onClick={() => onChangeTicketService(service.id)}
-                className={`group relative flex items-center lg:items-start gap-3 lg:gap-2.5 text-left rounded-2xl border px-3 py-3 pr-11 lg:pr-3 transition-all duration-150 ${
+                className={`group relative flex items-center lg:items-start gap-2.5 lg:gap-2 text-left rounded-2xl border px-2.5 py-2 pr-10 lg:pr-2.5 transition-all duration-150 ${
                   isSelected
                     ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
                     : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
                 }`}
               >
                 <div
-                  className={`flex h-9 w-9 lg:h-8 lg:w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  className={`flex h-7 w-7 lg:h-6 lg:w-6 shrink-0 items-center justify-center rounded-lg transition-colors ${
                     isSelected ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
                   }`}
                 >
-                  <Icon name={getServiceIcon(service.name)} size={18} className="lg:hidden" />
-                  <Icon name={getServiceIcon(service.name)} size={16} className="hidden lg:block" />
+                  <Icon name={getServiceIcon(service.name)} size={15} className="lg:hidden" />
+                  <Icon name={getServiceIcon(service.name)} size={14} className="hidden lg:block" />
                 </div>
                 <div className="min-w-0 flex-1 lg:pr-4">
                   <p className="text-sm lg:text-[13px] font-semibold leading-tight text-foreground">
@@ -156,11 +156,11 @@ const TicketFormStepService = ({
           <button
             type="button"
             onClick={onBack}
-            className="group flex items-center lg:items-start gap-3 lg:gap-2.5 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-3 py-3 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
+            className="group flex items-center lg:items-start gap-2.5 lg:gap-2 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-2.5 py-2 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
           >
-            <div className="flex h-9 w-9 lg:h-8 lg:w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <Icon name="Headset" size={18} className="lg:hidden" />
-              <Icon name="Headset" size={16} className="hidden lg:block" />
+            <div className="flex h-7 w-7 lg:h-6 lg:w-6 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Icon name="Headset" size={15} className="lg:hidden" />
+              <Icon name="Headset" size={14} className="hidden lg:block" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm lg:text-[13px] font-semibold leading-tight text-primary">
