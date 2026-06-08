@@ -97,6 +97,8 @@ export const useTicketFormLogic = ({
     ? userFilteredServices.filter(service => selectedTicketService.service_ids?.includes(service.id))
     : [];
 
+  const hasServiceItems = filteredServices.length > 0;
+
   const AI_TRAINING_URL = func2url['api-ai-training'];
 
   const logClassifyError = async (description: string, errorMsg: string, durationMs: number) => {
@@ -190,7 +192,11 @@ export const useTicketFormLogic = ({
   };
 
   const handleNextFromManualService = () => {
-    setStep(2);
+    if (!hasServiceItems) {
+      setStep(3);
+    } else {
+      setStep(2);
+    }
   };
 
   const handleNextFromManualServiceItems = () => {
@@ -211,7 +217,7 @@ export const useTicketFormLogic = ({
       if (step === 4) {
         setStep(3);
       } else if (step === 3) {
-        setStep(2);
+        setStep(hasServiceItems ? 2 : 1);
       } else if (step === 2) {
         setStep(1);
       }
@@ -315,7 +321,9 @@ export const useTicketFormLogic = ({
 
   const getStepLabels = () => {
     if (classificationMode === 'manual') {
-      const labels = ['Услуга', 'Сервис', 'Описание'];
+      const labels = ['Услуга'];
+      if (hasServiceItems) labels.push('Сервис');
+      labels.push('Описание');
       if (visibleCustomFields.length > 0) labels.push('Доп. поля');
       return labels;
     }
@@ -327,8 +335,17 @@ export const useTicketFormLogic = ({
   const stepLabels = getStepLabels();
   const totalSteps = stepLabels.length;
 
+  const displayStep = (() => {
+    if (classificationMode === 'manual' && !hasServiceItems && step >= 3) {
+      return step - 1;
+    }
+    return step;
+  })();
+
   return {
     step,
+    displayStep,
+    hasServiceItems,
     classifying,
     classification,
     visibleCustomFields,

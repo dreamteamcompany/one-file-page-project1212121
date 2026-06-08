@@ -35,6 +35,7 @@ const TicketForm = ({
 }: TicketFormProps) => {
   const {
     step,
+    displayStep,
     classifying,
     classification,
     visibleCustomFields,
@@ -85,12 +86,12 @@ const TicketForm = ({
             Новая заявка
           </DialogTitle>
           <DialogDescription className="text-sm">
-            {stepLabels[step - 1] && `Шаг ${step} из ${totalSteps}: ${stepLabels[step - 1]}`}
+            {stepLabels[displayStep - 1] && `Шаг ${displayStep} из ${totalSteps}: ${stepLabels[displayStep - 1]}`}
           </DialogDescription>
         </DialogHeader>
 
         <TicketFormStepper
-          step={step}
+          step={displayStep}
           stepLabels={stepLabels}
           classifying={classifying}
         />
