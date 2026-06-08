@@ -60,22 +60,22 @@ const TicketFormStepServiceItems = ({
         <div className="relative flex-1">
           <Icon
             name="Search"
-            size={18}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Поиск по сервисам..."
-            className="h-12 rounded-xl pl-11 text-sm"
+            className="h-8 rounded-xl pl-10 text-sm"
           />
         </div>
         <Button
           type="button"
           variant="outline"
-          className="h-12 rounded-xl gap-2 px-5 text-muted-foreground"
+          className="h-8 rounded-xl gap-2 px-4 text-muted-foreground"
         >
-          <Icon name="SlidersHorizontal" size={18} />
+          <Icon name="SlidersHorizontal" size={16} />
           Фильтры
         </Button>
       </div>
