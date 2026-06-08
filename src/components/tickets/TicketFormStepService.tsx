@@ -1,6 +1,7 @@
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 interface Service {
   id: number;
@@ -8,25 +9,6 @@ interface Service {
   description?: string;
   service_ids?: number[];
 }
-
-const getServiceIcon = (name: string): string => {
-  const n = name.toLowerCase();
-  if (n.includes('заблок')) return 'Lock';
-  if (n.includes('разблок')) return 'LockOpen';
-  if (n.includes('доступ') && n.includes('предостав')) return 'KeyRound';
-  if (n.includes('права') || n.includes('доступ')) return 'ShieldCheck';
-  if (n.includes('оплат') || n.includes('счет') || n.includes('лиценз')) return 'CreditCard';
-  if (n.includes('домен')) return 'Globe';
-  if (n.includes('аналит') || n.includes('отчет')) return 'BarChart3';
-  if (n.includes('доработ') || n.includes('разработ')) return 'Code';
-  if (n.includes('сервер') || n.includes('банк')) return 'Server';
-  if (n.includes('сим') || n.includes('карт')) return 'CreditCard';
-  if (n.includes('проблем') || n.includes('ошибк') || n.includes('баг')) return 'AlertTriangle';
-  if (n.includes('синхрон')) return 'RefreshCw';
-  if (n.includes('регистр') || n.includes('приложен')) return 'Smartphone';
-  if (n.includes('wazzup') || n.includes('чат') || n.includes('сообщен')) return 'MessageCircle';
-  return 'Wrench';
-};
 
 interface TicketFormStepServiceProps {
   ticketServices: Service[];
@@ -37,6 +19,31 @@ interface TicketFormStepServiceProps {
   isFirstStep?: boolean;
 }
 
+const PAGE_SIZE = 12;
+
+const getServiceIcon = (name: string): string => {
+  const n = name.toLowerCase();
+  if (n.includes('ошеломл') || n.includes('пошло не так') || n.includes('сломал')) return 'Zap';
+  if (n.includes('аналит') || n.includes('отчет') || n.includes('отчёт')) return 'BarChart3';
+  if (n.includes('домен')) return 'Globe';
+  if (n.includes('заблок')) return 'Lock';
+  if (n.includes('разблок')) return 'UserCog';
+  if (n.includes('измен') && n.includes('прав')) return 'UserCog';
+  if (n.includes('оплат') || n.includes('продлен') || n.includes('счет') || n.includes('лиценз')) return 'CreditCard';
+  if (n.includes('предостав') && n.includes('доступ')) return 'KeyRound';
+  if (n.includes('права') || n.includes('доступ')) return 'ShieldCheck';
+  if (n.includes('сервер') || n.includes('банк')) return 'Server';
+  if (n.includes('сим') || n.includes('sim') || n.includes('карт')) return 'CreditCard';
+  if (n.includes('проблем') || n.includes('неисправ') || n.includes('ошибк') || n.includes('баг')) return 'AlertTriangle';
+  if (n.includes('вопрос') || n.includes('консультац')) return 'HelpCircle';
+  if (n.includes('предлож') || n.includes('идея') || n.includes('идею')) return 'Lightbulb';
+  if (n.includes('жалоб')) return 'AlertCircle';
+  if (n.includes('другое') || n.includes('другая')) return 'MessageCircle';
+  if (n.includes('синхрон')) return 'RefreshCw';
+  if (n.includes('регистр') || n.includes('приложен')) return 'Smartphone';
+  return 'Wrench';
+};
+
 const TicketFormStepService = ({
   ticketServices,
   selectedTicketServiceId,
@@ -45,61 +52,161 @@ const TicketFormStepService = ({
   onBack,
   isFirstStep,
 }: TicketFormStepServiceProps) => {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return ticketServices;
+    return ticketServices.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q),
+    );
+  }, [ticketServices, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+  const rangeFrom = filtered.length === 0 ? 0 : start + 1;
+  const rangeTo = Math.min(start + PAGE_SIZE, filtered.length);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
-    <div className="space-y-4 mt-4">
-      <div className="p-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
-        <div className="flex items-center gap-2">
-          <Icon name="Wrench" size={18} />
-          <span className="font-medium text-sm">Выберите услугу</span>
+    <div className="space-y-5 mt-2">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Icon
+            name="Search"
+            size={18}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Поиск по услугам..."
+            className="h-12 rounded-xl pl-11 text-sm"
+          />
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-12 rounded-xl gap-2 px-5 text-muted-foreground"
+        >
+          <Icon name="SlidersHorizontal" size={18} />
+          Фильтры
+        </Button>
       </div>
 
       <div className="space-y-3">
-        <Label>Услуга *</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-2">
-          {ticketServices.map((service) => {
+        <h3 className="text-lg font-semibold">Выберите услугу</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {pageItems.map((service) => {
             const isSelected = selectedTicketServiceId === service.id.toString();
             return (
               <button
                 type="button"
                 key={service.id}
                 onClick={() => onChangeTicketService(service.id)}
-                className={`group flex items-center gap-3 text-left rounded-xl border-2 px-3.5 py-3 transition-all duration-150 ${
+                className={`group relative flex items-start gap-3 text-left rounded-2xl border px-4 py-4 transition-all duration-150 ${
                   isSelected
-                    ? 'border-primary bg-primary/15 shadow-md shadow-primary/20'
-                    : 'border-border bg-muted/40 hover:border-primary/60 hover:bg-muted/70 hover:shadow-sm'
+                    ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
+                    : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
                 }`}
               >
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                    isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background/60 text-muted-foreground group-hover:text-primary'
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                    isSelected ? 'bg-primary/15 text-primary' : 'bg-muted text-primary/80'
                   }`}
                 >
-                  <Icon name={getServiceIcon(service.name)} size={18} />
+                  <Icon name={getServiceIcon(service.name)} size={20} />
                 </div>
-                <span className={`flex-1 text-sm leading-tight ${isSelected ? 'font-semibold text-primary' : 'font-medium text-foreground'}`}>
-                  {service.name}
-                </span>
+                <div className="min-w-0 flex-1 pr-5">
+                  <p className="text-sm font-semibold leading-tight text-foreground">
+                    {service.name}
+                  </p>
+                  {service.description && (
+                    <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">
+                      {service.description}
+                    </p>
+                  )}
+                </div>
                 {isSelected && (
-                  <div className="rounded-full bg-primary p-0.5 shrink-0">
+                  <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
                     <Icon name="Check" size={12} className="text-primary-foreground" />
                   </div>
                 )}
               </button>
             );
           })}
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="group flex items-start gap-3 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-4 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <Icon name="Headset" size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold leading-tight text-primary">
+                Не нашли нужную услугу?
+              </p>
+              <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                Мы поможем вам
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Показано {rangeFrom}–{rangeTo} из {filtered.length} услуг
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <Icon name="ChevronLeft" size={16} />
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <Button
+              key={p}
+              type="button"
+              variant={p === currentPage ? 'default' : 'outline'}
+              size="icon"
+              className="h-9 w-9 rounded-lg"
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            <Icon name="ChevronRight" size={16} />
+          </Button>
         </div>
       </div>
 
       <div className="flex gap-3 pt-4 border-t">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onBack}
-          className="gap-2"
-        >
+        <Button type="button" variant="outline" onClick={onBack} className="gap-2">
           {isFirstStep ? (
             <>
               <Icon name="X" size={18} />
