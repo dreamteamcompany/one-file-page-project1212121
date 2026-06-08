@@ -98,7 +98,7 @@ const TicketFormStepServiceItems = ({
               >
                 <div
                   className={`flex h-9 w-9 lg:h-8 lg:w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                    isSelected ? 'bg-primary/15 text-primary' : 'bg-muted text-primary/80'
+                    isSelected ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
                   }`}
                 >
                   <Icon name="Building2" size={18} className="lg:hidden" />
