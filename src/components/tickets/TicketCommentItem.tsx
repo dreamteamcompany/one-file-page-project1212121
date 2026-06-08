@@ -25,6 +25,7 @@ interface TicketCommentItemProps {
   onSetEditTarget: (comment: Comment) => void;
   onSetDeleteTargetId: (id: number) => void;
   observeRef: (el: HTMLDivElement | null) => void;
+  onJumpToComment?: (commentId: number) => void;
 }
 
 const renderHtmlPart = (text: string, mentioned: number[] | undefined, availableUsers: User[]) => {
@@ -103,6 +104,7 @@ const TicketCommentItem = ({
   onSetEditTarget,
   onSetDeleteTargetId,
   observeRef,
+  onJumpToComment,
 }: TicketCommentItemProps) => {
   const isReopenComment = comment.comment.startsWith('🔄 Заявка открыта повторно');
 
@@ -191,13 +193,26 @@ const TicketCommentItem = ({
               : 'bg-muted text-foreground rounded-tl-md'
           }`}>
             {parentComment && (
-              <div className={`mb-2 pb-2 border-b ${isOwn ? 'border-primary-foreground/20' : 'border-border'}`}>
+              <button
+                type="button"
+                onClick={() => onJumpToComment?.(parentComment.id)}
+                title="Перейти к исходному комментарию"
+                className={`group w-full text-left mb-2 rounded-lg pl-2.5 pr-2 py-1.5 border-l-4 transition-colors cursor-pointer ${
+                  isOwn
+                    ? 'bg-primary-foreground/15 hover:bg-primary-foreground/25 border-primary-foreground/70'
+                    : 'bg-primary/10 hover:bg-primary/20 border-primary'
+                }`}
+              >
                 <div className="flex items-center gap-1.5 text-xs">
-                  <Icon name="CornerDownRight" size={12} className={isOwn ? 'text-primary-foreground/60' : 'text-primary'} />
-                  <span className={`font-medium ${isOwn ? 'text-primary-foreground/80' : 'text-primary'}`}>{parentComment.user_name}</span>
+                  <Icon name="CornerDownRight" size={12} className={isOwn ? 'text-primary-foreground/80' : 'text-primary'} />
+                  <span className={`font-semibold ${isOwn ? 'text-primary-foreground' : 'text-primary'}`}>
+                    {parentComment.user_full_name || parentComment.user_name}
+                  </span>
                 </div>
-                <p className={`text-xs line-clamp-2 mt-0.5 ${isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>{parentComment.comment}</p>
-              </div>
+                <p className={`text-xs line-clamp-2 mt-0.5 ${isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                  {parentComment.comment}
+                </p>
+              </button>
             )}
             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
               {renderCommentText(comment.comment, comment.mentioned_user_ids, availableUsers)}

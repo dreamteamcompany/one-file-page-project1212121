@@ -337,6 +337,16 @@ const TicketComments = ({
     return comments.find(c => c.id === parentId);
   };
 
+  const handleJumpToComment = (commentId: number) => {
+    const list = commentsListRef.current;
+    if (!list) return;
+    const target = list.querySelector<HTMLElement>(`[data-comment-id="${commentId}"]`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('comment-highlight');
+    setTimeout(() => target.classList.remove('comment-highlight'), 2000);
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center gap-2 mb-4 shrink-0">
@@ -398,6 +408,7 @@ const TicketComments = ({
                   onSetEditTarget={setEditTarget}
                   onSetDeleteTargetId={setDeleteTargetId}
                   observeRef={(el) => observeComment(el, comment)}
+                  onJumpToComment={handleJumpToComment}
                 />
                 {isLatest && <CommentReadIndicator comment={comment} />}
               </div>
