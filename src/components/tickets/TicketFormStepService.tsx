@@ -26,11 +26,11 @@ const getServiceIcon = (name: string): string => {
   if (n.includes('ошеломл') || n.includes('пошло не так') || n.includes('сломал')) return 'Zap';
   if (n.includes('аналит') || n.includes('отчет') || n.includes('отчёт')) return 'BarChart3';
   if (n.includes('домен')) return 'Globe';
-  if (n.includes('заблок')) return 'Lock';
   if (n.includes('разблок')) return 'UserCog';
+  if (n.includes('заблок')) return 'Lock';
   if (n.includes('измен') && n.includes('прав')) return 'UserCog';
   if (n.includes('оплат') || n.includes('продлен') || n.includes('счет') || n.includes('лиценз')) return 'CreditCard';
-  if (n.includes('предостав') && n.includes('доступ')) return 'KeyRound';
+  if (n.includes('предостав') && n.includes('доступ')) return 'UserPlus';
   if (n.includes('права') || n.includes('доступ')) return 'ShieldCheck';
   if (n.includes('сервер') || n.includes('банк')) return 'Server';
   if (n.includes('сим') || n.includes('sim') || n.includes('карт')) return 'CreditCard';
