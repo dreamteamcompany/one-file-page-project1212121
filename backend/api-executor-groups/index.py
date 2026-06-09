@@ -184,7 +184,7 @@ def get_reference_data(conn):
     cur.execute(f"SELECT id, name FROM {SCHEMA}.ticket_services WHERE is_active = true ORDER BY name")
     ticket_services = [dict(r) for r in cur.fetchall()]
 
-    cur.execute(f"SELECT id, name FROM {SCHEMA}.services ORDER BY name")
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE is_system = FALSE ORDER BY name")
     services = [dict(r) for r in cur.fetchall()]
 
     cur.execute(f"""

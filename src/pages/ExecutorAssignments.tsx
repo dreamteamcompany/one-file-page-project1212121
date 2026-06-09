@@ -43,6 +43,7 @@ const ExecutorAssignments = () => {
             groups={ref.groups}
             users={ref.users}
             filteredServices={ref.filteredServices}
+            systemServiceId={ref.systemServiceId}
             onAddGroup={addGroupAssignment}
             onAddUser={addUserAssignment}
           />

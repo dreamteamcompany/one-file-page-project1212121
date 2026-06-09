@@ -75,8 +75,12 @@ def _get_reference(conn):
     """)
     ticket_services = [dict(r) for r in cur.fetchall()]
 
-    cur.execute(f"SELECT id, name FROM {SCHEMA}.services ORDER BY name")
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.services WHERE is_system = FALSE ORDER BY name")
     services = [dict(r) for r in cur.fetchall()]
+
+    cur.execute(f"SELECT id FROM {SCHEMA}.services WHERE is_system = TRUE ORDER BY id LIMIT 1")
+    sys_row = cur.fetchone()
+    system_service_id = sys_row['id'] if sys_row else None
 
     cur.execute(f"""
         SELECT ticket_service_id, service_id
@@ -98,6 +102,7 @@ def _get_reference(conn):
         'services': services,
         'valid_combos': valid_combos,
         'groups': groups,
+        'system_service_id': system_service_id,
     })
 
 
@@ -109,13 +114,14 @@ def _get_all_assignments(conn):
             m.id, m.group_id,
             g.name AS group_name,
             m.ticket_service_id, ts.name AS ticket_service_name,
-            m.service_id, s.name AS service_name,
+            m.service_id,
+            CASE WHEN s.is_system THEN NULL ELSE s.name END AS service_name,
             m.created_at
         FROM {SCHEMA}.executor_group_service_mappings m
         JOIN {SCHEMA}.executor_groups g ON g.id = m.group_id
         JOIN {SCHEMA}.ticket_services ts ON ts.id = m.ticket_service_id
         JOIN {SCHEMA}.services s ON s.id = m.service_id
-        ORDER BY ts.name, s.name, g.name
+        ORDER BY ts.name, g.name
     """)
     group_assignments = [dict(r) for r in cur.fetchall()]
 
@@ -124,13 +130,14 @@ def _get_all_assignments(conn):
             m.id, m.user_id,
             u.full_name AS user_name, u.email AS user_email,
             m.ticket_service_id, ts.name AS ticket_service_name,
-            m.service_id, s.name AS service_name,
+            m.service_id,
+            CASE WHEN s.is_system THEN NULL ELSE s.name END AS service_name,
             m.created_at
         FROM {SCHEMA}.executor_user_service_mappings m
         JOIN {SCHEMA}.users u ON u.id = m.user_id
         JOIN {SCHEMA}.ticket_services ts ON ts.id = m.ticket_service_id
         JOIN {SCHEMA}.services s ON s.id = m.service_id
-        ORDER BY ts.name, s.name, u.full_name
+        ORDER BY ts.name, u.full_name
     """)
     user_assignments = [dict(r) for r in cur.fetchall()]
 

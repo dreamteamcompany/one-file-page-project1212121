@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import type { GroupAssignment, UserAssignment } from '@/hooks/useExecutorAssignments';
 
+const SERVICE_FALLBACK = 'Вся услуга';
+
 interface CombinedAssignment {
   key: string;
   ticket_service_name: string;
@@ -43,7 +45,7 @@ const AssignmentsTable = ({
         map.set(k, {
           key: k,
           ticket_service_name: ga.ticket_service_name,
-          service_name: ga.service_name,
+          service_name: ga.service_name ?? SERVICE_FALLBACK,
           ticket_service_id: ga.ticket_service_id,
           service_id: ga.service_id,
           groups: [],
@@ -59,7 +61,7 @@ const AssignmentsTable = ({
         map.set(k, {
           key: k,
           ticket_service_name: ua.ticket_service_name,
-          service_name: ua.service_name,
+          service_name: ua.service_name ?? SERVICE_FALLBACK,
           ticket_service_id: ua.ticket_service_id,
           service_id: ua.service_id,
           groups: [],

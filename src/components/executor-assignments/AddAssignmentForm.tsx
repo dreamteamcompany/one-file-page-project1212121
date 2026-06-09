@@ -22,6 +22,7 @@ interface AddAssignmentFormProps {
   groups: RefGroup[];
   users: RefUser[];
   filteredServices: (ticketServiceId: number) => RefService[];
+  systemServiceId: number | null;
   onAddGroup: (groupId: number, tsId: number, sId: number) => Promise<boolean>;
   onAddUser: (userId: number, tsId: number, sId: number) => Promise<boolean>;
 }
@@ -31,6 +32,7 @@ const AddAssignmentForm = ({
   groups,
   users,
   filteredServices,
+  systemServiceId,
   onAddGroup,
   onAddUser,
 }: AddAssignmentFormProps) => {
@@ -45,6 +47,9 @@ const AddAssignmentForm = ({
     [selectedTs, filteredServices],
   );
 
+  const hasServices = serviceOptions.length > 0;
+  const noServices = Boolean(selectedTs) && !hasServices;
+
   const handleTsChange = (val: string) => {
     setSelectedTs(val);
     setSelectedService('');
@@ -55,13 +60,14 @@ const AddAssignmentForm = ({
     setSelectedAssignee('');
   };
 
-  const canSubmit = selectedTs && selectedService && selectedAssignee && !saving;
+  const serviceReady = hasServices ? Boolean(selectedService) : systemServiceId != null;
+  const canSubmit = Boolean(selectedTs) && serviceReady && Boolean(selectedAssignee) && !saving;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSaving(true);
     const tsId = Number(selectedTs);
-    const sId = Number(selectedService);
+    const sId = hasServices ? Number(selectedService) : Number(systemServiceId);
     const assigneeId = Number(selectedAssignee);
 
     const success = assigneeType === 'group'
@@ -95,20 +101,26 @@ const AddAssignmentForm = ({
           </SelectContent>
         </Select>
 
-        <Select
-          value={selectedService}
-          onValueChange={setSelectedService}
-          disabled={!selectedTs}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Сервис" />
-          </SelectTrigger>
-          <SelectContent>
-            {serviceOptions.map(s => (
-              <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {noServices ? (
+          <div className="flex h-10 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+            Вся услуга (без сервиса)
+          </div>
+        ) : (
+          <Select
+            value={selectedService}
+            onValueChange={setSelectedService}
+            disabled={!selectedTs}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Сервис" />
+            </SelectTrigger>
+            <SelectContent>
+              {serviceOptions.map(s => (
+                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select value={assigneeType} onValueChange={handleTypeChange}>
           <SelectTrigger>

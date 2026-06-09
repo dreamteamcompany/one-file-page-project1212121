@@ -43,6 +43,7 @@ def handler(event, context):
                 LEFT JOIN {SCHEMA}.users u1 ON s.intermediate_approver_id = u1.id
                 LEFT JOIN {SCHEMA}.users u2 ON s.final_approver_id = u2.id
                 LEFT JOIN {SCHEMA}.customer_departments cd ON s.customer_department_id = cd.id
+                WHERE s.is_system = FALSE
                 ORDER BY s.name
             """)
             

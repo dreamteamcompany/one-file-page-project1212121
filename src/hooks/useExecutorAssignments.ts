@@ -9,7 +9,7 @@ export interface GroupAssignment {
   ticket_service_id: number;
   ticket_service_name: string;
   service_id: number;
-  service_name: string;
+  service_name: string | null;
   created_at: string;
 }
 
@@ -21,7 +21,7 @@ export interface UserAssignment {
   ticket_service_id: number;
   ticket_service_name: string;
   service_id: number;
-  service_name: string;
+  service_name: string | null;
   created_at: string;
 }
 
@@ -176,6 +176,7 @@ export const useAssignmentReference = () => {
   const [services, setServices] = useState<RefService[]>([]);
   const [groups, setGroups] = useState<RefGroup[]>([]);
   const [validCombos, setValidCombos] = useState<ValidCombo[]>([]);
+  const [systemServiceId, setSystemServiceId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -189,6 +190,7 @@ export const useAssignmentReference = () => {
           setServices(data.services ?? []);
           setGroups(data.groups ?? []);
           setValidCombos(data.valid_combos ?? []);
+          setSystemServiceId(data.system_service_id ?? null);
         }
       } finally {
         setLoading(false);
@@ -210,7 +212,6 @@ export const useAssignmentReference = () => {
   const filteredServices = useMemo(
     () => (ticketServiceId: number) => {
       const validIds = getServicesForTicketService(ticketServiceId);
-      if (validIds.length === 0) return services;
       return services.filter(s => validIds.includes(s.id));
     },
     [services, getServicesForTicketService],
@@ -222,6 +223,7 @@ export const useAssignmentReference = () => {
     services,
     groups,
     loading,
+    systemServiceId,
     getServicesForTicketService,
     filteredServices,
   };
