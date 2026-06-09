@@ -20,7 +20,7 @@ interface CustomField {
   name: string;
   field_type: string;
   is_required: boolean;
-  options?: string[];
+  options?: string[] | string;
   placeholder?: string;
   label?: string;
   hide_label?: boolean;
@@ -59,6 +59,22 @@ const updateCustomField = (
   });
 };
 
+const normalizeOptions = (options: unknown): string[] => {
+  if (Array.isArray(options)) return options.map((o) => String(o));
+  if (typeof options === 'string') {
+    const trimmed = options.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map((o) => String(o));
+    } catch {
+      // не JSON — fallback на разделители
+    }
+    return trimmed.split(/[\n,]/).map((o) => o.trim()).filter(Boolean);
+  }
+  return [];
+};
+
 export const renderCustomField = (
   field: CustomField,
   formData: FormData,
@@ -87,7 +103,7 @@ export const renderCustomField = (
             <SelectValue placeholder={field.placeholder || 'Выберите значение'} />
           </SelectTrigger>
           <SelectContent>
-            {(field.options || []).map((option) => (
+            {normalizeOptions(field.options).map((option) => (
               <SelectItem key={option} value={option}>
                 {option}
               </SelectItem>
@@ -100,7 +116,7 @@ export const renderCustomField = (
       const cardIcons = ['Monitor', 'Download', 'Check', 'Star', 'Circle'];
       return (
         <div className="space-y-2">
-          {(field.options || []).map((option, idx) => {
+          {normalizeOptions(field.options).map((option, idx) => {
             const selected = value === option;
             return (
               <button
