@@ -90,7 +90,7 @@ const TicketFormStepServiceItems = ({
                 type="button"
                 key={service.id}
                 onClick={() => onToggleService(service.id)}
-                className={`group relative flex items-center lg:items-start gap-3 text-left rounded-2xl border px-4 py-[1.38rem] pr-10 lg:pr-4 transition-all duration-150 ${
+                className={`group relative flex items-center gap-3 text-left rounded-2xl border px-4 py-[1.38rem] pr-10 lg:pr-4 transition-all duration-150 ${
                   isSelected
                     ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
                     : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
