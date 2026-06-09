@@ -229,8 +229,37 @@ const TicketFormStep4 = ({
   };
 
   const SECTION_TYPES = ['radio_cards', 'company_structure'];
-  const sectionFields = customFields.filter((f) => SECTION_TYPES.includes(f.field_type));
-  const dataFields = customFields.filter((f) => !SECTION_TYPES.includes(f.field_type));
+
+  const DATA_FIELD_ORDER = [
+    'фамилия',
+    'имя',
+    'отчество',
+    'дата рождения',
+    'номер телефона',
+    'необходимые базы 1с',
+  ];
+  const orderIndex = (name: string) => {
+    const idx = DATA_FIELD_ORDER.indexOf((name || '').trim().toLowerCase());
+    return idx === -1 ? DATA_FIELD_ORDER.length : idx;
+  };
+
+  const topSectionFields = customFields.filter((f) => f.field_type === 'company_structure');
+  const bottomSectionFields = customFields.filter((f) => f.field_type === 'radio_cards');
+  const dataFields = customFields
+    .filter((f) => !SECTION_TYPES.includes(f.field_type))
+    .sort((a, b) => orderIndex(a.name) - orderIndex(b.name));
+
+  const renderSection = (field: CustomField) => (
+    <div key={field.id} className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
+      {!field.hide_label && (
+        <Label className="text-sm font-semibold">
+          {field.name}
+          {field.is_required && <span className="text-destructive ml-1">*</span>}
+        </Label>
+      )}
+      {renderCustomField(field, formData, setFormData)}
+    </div>
+  );
 
   const renderFieldBlock = (field: CustomField) => {
     const isWide = ['textarea'].includes(field.field_type);
@@ -250,17 +279,7 @@ const TicketFormStep4 = ({
   return (
     <form onSubmit={handleFormSubmit}>
       <div className="space-y-4 mt-4">
-        {sectionFields.map((field) => (
-          <div key={field.id} className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
-            {!field.hide_label && (
-              <Label className="text-sm font-semibold">
-                {field.name}
-                {field.is_required && <span className="text-destructive ml-1">*</span>}
-              </Label>
-            )}
-            {renderCustomField(field, formData, setFormData)}
-          </div>
-        ))}
+        {topSectionFields.map(renderSection)}
 
         {dataFields.length > 0 && (
           <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-4">
@@ -270,6 +289,8 @@ const TicketFormStep4 = ({
             </div>
           </div>
         )}
+
+        {bottomSectionFields.map(renderSection)}
 
         <div className="flex gap-3 pt-4 border-t">
           <Button
