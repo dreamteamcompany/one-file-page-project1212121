@@ -4,6 +4,7 @@ import Icon from '@/components/ui/icon';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { Comment } from './TicketCommentsTypes';
 import { ReplyTemplate } from './TicketCommentsInput.utils';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface TicketCommentsToolbarProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
@@ -64,6 +65,50 @@ const TicketCommentsToolbar = ({
   onToggleEmojiPicker,
   onEmojiClick,
 }: TicketCommentsToolbarProps) => {
+  const isMobile = useIsMobile();
+
+  const templatesList = (
+    <>
+      <div className="p-2 border-b border-border">
+        <Input
+          value={templateSearch}
+          onChange={(e) => onTemplateSearchChange(e.target.value)}
+          placeholder="Поиск шаблона..."
+          className="h-9 text-sm sm:h-7 sm:text-xs"
+          autoFocus={!isMobile}
+        />
+      </div>
+      <div className="max-h-60 overflow-y-auto overscroll-contain">
+        {templatesLoading ? (
+          <div className="flex justify-center py-4">
+            <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="py-4 text-center text-xs text-muted-foreground">
+            {templateSearch ? 'Ничего не найдено' : 'Шаблонов пока нет'}
+          </div>
+        ) : (
+          templates.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onTemplateSelect(t)}
+              className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border/50 last:border-b-0"
+            >
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <p className="text-xs font-medium truncate">{t.title}</p>
+                {t.is_shared && (
+                  <Icon name="Globe" size={10} className="text-muted-foreground shrink-0" />
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground line-clamp-2">{t.content}</p>
+            </button>
+          ))
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="flex flex-wrap gap-2 items-center">
       <Button
@@ -106,44 +151,32 @@ const TicketCommentsToolbar = ({
           >
             <Icon name="LayoutTemplate" size={16} />
           </Button>
-          {showTemplates && (
+          {showTemplates && !isMobile && (
             <div className="absolute bottom-full right-0 mb-2 z-50 w-72 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
-              <div className="p-2 border-b border-border">
-                <Input
-                  value={templateSearch}
-                  onChange={(e) => onTemplateSearchChange(e.target.value)}
-                  placeholder="Поиск шаблона..."
-                  className="h-7 text-xs"
-                  autoFocus
-                />
-              </div>
-              <div className="max-h-60 overflow-y-auto">
-                {templatesLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
-                  </div>
-                ) : templates.length === 0 ? (
-                  <div className="py-4 text-center text-xs text-muted-foreground">
-                    {templateSearch ? 'Ничего не найдено' : 'Шаблонов пока нет'}
-                  </div>
-                ) : (
-                  templates.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => onTemplateSelect(t)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b border-border/50 last:border-b-0"
-                    >
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <p className="text-xs font-medium truncate">{t.title}</p>
-                        {t.is_shared && (
-                          <Icon name="Globe" size={10} className="text-muted-foreground shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2">{t.content}</p>
-                    </button>
-                  ))
-                )}
+              {templatesList}
+            </div>
+          )}
+
+          {showTemplates && isMobile && (
+            <div className="fixed inset-0 z-[60]">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={onOpenTemplates}
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-popover border-t border-border rounded-t-2xl shadow-xl overflow-hidden pb-[env(safe-area-inset-bottom)] animate-in slide-in-from-bottom duration-200">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <p className="text-sm font-semibold">Шаблоны ответов</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={onOpenTemplates}
+                    aria-label="Закрыть"
+                  >
+                    <Icon name="X" size={18} />
+                  </Button>
+                </div>
+                {templatesList}
               </div>
             </div>
           )}
