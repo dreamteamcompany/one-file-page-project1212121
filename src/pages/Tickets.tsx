@@ -6,7 +6,7 @@
  * - Bulk операции в useBulkTicketOperations
  * - UI переключения в TicketsViewToggle
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTicketsData } from '@/hooks/useTicketsData';
@@ -26,6 +26,17 @@ import TicketsKanban from '@/components/tickets/TicketsKanban';
 import BulkActionsBar from '@/components/tickets/BulkActionsBar';
 import { API_URL, apiFetch } from '@/utils/api';
 import type { TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
+import { getDeadlineSeverity } from '@/utils/dateFormat';
+
+type CounterRole = 'assignee' | 'customer' | 'approver' | 'mentions' | 'overdue';
+
+const CLOSED_STATUSES = ['закрыта', 'закрыт', 'решена', 'решён', 'решен', 'выполнена', 'выполнен', 'отклонена', 'отменена'];
+
+const isOverdueTicket = (ticket: { due_date?: string; status_name?: string }): boolean => {
+  const status = (ticket.status_name || '').trim().toLowerCase();
+  if (CLOSED_STATUSES.includes(status)) return false;
+  return getDeadlineSeverity(ticket.due_date)?.overdue === true;
+};
 
 interface BulkUser {
   id: number;
@@ -85,7 +96,25 @@ const Tickets = () => {
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
-  const filteredTickets = useTicketsSearch(tickets, searchQuery);
+  const searchedTickets = useTicketsSearch(tickets, searchQuery);
+
+  const [counterRole, setCounterRole] = useState<CounterRole | null>(null);
+
+  const filteredTickets = useMemo(() => {
+    if (counterRole === 'overdue') {
+      return searchedTickets.filter(isOverdueTicket);
+    }
+    if (counterRole === 'mentions') {
+      return searchedTickets.filter((t) => !!t.unread_mentions && t.unread_mentions > 0);
+    }
+    if (counterRole === 'assignee') {
+      return searchedTickets.filter((t) => t.assigned_to === user?.id);
+    }
+    if (counterRole === 'customer') {
+      return searchedTickets.filter((t) => t.created_by === user?.id);
+    }
+    return searchedTickets;
+  }, [searchedTickets, counterRole, user?.id]);
 
   const {
     selectedTicketIds,
@@ -215,7 +244,7 @@ const Tickets = () => {
         />
 
 
-          <TicketCountersBar />
+          <TicketCountersBar activeRole={counterRole} onSelectRole={setCounterRole} />
 
           {!showArchived && !showHidden && <div className="w-fit mt-3">
             <TicketForm
