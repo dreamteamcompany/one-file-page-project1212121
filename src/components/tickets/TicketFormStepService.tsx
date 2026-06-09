@@ -113,7 +113,7 @@ const TicketFormStepService = ({
                 type="button"
                 key={service.id}
                 onClick={() => onChangeTicketService(service.id)}
-                className={`group relative flex items-center lg:items-start gap-3 text-left rounded-2xl border px-4 py-[1.15rem] pr-10 lg:pr-4 transition-all duration-150 ${
+                className={`group relative flex items-center lg:items-start gap-3 text-left rounded-2xl border px-4 py-[1.38rem] pr-10 lg:pr-4 transition-all duration-150 ${
                   isSelected
                     ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
                     : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
@@ -154,7 +154,7 @@ const TicketFormStepService = ({
           <button
             type="button"
             onClick={onBack}
-            className="group flex items-center lg:items-start gap-3 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-[1.15rem] transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
+            className="group flex items-center lg:items-start gap-3 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-[1.38rem] transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
               <Icon name="Headset" size={20} />
