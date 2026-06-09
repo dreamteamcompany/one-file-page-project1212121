@@ -105,7 +105,7 @@ const TicketFormStepService = ({
 
       <div className="space-y-3">
         <h3 className="text-lg font-semibold">Выберите услугу</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {pageItems.map((service) => {
             const isSelected = selectedTicketServiceId === service.id.toString();
             return (
@@ -113,34 +113,32 @@ const TicketFormStepService = ({
                 type="button"
                 key={service.id}
                 onClick={() => onChangeTicketService(service.id)}
-                className={`group relative flex items-center lg:items-start gap-2.5 lg:gap-2 text-left rounded-2xl border px-3 py-2.5 pr-10 lg:pr-3 transition-all duration-150 ${
+                className={`group relative flex items-center lg:items-start gap-3 text-left rounded-2xl border px-4 py-3.5 pr-10 lg:pr-4 transition-all duration-150 ${
                   isSelected
                     ? 'border-primary border-2 bg-primary/[0.04] shadow-sm'
                     : 'border-border bg-card hover:border-primary/40 hover:shadow-md'
                 }`}
               >
                 <div
-                  className={`flex h-8 w-8 lg:h-7 lg:w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
                     isSelected ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
                   }`}
                 >
-                  <Icon name={getServiceIcon(service.name)} size={16} className="lg:hidden" />
-                  <Icon name={getServiceIcon(service.name)} size={15} className="hidden lg:block" />
+                  <Icon name={getServiceIcon(service.name)} size={20} />
                 </div>
                 <div className="min-w-0 flex-1 lg:pr-4">
-                  <p className="text-sm lg:text-[13px] font-semibold leading-tight text-foreground">
+                  <p className="text-sm font-semibold leading-tight text-foreground">
                     {service.name}
                   </p>
                   {service.description && (
-                    <p className="mt-0.5 text-xs lg:text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                    <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">
                       {service.description}
                     </p>
                   )}
                 </div>
                 {isSelected ? (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 lg:right-2.5 lg:top-2.5 lg:translate-y-0 flex h-5 w-5 lg:h-4 lg:w-4 items-center justify-center rounded-full bg-primary">
-                    <Icon name="Check" size={12} className="text-primary-foreground lg:hidden" />
-                    <Icon name="Check" size={10} className="text-primary-foreground hidden lg:block" />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 lg:right-3 lg:top-3 lg:translate-y-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+                    <Icon name="Check" size={12} className="text-primary-foreground" />
                   </div>
                 ) : (
                   <Icon
@@ -156,17 +154,16 @@ const TicketFormStepService = ({
           <button
             type="button"
             onClick={onBack}
-            className="group flex items-center lg:items-start gap-2.5 lg:gap-2 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-3 py-2.5 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
+            className="group flex items-center lg:items-start gap-3 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-3.5 transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
           >
-            <div className="flex h-8 w-8 lg:h-7 lg:w-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <Icon name="Headset" size={16} className="lg:hidden" />
-              <Icon name="Headset" size={15} className="hidden lg:block" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Icon name="Headset" size={20} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm lg:text-[13px] font-semibold leading-tight text-primary">
+              <p className="text-sm font-semibold leading-tight text-primary">
                 Не нашли нужную услугу?
               </p>
-              <p className="mt-0.5 text-xs lg:text-[11px] leading-snug text-muted-foreground">
+              <p className="mt-1 text-xs leading-snug text-muted-foreground">
                 Мы поможем вам
               </p>
             </div>
