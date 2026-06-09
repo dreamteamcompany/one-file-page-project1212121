@@ -31,6 +31,7 @@ const fieldTypes = [
   { value: 'number', label: 'Число', icon: 'Hash' },
   { value: 'date', label: 'Дата', icon: 'Calendar' },
   { value: 'select', label: 'Выбор из списка', icon: 'List' },
+  { value: 'radio_cards', label: 'Выбор карточками', icon: 'LayoutGrid' },
   { value: 'checkbox', label: 'Флажок', icon: 'CheckSquare' },
   { value: 'textarea', label: 'Многострочный текст', icon: 'AlignLeft' },
   { value: 'email', label: 'Email', icon: 'Mail' },

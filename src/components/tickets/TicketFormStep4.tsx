@@ -96,6 +96,45 @@ export const renderCustomField = (
         </Select>
       );
 
+    case 'radio_cards': {
+      const cardIcons = ['Monitor', 'Download', 'Check', 'Star', 'Circle'];
+      return (
+        <div className="space-y-2">
+          {(field.options || []).map((option, idx) => {
+            const selected = value === option;
+            return (
+              <button
+                type="button"
+                key={option}
+                onClick={() => updateCustomField(formData, setFormData, field.id, option)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
+                  selected
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-border bg-muted/20 hover:bg-muted/40'
+                }`}
+              >
+                <span
+                  className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                    selected ? 'border-primary' : 'border-muted-foreground/40'
+                  }`}
+                >
+                  {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                </span>
+                <span
+                  className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border ${
+                    selected ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground'
+                  }`}
+                >
+                  <Icon name={cardIcons[idx % cardIcons.length]} size={18} />
+                </span>
+                <span className="text-sm font-medium text-foreground">{option}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
     case 'checkbox':
       return (
         <div className="flex items-center gap-2">
@@ -189,25 +228,48 @@ const TicketFormStep4 = ({
     onSubmit(e);
   };
 
+  const SECTION_TYPES = ['radio_cards', 'company_structure'];
+  const sectionFields = customFields.filter((f) => SECTION_TYPES.includes(f.field_type));
+  const dataFields = customFields.filter((f) => !SECTION_TYPES.includes(f.field_type));
+
+  const renderFieldBlock = (field: CustomField) => {
+    const isWide = ['textarea'].includes(field.field_type);
+    return (
+      <div key={field.id} className={`space-y-2 ${isWide ? 'sm:col-span-2' : ''}`}>
+        {!field.hide_label && (
+          <Label className="text-sm">
+            {field.name}
+            {field.is_required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+        )}
+        {renderCustomField(field, formData, setFormData)}
+      </div>
+    );
+  };
+
   return (
     <form onSubmit={handleFormSubmit}>
       <div className="space-y-4 mt-4">
-        <div className="grid grid-cols-2 gap-3">
-          {customFields.map((field) => {
-            const isWide = ['textarea', 'company_structure'].includes(field.field_type);
-            return (
-              <div key={field.id} className={`space-y-2 ${isWide ? 'col-span-2' : ''}`}>
-                {!field.hide_label && (
-                  <Label>
-                    {field.name}
-                    {field.is_required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-                )}
-                {renderCustomField(field, formData, setFormData)}
-              </div>
-            );
-          })}
-        </div>
+        {sectionFields.map((field) => (
+          <div key={field.id} className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
+            {!field.hide_label && (
+              <Label className="text-sm font-semibold">
+                {field.name}
+                {field.is_required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+            )}
+            {renderCustomField(field, formData, setFormData)}
+          </div>
+        ))}
+
+        {dataFields.length > 0 && (
+          <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Данные сотрудника</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {dataFields.map(renderFieldBlock)}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3 pt-4 border-t">
           <Button

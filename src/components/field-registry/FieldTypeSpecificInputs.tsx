@@ -28,7 +28,7 @@ const FieldTypeSpecificInputs = ({
   onRemoveOption,
   onFormDataChange,
 }: FieldTypeSpecificInputsProps) => {
-  const showOptionsField = fieldType === 'select';
+  const showOptionsField = fieldType === 'select' || fieldType === 'radio_cards';
   const showPlaceholderField = ['text', 'email', 'phone', 'textarea'].includes(fieldType);
   const showLabelField = fieldType === 'checkbox';
   const showCompanyStructure = fieldType === 'company_structure';
