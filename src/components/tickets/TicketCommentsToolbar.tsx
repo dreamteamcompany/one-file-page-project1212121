@@ -215,7 +215,7 @@ const TicketCommentsToolbar = ({
         )}
       </Button>
 
-      <div className="relative">
+      <div className="relative" ref={emojiPickerRef}>
         <Button
           onClick={onToggleEmojiPicker}
           disabled={submittingComment}
@@ -227,9 +227,33 @@ const TicketCommentsToolbar = ({
           <Icon name="Smile" size={16} />
         </Button>
 
-        {showEmojiPicker && (
-          <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 z-50">
+        {showEmojiPicker && !isMobile && (
+          <div className="absolute bottom-full right-0 mb-2 z-50">
             <EmojiPicker onEmojiClick={onEmojiClick} />
+          </div>
+        )}
+
+        {showEmojiPicker && isMobile && (
+          <div className="fixed inset-0 z-[60]">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={onToggleEmojiPicker}
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-popover border-t border-border rounded-t-2xl shadow-xl overflow-hidden pb-[env(safe-area-inset-bottom)] animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <p className="text-sm font-semibold">Эмодзи</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={onToggleEmojiPicker}
+                  aria-label="Закрыть"
+                >
+                  <Icon name="X" size={18} />
+                </Button>
+              </div>
+              <EmojiPicker onEmojiClick={onEmojiClick} width="100%" />
+            </div>
           </div>
         )}
       </div>
