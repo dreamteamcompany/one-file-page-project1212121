@@ -120,7 +120,7 @@ const TicketFormStepService = ({
                 }`}
               >
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-colors ${
                     isSelected ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
                   }`}
                 >
@@ -156,7 +156,7 @@ const TicketFormStepService = ({
             onClick={onBack}
             className="group flex items-center lg:items-start gap-3 text-left rounded-2xl border border-primary/20 bg-primary/[0.06] px-4 py-[1.38rem] transition-all duration-150 hover:border-primary/40 hover:bg-primary/10"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
               <Icon name="Headset" size={20} />
             </div>
             <div className="min-w-0 flex-1">

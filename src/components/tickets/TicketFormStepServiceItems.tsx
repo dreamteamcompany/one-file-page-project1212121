@@ -97,7 +97,7 @@ const TicketFormStepServiceItems = ({
                 }`}
               >
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-colors ${
                     isSelected ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
                   }`}
                 >
