@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import PageLayout from '@/components/layout/PageLayout';
 import TicketDetailsContent from '@/components/tickets/TicketDetailsContent';
 import TicketDetailsSidebar from '@/components/tickets/TicketDetailsSidebar';
-import WaitingToggleButton from '@/components/tickets/sidebar/WaitingToggleButton';
 import ConfirmationOverlay from '@/components/tickets/ConfirmationOverlay';
 import ReopenTicketButton from '@/components/tickets/ReopenTicketButton';
 import { useTicketData } from '@/hooks/useTicketData';
@@ -317,15 +316,6 @@ const TicketDetails = () => {
           </div>
 
           <div className="lg:hidden w-full space-y-2">
-            {ticket && !isClosed && (
-              <WaitingToggleButton
-                ticket={ticket}
-                statuses={statuses}
-                updating={updating}
-                onStatusChange={(statusId) => lockedHandleUpdateStatus(Number(statusId))}
-                className="w-full"
-              />
-            )}
             <button
               type="button"
               onClick={() => setSidebarOpen(prev => !prev)}
