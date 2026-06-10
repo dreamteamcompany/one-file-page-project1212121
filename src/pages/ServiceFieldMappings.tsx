@@ -33,8 +33,24 @@ const ServiceFieldMappings = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [dictionariesOpen, setDictionariesOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(true);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd > 75) {
+      setMenuOpen(false);
+    }
+  };
 
   // Фильтруем сервисы по выбранной услуге через ticket_service_mappings
   const filteredServices = useMemo(() => {
@@ -273,25 +289,29 @@ const ServiceFieldMappings = () => {
   });
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex min-h-screen bg-background">
       <PaymentsSidebar
         menuOpen={menuOpen}
-        setMenuOpen={setMenuOpen}
         collapsed={collapsed}
-        setCollapsed={setCollapsed}
+        onToggleCollapse={() => setCollapsed((v) => !v)}
+        dictionariesOpen={dictionariesOpen}
+        setDictionariesOpen={setDictionariesOpen}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        handleTouchStart={handleTouchStart}
+        handleTouchMove={handleTouchMove}
+        handleTouchEnd={handleTouchEnd}
       />
 
-      <div
-        className="flex-1 overflow-y-auto"
-        onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
-        onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
-        onTouchEnd={() => {
-          if (touchStart - touchEnd > 75) {
-            setMenuOpen(false);
-          }
-        }}
-      >
-        <div className="p-4 md:p-6 space-y-4 md:space-y-6 w-full">
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
+      <main className={`${collapsed ? 'lg:ml-[70px]' : 'lg:ml-[250px]'} flex-1 min-h-screen overflow-x-hidden max-w-full transition-all duration-300`}>
+        <div className="p-4 md:p-6 lg:p-[30px] space-y-4 md:space-y-6 w-full">
           <div className="flex lg:hidden items-center gap-2">
             <Button
               variant="ghost"
@@ -362,7 +382,7 @@ const ServiceFieldMappings = () => {
             canDelete={hasPermission('service_field_mappings', 'remove')}
           />
         </div>
-      </div>
+      </main>
     </div>
   );
 };
