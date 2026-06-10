@@ -39,7 +39,8 @@ interface TicketFormStep4Props {
   formData: FormData;
   setFormData: (data: Record<string, string | number | number[] | Record<string, string>>) => void;
   customFields: CustomField[];
-  onSubmit: (e: React.FormEvent) => Promise<void>;
+  onSubmit?: (e: React.FormEvent) => Promise<void>;
+  onNext?: () => void;
   onBack: () => void;
   isSubmitting?: boolean;
 }
@@ -235,13 +236,18 @@ const TicketFormStep4 = ({
   setFormData,
   customFields,
   onSubmit,
+  onNext,
   onBack,
   isSubmitting = false,
 }: TicketFormStep4Props) => {
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (onNext) {
+      onNext();
+      return;
+    }
     if (isSubmitting) return;
-    onSubmit(e);
+    onSubmit?.(e);
   };
 
   const SECTION_TYPES = ['radio_cards', 'company_structure'];
@@ -319,7 +325,12 @@ const TicketFormStep4 = ({
             Назад
           </Button>
           <Button type="submit" className="flex-1 gap-2" disabled={isSubmitting}>
-            {isSubmitting ? (
+            {onNext ? (
+              <>
+                Далее
+                <Icon name="ArrowRight" size={18} />
+              </>
+            ) : isSubmitting ? (
               <>
                 <Icon name="Loader2" size={18} className="animate-spin" />
                 Создание заявки...

@@ -177,10 +177,12 @@ export const useTicketFormLogic = ({
 
   const getCustomFieldsStep = () => {
     if (classificationMode === 'manual') {
-      return 4;
+      return 3;
     }
     return 3;
   };
+
+  const MANUAL_DESCRIPTION_STEP = 4;
 
   const handleNextFromClassify = () => {
     if (visibleCustomFields.length > 0) {
@@ -191,31 +193,38 @@ export const useTicketFormLogic = ({
     }
   };
 
+  const goToCustomFieldsOrDescription = () => {
+    if (visibleCustomFields.length > 0) {
+      setStep(3);
+    } else {
+      setStep(MANUAL_DESCRIPTION_STEP);
+    }
+  };
+
   const handleNextFromManualService = () => {
     if (!hasServiceItems) {
-      setStep(3);
+      goToCustomFieldsOrDescription();
     } else {
       setStep(2);
     }
   };
 
   const handleNextFromManualServiceItems = () => {
-    setStep(3);
+    goToCustomFieldsOrDescription();
   };
 
-  const handleNextFromManualDescription = () => {
-    if (visibleCustomFields.length > 0) {
-      setStep(4);
-    } else {
-      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-      onSubmit(fakeEvent);
-    }
+  const handleNextFromManualCustomFields = () => {
+    setStep(MANUAL_DESCRIPTION_STEP);
   };
 
   const handleBack = () => {
     if (classificationMode === 'manual') {
-      if (step === 4) {
-        setStep(3);
+      if (step === MANUAL_DESCRIPTION_STEP) {
+        if (visibleCustomFields.length > 0) {
+          setStep(3);
+        } else {
+          setStep(hasServiceItems ? 2 : 1);
+        }
       } else if (step === 3) {
         setStep(hasServiceItems ? 2 : 1);
       } else if (step === 2) {
@@ -323,8 +332,8 @@ export const useTicketFormLogic = ({
     if (classificationMode === 'manual') {
       const labels = ['Услуга'];
       if (hasServiceItems) labels.push('Сервис');
-      labels.push('Описание');
       if (visibleCustomFields.length > 0) labels.push('Доп. поля');
+      labels.push('Описание');
       return labels;
     }
     const labels = ['Описание', 'Категория'];
@@ -336,8 +345,15 @@ export const useTicketFormLogic = ({
   const totalSteps = stepLabels.length;
 
   const displayStep = (() => {
-    if (classificationMode === 'manual' && !hasServiceItems && step >= 3) {
-      return step - 1;
+    if (classificationMode === 'manual') {
+      const existingSteps = [
+        1,
+        hasServiceItems ? 2 : null,
+        visibleCustomFields.length > 0 ? 3 : null,
+        MANUAL_DESCRIPTION_STEP,
+      ].filter((s): s is number => s !== null);
+      const idx = existingSteps.indexOf(step);
+      return idx >= 0 ? idx + 1 : existingSteps.filter((s) => s <= step).length;
     }
     return step;
   })();
@@ -365,7 +381,7 @@ export const useTicketFormLogic = ({
     handleNextFromClassify,
     handleNextFromManualService,
     handleNextFromManualServiceItems,
-    handleNextFromManualDescription,
+    handleNextFromManualCustomFields,
     handleBack,
     onSubmit,
     isSubmitting,

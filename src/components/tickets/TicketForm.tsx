@@ -55,7 +55,7 @@ const TicketForm = ({
     handleNextFromClassify,
     handleNextFromManualService,
     handleNextFromManualServiceItems,
-    handleNextFromManualDescription,
+    handleNextFromManualCustomFields,
     handleBack,
     onSubmit,
     isSubmitting,
@@ -154,14 +154,24 @@ const TicketForm = ({
           />
         )}
 
-        {!classifying && step === 3 && classificationMode === 'manual' && (
+        {!classifying && step === 3 && classificationMode === 'manual' && visibleCustomFields.length > 0 && (
+          <TicketFormStep4
+            formData={formData}
+            setFormData={setFormData}
+            customFields={visibleCustomFields}
+            onNext={handleNextFromManualCustomFields}
+            onBack={handleBack}
+            isSubmitting={isSubmitting}
+          />
+        )}
+
+        {!classifying && step === 4 && classificationMode === 'manual' && (
           <TicketFormStep1
             formData={formData}
             setFormData={setFormData}
             priorities={priorities}
             selectedTicketService={selectedTicketService}
-            hasCustomFields={visibleCustomFields.length > 0}
-            onNext={handleNextFromManualDescription}
+            hasCustomFields={false}
             onSubmit={onSubmit}
             onBack={handleBack}
             classificationMode={classificationMode}
@@ -173,7 +183,7 @@ const TicketForm = ({
           />
         )}
 
-        {!classifying && step === getCustomFieldsStep() && visibleCustomFields.length > 0 && (
+        {!classifying && step === getCustomFieldsStep() && classificationMode === 'ai' && visibleCustomFields.length > 0 && (
           <TicketFormStep4
             formData={formData}
             setFormData={setFormData}
