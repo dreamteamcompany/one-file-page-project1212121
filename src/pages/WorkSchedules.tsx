@@ -120,13 +120,13 @@ const WorkSchedules = () => {
                 value={selectedUserId?.toString() || ''}
                 onValueChange={(v) => setSelectedUserId(Number(v))}
               >
-                <SelectTrigger className="w-full sm:flex-1">
+                <SelectTrigger className="w-full sm:flex-1 notranslate" translate="no">
                   <SelectValue placeholder="Выберите исполнителя" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="notranslate" translate="no">
                   {usersWithoutSchedule.map(u => (
                     <SelectItem key={u.id} value={u.id.toString()}>
-                      {u.full_name} ({u.email})
+                      <span translate="no" className="notranslate">{u.full_name} ({u.email})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
