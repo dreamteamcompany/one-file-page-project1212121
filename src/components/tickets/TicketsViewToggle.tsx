@@ -45,12 +45,13 @@ const TicketsViewToggle = ({
 }: TicketsViewToggleProps) => {
   const { hasSystemRole } = useAuth();
   const isPlainUser = hasSystemRole('user') && !hasSystemRole('admin', 'manager');
-  const isOpenOrAllActive = !showArchived && !showHidden;
+  const isOpenOrAllActive = !showArchived && !showHidden && !showWatching;
 
   const handleSelectOpen = () => {
     onViewModeChange('list');
     if (showArchived) onToggleArchived(false);
     if (showHidden && onToggleHidden) onToggleHidden(false);
+    if (showWatching && onToggleWatching) onToggleWatching(false);
     if (showAll && onToggleShowAll) onToggleShowAll(false);
   };
 
@@ -69,7 +70,15 @@ const TicketsViewToggle = ({
         <Button
           variant={showWatching ? 'default' : 'outline'}
           size="sm"
-          onClick={() => onToggleWatching?.(!showWatching)}
+          onClick={() => {
+            const next = !showWatching;
+            onToggleWatching?.(next);
+            if (next) {
+              if (showArchived) onToggleArchived(false);
+              if (showHidden && onToggleHidden) onToggleHidden(false);
+              onViewModeChange('list');
+            }
+          }}
           className="flex items-center gap-2"
         >
           <Icon name="Users" size={16} />
