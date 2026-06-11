@@ -38,7 +38,8 @@ interface TicketApprovalBlockProps {
 }
 
 const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUsers = [] }: TicketApprovalBlockProps) => {
-  const { token, user } = useAuth();
+  const { token, user, hasPermission } = useAuth();
+  const canEditApprovers = hasPermission('tickets', 'edit_approvers');
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -231,7 +232,7 @@ const TicketApprovalBlock = ({ ticketId, statusName, onStatusChange, availableUs
       </button>
 
       {isOpen && <>
-      {canSubmit && approvalHistory.length === 0 && (
+      {canSubmit && canEditApprovers && approvalHistory.length === 0 && (
         <div className="space-y-3">
           <div>
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>

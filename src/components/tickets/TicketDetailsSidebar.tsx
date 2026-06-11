@@ -111,10 +111,9 @@ const TicketDetailsSidebar = ({
   hidePing = false,
   onReopened,
 }: TicketDetailsSidebarProps) => {
-  const { hasPermission, hasExactPermission, hasSystemRole } = useAuth();
+  const { hasPermission, hasSystemRole } = useAuth();
   const canSeeGroup = hasSystemRole('admin', 'executor');
-  const forbidChangeExecutor = hasExactPermission('tickets', 'forbid_change_executor');
-  const canAssignExecutor = hasPermission('tickets', 'assign_executor') && !forbidChangeExecutor;
+  const canAssignExecutor = hasPermission('tickets', 'assign_executor');
 
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);

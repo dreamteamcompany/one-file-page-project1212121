@@ -1221,12 +1221,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     FROM {SCHEMA}.permissions p
                     JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id
                     JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id
+                    JOIN {SCHEMA}.roles r ON r.id = ur.role_id
                     WHERE ur.user_id = %s
-                      AND p.resource = 'tickets'
-                      AND p.action = 'forbid_change_executor'
+                      AND (
+                            (p.resource = 'tickets' AND p.action = 'assign_executor')
+                            OR r.name IN ('Администратор', 'Admin')
+                          )
                     LIMIT 1
                 """, (user_id,))
-                if cur.fetchone():
+                if not cur.fetchone():
                     cur.close()
                     return response(403, {'error': 'Недостаточно прав для смены исполнителя'})
                 history_entries.append(('assigned_to', get_user_name(old_ticket['assigned_to']) or 'Не назначен', get_user_name(body['assigned_to']) or 'Снят с назначения'))
