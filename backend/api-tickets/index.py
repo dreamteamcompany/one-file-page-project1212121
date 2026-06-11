@@ -57,6 +57,24 @@ def _get_user_role_info(cur, user_id: int) -> Dict[str, Any]:
     return {'role_ids': role_ids, 'is_admin': is_admin}
 
 
+def _can_see_internal(cur, user_id: int) -> bool:
+    """Скрытые (внутренние) комментарии видят только Администратор и Исполнитель"""
+    if not user_id:
+        return False
+    cur.execute(f"""
+        SELECT r.name, r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (int(user_id),))
+    for row in cur.fetchall():
+        name = (row.get('name') or '').strip().lower()
+        system_role = (row.get('system_role') or '').strip().lower()
+        if system_role in ('admin', 'executor') or name in ('admin', 'администратор', 'исполнитель'):
+            return True
+    return False
+
+
 def _filter_statuses_by_role(statuses: List[Dict[str, Any]], role_info: Dict[str, Any],
                               status_role_map: Dict[int, List[int]]) -> List[Dict[str, Any]]:
     """Оставляет только статусы, доступные роли пользователя.
@@ -2569,6 +2587,10 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
                     ORDER BY tc.created_at DESC
                 """, (ticket_id,))
                 comments = [dict(row) for row in cur.fetchall()]
+
+                # Скрытые (внутренние) комментарии видят только Администратор и Исполнитель
+                if not _can_see_internal(cur, user_id):
+                    comments = [c for c in comments if not c.get('is_internal')]
 
                 # Вырезаем тяжёлые inline base64-картинки, помечая флагом
                 for c in comments:
