@@ -23,7 +23,7 @@ const DeadlineSection = ({
   canEditDueDate = false,
   onUpdateDueDate,
 }: DeadlineSectionProps) => {
-  const canEdit = (isCustomer || canEditDueDate) && !!onUpdateDueDate;
+  const canEdit = canEditDueDate && !!onUpdateDueDate;
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(ticket.due_date || '');
   const [dueTimeValue, setDueTimeValue] = useState(() => {
