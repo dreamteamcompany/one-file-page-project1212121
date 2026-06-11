@@ -1,5 +1,10 @@
 import json
+import sys
 from shared_utils import response, SCHEMA
+
+
+def _log(msg):
+    print(msg, file=sys.stderr, flush=True)
 
 
 ALLOWED_KEYS = {'classification_mode', 'default_executor_group_id'}
@@ -9,6 +14,7 @@ ALLOWED_VALUES = {'classification_mode': {'ai', 'manual'}}
 def handle_system_settings(method, event, conn, payload):
     """Обработчик системных настроек (чтение и обновление)"""
     params = event.get('queryStringParameters', {}) or {}
+    _log(f"[system_settings] method={method} body={event.get('body')!r} isB64={event.get('isBase64Encoded')}")
 
     if method == 'GET':
         key = params.get('key')
@@ -37,6 +43,7 @@ def handle_system_settings(method, event, conn, payload):
             return response(400, {'error': 'key and value are required'})
 
         if key not in ALLOWED_KEYS:
+            _log(f"[system_settings] REJECT key={key!r} not in ALLOWED_KEYS={ALLOWED_KEYS}")
             return response(400, {'error': 'Invalid setting key'})
 
         if key in ALLOWED_VALUES and value not in ALLOWED_VALUES[key]:
@@ -53,6 +60,7 @@ def handle_system_settings(method, event, conn, payload):
                 (key, value)
             )
         conn.commit()
+        _log(f"[system_settings] saved key={key} value={value!r}")
         return response(200, {'success': True, 'key': key, 'value': value})
 
     return response(405, {'error': 'Method not allowed'})
