@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children, requiredPermission }: ProtectedRouteProps) =
       );
 
       if (!hasPermission) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/tickets" replace />;
       }
     }
   }

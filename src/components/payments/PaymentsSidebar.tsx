@@ -69,7 +69,7 @@ const PaymentsSidebar = ({
     >
       <div className="flex items-center justify-between gap-3 px-5 py-5 pb-[30px] border-b border-border flex-shrink-0">
         {!collapsed && (
-          <a href="/" className="flex-1">
+          <a href={hasPermission('dashboard', 'read') ? '/' : '/tickets'} className="flex-1">
             <div className="bg-transparent [.light_&]:bg-[#0f1729] rounded-lg px-3 py-2 flex items-center justify-center w-full">
               <Logo className="h-8 w-auto" />
             </div>
