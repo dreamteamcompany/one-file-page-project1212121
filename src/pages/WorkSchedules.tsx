@@ -164,33 +164,34 @@ const WorkSchedules = () => {
                   >
                     <div className="flex items-center gap-2 sm:gap-3 p-2.5">
                       <Switch
+                        className="shrink-0"
                         checked={schedule.is_active}
                         onCheckedChange={(v) => updateDay(dayIdx, 'is_active', v)}
                       />
-                      <span className={`text-sm font-medium min-w-0 ${
+                      <span className={`text-sm font-medium shrink-0 w-7 sm:w-auto ${
                         isWeekend ? 'text-orange-500' : ''
                       } ${!schedule.is_active ? 'text-muted-foreground' : ''}`}>
                         <span className="hidden sm:inline">{DAY_NAMES[dayIdx]}</span>
                         <span className="sm:hidden">{DAY_SHORT[dayIdx]}</span>
                       </span>
                       {schedule.is_active ? (
-                        <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+                        <div className="flex flex-1 items-center gap-1.5 sm:gap-2 ml-auto min-w-0">
                           <Input
                             type="time"
                             value={schedule.start_time}
                             onChange={(e) => updateDay(dayIdx, 'start_time', e.target.value)}
-                            className="w-[6.5rem] sm:w-28 h-8 text-sm px-2"
+                            className="flex-1 min-w-0 sm:flex-none sm:w-28 h-8 text-sm px-2"
                           />
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground shrink-0">—</span>
                           <Input
                             type="time"
                             value={schedule.end_time}
                             onChange={(e) => updateDay(dayIdx, 'end_time', e.target.value)}
-                            className="w-[6.5rem] sm:w-28 h-8 text-sm px-2"
+                            className="flex-1 min-w-0 sm:flex-none sm:w-28 h-8 text-sm px-2"
                           />
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground ml-auto">Выходной</span>
+                        <span className="text-xs text-muted-foreground ml-auto shrink-0">Выходной</span>
                       )}
                     </div>
                   </div>
