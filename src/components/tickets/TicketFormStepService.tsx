@@ -21,6 +21,19 @@ interface TicketFormStepServiceProps {
 
 const PAGE_SIZE = 12;
 
+const PRIORITY_SERVICES = [
+  'предоставить доступ',
+  'заблокировать доступ',
+  'разблокировать пользователя',
+  'сообщить о проблеме',
+  'сервера банков',
+];
+
+const getServicePriority = (name: string): number => {
+  const idx = PRIORITY_SERVICES.indexOf((name || '').trim().toLowerCase());
+  return idx === -1 ? PRIORITY_SERVICES.length : idx;
+};
+
 const getServiceIcon = (name: string): string => {
   const n = name.toLowerCase();
   if (n.includes('ошеломл') || n.includes('пошло не так') || n.includes('сломал')) return 'Zap';
@@ -57,12 +70,22 @@ const TicketFormStepService = ({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return ticketServices;
-    return ticketServices.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.description || '').toLowerCase().includes(q),
-    );
+    const base = !q
+      ? ticketServices
+      : ticketServices.filter(
+          (s) =>
+            s.name.toLowerCase().includes(q) ||
+            (s.description || '').toLowerCase().includes(q),
+        );
+    return base
+      .map((s, idx) => ({ s, idx }))
+      .sort((a, b) => {
+        const pa = getServicePriority(a.s.name);
+        const pb = getServicePriority(b.s.name);
+        if (pa !== pb) return pa - pb;
+        return a.idx - b.idx;
+      })
+      .map((x) => x.s);
   }, [ticketServices, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
