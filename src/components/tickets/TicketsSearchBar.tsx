@@ -100,6 +100,9 @@ const TicketsSearchBar = ({
           </div>
         )}
       </div>
+      <p className="mt-1.5 px-3 sm:px-5 text-[11px] sm:text-xs text-muted-foreground leading-snug">
+        Ищет по теме, описанию, доп. полям, комментариям, участникам, номеру, дате, сервису и услуге
+      </p>
     </div>
   );
 };
