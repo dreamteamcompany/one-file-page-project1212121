@@ -40,6 +40,8 @@ const TicketDetailsContent = ({
   onUpdateContent,
   updating,
   headerSlot,
+  commentIsInternal,
+  onToggleCommentInternal,
 }: TicketDetailsContentProps) => {
   const { user, hasPermission, hasSystemRole } = useAuth();
   const canCallPhone = hasSystemRole('admin', 'executor');
@@ -144,6 +146,9 @@ const TicketDetailsContent = ({
           onMarkRead={onMarkRead}
           canUseTemplates={hasSystemRole('admin', 'executor')}
           canUseAI={hasSystemRole('admin', 'executor')}
+          canMarkInternal={hasSystemRole('admin', 'executor')}
+          commentIsInternal={commentIsInternal}
+          onToggleCommentInternal={onToggleCommentInternal}
         />
       </div>
       {canEditContent && onUpdateContent && (

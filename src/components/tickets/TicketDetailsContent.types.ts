@@ -120,4 +120,6 @@ export interface TicketDetailsContentProps {
   }) => Promise<boolean>;
   updating?: boolean;
   headerSlot?: React.ReactNode;
+  commentIsInternal?: boolean;
+  onToggleCommentInternal?: (value: boolean) => void;
 }

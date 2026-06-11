@@ -175,6 +175,12 @@ const TicketCommentItem = ({
         <div className="max-w-[80%] min-w-[120px] min-w-0">
           <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
             <p className="font-semibold text-xs">{comment.user_full_name || comment.user_name || 'Пользователь'}</p>
+            {comment.is_internal && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300">
+                <Icon name="EyeOff" size={10} />
+                Скрытый
+              </span>
+            )}
             <p className="text-[11px] text-muted-foreground">
               {formatDate(comment.created_at)}
               {comment.edited_at && (
@@ -188,9 +194,11 @@ const TicketCommentItem = ({
             </p>
           </div>
           <div className={`rounded-2xl px-3.5 py-2.5 ${
-            isOwn
-              ? 'bg-primary text-primary-foreground rounded-tr-md'
-              : 'bg-muted text-foreground rounded-tl-md'
+            comment.is_internal
+              ? `border border-amber-300 bg-amber-50 text-foreground ${isOwn ? 'rounded-tr-md' : 'rounded-tl-md'}`
+              : isOwn
+                ? 'bg-primary text-primary-foreground rounded-tr-md'
+                : 'bg-muted text-foreground rounded-tl-md'
           }`}>
             {parentComment && (
               <button

@@ -53,6 +53,9 @@ const TicketComments = ({
   auditLogs = [],
   canUseTemplates = false,
   canUseAI = false,
+  canMarkInternal = false,
+  commentIsInternal = false,
+  onToggleCommentInternal,
 }: TicketCommentsProps) => {
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -476,6 +479,9 @@ const TicketComments = ({
         onSendPing={onSendPing}
         canUseTemplates={canUseTemplates}
         canUseAI={canUseAI}
+        canMarkInternal={canMarkInternal}
+        isInternal={commentIsInternal}
+        onToggleInternal={onToggleCommentInternal}
       />
 
       <AlertDialog

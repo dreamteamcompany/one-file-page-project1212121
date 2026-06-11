@@ -45,6 +45,8 @@ const TicketDetails = () => {
   const {
     newComment,
     setNewComment,
+    commentIsInternal,
+    setCommentIsInternal,
     submittingComment,
     updating,
     sendingPing,
@@ -396,6 +398,8 @@ const TicketDetails = () => {
                 submittingComment={submittingComment}
                 sendingPing={sendingPing}
                 userId={user?.id}
+                commentIsInternal={commentIsInternal}
+                onToggleCommentInternal={setCommentIsInternal}
                 onCommentChange={setNewComment}
                 onSubmitComment={lockedHandleSubmitComment}
                 onSendPing={lockedHandleSendPing}

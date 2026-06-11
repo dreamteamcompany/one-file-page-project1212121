@@ -80,6 +80,9 @@ export interface TicketCommentsProps {
   auditLogs?: import('./TicketEventItem').HistoryLog[];
   canUseTemplates?: boolean;
   canUseAI?: boolean;
+  canMarkInternal?: boolean;
+  commentIsInternal?: boolean;
+  onToggleCommentInternal?: (value: boolean) => void;
 }
 
 export const AVATAR_COLORS = [

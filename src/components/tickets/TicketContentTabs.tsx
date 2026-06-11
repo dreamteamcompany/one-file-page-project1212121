@@ -40,6 +40,9 @@ interface TicketContentTabsProps {
   onMarkRead?: (commentIds: number[]) => void;
   canUseTemplates: boolean;
   canUseAI: boolean;
+  canMarkInternal?: boolean;
+  commentIsInternal?: boolean;
+  onToggleCommentInternal?: (value: boolean) => void;
 }
 
 const TicketContentTabs = ({
@@ -75,6 +78,9 @@ const TicketContentTabs = ({
   onMarkRead,
   canUseTemplates,
   canUseAI,
+  canMarkInternal,
+  commentIsInternal,
+  onToggleCommentInternal,
 }: TicketContentTabsProps) => {
   return (
     <div
@@ -148,6 +154,9 @@ const TicketContentTabs = ({
             auditLogs={auditLogs}
             canUseTemplates={canUseTemplates}
             canUseAI={canUseAI}
+            canMarkInternal={canMarkInternal}
+            commentIsInternal={commentIsInternal}
+            onToggleCommentInternal={onToggleCommentInternal}
           />
         )}
 

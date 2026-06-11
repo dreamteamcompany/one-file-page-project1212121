@@ -322,14 +322,20 @@ def handle_get_inline(event: Dict[str, Any], conn, payload: Dict[str, Any]) -> D
 
     cur = conn.cursor()
     cur.execute(
-        f"SELECT id, comment FROM {SCHEMA}.ticket_comments WHERE id = %s",
+        f"SELECT id, comment, is_internal FROM {SCHEMA}.ticket_comments WHERE id = %s",
         (comment_id,),
     )
     row = cur.fetchone()
-    cur.close()
     if not row:
+        cur.close()
         return response(404, {'error': 'Comment not found'})
 
+    # Скрытый комментарий доступен только Администратору и Исполнителю
+    if row['is_internal'] and not _can_see_internal(cur, payload.get('user_id')):
+        cur.close()
+        return response(404, {'error': 'Comment not found'})
+
+    cur.close()
     return response(200, {
         'id': row['id'],
         'comment': row['comment'],
@@ -365,6 +371,10 @@ def handle_get_comments(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
     """, (tid,))
 
     comments = [dict(row) for row in cur.fetchall()]
+
+    # Скрытые (внутренние) комментарии видят только Администратор и Исполнитель
+    if not _can_see_internal(cur, user_id):
+        comments = [c for c in comments if not c.get('is_internal')]
 
     # Вырезаем тяжёлые inline base64-картинки, чтобы ответ влез в лимит Cloud Functions.
     # Помечаем такие комментарии флагом has_inline_images=true, фронтенд может
@@ -692,6 +702,22 @@ def _is_admin_user(cur, user_id: int) -> bool:
         name = (row.get('name') or '').strip().lower()
         system_role = (row.get('system_role') or '').strip().lower()
         if system_role == 'admin' or name in ('admin', 'администратор'):
+            return True
+    return False
+
+
+def _can_see_internal(cur, user_id: int) -> bool:
+    """Скрытые комментарии видят только Администратор и Исполнитель"""
+    cur.execute(f"""
+        SELECT r.name, r.system_role
+        FROM {SCHEMA}.user_roles ur
+        JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (int(user_id),))
+    for row in cur.fetchall():
+        name = (row.get('name') or '').strip().lower()
+        system_role = (row.get('system_role') or '').strip().lower()
+        if system_role in ('admin', 'executor') or name in ('admin', 'администратор', 'исполнитель'):
             return True
     return False
 

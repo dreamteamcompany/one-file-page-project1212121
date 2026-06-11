@@ -11,6 +11,7 @@ export const useTicketActions = (
 ) => {
   const { token, hasPermission } = useAuth();
   const [newComment, setNewComment] = useState('');
+  const [commentIsInternal, setCommentIsInternal] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [sendingPing, setSendingPing] = useState(false);
@@ -34,7 +35,7 @@ export const useTicketActions = (
         body: JSON.stringify({
           ticket_id: ticketId,
           comment: text,
-          is_internal: false,
+          is_internal: commentIsInternal,
           parent_comment_id: parentCommentId,
           mentioned_user_ids: mentionedUserIds,
           attachments: ready.map((a) => ({
@@ -47,6 +48,7 @@ export const useTicketActions = (
 
       if (response.ok) {
         setNewComment('');
+        setCommentIsInternal(false);
         commentUploader.clear();
         loadComments();
       }
@@ -298,6 +300,8 @@ export const useTicketActions = (
   return {
     newComment,
     setNewComment,
+    commentIsInternal,
+    setCommentIsInternal,
     submittingComment,
     updating,
     sendingPing,

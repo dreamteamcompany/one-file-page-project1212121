@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { EmojiClickData } from 'emoji-picker-react';
+import Icon from '@/components/ui/icon';
 import AttachmentUploader from '@/components/shared/AttachmentUploader';
 import { UploadedAttachment } from '@/hooks/useFileUploader';
 import { Comment, User } from './TicketCommentsTypes';
@@ -50,6 +51,9 @@ interface TicketCommentsInputProps {
   onEditorChange?: (html: string, text: string) => void;
   canUseTemplates?: boolean;
   canUseAI?: boolean;
+  canMarkInternal?: boolean;
+  isInternal?: boolean;
+  onToggleInternal?: (value: boolean) => void;
 }
 
 const TicketCommentsInput = ({
@@ -77,6 +81,9 @@ const TicketCommentsInput = ({
   onSubmit,
   canUseTemplates = false,
   canUseAI = false,
+  canMarkInternal = false,
+  isInternal = false,
+  onToggleInternal,
 }: TicketCommentsInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -338,6 +345,32 @@ const TicketCommentsInput = ({
               onRemove={onRemoveAttachment}
               buttonLabel="Добавить ещё"
             />
+          )}
+
+          {canMarkInternal && (
+            <button
+              type="button"
+              onClick={() => onToggleInternal?.(!isInternal)}
+              className={`flex items-center gap-2 text-sm rounded-md px-2.5 py-1.5 border transition-colors ${
+                isInternal
+                  ? 'bg-amber-50 border-amber-300 text-amber-700'
+                  : 'bg-transparent border-transparent text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <Icon name={isInternal ? 'EyeOff' : 'Eye'} size={16} />
+              <span>Скрытый комментарий</span>
+              <span
+                className={`ml-1 inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  isInternal ? 'bg-amber-500' : 'bg-muted-foreground/30'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    isInternal ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </span>
+            </button>
           )}
 
           <TicketCommentsToolbar
