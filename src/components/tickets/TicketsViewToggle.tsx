@@ -23,6 +23,7 @@ interface TicketsViewToggleProps {
   onToggleShowAll?: (value: boolean) => void;
   showWatching?: boolean;
   onToggleWatching?: (value: boolean) => void;
+  canBulkActions?: boolean;
 }
 
 const TicketsViewToggle = ({
@@ -42,6 +43,7 @@ const TicketsViewToggle = ({
   onToggleShowAll,
   showWatching = false,
   onToggleWatching,
+  canBulkActions = false,
 }: TicketsViewToggleProps) => {
   const { hasSystemRole } = useAuth();
   const isPlainUser = hasSystemRole('user') && !hasSystemRole('admin', 'manager');
@@ -113,7 +115,7 @@ const TicketsViewToggle = ({
 
       </div>
 
-      {viewMode === 'list' && !showHidden && (
+      {viewMode === 'list' && !showHidden && canBulkActions && (
         <Button
           variant={bulkMode ? 'default' : 'outline'}
           size="sm"

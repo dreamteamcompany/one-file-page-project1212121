@@ -52,7 +52,8 @@ interface BulkExecutorGroup {
 const EXECUTOR_GROUPS_URL = 'https://functions.poehali.dev/a52eb50f-38cf-4887-aead-cc77f01ca416';
 
 const Tickets = () => {
-  const { user, hasPermission, hasSystemRole, token } = useAuth();
+  const { user, hasPermission, hasExactPermission, hasSystemRole, token } = useAuth();
+  const canBulkActions = hasExactPermission('tickets', 'bulk_actions');
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -241,6 +242,7 @@ const Tickets = () => {
           onToggleShowAll={toggleShowAll}
           showWatching={showWatching}
           onToggleWatching={toggleWatching}
+          canBulkActions={canBulkActions}
         />
 
 
