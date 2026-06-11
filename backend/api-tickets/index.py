@@ -895,6 +895,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 )
                 if cur.fetchone():
                     executor_group_id = default_group_id
+
+        if executor_group_id and not assigned_to:
+            from executor_assignment_resolver import pick_member_for_group
+            picked = pick_member_for_group(cur, SCHEMA, executor_group_id)
+            if picked:
+                assigned_to = picked
         
         sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
         due_date_sql = 'NULL'

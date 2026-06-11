@@ -51,6 +51,30 @@ def resolve_executor_group(cur, schema: str, ticket_service_id: Optional[int], s
     return None
 
 
+def pick_member_for_group(cur, schema: str, group_id: int) -> Optional[int]:
+    """Разворачивает группу в конкретного исполнителя по её правилам автораспределения.
+    Учитывает auto_assign_type ('all'/'working') и balance_mode ('balanced'/'none').
+    Если у группы auto_assign_type='none' или нет подходящих участников — возвращает None."""
+    if not group_id:
+        return None
+
+    cur.execute(f"""
+        SELECT auto_assign_type, balance_mode
+        FROM {schema}.executor_groups
+        WHERE id = %s AND is_active = true
+    """, (group_id,))
+    group_row = cur.fetchone()
+    if not group_row:
+        return None
+
+    assign_type = group_row.get('auto_assign_type') or 'none'
+    if assign_type not in ('all', 'working'):
+        return None
+
+    balance_mode = group_row.get('balance_mode') or 'none'
+    return _pick_member(cur, schema, group_id, assign_type, balance_mode)
+
+
 def _find_direct_user(cur, schema: str, ticket_service_id: int, service_id: int) -> Optional[int]:
     cur.execute(f"""
         SELECT m.user_id
