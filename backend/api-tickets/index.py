@@ -439,6 +439,12 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
     if method == 'GET':
         query_params = event.get('queryStringParameters', {}) or {}
+        # Пользователи без права видеть скрытые комментарии не должны узнавать
+        # даже о факте их существования (флаги "есть новый ответ")
+        _internal_cur = conn.cursor()
+        _hide_internal = not _can_see_internal(_internal_cur, user_id)
+        _internal_cur.close()
+        _internal_filter = ' AND {alias}.is_internal = false' if _hide_internal else ''
         
         ticket_id_param = query_params.get('ticket_id')
         status_id = query_params.get('status_id')
@@ -712,6 +718,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                            SELECT 1 FROM {SCHEMA}.ticket_comments tccr
                            WHERE tccr.ticket_id = t.id
                              AND tccr.user_id <> {int(user_id)}
+                             {_internal_filter.format(alias='tccr')}
                              AND tccr.created_at > COALESCE(
                                  (SELECT tv2.last_seen_at FROM {SCHEMA}.ticket_views tv2
                                   WHERE tv2.user_id = {int(user_id)} AND tv2.ticket_id = t.id),
@@ -723,6 +730,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                        SELECT MAX(tccrt.created_at) FROM {SCHEMA}.ticket_comments tccrt
                        WHERE tccrt.ticket_id = t.id
                          AND tccrt.user_id <> {int(user_id)}
+                         {_internal_filter.format(alias='tccrt')}
                          AND tccrt.created_at > COALESCE(
                              (SELECT tv3.last_seen_at FROM {SCHEMA}.ticket_views tv3
                               WHERE tv3.user_id = {int(user_id)} AND tv3.ticket_id = t.id),
@@ -743,6 +751,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                            SELECT 1 FROM {SCHEMA}.ticket_comments tcnew
                            WHERE tcnew.ticket_id = t.id
                              AND tcnew.user_id <> {int(user_id)}
+                             {_internal_filter.format(alias='tcnew')}
                              AND tcnew.created_at > COALESCE(
                                  (SELECT tv.last_seen_at FROM {SCHEMA}.ticket_views tv
                                   WHERE tv.user_id = {int(user_id)} AND tv.ticket_id = t.id),

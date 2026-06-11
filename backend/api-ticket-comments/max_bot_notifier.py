@@ -16,6 +16,24 @@ def _strip_bbcode(text: str) -> str:
     return re.sub(r'\[/?[a-zA-Z]+\]', '', text)
 
 
+def _can_see_internal(cur, schema: str, user_id: int) -> bool:
+    """Скрытые (внутренние) комментарии видят только Администратор и Исполнитель"""
+    if not user_id:
+        return False
+    cur.execute(f"""
+        SELECT r.name, r.system_role
+        FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s
+    """, (int(user_id),))
+    for row in cur.fetchall():
+        name = (row.get('name') or '').strip().lower()
+        system_role = (row.get('system_role') or '').strip().lower()
+        if system_role in ('admin', 'executor') or name in ('admin', 'администратор', 'исполнитель'):
+            return True
+    return False
+
+
 def _send_max_message(max_user_id: str, text: str, ticket_id: int = None, ticket_url: str = ''):
     if not MAX_BOT_TOKEN or not max_user_id:
         return
@@ -95,6 +113,10 @@ def send_comment_notifications(cur, schema: str, ticket_id: int, author_user_id:
         WHERE tw.ticket_id = %s AND u.max_user_id IS NOT NULL
     """, (ticket_id,))
     watchers = cur.fetchall() or []
+
+    # Для скрытых комментариев исключаем наблюдателей без права видеть скрытые
+    if is_internal:
+        watchers = [w for w in watchers if _can_see_internal(cur, schema, w['user_id'])]
 
     seen = set()
     recipients = []

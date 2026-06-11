@@ -635,6 +635,11 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         mentioned_ids |= _resolve_mention_ids(cur, data.mentioned_user_ids)
         mentioned_ids.discard(user_id)
 
+        # В скрытом (внутреннем) комментарии нельзя упоминать тех, кто не видит скрытые
+        # (обычных пользователей) — иначе им утечёт текст через уведомления/наблюдение
+        if data.is_internal:
+            mentioned_ids = {m_id for m_id in mentioned_ids if _can_see_internal(cur, m_id)}
+
         # Любой упомянутый автоматически становится наблюдателем заявки
         for m_id in mentioned_ids:
             _add_watcher_if_missing(cur, data.ticket_id, m_id)
@@ -960,6 +965,10 @@ def send_bitrix_notifications(cur, ticket_id: int, author_user_id: int, comment_
         WHERE tw.ticket_id = %s AND u.bitrix_user_id IS NOT NULL
     """, (ticket_id,))
     watchers = cur.fetchall() or []
+
+    # Для скрытых комментариев исключаем наблюдателей, не имеющих права видеть скрытые
+    if is_internal:
+        watchers = [w for w in watchers if _can_see_internal(cur, w['user_id'])]
 
     recipients = _collect_recipients(row, author_user_id, is_internal, watchers)
     if not recipients:
