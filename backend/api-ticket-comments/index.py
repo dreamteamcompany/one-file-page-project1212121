@@ -110,6 +110,18 @@ def _resolve_mentions(cur, comment: str) -> List[Dict[str, Any]]:
     return [dict(row) for row in cur.fetchall()]
 
 
+def _resolve_mention_ids(cur, user_ids: List[int]) -> Set[int]:
+    """Возвращает множество id существующих активных пользователей из явного списка"""
+    ids = [int(uid) for uid in (user_ids or []) if uid]
+    if not ids:
+        return set()
+    cur.execute(
+        f"SELECT id FROM {SCHEMA}.users WHERE id = ANY(%s) AND is_active = true",
+        (ids,),
+    )
+    return {r['id'] for r in cur.fetchall()}
+
+
 def _add_watcher_if_missing(cur, ticket_id: int, user_id: int) -> bool:
     """Добавляет юзера в наблюдатели если его там нет. True если добавили."""
     cur.execute(
@@ -618,8 +630,12 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         preview = (clean_preview_text[:120] + '...') if len(clean_preview_text) > 120 else clean_preview_text
 
         mentioned = _resolve_mentions(cur, clean_preview_text)
-        mentioned_ids = {m['id'] for m in mentioned if m['id'] != user_id}
+        mentioned_ids = {m['id'] for m in mentioned}
+        # Явно переданные с фронта id упомянутых (надёжнее парсинга @имени из текста)
+        mentioned_ids |= _resolve_mention_ids(cur, data.mentioned_user_ids)
+        mentioned_ids.discard(user_id)
 
+        # Любой упомянутый автоматически становится наблюдателем заявки
         for m_id in mentioned_ids:
             _add_watcher_if_missing(cur, data.ticket_id, m_id)
 

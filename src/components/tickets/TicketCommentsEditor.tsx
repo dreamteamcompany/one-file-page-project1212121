@@ -52,7 +52,7 @@ const TicketCommentsEditor = ({
       {showMentions && (
         <div
           ref={mentionsRef}
-          className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-popover border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto"
+          className="absolute bottom-full left-0 mb-2 w-full max-w-sm bg-popover border rounded-lg shadow-lg z-50 max-h-80 min-h-[3rem] overflow-y-auto"
         >
           {searchingUsers && filteredUsers.length === 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
