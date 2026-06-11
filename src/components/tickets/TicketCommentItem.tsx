@@ -195,7 +195,7 @@ const TicketCommentItem = ({
           </div>
           <div className={`rounded-2xl px-3.5 py-2.5 ${
             comment.is_internal
-              ? `border border-amber-300 bg-amber-50 text-foreground ${isOwn ? 'rounded-tr-md' : 'rounded-tl-md'}`
+              ? `border border-amber-300 bg-amber-50 text-amber-900 ${isOwn ? 'rounded-tr-md' : 'rounded-tl-md'}`
               : isOwn
                 ? 'bg-primary text-primary-foreground rounded-tr-md'
                 : 'bg-muted text-foreground rounded-tl-md'
