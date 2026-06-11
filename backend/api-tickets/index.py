@@ -482,6 +482,14 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             p['resource'] == 'tickets' and p['action'] == 'view_own_only' 
             for p in user_permissions
         )
+
+        cur.execute(f"""
+            SELECT 1 FROM {SCHEMA}.user_roles ur
+            JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+            WHERE ur.user_id = %s AND r.system_role = 'admin'
+            LIMIT 1
+        """, (user_id,))
+        is_admin = cur.fetchone() is not None
         
         if not view_all_tickets and not view_own_only:
             return response(200, {'tickets': [], 'total': 0, 'page': page, 'limit': limit, 'pages': 0})
@@ -523,8 +531,9 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         if not ticket_id_param and show_all != 'true':
             if is_hidden == 'true':
                 where_clause += f" AND t.is_archived = false AND EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses hs WHERE hs.id = t.status_id AND hs.is_pending_confirmation = true)"
-                where_clause += " AND t.assigned_to = %s"
-                params.append(user_id)
+                if not is_admin:
+                    where_clause += " AND t.assigned_to = %s"
+                    params.append(user_id)
             elif is_archived == 'true':
                 where_clause += f" AND (t.is_archived = true OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses cs WHERE cs.id = t.status_id AND cs.is_closed = true))"
             else:
