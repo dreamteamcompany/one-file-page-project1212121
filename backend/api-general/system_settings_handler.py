@@ -2,7 +2,7 @@ import json
 from shared_utils import response, SCHEMA
 
 
-ALLOWED_KEYS = {'classification_mode'}
+ALLOWED_KEYS = {'classification_mode', 'default_executor_group_id'}
 ALLOWED_VALUES = {'classification_mode': {'ai', 'manual'}}
 
 

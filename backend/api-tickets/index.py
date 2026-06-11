@@ -880,6 +880,21 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         executor_group_id = None
         if data.service_ids:
             executor_group_id = resolve_executor_group(cur, SCHEMA, resolved_ts_id, data.service_ids)
+
+        if not assigned_to and not executor_group_id:
+            cur.execute(
+                f"SELECT value FROM {SCHEMA}.system_settings WHERE key = 'default_executor_group_id'"
+            )
+            ds_row = cur.fetchone()
+            default_group_raw = (ds_row['value'] if ds_row else None) or ''
+            if str(default_group_raw).strip().isdigit():
+                default_group_id = int(str(default_group_raw).strip())
+                cur.execute(
+                    f"SELECT id FROM {SCHEMA}.executor_groups WHERE id = %s AND is_active = true",
+                    (default_group_id,)
+                )
+                if cur.fetchone():
+                    executor_group_id = default_group_id
         
         sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
         due_date_sql = 'NULL'

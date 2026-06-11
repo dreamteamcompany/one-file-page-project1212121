@@ -3,6 +3,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
 import AddAssignmentForm from '@/components/executor-assignments/AddAssignmentForm';
 import AssignmentsTable from '@/components/executor-assignments/AssignmentsTable';
+import DefaultExecutorGroupSetting from '@/components/executor-assignments/DefaultExecutorGroupSetting';
 import Icon from '@/components/ui/icon';
 import { useAssignments, useAssignmentReference } from '@/hooks/useExecutorAssignments';
 
@@ -38,6 +39,8 @@ const ExecutorAssignments = () => {
         </div>
       ) : (
         <div className="space-y-6">
+          <DefaultExecutorGroupSetting groups={ref.groups} />
+
           <AddAssignmentForm
             ticketServices={ref.ticketServices}
             groups={ref.groups}
