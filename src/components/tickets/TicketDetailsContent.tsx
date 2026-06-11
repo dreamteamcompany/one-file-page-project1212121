@@ -43,7 +43,7 @@ const TicketDetailsContent = ({
   commentIsInternal,
   onToggleCommentInternal,
 }: TicketDetailsContentProps) => {
-  const { user, hasPermission, hasSystemRole } = useAuth();
+  const { user, hasPermission, hasExactPermission, hasSystemRole } = useAuth();
   const canCallPhone = hasSystemRole('admin', 'executor');
   const isAuthor = user?.id === ticket.created_by;
   const canEditContent =
@@ -144,7 +144,7 @@ const TicketDetailsContent = ({
           participantIds={participantIds}
           myLastSeenAt={myLastSeenAt}
           onMarkRead={onMarkRead}
-          canUseTemplates={hasSystemRole('admin', 'executor')}
+          canUseTemplates={hasExactPermission('tickets', 'use_templates')}
           canUseAI={hasSystemRole('admin', 'executor')}
           canMarkInternal={hasSystemRole('admin', 'executor')}
           commentIsInternal={commentIsInternal}
