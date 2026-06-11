@@ -6,13 +6,12 @@
  * - Bulk операции в useBulkTicketOperations
  * - UI переключения в TicketsViewToggle
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTicketsData } from '@/hooks/useTicketsData';
 import { useTicketForm } from '@/hooks/useTicketForm';
 import { useBulkTicketActions } from '@/hooks/useBulkTicketActions';
-import { useTicketsSearch } from '@/hooks/useTicketsSearch';
 import { useTicketsView } from '@/hooks/useTicketsView';
 import { useBulkTicketOperations } from '@/hooks/useBulkTicketOperations';
 import PageLayout from '@/components/layout/PageLayout';
@@ -97,7 +96,9 @@ const Tickets = () => {
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
-  const searchedTickets = useTicketsSearch(tickets, searchQuery);
+  // Поиск выполняется на сервере (по теме, описанию, доп. полям, комментариям,
+  // участникам, номеру, дате, сервису и услуге) — см. эффект ниже.
+  const searchedTickets = tickets;
 
   const [counterRole, setCounterRole] = useState<CounterRole | null>(null);
 
@@ -171,6 +172,25 @@ const Tickets = () => {
       navigate('/login');
     }
   }, [hasPermission, navigate]);
+
+  // Серверный поиск по содержанию с задержкой ввода (debounce).
+  const searchDebounceFirstRun = useRef(true);
+  useEffect(() => {
+    if (searchDebounceFirstRun.current) {
+      searchDebounceFirstRun.current = false;
+      return;
+    }
+    const handle = setTimeout(() => {
+      const q = searchQuery.trim();
+      const merged = { ...searchFilters };
+      if (q) merged.search_content = q;
+      else delete merged.search_content;
+      setSearchFilters(merged);
+      loadTickets(1, undefined, undefined, undefined, undefined, undefined, undefined, sortBy, sortDir, merged);
+    }, 400);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
   const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');

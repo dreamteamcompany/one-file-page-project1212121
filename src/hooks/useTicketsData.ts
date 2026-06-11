@@ -90,6 +90,7 @@ export const useTicketsData = () => {
     try {
       let url = `${API_URL}?endpoint=tickets&page=${targetPage}&limit=${TICKETS_PER_PAGE}&sort_by=${encodeURIComponent(sortByValue)}&sort_dir=${sortDirValue}`;
       const allowedFilterKeys = [
+        'search_content',
         'search_assignee', 'search_creator', 'search_status',
         'search_executor_group', 'search_service', 'search_ticket_service',
         'due_from', 'due_to',
