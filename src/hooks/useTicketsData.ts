@@ -259,12 +259,13 @@ export const useTicketsData = () => {
 
   const toggleWatching = useCallback((value: boolean) => {
     setShowWatching(value);
+    setShowArchived(false);
     setShowHidden(false);
     setShowAll(false);
     setNeedsMyReply(false);
     setPage(1);
-    loadTickets(1, showArchived, false, undefined, false, false, value);
-  }, [loadTickets, showArchived]);
+    loadTickets(1, false, false, undefined, false, false, value);
+  }, [loadTickets]);
 
   return {
     tickets,
