@@ -114,6 +114,7 @@ const TicketDetailsSidebar = ({
   const { hasPermission, hasSystemRole } = useAuth();
   const canSeeGroup = hasSystemRole('admin', 'executor');
   const canAssignExecutor = hasPermission('tickets', 'assign_executor');
+  const canEditApprovers = hasPermission('tickets', 'edit_approvers');
 
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
@@ -122,6 +123,7 @@ const TicketDetailsSidebar = ({
   const handleStatusChange = (statusId: string) => {
     const status = statuses.find(s => s.id.toString() === statusId);
     if (status?.is_approval) {
+      if (!canEditApprovers) return;
       setPendingStatusId(statusId);
       setShowApprovalDialog(true);
     } else {

@@ -77,13 +77,15 @@ const RoleDialog = ({
 }: RoleDialogProps) => {
   const { hasPermission } = useAuth();
 
-  const groupedPermissions = permissions.reduce((acc, perm) => {
-    if (!acc[perm.resource]) {
-      acc[perm.resource] = [];
-    }
-    acc[perm.resource].push(perm);
-    return acc;
-  }, {} as Record<string, Permission[]>);
+  const groupedPermissions = permissions
+    .filter((perm) => !(perm.resource === 'tickets' && perm.action === 'forbid_change_executor'))
+    .reduce((acc, perm) => {
+      if (!acc[perm.resource]) {
+        acc[perm.resource] = [];
+      }
+      acc[perm.resource].push(perm);
+      return acc;
+    }, {} as Record<string, Permission[]>);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

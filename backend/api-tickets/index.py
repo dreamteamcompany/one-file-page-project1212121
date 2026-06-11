@@ -2099,6 +2099,23 @@ def handle_ticket_approvals(method: str, event: Dict[str, Any], conn) -> Dict[st
             if not ticket_id or not approver_ids:
                 return response(400, {'error': 'ticket_id and approver_ids are required'})
             
+            approver_user_id = payload.get('user_id')
+            cur.execute(f"""
+                SELECT 1
+                FROM {SCHEMA}.permissions p
+                JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id
+                JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id
+                JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+                WHERE ur.user_id = %s
+                  AND (
+                        (p.resource = 'tickets' AND p.action = 'edit_approvers')
+                        OR r.name IN ('Администратор', 'Admin')
+                      )
+                LIMIT 1
+            """, (approver_user_id,))
+            if not cur.fetchone():
+                return response(403, {'error': 'Недостаточно прав для назначения согласующих'})
+            
             for approver_id in approver_ids:
                 cur.execute(f"""
                     INSERT INTO {SCHEMA}.ticket_approvals (ticket_id, approver_id, status)
