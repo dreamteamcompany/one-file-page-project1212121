@@ -33,6 +33,7 @@ interface AuthContextType {
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
+  hasExactPermission: (resource: string, action: string) => boolean;
   hasSystemRole: (...roles: string[]) => boolean;
   checkAuth: () => Promise<void>;
   refreshToken: () => Promise<void>;
@@ -232,13 +233,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     );
   };
 
+  const hasExactPermission = (resource: string, action: string): boolean => {
+    if (!user?.permissions) return false;
+    return user.permissions.some(
+      (p) => p.resource === resource && p.action === action
+    );
+  };
+
   const hasSystemRole = (...roles: string[]): boolean => {
     if (!user?.roles) return false;
     return user.roles.some(role => role.system_role && roles.includes(role.system_role));
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, hasPermission, hasSystemRole, checkAuth, refreshToken }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, hasPermission, hasExactPermission, hasSystemRole, checkAuth, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );

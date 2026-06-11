@@ -1216,6 +1216,19 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         if 'assigned_to' in body:
             if body['assigned_to'] != old_ticket['assigned_to']:
+                cur.execute(f"""
+                    SELECT 1
+                    FROM {SCHEMA}.permissions p
+                    JOIN {SCHEMA}.role_permissions rp ON p.id = rp.permission_id
+                    JOIN {SCHEMA}.user_roles ur ON rp.role_id = ur.role_id
+                    WHERE ur.user_id = %s
+                      AND p.resource = 'tickets'
+                      AND p.action = 'forbid_change_executor'
+                    LIMIT 1
+                """, (user_id,))
+                if cur.fetchone():
+                    cur.close()
+                    return response(403, {'error': 'Недостаточно прав для смены исполнителя'})
                 history_entries.append(('assigned_to', get_user_name(old_ticket['assigned_to']) or 'Не назначен', get_user_name(body['assigned_to']) or 'Снят с назначения'))
             update_fields.append("assigned_to = %s")
             params.append(body['assigned_to'])
