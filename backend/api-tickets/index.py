@@ -517,9 +517,36 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
         
         if not view_all_tickets and not view_own_only:
             return response(200, {'tickets': [], 'total': 0, 'page': page, 'limit': limit, 'pages': 0})
+
+        cur.execute(f"""
+            SELECT 1 FROM {SCHEMA}.user_roles ur
+            JOIN {SCHEMA}.roles r ON r.id = ur.role_id
+            WHERE ur.user_id = %s AND r.restrict_to_groups = true
+            LIMIT 1
+        """, (user_id,))
+        restrict_to_groups = cur.fetchone() is not None
+
+        restricted_user_ids = None
+        if restrict_to_groups:
+            cur.execute(f"""
+                SELECT DISTINCT egm.user_id
+                FROM {SCHEMA}.user_roles ur
+                JOIN {SCHEMA}.roles r ON r.id = ur.role_id AND r.restrict_to_groups = true
+                JOIN {SCHEMA}.role_visible_groups rvg ON rvg.role_id = r.id
+                JOIN {SCHEMA}.executor_group_members egm ON egm.group_id = rvg.group_id
+                WHERE ur.user_id = %s
+            """, (user_id,))
+            restricted_user_ids = [row['user_id'] for row in cur.fetchall()]
+            if not restricted_user_ids:
+                return response(200, {'tickets': [], 'total': 0, 'page': page, 'limit': limit, 'pages': 0})
         
         where_clause = "WHERE 1=1"
         params = []
+
+        if restricted_user_ids is not None:
+            placeholders = ','.join(['%s'] * len(restricted_user_ids))
+            where_clause += f" AND t.assigned_to IN ({placeholders})"
+            params.extend(restricted_user_ids)
         
         if not view_all_tickets and view_own_only:
             where_clause += f""" AND (

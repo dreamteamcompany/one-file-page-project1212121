@@ -17,6 +17,8 @@ class RoleRequest(BaseModel):
     description: str = Field(default='')
     permission_ids: list[int] = Field(default=[])
     system_role: str = Field(default=None)
+    restrict_to_groups: bool = Field(default=False)
+    visible_group_ids: list[int] = Field(default=[])
 
 class CategoryRequest(BaseModel):
     name: str = Field(..., min_length=1)

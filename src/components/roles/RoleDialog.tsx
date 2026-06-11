@@ -43,23 +43,33 @@ interface Role {
   user_count: number;
 }
 
+interface ExecutorGroup {
+  id: number;
+  name: string;
+}
+
+interface RoleFormData {
+  name: string;
+  description: string;
+  permission_ids: number[];
+  system_role: string;
+  restrict_to_groups: boolean;
+  visible_group_ids: number[];
+}
+
 interface RoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingRole: Role | null;
-  formData: {
-    name: string;
-    description: string;
-    permission_ids: number[];
-    system_role: string;
-  };
-  onFormChange: (data: { name: string; description: string; permission_ids: number[]; system_role: string }) => void;
+  formData: RoleFormData;
+  onFormChange: (data: RoleFormData) => void;
   onSubmit: (e: React.FormEvent) => void;
   permissions: Permission[];
   togglePermission: (permId: number) => void;
   getResourceIcon: (resource: string) => string;
   getResourceColor: (resource: string) => string;
   getResourceDisplayName: (resource: string) => string;
+  executorGroups: ExecutorGroup[];
 }
 
 const RoleDialog = ({
@@ -74,8 +84,19 @@ const RoleDialog = ({
   getResourceIcon,
   getResourceColor,
   getResourceDisplayName,
+  executorGroups,
 }: RoleDialogProps) => {
   const { hasPermission } = useAuth();
+
+  const toggleVisibleGroup = (groupId: number) => {
+    const current = formData.visible_group_ids || [];
+    onFormChange({
+      ...formData,
+      visible_group_ids: current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId],
+    });
+  };
 
   const groupedPermissions = permissions
     .filter((perm) => !(perm.resource === 'tickets' && perm.action === 'forbid_change_executor'))
@@ -166,6 +187,49 @@ const RoleDialog = ({
             <p className="text-xs text-muted-foreground">
               Привязывает роль к встроенной логике: например, «Администратор» всегда видит все статусы и имеет полный доступ, «Исполнитель» может брать заявки в работу.
             </p>
+          </div>
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex items-start gap-3">
+              <Switch
+                id="restrict-to-groups"
+                className="mt-0.5"
+                checked={formData.restrict_to_groups}
+                onCheckedChange={(v) => onFormChange({ ...formData, restrict_to_groups: v })}
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="restrict-to-groups" className="text-sm font-medium cursor-pointer">
+                  Видит только заявки групп
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Пользователь видит только заявки, назначенные на участников выбранных групп. Если группы не выбраны — не видит ни одной заявки.
+                </p>
+              </div>
+            </div>
+
+            {formData.restrict_to_groups && (
+              <div className="ml-12 space-y-2">
+                <Label className="text-xs text-muted-foreground">Выберите группы</Label>
+                {executorGroups.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Нет доступных групп исполнителей</p>
+                ) : (
+                  <div className="space-y-2">
+                    {executorGroups.map((group) => (
+                      <div key={group.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`group-${group.id}`}
+                          checked={(formData.visible_group_ids || []).includes(group.id)}
+                          onCheckedChange={() => toggleVisibleGroup(group.id)}
+                        />
+                        <Label htmlFor={`group-${group.id}`} className="text-sm cursor-pointer">
+                          {group.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 border-t border-border pt-4">

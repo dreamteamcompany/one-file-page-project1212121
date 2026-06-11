@@ -24,7 +24,13 @@ def handle_roles(method, event, conn, payload):
                 SELECT r.*, 
                        COALESCE(json_agg(DISTINCT jsonb_build_object(
                            'id', p.id, 'name', p.name, 'resource', p.resource, 'action', p.action
-                       )) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions
+                       )) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions,
+                       COALESCE(
+                           (SELECT json_agg(rvg.group_id)
+                            FROM {SCHEMA}.role_visible_groups rvg
+                            WHERE rvg.role_id = r.id),
+                           '[]'
+                       ) as visible_group_ids
                 FROM {SCHEMA}.roles r
                 LEFT JOIN {SCHEMA}.role_permissions rp ON r.id = rp.role_id
                 LEFT JOIN {SCHEMA}.permissions p ON rp.permission_id = p.id
@@ -42,13 +48,18 @@ def handle_roles(method, event, conn, payload):
             body = json.loads(event.get('body', '{}'))
             req = RoleRequest(**body)
             
-            cur.execute(f"INSERT INTO {SCHEMA}.roles (name, description, system_role) VALUES (%s, %s, %s) RETURNING id",
-                       (req.name, req.description, req.system_role or None))
+            cur.execute(f"INSERT INTO {SCHEMA}.roles (name, description, system_role, restrict_to_groups) VALUES (%s, %s, %s, %s) RETURNING id",
+                       (req.name, req.description, req.system_role or None, req.restrict_to_groups))
             role_id = cur.fetchone()['id']
             
             for perm_id in req.permission_ids:
                 cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                            (role_id, perm_id))
+            
+            if req.restrict_to_groups:
+                for group_id in req.visible_group_ids:
+                    cur.execute(f"INSERT INTO {SCHEMA}.role_visible_groups (role_id, group_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                               (role_id, group_id))
             
             conn.commit()
             return response(201, {'id': role_id, 'message': 'Role created'})
@@ -73,13 +84,19 @@ def handle_roles(method, event, conn, payload):
                 log(f"[ROLES PUT] Validation error: {str(validation_error)}")
                 return response(400, {'error': f'Validation error: {str(validation_error)}'})
             
-            cur.execute(f"UPDATE {SCHEMA}.roles SET name=%s, description=%s, system_role=%s WHERE id=%s",
-                       (req.name, req.description, req.system_role or None, role_id))
+            cur.execute(f"UPDATE {SCHEMA}.roles SET name=%s, description=%s, system_role=%s, restrict_to_groups=%s WHERE id=%s",
+                       (req.name, req.description, req.system_role or None, req.restrict_to_groups, role_id))
             cur.execute(f"DELETE FROM {SCHEMA}.role_permissions WHERE role_id=%s", (role_id,))
             
             for perm_id in req.permission_ids:
                 cur.execute(f"INSERT INTO {SCHEMA}.role_permissions (role_id, permission_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                            (role_id, perm_id))
+            
+            cur.execute(f"DELETE FROM {SCHEMA}.role_visible_groups WHERE role_id=%s", (role_id,))
+            if req.restrict_to_groups:
+                for group_id in req.visible_group_ids:
+                    cur.execute(f"INSERT INTO {SCHEMA}.role_visible_groups (role_id, group_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                               (role_id, group_id))
             
             conn.commit()
             return response(200, {'message': 'Role updated'})

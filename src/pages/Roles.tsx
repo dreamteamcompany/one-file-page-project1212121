@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch, API_URL } from '@/utils/api';
+import { apiFetch, API_URL, getApiUrl } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,13 @@ interface Role {
   system_role?: string;
   permissions?: Permission[];
   user_count: number;
+  restrict_to_groups?: boolean;
+  visible_group_ids?: number[];
+}
+
+interface ExecutorGroup {
+  id: number;
+  name: string;
 }
 
 const Roles = () => {
@@ -39,11 +46,14 @@ const Roles = () => {
   const [touchEnd, setTouchEnd] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [executorGroups, setExecutorGroups] = useState<ExecutorGroup[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     permission_ids: [] as number[],
     system_role: '',
+    restrict_to_groups: false,
+    visible_group_ids: [] as number[],
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -86,6 +96,18 @@ const Roles = () => {
       });
   };
 
+  const loadExecutorGroups = () => {
+    apiFetch(getApiUrl('executor-groups'))
+      .then(res => res.json())
+      .then(data => {
+        setExecutorGroups(Array.isArray(data) ? data : []);
+      })
+      .catch(err => {
+        console.error('Failed to load executor groups:', err);
+        setExecutorGroups([]);
+      });
+  };
+
   useEffect(() => {
     if (!hasPermission('roles', 'read')) {
       navigate('/tickets');
@@ -93,6 +115,7 @@ const Roles = () => {
     }
     loadRoles();
     loadPermissions();
+    loadExecutorGroups();
   }, [hasPermission, navigate]);
 
   if (!hasPermission('roles', 'read')) {
@@ -145,6 +168,8 @@ const Roles = () => {
           description: '',
           permission_ids: [],
           system_role: '',
+          restrict_to_groups: false,
+          visible_group_ids: [],
         });
         loadRoles();
       } else {
@@ -182,6 +207,8 @@ const Roles = () => {
       description: role.description,
       permission_ids: role.permissions?.map(p => p.id) || [],
       system_role: role.system_role || '',
+      restrict_to_groups: role.restrict_to_groups || false,
+      visible_group_ids: role.visible_group_ids || [],
     });
     setDialogOpen(true);
   };
@@ -311,6 +338,9 @@ const Roles = () => {
         name: '',
         description: '',
         permission_ids: [],
+        system_role: '',
+        restrict_to_groups: false,
+        visible_group_ids: [],
       });
     }
   };
@@ -358,6 +388,7 @@ const Roles = () => {
             getResourceIcon={getResourceIcon}
             getResourceColor={getResourceColor}
             getResourceDisplayName={getResourceDisplayName}
+            executorGroups={executorGroups}
           />
         </div>
 
