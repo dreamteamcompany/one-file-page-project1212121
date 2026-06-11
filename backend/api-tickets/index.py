@@ -614,16 +614,45 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             )"""
             params.append(f"%{search_ticket_service}%")
         if search_content:
-            # Ищем по содержанию: title, description заявки + значения её доп. полей
+            # Ищем по содержанию: title, description, доп. поля, номер, дата,
+            # комментарии, участники (заказчик/исполнитель/наблюдатели), сервис, услуга
+            like = f"%{search_content}%"
             where_clause += f""" AND (
                 t.title ILIKE %s
                 OR t.description ILIKE %s
+                OR CAST(t.id AS TEXT) ILIKE %s
+                OR TO_CHAR(t.created_at, 'YYYY-MM-DD') ILIKE %s
                 OR EXISTS (
                     SELECT 1 FROM {SCHEMA}.ticket_custom_field_values tcfv
                     WHERE tcfv.ticket_id = t.id AND tcfv.value ILIKE %s
                 )
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_comments tc
+                    WHERE tc.ticket_id = t.id AND tc.comment ILIKE %s
+                )
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.users up
+                    WHERE up.id IN (t.created_by, t.assigned_to)
+                      AND (up.full_name ILIKE %s OR up.username ILIKE %s)
+                )
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_watchers tw
+                    JOIN {SCHEMA}.users uw ON uw.id = tw.user_id
+                    WHERE tw.ticket_id = t.id
+                      AND (uw.full_name ILIKE %s OR uw.username ILIKE %s)
+                )
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsmc
+                    JOIN {SCHEMA}.services ssc ON ssc.id = tsmc.service_id
+                    WHERE tsmc.ticket_id = t.id AND ssc.name ILIKE %s
+                )
+                OR EXISTS (
+                    SELECT 1 FROM {SCHEMA}.ticket_to_service_mappings tsmc2
+                    JOIN {SCHEMA}.ticket_services tssc ON tssc.id = tsmc2.ticket_service_id
+                    WHERE tsmc2.ticket_id = t.id AND tssc.name ILIKE %s
+                )
             )"""
-            params.extend([f"%{search_content}%", f"%{search_content}%", f"%{search_content}%"])
+            params.extend([like] * 12)
         if due_from:
             where_clause += " AND t.due_date >= %s"
             params.append(due_from)
