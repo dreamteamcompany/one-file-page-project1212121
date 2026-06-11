@@ -567,9 +567,9 @@ def handle_create_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_history 
-        (ticket_id, user_id, field_name, old_value, new_value, created_at)
-        VALUES (%s, %s, 'comment', NULL, %s, NOW())
-    """, (data.ticket_id, user_id, f'Добавлен комментарий: {data.comment[:50]}...'))
+        (ticket_id, user_id, field_name, old_value, new_value, is_internal, created_at)
+        VALUES (%s, %s, 'comment', NULL, %s, %s, NOW())
+    """, (data.ticket_id, user_id, f'Добавлен комментарий: {data.comment[:50]}...', data.is_internal))
 
     is_author_creator = ticket['created_by'] == user_id
     if (
@@ -771,7 +771,7 @@ def handle_edit_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
         return response(403, {'error': 'Редактировать комментарии может только администратор'})
 
     cur.execute(f"""
-        SELECT id, ticket_id, comment, created_at
+        SELECT id, ticket_id, comment, created_at, is_internal
         FROM {SCHEMA}.ticket_comments WHERE id = %s
     """, (comment_id,))
     row = cur.fetchone()
@@ -837,9 +837,9 @@ def handle_edit_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) ->
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_history 
-        (ticket_id, user_id, field_name, old_value, new_value, created_at)
-        VALUES (%s, %s, 'comment', %s, %s, NOW())
-    """, (row['ticket_id'], user_id, (row['comment'] or '')[:200], history_msg))
+        (ticket_id, user_id, field_name, old_value, new_value, is_internal, created_at)
+        VALUES (%s, %s, 'comment', %s, %s, %s, NOW())
+    """, (row['ticket_id'], user_id, (row['comment'] or '')[:200], history_msg, row.get('is_internal', False)))
 
     cur.execute(f"""
         SELECT 
@@ -894,7 +894,7 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
         return response(403, {'error': 'Удалять комментарии может только администратор'})
 
     cur.execute(f"""
-        SELECT user_id, ticket_id FROM {SCHEMA}.ticket_comments WHERE id = %s
+        SELECT user_id, ticket_id, is_internal FROM {SCHEMA}.ticket_comments WHERE id = %s
     """, (comment_id,))
 
     comment = cur.fetchone()
@@ -914,9 +914,9 @@ def handle_delete_comment(event: Dict[str, Any], conn, payload: Dict[str, Any]) 
 
     cur.execute(f"""
         INSERT INTO {SCHEMA}.ticket_history 
-        (ticket_id, user_id, field_name, old_value, new_value, created_at)
-        VALUES (%s, %s, 'comment', 'Удален комментарий', NULL, NOW())
-    """, (comment['ticket_id'], user_id))
+        (ticket_id, user_id, field_name, old_value, new_value, is_internal, created_at)
+        VALUES (%s, %s, 'comment', 'Удален комментарий', NULL, %s, NOW())
+    """, (comment['ticket_id'], user_id, comment.get('is_internal', False)))
 
     conn.commit()
     cur.close()

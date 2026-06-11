@@ -2565,6 +2565,9 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
 
         cur = conn.cursor()
         try:
+            # Скрытые (внутренние) события истории видят только Администратор и Исполнитель
+            history_internal_filter = '' if _can_see_internal(cur, user_id) else 'AND th.is_internal = false'
+
             # История изменений
             cur.execute(f"""
                 SELECT th.id, th.ticket_id, th.user_id, th.field_name,
@@ -2572,7 +2575,7 @@ def handle_tickets_full(method: str, event: dict, conn) -> dict:
                        u.username as user_name, u.full_name as user_full_name
                 FROM {SCHEMA}.ticket_history th
                 LEFT JOIN {SCHEMA}.users u ON th.user_id = u.id
-                WHERE th.ticket_id = %s
+                WHERE th.ticket_id = %s {history_internal_filter}
                 ORDER BY th.created_at DESC
             """, (ticket_id,))
             history = [dict(row) for row in cur.fetchall()]
