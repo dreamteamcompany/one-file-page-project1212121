@@ -535,7 +535,7 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     where_clause += " AND t.assigned_to = %s"
                     params.append(user_id)
             elif is_archived == 'true':
-                where_clause += f" AND (t.is_archived = true OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses cs WHERE cs.id = t.status_id AND cs.is_closed = true))"
+                where_clause += f" AND NOT EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses ps WHERE ps.id = t.status_id AND ps.is_pending_confirmation = true) AND (t.is_archived = true OR EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses cs WHERE cs.id = t.status_id AND cs.is_closed = true))"
             else:
                 where_clause += f" AND t.is_archived = false AND NOT EXISTS (SELECT 1 FROM {SCHEMA}.ticket_statuses cs WHERE cs.id = t.status_id AND cs.is_closed = true)"
                 if is_admin:
