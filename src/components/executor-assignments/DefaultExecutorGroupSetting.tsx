@@ -18,7 +18,7 @@ interface DefaultExecutorGroupSettingProps {
   groups: RefGroup[];
 }
 
-const SETTINGS_URL = `${getApiUrl('system_settings')}?endpoint=system_settings`;
+const SETTINGS_BASE = `${getApiUrl('system_settings')}?resource=system_settings`;
 const SETTING_KEY = 'default_executor_group_id';
 
 const DefaultExecutorGroupSetting = ({ groups }: DefaultExecutorGroupSettingProps) => {
@@ -31,7 +31,7 @@ const DefaultExecutorGroupSetting = ({ groups }: DefaultExecutorGroupSettingProp
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiFetch(`${SETTINGS_URL}&key=${SETTING_KEY}`);
+        const res = await apiFetch(`${SETTINGS_BASE}&key=${SETTING_KEY}`);
         if (res.ok) {
           const data = await res.json();
           const value = (data?.value ?? '').toString().trim();
@@ -50,12 +50,21 @@ const DefaultExecutorGroupSetting = ({ groups }: DefaultExecutorGroupSettingProp
   const save = async (value: string) => {
     setSaving(true);
     try {
-      const res = await apiFetch(SETTINGS_URL, {
+      const res = await apiFetch(SETTINGS_BASE, {
         method: 'PUT',
         body: JSON.stringify({ key: SETTING_KEY, value }),
       });
-      if (!res.ok) throw new Error('save failed');
-      toast({ title: 'Настройка сохранена' });
+      if (res.ok) {
+        toast({ title: 'Настройка сохранена' });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          title: res.status === 401
+            ? 'Необходима авторизация. Обновите страницу и войдите снова.'
+            : err.error || `Не удалось сохранить (код ${res.status})`,
+          variant: 'destructive',
+        });
+      }
     } catch {
       toast({ title: 'Не удалось сохранить', variant: 'destructive' });
     } finally {
