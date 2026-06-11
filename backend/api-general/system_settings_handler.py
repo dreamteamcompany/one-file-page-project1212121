@@ -1,10 +1,5 @@
 import json
-import sys
 from shared_utils import response, SCHEMA
-
-
-def _log(msg):
-    print(msg, file=sys.stderr, flush=True)
 
 
 ALLOWED_KEYS = {'classification_mode', 'default_executor_group_id'}
@@ -32,7 +27,6 @@ def handle_system_settings(method, event, conn, payload):
         else:
             cur.execute("SELECT key, value, description FROM {}.system_settings ORDER BY key".format(SCHEMA))
             rows = cur.fetchall()
-            _log(f"[system_settings] GET list schema={SCHEMA} rows={[dict(r) for r in rows]}")
             return response(200, [dict(r) for r in rows])
 
     elif method == 'PUT':
@@ -50,22 +44,14 @@ def handle_system_settings(method, event, conn, payload):
 
         cur = conn.cursor()
         cur.execute(
-            "UPDATE {}.system_settings SET value = %s, updated_at = NOW() WHERE key = %s".format(SCHEMA),
-            (value, key)
+            (
+                "INSERT INTO {}.system_settings (key, value, updated_at) "
+                "VALUES (%s, %s, NOW()) "
+                "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()"
+            ).format(SCHEMA),
+            (key, value)
         )
-        updated = cur.rowcount
-        if updated == 0:
-            cur.execute(
-                "INSERT INTO {}.system_settings (key, value) VALUES (%s, %s)".format(SCHEMA),
-                (key, value)
-            )
         conn.commit()
-        cur.execute(
-            "SELECT value FROM {}.system_settings WHERE key = %s".format(SCHEMA),
-            (key,)
-        )
-        check = cur.fetchone()
-        _log(f"[system_settings] PUT schema={SCHEMA} key={key} value={value!r} updated={updated} after_commit={dict(check) if check else None}")
         return response(200, {'success': True, 'key': key, 'value': value})
 
     return response(405, {'error': 'Method not allowed'})
