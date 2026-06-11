@@ -31,10 +31,12 @@ const DefaultExecutorGroupSetting = ({ groups }: DefaultExecutorGroupSettingProp
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiFetch(`${SETTINGS_BASE}&key=${SETTING_KEY}`);
+        const res = await apiFetch(SETTINGS_BASE);
         if (res.ok) {
           const data = await res.json();
-          const value = (data?.value ?? '').toString().trim();
+          const list = Array.isArray(data) ? data : [];
+          const found = list.find((s) => s?.key === SETTING_KEY);
+          const value = (found?.value ?? '').toString().trim();
           if (value) {
             setEnabled(true);
             setGroupId(value);
