@@ -62,6 +62,7 @@ const TicketCard = ({
           aria-hidden="true"
         />
       )}
+      <div className="relative">
       <div className="pointer-events-none hidden md:block absolute inset-y-3 left-1/2 w-0.5 bg-white/10 z-0" aria-hidden="true" />
       <div className="pointer-events-none hidden md:block absolute inset-y-3 left-[63%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
       <div className="pointer-events-none hidden md:block absolute inset-y-3 right-[24%] w-0.5 bg-white/10 z-0" aria-hidden="true" />
@@ -310,10 +311,13 @@ const TicketCard = ({
               </button>
             )}
           </div>
+        </div>
+      </div>
+      </div>
 
-          {lastComment && showLastComment && (
+      {lastComment && showLastComment && (
             <div
-              className="mt-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs"
+              className="relative z-30 mt-2 rounded-md border border-border bg-card px-3 py-2 text-xs"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-2 mb-1 text-[11px] text-muted-foreground">
@@ -328,11 +332,12 @@ const TicketCard = ({
                 </span>
                 {lastComment.created_at && (
                   <span className="flex-shrink-0">
-                    {new Date(lastComment.created_at).toLocaleDateString('ru-RU', {
+                    {(parseServerDate(lastComment.created_at) ?? new Date()).toLocaleString('ru-RU', {
                       day: 'numeric',
                       month: 'short',
                       hour: '2-digit',
                       minute: '2-digit',
+                      timeZone: 'Europe/Moscow',
                     })}
                   </span>
                 )}
@@ -342,8 +347,6 @@ const TicketCard = ({
               </p>
             </div>
           )}
-        </div>
-      </div>
     </Card>
   );
 };
