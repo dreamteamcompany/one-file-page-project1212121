@@ -197,11 +197,12 @@ const TicketCard = ({
               <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs">
                 <Icon name="Clock" size={11} className="flex-shrink-0" />
                 <span className="truncate">
-                  {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                  {(parseServerDate(ticket.created_at) ?? new Date()).toLocaleString('ru-RU', {
                     day: 'numeric',
                     month: 'short',
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: 'Europe/Moscow',
                   })}
                 </span>
               </span>
@@ -210,11 +211,12 @@ const TicketCard = ({
               <span className="inline-flex items-center gap-1.5 bg-muted text-foreground rounded-md px-2 py-1 text-xs">
                 <Icon name="Calendar" size={11} className="flex-shrink-0" />
                 <span className="truncate">
-                  {new Date(ticket.due_date).toLocaleDateString('ru-RU', {
+                  {(parseServerDate(ticket.due_date) ?? new Date()).toLocaleString('ru-RU', {
                     day: 'numeric',
                     month: 'short',
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: 'Europe/Moscow',
                   })}
                 </span>
               </span>
@@ -287,11 +289,12 @@ const TicketCard = ({
             {ticket.created_at && (
               <span className={`inline-flex items-center gap-1.5 text-muted-foreground/70 text-[11px] ${lastComment ? '' : 'ml-auto'}`}>
                 <Icon name="Clock" size={11} />
-                {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
+                {(parseServerDate(ticket.created_at) ?? new Date()).toLocaleString('ru-RU', {
                   day: 'numeric',
                   month: 'short',
                   hour: '2-digit',
                   minute: '2-digit',
+                  timeZone: 'Europe/Moscow',
                 })}
               </span>
             )}
