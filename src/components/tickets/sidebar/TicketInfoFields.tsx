@@ -70,6 +70,23 @@ const TicketInfoFields = ({
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
   const responseDeadlineInfo = getDeadlineInfo(ticket.response_due_date);
 
+  const currentStatusInList =
+    ticket.status_id != null &&
+    statuses.some((s) => s.id === ticket.status_id);
+  const statusOptions =
+    ticket.status_id != null && !currentStatusInList
+      ? [
+          {
+            id: ticket.status_id,
+            name: ticket.status_name || 'Текущий статус',
+            color: ticket.status_color || '#94a3b8',
+            is_closed: false,
+            disabled: true,
+          } as Status & { disabled?: boolean },
+          ...statuses,
+        ]
+      : statuses;
+
   return (
     <div className="rounded-lg bg-card border divide-y">
       {ticket.priority_name && (
@@ -107,8 +124,12 @@ const TicketInfoFields = ({
             <SelectValue placeholder="Выберите статус" />
           </SelectTrigger>
           <SelectContent>
-            {statuses.map((status) => (
-              <SelectItem key={status.id} value={status.id.toString()}>
+            {statusOptions.map((status) => (
+              <SelectItem
+                key={status.id}
+                value={status.id.toString()}
+                disabled={(status as { disabled?: boolean }).disabled}
+              >
                 <div className="flex items-center gap-2">
                   <div
                     className="w-2 h-2 rounded-full"
