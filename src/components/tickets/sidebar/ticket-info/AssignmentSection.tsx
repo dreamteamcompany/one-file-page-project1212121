@@ -29,6 +29,39 @@ const AssignmentSection = ({
   onAssignUser,
   onAssignGroup,
 }: AssignmentSectionProps) => {
+  const currentGroupInList =
+    ticket.executor_group_id != null &&
+    executorGroups.some((g) => g.id === ticket.executor_group_id);
+  const groupOptions =
+    ticket.executor_group_id != null && !currentGroupInList
+      ? [
+          {
+            id: ticket.executor_group_id,
+            name: ticket.executor_group_name || 'Текущая группа',
+            disabled: true,
+          } as ExecutorGroup & { disabled?: boolean },
+          ...executorGroups,
+        ]
+      : executorGroups;
+
+  const currentAssigneeInList =
+    ticket.assigned_to != null &&
+    users.some((u) => u.id === ticket.assigned_to);
+  const userOptions =
+    ticket.assigned_to != null && !currentAssigneeInList
+      ? [
+          {
+            id: ticket.assigned_to,
+            name: ticket.assignee_name || 'Текущий исполнитель',
+            email: '',
+            role: '',
+            photo_url: ticket.assignee_photo_url,
+            disabled: true,
+          } as User & { disabled?: boolean },
+          ...users,
+        ]
+      : users;
+
   return (
     <>
       {canSeeGroup && onAssignGroup && (
@@ -52,8 +85,12 @@ const AssignmentSection = ({
                   Не назначена
                 </div>
               </SelectItem>
-              {executorGroups.map((group) => (
-                <SelectItem key={group.id} value={group.id.toString()}>
+              {groupOptions.map((group) => (
+                <SelectItem
+                  key={group.id}
+                  value={group.id.toString()}
+                  disabled={(group as { disabled?: boolean }).disabled}
+                >
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Icon name="Users" size={12} className="text-primary" />
@@ -88,8 +125,12 @@ const AssignmentSection = ({
                   Не назначен
                 </div>
               </SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id.toString()}>
+              {userOptions.map((u) => (
+                <SelectItem
+                  key={u.id}
+                  value={u.id.toString()}
+                  disabled={(u as { disabled?: boolean }).disabled}
+                >
                   <div className="flex items-center gap-2">
                     {u.photo_url ? (
                       <img src={u.photo_url} alt={u.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
