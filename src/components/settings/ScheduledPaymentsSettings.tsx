@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 const ScheduledPaymentsSettings = () => {
   const { token } = useAuth();
@@ -22,7 +23,7 @@ const ScheduledPaymentsSettings = () => {
 
       if (response.ok) {
         const result = await response.json();
-        setLastRun(new Date().toLocaleString('ru-RU'));
+        setLastRun(formatDateTimeMSK(new Date()));
         
         toast({
           title: 'Обработка завершена',

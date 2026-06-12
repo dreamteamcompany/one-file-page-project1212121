@@ -15,6 +15,7 @@ import Icon from '@/components/ui/icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, API_URL } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateTimeMSK, formatTimeMSK } from '@/utils/dateFormat';
 import func2url from '../../backend/func2url.json';
 
 interface OurStatus {
@@ -651,7 +652,7 @@ const VsdeskSettings = () => {
                 </CardTitle>
                 <CardDescription className="text-xs mt-0.5">
                   {pauseState.paused
-                    ? `${pauseState.reason || 'Cron и ручной импорт отключены'}${pauseState.paused_at ? ` · с ${new Date(pauseState.paused_at).toLocaleString('ru-RU')}` : ''}`
+                    ? `${pauseState.reason || 'Cron и ручной импорт отключены'}${pauseState.paused_at ? ` · с ${formatDateTimeMSK(pauseState.paused_at)}` : ''}`
                     : 'Cron-tick и ручной импорт разрешены'}
                 </CardDescription>
               </div>
@@ -940,7 +941,7 @@ const VsdeskSettings = () => {
               </div>
               {job.last_tick_at && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Последняя пачка: {new Date(job.last_tick_at).toLocaleTimeString()}
+                  Последняя пачка: {formatTimeMSK(job.last_tick_at)}
                 </p>
               )}
               {job.status === 'running' && (

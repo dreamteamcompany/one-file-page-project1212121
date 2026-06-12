@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
 import { API_URL } from '@/utils/api';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface AuditLog {
   id: number;
@@ -132,12 +133,7 @@ const PaymentAuditLog = ({ paymentId }: PaymentAuditLogProps) => {
                   <p className="text-xs text-muted-foreground">{log.username || 'Система'}</p>
                 </div>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(log.created_at).toLocaleString('ru-RU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatDateTimeMSK(log.created_at)}
                 </span>
               </div>
               

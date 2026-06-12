@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { API_URL } from '@/utils/api';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface Comment {
   id: number;
@@ -171,7 +172,7 @@ const PaymentComments = ({ paymentId }: PaymentCommentsProps) => {
               <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2 mb-1">
                 <span className="font-medium text-xs sm:text-sm">{comment.full_name || comment.username}</span>
                 <span className="text-[10px] sm:text-xs text-muted-foreground">
-                  {new Date(comment.created_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}
+                  {formatDateTimeMSK(comment.created_at)}
                 </span>
               </div>
               <p className="text-xs sm:text-sm whitespace-pre-wrap">{comment.comment_text}</p>

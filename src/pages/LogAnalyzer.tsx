@@ -9,6 +9,7 @@ import LogAnalyzerHeader from '@/components/log-analyzer/LogAnalyzerHeader';
 import LogFilesList from '@/components/log-analyzer/LogFilesList';
 import LogFilters from '@/components/log-analyzer/LogFilters';
 import LogEntriesViewer from '@/components/log-analyzer/LogEntriesViewer';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface LogFile {
   id: number;
@@ -249,11 +250,7 @@ const LogAnalyzer = () => {
 
   const formatTimestamp = (timestamp: string | null) => {
     if (!timestamp) return 'N/A';
-    try {
-      return new Date(timestamp).toLocaleString('ru-RU');
-    } catch {
-      return timestamp;
-    }
+    return formatDateTimeMSK(timestamp) || timestamp;
   };
 
   const uniqueLevels = selectedFile

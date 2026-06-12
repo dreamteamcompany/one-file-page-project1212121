@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { InactiveUser, ApiResponse } from './types';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface InactiveUsersTabProps {
   data: ApiResponse | null;
@@ -182,7 +183,7 @@ const InactiveUsersTab = ({
                       {getDaysBadge(u.days_inactive)}
                       {u.last_login && (
                         <span className="text-xs text-muted-foreground hidden sm:inline">
-                          {new Date(u.last_login).toLocaleDateString('ru-RU')}
+                          {formatDateOnlyMSK(u.last_login)}
                         </span>
                       )}
                       {isAdmin && !u.is_excluded && (

@@ -1,6 +1,7 @@
 import Icon from '@/components/ui/icon';
 import PaymentAuditLog from '@/components/approvals/PaymentAuditLog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface CustomField {
   id: number;
@@ -182,24 +183,24 @@ const PaymentDetailsModal = ({ payment, onClose }: PaymentDetailsModalProps) => 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Дата платежа:</span>
-                  <span className="font-medium">{new Date(payment.payment_date).toLocaleDateString('ru-RU')}</span>
+                  <span className="font-medium">{formatDateOnlyMSK(payment.payment_date)}</span>
                 </div>
                 {payment.submitted_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Дата отправки:</span>
-                    <span className="font-medium">{new Date(payment.submitted_at).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.submitted_at)}</span>
                   </div>
                 )}
                 {payment.invoice_date && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Дата счёта:</span>
-                    <span className="font-medium">{new Date(payment.invoice_date).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.invoice_date)}</span>
                   </div>
                 )}
                 {payment.created_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Создана:</span>
-                    <span className="font-medium">{new Date(payment.created_at).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.created_at)}</span>
                   </div>
                 )}
               </div>

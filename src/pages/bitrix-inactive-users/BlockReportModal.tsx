@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
+import { formatDateTimeMSK, formatDateOnlyMSK } from '@/utils/dateFormat';
 
 export interface ReportItem {
   bitrix_user_id: string;
@@ -77,7 +78,7 @@ const downloadCSV = (report: BlockReport) => {
       it.full_name,
       it.email,
       it.position,
-      it.last_login ? new Date(it.last_login).toLocaleString('ru-RU') : 'Никогда',
+      it.last_login ? formatDateTimeMSK(it.last_login) : 'Никогда',
       it.days_inactive ?? '',
       STATUS_LABELS[it.status] || it.status,
       it.email_status ? (EMAIL_STATUS_LABELS[it.email_status] || it.email_status) : '',
@@ -89,7 +90,7 @@ const downloadCSV = (report: BlockReport) => {
   lines.push('');
   lines.push('Сводка');
   lines.push(['Запустил', csvEscape(report.started_by_name)].join(';'));
-  lines.push(['Дата', csvEscape(report.started_at ? new Date(report.started_at).toLocaleString('ru-RU') : '')].join(';'));
+  lines.push(['Дата', csvEscape(report.started_at ? formatDateTimeMSK(report.started_at) : '')].join(';'));
   lines.push(['Режим', csvEscape(MODE_LABELS[report.mode] || report.mode)].join(';'));
   lines.push(['Порог (дней)', csvEscape(report.days_threshold ?? '')].join(';'));
   lines.push(['Всего обработано', csvEscape(report.total_requested)].join(';'));
@@ -157,7 +158,7 @@ const BlockReportModal = ({ open, onOpenChange, report }: Props) => {
             {report ? (
               <>
                 Запустил: <strong>{report.started_by_name || '—'}</strong>
-                {report.started_at && <> · {new Date(report.started_at).toLocaleString('ru-RU')}</>}
+                {report.started_at && <> · {formatDateTimeMSK(report.started_at)}</>}
                 {' · '}Режим: {MODE_LABELS[report.mode] || report.mode}
                 {report.days_threshold ? ` · Порог: ${report.days_threshold} дн.` : ''}
               </>
@@ -220,7 +221,7 @@ const BlockReportModal = ({ open, onOpenChange, report }: Props) => {
                         <td className="p-2 hidden sm:table-cell text-muted-foreground">{it.email || '—'}</td>
                         <td className="p-2 hidden md:table-cell text-muted-foreground">{it.position || '—'}</td>
                         <td className="p-2 hidden lg:table-cell text-muted-foreground">
-                          {it.last_login ? new Date(it.last_login).toLocaleDateString('ru-RU') : 'Никогда'}
+                          {it.last_login ? formatDateOnlyMSK(it.last_login) : 'Никогда'}
                         </td>
                         <td className="p-2">{it.days_inactive ?? '—'}</td>
                         <td className="p-2">

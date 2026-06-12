@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { ExceptionItem } from './types';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface ExceptionsTabProps {
   exceptionsLoading: boolean;
@@ -75,7 +76,7 @@ const ExceptionsTab = ({
                       )}
                       <p className="text-xs text-muted-foreground mt-1">
                         Добавил: {e.added_by_name || '—'}
-                        {e.added_at && ` · ${new Date(e.added_at).toLocaleDateString('ru-RU')}`}
+                        {e.added_at && ` · ${formatDateOnlyMSK(e.added_at)}`}
                       </p>
                     </div>
                     {isAdmin && (

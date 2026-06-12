@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { ReportListItem } from './types';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface ReportsTabProps {
   reportsLoading: boolean;
@@ -38,7 +39,7 @@ const ReportsTab = ({ reportsLoading, reports, onOpenReport }: ReportsTabProps) 
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
-                        {r.started_at ? new Date(r.started_at).toLocaleString('ru-RU') : '—'}
+                        {r.started_at ? formatDateTimeMSK(r.started_at) : '—'}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {r.started_by_name || '—'}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch, API_URL } from '@/utils/api';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 import PaymentsSidebar from '@/components/payments/PaymentsSidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -296,7 +297,7 @@ const SavingReasons = () => {
                     <h3 className="font-semibold text-base md:text-lg mb-1">{reason.name}</h3>
                     {reason.created_at && (
                       <p className="text-xs text-muted-foreground">
-                        Создано: {new Date(reason.created_at).toLocaleDateString('ru-RU')}
+                        Создано: {formatDateOnlyMSK(reason.created_at)}
                       </p>
                     )}
                   </div>

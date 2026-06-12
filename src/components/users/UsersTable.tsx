@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { buildDepartmentPath } from '@/utils/departmentPath';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface User {
   id: number;
@@ -95,7 +96,7 @@ const UsersTable = ({ users, departments = [], onEdit, onToggleStatus, onDelete,
               </td>
               <td className="p-4 text-muted-foreground text-sm">
                 {user.last_login 
-                  ? new Date(user.last_login).toLocaleDateString('ru-RU')
+                  ? formatDateOnlyMSK(user.last_login)
                   : 'Никогда'
                 }
               </td>
@@ -227,7 +228,7 @@ const UsersTable = ({ users, departments = [], onEdit, onToggleStatus, onDelete,
 
             <div className="text-xs text-muted-foreground">
               Последний вход: {user.last_login 
-                ? new Date(user.last_login).toLocaleDateString('ru-RU')
+                ? formatDateOnlyMSK(user.last_login)
                 : 'Никогда'
               }
             </div>

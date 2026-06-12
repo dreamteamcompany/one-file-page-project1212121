@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface AuditLog {
   id: number;
@@ -241,13 +242,7 @@ const AuditLogs = () => {
                               </p>
                             </div>
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {new Date(log.created_at).toLocaleString('ru-RU', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {formatDateTimeMSK(log.created_at)}
                             </span>
                           </div>
                           

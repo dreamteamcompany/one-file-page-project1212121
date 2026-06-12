@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Saving } from './types';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface SavingsTableProps {
   savings: Saving[];
@@ -68,7 +69,7 @@ const SavingsTable = ({ savings, loading, onDeleteSaving }: SavingsTableProps) =
                       <td className="p-4 text-muted-foreground">{frequencyLabels[saving.frequency]}</td>
                       <td className="p-4 text-muted-foreground">{saving.employee_name}</td>
                       <td className="p-4 text-muted-foreground">
-                        {new Date(saving.created_at).toLocaleDateString('ru-RU')}
+                        {formatDateOnlyMSK(saving.created_at)}
                       </td>
                       <td className="p-4">
                         <Button
@@ -123,7 +124,7 @@ const SavingsTable = ({ savings, loading, onDeleteSaving }: SavingsTableProps) =
                     Автор: {saving.employee_name}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(saving.created_at).toLocaleDateString('ru-RU')}
+                    {formatDateOnlyMSK(saving.created_at)}
                   </div>
                 </div>
               ))}

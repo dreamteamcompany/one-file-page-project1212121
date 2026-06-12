@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface CustomField {
   id: number;
@@ -115,11 +116,7 @@ const PaymentsList = ({ payments, loading, onApprove, onReject, onSubmitForAppro
                         {getStatusBadge(payment.status)}
                       </td>
                       <td className="p-4 text-muted-foreground">
-                        {new Date(payment.planned_date || payment.payment_date || '').toLocaleDateString('ru-RU', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
+                        {formatDateOnlyMSK(payment.planned_date || payment.payment_date || '', { longMonth: true, withYear: true })}
                       </td>
                       <td className="p-4">
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -189,11 +186,7 @@ const PaymentsList = ({ payments, loading, onApprove, onReject, onSubmitForAppro
                     <div className="text-sm text-muted-foreground">{payment.description}</div>
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-muted-foreground">
-                        {new Date(payment.planned_date || payment.payment_date || '').toLocaleDateString('ru-RU', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
+                        {formatDateOnlyMSK(payment.planned_date || payment.payment_date || '', { longMonth: true, withYear: true })}
                       </div>
                       {!isPlannedPayments && getStatusBadge(payment.status)}
                     </div>

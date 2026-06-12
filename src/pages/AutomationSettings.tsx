@@ -18,6 +18,7 @@ import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, getApiUrl } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 import func2url from '../../backend/func2url.json';
 
 const AUTOMATION_URL = (func2url as Record<string, string>)['automation'];
@@ -74,7 +75,7 @@ const MODE_OPTIONS = [
 const formatDate = (iso: string | null): string => {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString('ru-RU');
+    return formatDateTimeMSK(iso);
   } catch {
     return '—';
   }

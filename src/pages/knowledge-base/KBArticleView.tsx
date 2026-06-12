@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { ArticleFull, Comment, Mode } from './types';
+import { formatDateOnlyMSK, formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface KBArticleViewProps {
   activeArticle: ArticleFull;
@@ -102,7 +103,7 @@ const KBArticleView = ({
           )}
           <span className="flex items-center gap-1">
             <Icon name="Clock" size={12} />
-            {new Date(activeArticle.updated_at).toLocaleDateString()}
+            {formatDateOnlyMSK(activeArticle.updated_at)}
           </span>
           <span className="flex items-center gap-1">
             <Icon name="Eye" size={12} />
@@ -224,7 +225,7 @@ const KBArticleView = ({
                 <div className="flex-1 bg-muted/40 rounded-lg p-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium">{c.user_name}</span>
-                    <span className="text-muted-foreground">{new Date(c.created_at).toLocaleString()}</span>
+                    <span className="text-muted-foreground">{formatDateTimeMSK(c.created_at)}</span>
                   </div>
                   <p className="text-sm mt-1 whitespace-pre-wrap">{c.content}</p>
                 </div>

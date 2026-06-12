@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, API_URL } from '@/utils/api';
 import { getDeadlineInfo } from './ticket-info/types';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 import type { Ticket, Status, User, ExecutorGroup } from './ticket-info/types';
 import DeadlineSection from './ticket-info/DeadlineSection';
 
@@ -188,7 +189,7 @@ const TicketInfoFields = ({
           <p className="text-xs text-muted-foreground">
             Заявка отправлена заказчику на проверку.
             {ticket.confirmation_sent_at && (
-              <> Отправлено {new Date(ticket.confirmation_sent_at).toLocaleDateString('ru-RU')}.</>
+              <> Отправлено {formatDateOnlyMSK(ticket.confirmation_sent_at)}.</>
             )}
           </p>
         </div>

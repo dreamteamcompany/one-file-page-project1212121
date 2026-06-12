@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { apiFetch } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface CustomField {
   id: number;
@@ -254,36 +255,36 @@ const ApprovedPaymentDetailsModal = ({ payment, onClose, onRevoked }: ApprovedPa
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Дата платежа:</span>
-                  <span className="font-medium">{new Date(payment.payment_date).toLocaleDateString('ru-RU')}</span>
+                  <span className="font-medium">{formatDateOnlyMSK(payment.payment_date)}</span>
                 </div>
                 {payment.submitted_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Дата отправки:</span>
-                    <span className="font-medium">{new Date(payment.submitted_at).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.submitted_at)}</span>
                   </div>
                 )}
                 {payment.ceo_approved_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Одобрено CEO:</span>
-                    <span className="font-medium">{new Date(payment.ceo_approved_at).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.ceo_approved_at)}</span>
                   </div>
                 )}
                 {payment.tech_director_approved_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Одобрено Техдиром:</span>
-                    <span className="font-medium">{new Date(payment.tech_director_approved_at).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.tech_director_approved_at)}</span>
                   </div>
                 )}
                 {payment.invoice_date && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Дата счёта:</span>
-                    <span className="font-medium">{new Date(payment.invoice_date).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.invoice_date)}</span>
                   </div>
                 )}
                 {payment.created_at && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Создана:</span>
-                    <span className="font-medium">{new Date(payment.created_at).toLocaleDateString('ru-RU')}</span>
+                    <span className="font-medium">{formatDateOnlyMSK(payment.created_at)}</span>
                   </div>
                 )}
               </div>

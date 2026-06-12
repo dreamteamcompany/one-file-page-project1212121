@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { API_URL, apiFetch } from '@/utils/api';
+import { formatDateTimeMSK } from '@/utils/dateFormat';
 
 interface Approval {
   id: number;
@@ -183,13 +184,7 @@ const ApprovalsHistory = () => {
                           <div className="flex items-center gap-2">
                             <Icon name="Clock" size={14} className="text-muted-foreground" />
                             <span className="text-muted-foreground">
-                              {new Date(approval.created_at).toLocaleDateString('ru-RU', {
-                                day: '2-digit',
-                                month: 'long',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                              {formatDateTimeMSK(approval.created_at)}
                             </span>
                           </div>
                         </div>

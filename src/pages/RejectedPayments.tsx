@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 import PaymentDetailsModal from '@/components/payments/PaymentDetailsModal';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface CustomField {
   id: number;
@@ -113,11 +114,7 @@ const RejectedPayments = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    return formatDateOnlyMSK(dateString);
   };
 
   return (
@@ -241,11 +238,7 @@ const RejectedPayments = () => {
                               <div className="flex items-center gap-1">
                                 <Icon name="Calendar" size={14} />
                                 <span>
-                                  {new Date(payment.payment_date).toLocaleDateString('ru-RU', {
-                                    day: '2-digit',
-                                    month: 'long',
-                                    year: 'numeric'
-                                  })}
+                                  {formatDateOnlyMSK(payment.payment_date, { longMonth: true, withYear: true })}
                                 </span>
                               </div>
                             </div>
