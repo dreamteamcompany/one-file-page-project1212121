@@ -53,6 +53,17 @@ export interface Ticket {
   confirmation_sent_at?: string;
   rating?: number;
   rejection_reason?: string;
+  last_comment?: TicketLastComment | null;
+}
+
+export interface TicketLastComment {
+  id: number;
+  comment: string;
+  created_at: string;
+  is_internal?: boolean;
+  author_name?: string;
+  author_email?: string;
+  author_photo_url?: string;
 }
 
 export interface TicketServiceInfo {

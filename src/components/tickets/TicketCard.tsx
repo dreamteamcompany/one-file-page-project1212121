@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,6 +31,8 @@ const TicketCard = ({
   onTicketClick,
 }: TicketCardProps) => {
   const isCritical = ticket.priority_name?.toLowerCase().includes('критич');
+  const [showLastComment, setShowLastComment] = useState(false);
+  const lastComment = ticket.last_comment;
 
   return (
     <Card
@@ -281,7 +284,7 @@ const TicketCard = ({
               </span>
             )}
             {ticket.created_at && (
-              <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 ml-auto text-[11px]">
+              <span className={`inline-flex items-center gap-1.5 text-muted-foreground/70 text-[11px] ${lastComment ? '' : 'ml-auto'}`}>
                 <Icon name="Clock" size={11} />
                 {new Date(ticket.created_at).toLocaleDateString('ru-RU', {
                   day: 'numeric',
@@ -291,7 +294,54 @@ const TicketCard = ({
                 })}
               </span>
             )}
+            {lastComment && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowLastComment((v) => !v);
+                }}
+                title="Последний комментарий"
+                aria-label="Показать последний комментарий"
+                className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Icon name="MessageSquare" size={11} />
+                <Icon name={showLastComment ? 'ChevronUp' : 'ChevronDown'} size={11} />
+              </button>
+            )}
           </div>
+
+          {lastComment && showLastComment && (
+            <div
+              className="mt-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground truncate">
+                  {lastComment.author_name || lastComment.author_email || 'Пользователь'}
+                  {lastComment.is_internal && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-amber-600">
+                      <Icon name="Lock" size={10} />
+                      внутренний
+                    </span>
+                  )}
+                </span>
+                {lastComment.created_at && (
+                  <span className="flex-shrink-0">
+                    {new Date(lastComment.created_at).toLocaleDateString('ru-RU', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                )}
+              </div>
+              <p className="text-foreground/80 line-clamp-4 whitespace-pre-wrap break-words">
+                {(lastComment.comment || '').replace(/<[^>]*>/g, '').trim() || '—'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Card>

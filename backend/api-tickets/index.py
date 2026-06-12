@@ -861,6 +861,31 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 r = dict(row)
                 if r['ticket_id'] in ticket_id_map:
                     ticket_id_map[r['ticket_id']]['sla_violation_count'] = r['cnt']
+
+            for t in tickets:
+                t['last_comment'] = None
+            last_comment_internal_filter = _internal_filter.format(alias='lc')
+            cur.execute(f"""
+                SELECT DISTINCT ON (lc.ticket_id)
+                       lc.ticket_id, lc.id, lc.comment, lc.created_at, lc.is_internal,
+                       u.full_name AS author_name, u.username AS author_email,
+                       u.photo_url AS author_photo_url
+                FROM {SCHEMA}.ticket_comments lc
+                LEFT JOIN {SCHEMA}.users u ON u.id = lc.user_id
+                WHERE lc.ticket_id IN ({ids_str})
+                  {last_comment_internal_filter}
+                ORDER BY lc.ticket_id, lc.created_at DESC, lc.id DESC
+            """)
+            for row in cur.fetchall():
+                r = dict(row)
+                tid = r.pop('ticket_id')
+                if tid not in ticket_id_map:
+                    continue
+                text = r.get('comment') or ''
+                r['comment'] = _strip_heavy_inline_images(text, r.get('id') or 0)
+                if r.get('created_at') is not None:
+                    r['created_at'] = str(r['created_at'])
+                ticket_id_map[tid]['last_comment'] = r
         
         cur.close()
         pages = (total + limit - 1) // limit
