@@ -204,15 +204,15 @@ const NotificationBell = () => {
                         <Icon name={icon.name} size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${!notification.is_read ? 'font-semibold' : ''}`}>
+                        <p className={`text-sm text-foreground ${!notification.is_read ? 'font-semibold' : 'font-medium'}`}>
                           {notification.message}
                         </p>
                         {notification.ticket_title && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-foreground/70 mt-1">
                             {notification.ticket_title}
                           </p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-foreground/60 mt-1">
                           {formatDistanceToNow(new Date(notification.created_at), {
                             addSuffix: true,
                             locale: ru,
