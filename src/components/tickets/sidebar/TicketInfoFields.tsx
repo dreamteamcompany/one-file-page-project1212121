@@ -68,6 +68,9 @@ const TicketInfoFields = ({
     }
   };
 
+  const currentStatus = statuses.find((s) => s.id === ticket.status_id);
+  const canSendForConfirmation = !!currentStatus?.is_in_progress || !!currentStatus?.is_approved;
+
   const deadlineInfo = getDeadlineInfo(ticket.due_date);
   const responseDeadlineInfo = getDeadlineInfo(ticket.response_due_date);
 
@@ -195,7 +198,7 @@ const TicketInfoFields = ({
         </div>
       )}
 
-      {isAssignee && !isPendingConfirmation && !ticket.rating && (
+      {isAssignee && canSendForConfirmation && !isPendingConfirmation && !ticket.rating && (
         <div className="p-4">
           <h3 className="text-xs font-semibold mb-3 text-foreground uppercase tracking-wide flex items-center gap-2">
             <Icon name="CheckCheck" size={14} />

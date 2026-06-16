@@ -129,6 +129,7 @@ export interface TicketStatus {
   is_pending_confirmation?: boolean;
   is_reopened?: boolean;
   is_in_progress?: boolean;
+  is_approved?: boolean;
 }
 
 export interface TicketPriority {

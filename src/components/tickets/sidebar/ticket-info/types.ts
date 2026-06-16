@@ -19,6 +19,8 @@ export interface Status {
   color: string;
   is_closed: boolean;
   is_approval?: boolean;
+  is_approved?: boolean;
+  is_in_progress?: boolean;
   is_waiting_response?: boolean;
   order?: number;
 }
