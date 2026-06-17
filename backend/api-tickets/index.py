@@ -1008,6 +1008,18 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     conn.rollback()
                     cur.close()
                     return response(400, {'error': f'Сервис с ID {service_id} не найден'})
+        elif data.ticket_service_id:
+            try:
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_to_service_mappings (ticket_id, service_id, ticket_service_id)
+                    VALUES (%s, NULL, %s)
+                    ON CONFLICT DO NOTHING
+                """, (ticket['id'], data.ticket_service_id))
+            except Exception as e:
+                print(f"[TICKETS] Error linking ticket_service {data.ticket_service_id}: {e}")
+                conn.rollback()
+                cur.close()
+                return response(400, {'error': f'Услуга с ID {data.ticket_service_id} не найдена'})
         
         # Сохраняем кастомные поля
         if data.custom_fields:
