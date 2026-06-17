@@ -132,6 +132,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get tickets rating stats (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=tickets-rating-stats&period=month",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

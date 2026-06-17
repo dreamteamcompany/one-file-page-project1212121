@@ -33,6 +33,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'tickets': TICKETS_API,
   'tickets-full': TICKETS_API,
   'tickets-created-stats': TICKETS_API,
+  'tickets-rating-stats': TICKETS_API,
   'api-tickets': TICKETS_API,
   'service_categories': TICKETS_API,
   'ticket-dictionaries-api': TICKETS_API,

@@ -1,4 +1,5 @@
 import TicketsCreatedCard from './blocks/TicketsCreatedCard';
+import AverageRatingCard from './blocks/AverageRatingCard';
 
 type PeriodType = 'today' | 'week' | 'month' | 'year' | 'custom';
 
@@ -14,6 +15,9 @@ const Dashboard2AllCards = ({ period, dateFrom, dateTo }: Dashboard2AllCardsProp
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         <div className="w-full h-[280px] sm:h-[300px]">
           <TicketsCreatedCard period={period} dateFrom={dateFrom} dateTo={dateTo} />
+        </div>
+        <div className="w-full h-[280px] sm:h-[300px]">
+          <AverageRatingCard period={period} dateFrom={dateFrom} dateTo={dateTo} />
         </div>
       </div>
     </div>

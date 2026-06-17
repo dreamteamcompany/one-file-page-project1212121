@@ -401,6 +401,70 @@ def handle_tickets_created_stats(method: str, event: Dict[str, Any], conn) -> Di
         cur.close()
 
 
+def handle_tickets_rating_stats(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Средняя оценка заявок за выбранный период (по полю rating, 1-5).
+
+    Параметры (queryStringParameters):
+      period — today | week | month | year | custom (по умолчанию month)
+      from_date, to_date — даты YYYY-MM-DD (для period=custom)
+
+    Считает по дате закрытия (closed_at), а если она пуста — по created_at.
+    Возвращает: { avg_rating, rated_count }
+    """
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+
+    params = event.get('queryStringParameters', {}) or {}
+    period = (params.get('period') or 'month').strip().lower()
+
+    period_sql = {
+        'today': "date_trunc('day', NOW())",
+        'week': "date_trunc('week', NOW())",
+        'month': "date_trunc('month', NOW())",
+        'year': "date_trunc('year', NOW())",
+    }
+
+    date_expr = "COALESCE(closed_at, created_at)"
+
+    cur = conn.cursor()
+    try:
+        if period == 'custom':
+            from_date = (params.get('from_date') or '').strip()
+            to_date = (params.get('to_date') or '').strip()
+            if not from_date or not to_date:
+                return response(400, {'error': 'from_date и to_date обязательны для period=custom'})
+            cur.execute(f"""
+                SELECT AVG(rating)::numeric(10,2) AS avg_rating, COUNT(*) AS rated_count
+                FROM {SCHEMA}.tickets
+                WHERE rating IS NOT NULL
+                  AND {date_expr} >= %s::date
+                  AND {date_expr} < (%s::date + INTERVAL '1 day')
+            """, (from_date, to_date))
+        else:
+            trunc = period_sql.get(period, period_sql['month'])
+            cur.execute(f"""
+                SELECT AVG(rating)::numeric(10,2) AS avg_rating, COUNT(*) AS rated_count
+                FROM {SCHEMA}.tickets
+                WHERE rating IS NOT NULL
+                  AND {date_expr} >= {trunc}
+            """)
+
+        row = cur.fetchone()
+        avg_rating = float(row['avg_rating']) if row['avg_rating'] is not None else 0.0
+        rated_count = row['rated_count'] or 0
+
+        return response(200, {
+            'avg_rating': round(avg_rating, 2),
+            'rated_count': rated_count,
+        })
+    finally:
+        cur.close()
+
+
 def handler(event: dict, context) -> dict:
     """API для работы с заявками и категориями сервисов"""
     method = event.get('httpMethod', 'GET')
@@ -450,6 +514,8 @@ def handler(event: dict, context) -> dict:
             return handle_tickets_full(method, event, conn)
         elif endpoint == 'tickets-created-stats':
             return handle_tickets_created_stats(method, event, conn)
+        elif endpoint == 'tickets-rating-stats':
+            return handle_tickets_rating_stats(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
