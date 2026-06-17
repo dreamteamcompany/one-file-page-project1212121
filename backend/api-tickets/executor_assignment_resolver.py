@@ -14,8 +14,14 @@ from datetime import datetime, timezone, timedelta
 
 
 def resolve_executor(cur, schema: str, ticket_service_id: Optional[int], service_ids: list[int]) -> Optional[int]:
-    if not ticket_service_id or not service_ids:
+    if not ticket_service_id:
         return None
+
+    if not service_ids:
+        user_id = _find_direct_user(cur, schema, ticket_service_id, None)
+        if user_id:
+            return user_id
+        return _find_from_group(cur, schema, ticket_service_id, None)
 
     for service_id in service_ids:
         user_id = _find_direct_user(cur, schema, ticket_service_id, service_id)
@@ -32,18 +38,29 @@ def resolve_executor(cur, schema: str, ticket_service_id: Optional[int], service
 def resolve_executor_group(cur, schema: str, ticket_service_id: Optional[int], service_ids: list[int]) -> Optional[int]:
     """Находит подходящую группу исполнителей по маппингу ticket_service + service.
     Возвращает group_id или None."""
-    if not ticket_service_id or not service_ids:
+    if not ticket_service_id:
         return None
 
-    for service_id in service_ids:
-        cur.execute(f"""
-            SELECT g.id AS group_id
-            FROM {schema}.executor_group_service_mappings m
-            JOIN {schema}.executor_groups g ON g.id = m.group_id AND g.is_active = true
-            WHERE m.ticket_service_id = %s AND m.service_id = %s
-            ORDER BY g.id
-            LIMIT 1
-        """, (ticket_service_id, service_id))
+    service_filter = [s for s in service_ids] if service_ids else [None]
+    for service_id in service_filter:
+        if service_id is None:
+            cur.execute(f"""
+                SELECT g.id AS group_id
+                FROM {schema}.executor_group_service_mappings m
+                JOIN {schema}.executor_groups g ON g.id = m.group_id AND g.is_active = true
+                WHERE m.ticket_service_id = %s
+                ORDER BY g.id
+                LIMIT 1
+            """, (ticket_service_id,))
+        else:
+            cur.execute(f"""
+                SELECT g.id AS group_id
+                FROM {schema}.executor_group_service_mappings m
+                JOIN {schema}.executor_groups g ON g.id = m.group_id AND g.is_active = true
+                WHERE m.ticket_service_id = %s AND m.service_id = %s
+                ORDER BY g.id
+                LIMIT 1
+            """, (ticket_service_id, service_id))
         row = cur.fetchone()
         if row:
             return row['group_id']
@@ -75,29 +92,51 @@ def pick_member_for_group(cur, schema: str, group_id: int) -> Optional[int]:
     return _pick_member(cur, schema, group_id, assign_type, balance_mode)
 
 
-def _find_direct_user(cur, schema: str, ticket_service_id: int, service_id: int) -> Optional[int]:
-    cur.execute(f"""
-        SELECT m.user_id
-        FROM {schema}.executor_user_service_mappings m
-        JOIN {schema}.users u ON u.id = m.user_id AND u.is_active = true
-        WHERE m.ticket_service_id = %s AND m.service_id = %s
-        LIMIT 1
-    """, (ticket_service_id, service_id))
+def _find_direct_user(cur, schema: str, ticket_service_id: int, service_id: Optional[int]) -> Optional[int]:
+    if service_id is None:
+        cur.execute(f"""
+            SELECT m.user_id
+            FROM {schema}.executor_user_service_mappings m
+            JOIN {schema}.users u ON u.id = m.user_id AND u.is_active = true
+            WHERE m.ticket_service_id = %s
+            ORDER BY m.service_id
+            LIMIT 1
+        """, (ticket_service_id,))
+    else:
+        cur.execute(f"""
+            SELECT m.user_id
+            FROM {schema}.executor_user_service_mappings m
+            JOIN {schema}.users u ON u.id = m.user_id AND u.is_active = true
+            WHERE m.ticket_service_id = %s AND m.service_id = %s
+            LIMIT 1
+        """, (ticket_service_id, service_id))
     row = cur.fetchone()
     return row['user_id'] if row else None
 
 
-def _find_from_group(cur, schema: str, ticket_service_id: int, service_id: int) -> Optional[int]:
-    cur.execute(f"""
-        SELECT g.id AS group_id, g.auto_assign_type, g.balance_mode
-        FROM {schema}.executor_group_service_mappings m
-        JOIN {schema}.executor_groups g ON g.id = m.group_id
-            AND g.is_active = true
-            AND g.auto_assign_type IN ('all', 'working')
-        WHERE m.ticket_service_id = %s AND m.service_id = %s
-        ORDER BY g.id
-        LIMIT 1
-    """, (ticket_service_id, service_id))
+def _find_from_group(cur, schema: str, ticket_service_id: int, service_id: Optional[int]) -> Optional[int]:
+    if service_id is None:
+        cur.execute(f"""
+            SELECT g.id AS group_id, g.auto_assign_type, g.balance_mode
+            FROM {schema}.executor_group_service_mappings m
+            JOIN {schema}.executor_groups g ON g.id = m.group_id
+                AND g.is_active = true
+                AND g.auto_assign_type IN ('all', 'working')
+            WHERE m.ticket_service_id = %s
+            ORDER BY g.id
+            LIMIT 1
+        """, (ticket_service_id,))
+    else:
+        cur.execute(f"""
+            SELECT g.id AS group_id, g.auto_assign_type, g.balance_mode
+            FROM {schema}.executor_group_service_mappings m
+            JOIN {schema}.executor_groups g ON g.id = m.group_id
+                AND g.is_active = true
+                AND g.auto_assign_type IN ('all', 'working')
+            WHERE m.ticket_service_id = %s AND m.service_id = %s
+            ORDER BY g.id
+            LIMIT 1
+        """, (ticket_service_id, service_id))
     group_row = cur.fetchone()
     if not group_row:
         return None

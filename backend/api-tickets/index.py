@@ -926,11 +926,11 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             resolved_ts_id = ts_row['ticket_service_id'] if ts_row else None
 
         assigned_to = data.assigned_to
-        if not assigned_to and data.service_ids:
+        if not assigned_to and resolved_ts_id:
             assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
 
         executor_group_id = None
-        if data.service_ids:
+        if resolved_ts_id:
             executor_group_id = resolve_executor_group(cur, SCHEMA, resolved_ts_id, data.service_ids)
 
         if not assigned_to and not executor_group_id:
