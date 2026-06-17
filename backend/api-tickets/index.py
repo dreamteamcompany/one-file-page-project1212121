@@ -318,6 +318,89 @@ class CategoryRequest(BaseModel):
     name: str = Field(..., min_length=1)
     icon: str = Field(default='Tag')
 
+def handle_tickets_created_stats(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Подсчёт количества созданных заявок за выбранный период.
+
+    Параметры (queryStringParameters):
+      period — today | week | month | year | custom (по умолчанию month)
+      from_date, to_date — даты в формате YYYY-MM-DD (для period=custom)
+
+    Возвращает: { count, prev_count, change_percent, is_increase }
+    """
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+
+    params = event.get('queryStringParameters', {}) or {}
+    period = (params.get('period') or 'month').strip().lower()
+
+    period_sql = {
+        'today': "date_trunc('day', NOW())",
+        'week': "date_trunc('week', NOW())",
+        'month': "date_trunc('month', NOW())",
+        'year': "date_trunc('year', NOW())",
+    }
+
+    cur = conn.cursor()
+    try:
+        if period == 'custom':
+            from_date = (params.get('from_date') or '').strip()
+            to_date = (params.get('to_date') or '').strip()
+            if not from_date or not to_date:
+                return response(400, {'error': 'from_date и to_date обязательны для period=custom'})
+            cur.execute(f"""
+                SELECT COUNT(*) AS cnt
+                FROM {SCHEMA}.tickets
+                WHERE created_at >= %s::date
+                  AND created_at < (%s::date + INTERVAL '1 day')
+            """, (from_date, to_date))
+            count = cur.fetchone()['cnt']
+            return response(200, {
+                'count': count,
+                'prev_count': None,
+                'change_percent': None,
+                'is_increase': False,
+            })
+
+        trunc = period_sql.get(period, period_sql['month'])
+        unit = {'today': 'day', 'week': 'week', 'month': 'month', 'year': 'year'}.get(period, 'month')
+
+        cur.execute(f"""
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE created_at >= {trunc}
+                ) AS current_count,
+                COUNT(*) FILTER (
+                    WHERE created_at >= {trunc} - INTERVAL '1 {unit}'
+                      AND created_at < {trunc}
+                ) AS prev_count
+            FROM {SCHEMA}.tickets
+            WHERE created_at >= {trunc} - INTERVAL '1 {unit}'
+        """)
+        row = cur.fetchone()
+        current_count = row['current_count'] or 0
+        prev_count = row['prev_count'] or 0
+
+        if prev_count > 0:
+            change_percent = round((current_count - prev_count) / prev_count * 100, 1)
+        elif current_count > 0:
+            change_percent = 100.0
+        else:
+            change_percent = 0.0
+
+        return response(200, {
+            'count': current_count,
+            'prev_count': prev_count,
+            'change_percent': change_percent,
+            'is_increase': current_count >= prev_count,
+        })
+    finally:
+        cur.close()
+
+
 def handler(event: dict, context) -> dict:
     """API для работы с заявками и категориями сервисов"""
     method = event.get('httpMethod', 'GET')
@@ -365,6 +448,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_watchers(method, event, conn)
         elif endpoint == 'tickets-full':
             return handle_tickets_full(method, event, conn)
+        elif endpoint == 'tickets-created-stats':
+            return handle_tickets_created_stats(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:

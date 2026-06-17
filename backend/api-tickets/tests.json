@@ -122,6 +122,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get tickets created stats (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=tickets-created-stats&period=month",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

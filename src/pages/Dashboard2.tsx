@@ -39,7 +39,11 @@ const Dashboard2 = () => {
           onDateFromChange={setDateFrom}
           onDateToChange={setDateTo}
         >
-          <DashboardContent />
+          <DashboardContent
+            period={selectedPeriod}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+          />
         </DashboardPeriodSelector>
       </div>
     </PageLayout>

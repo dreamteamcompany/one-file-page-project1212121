@@ -3,17 +3,19 @@
  * Single Responsibility: только отображение блоков дашборда
  */
 import Dashboard2AllCards from './Dashboard2AllCards';
-import Dashboard2BudgetBreakdown from './Dashboard2BudgetBreakdown';
-import Dashboard2Charts from './Dashboard2Charts';
-import Dashboard2Table from './Dashboard2Table';
 
-const DashboardContent = () => {
+type PeriodType = 'today' | 'week' | 'month' | 'year' | 'custom';
+
+interface DashboardContentProps {
+  period: PeriodType;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+const DashboardContent = ({ period, dateFrom, dateTo }: DashboardContentProps) => {
   return (
     <>
-      <Dashboard2AllCards />
-      <Dashboard2BudgetBreakdown />
-      <Dashboard2Charts />
-      <Dashboard2Table />
+      <Dashboard2AllCards period={period} dateFrom={dateFrom} dateTo={dateTo} />
     </>
   );
 };
