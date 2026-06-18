@@ -63,7 +63,9 @@ const Login = () => {
       <Card className="w-full max-w-md border-border bg-card/50 [.light_&]:bg-card backdrop-blur-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 flex items-center justify-center">
-            <Logo className="h-10 w-auto text-foreground" />
+            <div className="bg-[#0f1729] rounded-lg px-4 py-3 flex items-center justify-center">
+              <Logo className="h-10 w-auto" />
+            </div>
           </div>
           <CardTitle className="text-2xl font-bold">Вход в систему</CardTitle>
           <CardDescription>
