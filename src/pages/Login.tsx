@@ -115,11 +115,10 @@ const Login = () => {
               <Input
                 id="username"
                 type="text"
-                placeholder="admin"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                autoComplete="username"
+                autoComplete="off"
               />
             </div>
 
@@ -128,11 +127,10 @@ const Login = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
+                autoComplete="new-password"
               />
             </div>
 
