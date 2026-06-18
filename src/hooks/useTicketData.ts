@@ -140,17 +140,19 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
 
   const loadUsers = async () => {
     try {
-      const data = await cachedJsonFetch<Array<{ id: number; full_name?: string; username?: string; photo_url?: string }>>(
+      const data = await cachedJsonFetch<Array<{ id: number; full_name?: string; username?: string; photo_url?: string; is_active?: boolean }>>(
         `${API_URL}?endpoint=users`,
         { headers: { 'X-Auth-Token': token } },
       );
-      const adaptedUsers = Array.isArray(data) ? data.map((u) => ({
-        id: u.id,
-        name: u.full_name || u.username || '',
-        email: u.username || '',
-        role: '',
-        photo_url: u.photo_url || ''
-      })) : [];
+      const adaptedUsers = Array.isArray(data) ? data
+        .filter((u) => u.is_active !== false)
+        .map((u) => ({
+          id: u.id,
+          name: u.full_name || u.username || '',
+          email: u.username || '',
+          role: '',
+          photo_url: u.photo_url || ''
+        })) : [];
       setUsers(adaptedUsers);
     } catch (error) {
       console.error('Error loading users:', error);

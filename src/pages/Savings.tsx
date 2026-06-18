@@ -106,7 +106,9 @@ const Savings = () => {
       if (response.ok) {
         const data = await response.json();
         const employeesList = data.users || data;
-        setEmployees(Array.isArray(employeesList) ? employeesList : []);
+        setEmployees(Array.isArray(employeesList)
+          ? employeesList.filter((u: { is_active?: boolean }) => u.is_active !== false)
+          : []);
       }
     } catch (err) {
       console.error('Failed to load employees:', err);

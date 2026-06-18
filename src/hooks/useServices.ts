@@ -48,8 +48,8 @@ const fetchJson = async <T>(endpoint: string): Promise<T[]> => {
 const fetchUsers = async (): Promise<User[]> => {
   const response = await apiFetch(`${API_URL}?endpoint=users`);
   const data = await response.json();
-  if (Array.isArray(data)) return data as User[];
-  return (data.users as User[]) || [];
+  const list: User[] = Array.isArray(data) ? (data as User[]) : ((data.users as User[]) || []);
+  return list.filter((u) => (u as { is_active?: boolean }).is_active !== false);
 };
 
 const fetchDepartments = async (): Promise<CustomerDepartment[]> => {

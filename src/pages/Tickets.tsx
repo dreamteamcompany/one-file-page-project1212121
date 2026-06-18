@@ -149,7 +149,9 @@ const Tickets = () => {
       apiFetch(`${API_URL}?endpoint=users`, { headers: { 'X-Auth-Token': token } })
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => {
-          if (Array.isArray(data)) setBulkUsers(data);
+          if (Array.isArray(data)) {
+            setBulkUsers(data.filter((u: { is_active?: boolean }) => u.is_active !== false));
+          }
         })
         .catch(() => {});
     }

@@ -42,12 +42,14 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
         console.log('[loadUsers] Received data:', data);
         console.log('[loadUsers] Users count:', data?.length || 0);
         
-        const adaptedUsers = Array.isArray(data) ? data.map((u: any) => ({
-          id: u.id,
-          name: u.full_name || u.username,
-          email: u.username,
-          role: ''
-        })) : [];
+        const adaptedUsers = Array.isArray(data) ? (data as Array<{ id: number; full_name?: string; username?: string; is_active?: boolean }>)
+          .filter((u) => u.is_active !== false)
+          .map((u) => ({
+            id: u.id,
+            name: u.full_name || u.username,
+            email: u.username,
+            role: ''
+          })) : [];
         
         setUsers(adaptedUsers);
       } else {
