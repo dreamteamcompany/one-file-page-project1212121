@@ -204,7 +204,16 @@ const EditTicketContentDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <form
+          onSubmit={handleSubmit}
+          onKeyDown={(e) => {
+            const target = e.target as HTMLElement;
+            if (e.key === 'Enter' && target.tagName !== 'TEXTAREA') {
+              e.preventDefault();
+            }
+          }}
+          className="space-y-4 mt-2"
+        >
           <div className="space-y-2">
             <Label htmlFor="edit-title" className="flex items-center gap-2">
               <Icon name="Tag" size={14} className="text-muted-foreground" />

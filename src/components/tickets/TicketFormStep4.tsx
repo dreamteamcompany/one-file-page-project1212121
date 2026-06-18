@@ -299,7 +299,15 @@ const TicketFormStep4 = ({
   };
 
   return (
-    <form onSubmit={handleFormSubmit}>
+    <form
+      onSubmit={handleFormSubmit}
+      onKeyDown={(e) => {
+        const target = e.target as HTMLElement;
+        if (e.key === 'Enter' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+        }
+      }}
+    >
       <div className="space-y-4 mt-4">
         {topSectionFields.map(renderSection)}
 
