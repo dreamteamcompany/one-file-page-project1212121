@@ -2285,10 +2285,34 @@ def handle_ticket_services(method: str, event: Dict[str, Any], conn) -> Dict[str
             if not ticket_service_id:
                 return response(400, {'error': 'ID is required'})
             
-            # First delete all related records from ticket_service_mappings table
-            cur.execute(f'DELETE FROM {SCHEMA}.ticket_service_mappings WHERE ticket_service_id = %s', (ticket_service_id,))
+            cur.execute(f'SELECT id FROM {SCHEMA}.ticket_services WHERE id = %s', (ticket_service_id,))
+            if not cur.fetchone():
+                return response(404, {'error': 'Услуга не найдена'})
             
-            # Then delete from ticket_services table
+            cur.execute(
+                f'SELECT COUNT(*) AS cnt FROM {SCHEMA}.ticket_to_service_mappings WHERE ticket_service_id = %s',
+                (ticket_service_id,)
+            )
+            used_count = cur.fetchone()['cnt']
+            
+            if used_count > 0:
+                return response(409, {
+                    'error': f'Услуга используется в заявках ({used_count}) и не может быть удалена. '
+                             'Сначала отвяжите услугу от этих заявок.'
+                })
+            
+            for tbl, col in [
+                ('ticket_service_mappings', 'ticket_service_id'),
+                ('ticket_service_visible_users', 'ticket_service_id'),
+                ('executor_group_service_mappings', 'ticket_service_id'),
+                ('executor_user_service_mappings', 'ticket_service_id'),
+                ('sla_service_mappings', 'ticket_service_id'),
+                ('ticket_service_field_mappings', 'ticket_service_id'),
+                ('service_category_service_fields', 'service_id'),
+                ('ai_training_examples', 'ticket_service_id'),
+            ]:
+                cur.execute(f'DELETE FROM {SCHEMA}.{tbl} WHERE {col} = %s', (ticket_service_id,))
+            
             cur.execute(f'DELETE FROM {SCHEMA}.ticket_services WHERE id = %s', (ticket_service_id,))
             conn.commit()
             
