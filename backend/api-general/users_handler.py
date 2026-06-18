@@ -4,7 +4,7 @@ import os
 import bcrypt
 from models import UserRequest
 from shared_utils import response
-from permissions_middleware import check_permission, check_permissions_batch
+from permissions_middleware import check_permission
 
 SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
 
@@ -19,14 +19,9 @@ def handle_users(method, event, conn, payload):
     cur = conn.cursor()
     try:
         if method == 'GET':
-            # Одна проверка прав batch'ем вместо двух отдельных запросов
-            perms = check_permissions_batch(conn, user_id, [
-                {'resource': 'users', 'action': 'read'},
-                {'resource': 'tickets', 'action': 'assign_executor'},
-            ])
-            if not perms.get('users.read') and not perms.get('tickets.assign_executor'):
-                return response(403, {'error': 'Access denied', 'message': 'No permission to read users'})
-
+            # Список пользователей доступен любому авторизованному пользователю
+            # (нужен для выбора наблюдателя/исполнителя в заявках).
+            # Чувствительные поля (password_hash) не выгружаются, см. user_cols ниже.
             params = event.get('queryStringParameters', {}) or {}
             target_user_id = params.get('id')
 
