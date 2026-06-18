@@ -116,14 +116,6 @@ const TicketFormStepService = ({
             className="h-8 rounded-xl pl-10 text-sm"
           />
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-8 rounded-xl gap-2 px-4 text-muted-foreground"
-        >
-          <Icon name="SlidersHorizontal" size={16} />
-          Фильтры
-        </Button>
       </div>
 
       <div className="space-y-3">
