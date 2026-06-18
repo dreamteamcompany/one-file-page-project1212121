@@ -48,8 +48,8 @@ const BitrixCallback = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] p-4">
-        <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-xl">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] [.light_&]:from-[#eef1f8] [.light_&]:to-[#dfe5f3] p-4">
+        <Card className="w-full max-w-md border-border bg-card/50 [.light_&]:bg-card backdrop-blur-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-xl text-red-500 flex items-center justify-center gap-2">
               <Icon name="AlertCircle" size={24} />
@@ -71,8 +71,8 @@ const BitrixCallback = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] p-4">
-      <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] [.light_&]:from-[#eef1f8] [.light_&]:to-[#dfe5f3] p-4">
+      <Card className="w-full max-w-md border-border bg-card/50 [.light_&]:bg-card backdrop-blur-xl">
         <CardContent className="py-12 text-center space-y-4">
           <Icon name="Loader2" size={40} className="animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Выполняется вход через Битрикс24...</p>
