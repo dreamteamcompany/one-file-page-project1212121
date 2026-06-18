@@ -59,8 +59,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] p-4">
-      <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f1729] to-[#1b254b] [.light_&]:from-[#eef1f8] [.light_&]:to-[#dfe5f3] p-4">
+      <Card className="w-full max-w-md border-border bg-card/50 [.light_&]:bg-card backdrop-blur-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 flex items-center justify-center">
             <Logo className="h-10 w-auto text-foreground" />
