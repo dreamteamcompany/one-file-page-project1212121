@@ -41,7 +41,7 @@ const Stars = ({ value }: { value: number }) => {
 
     stars.push(
       <div key={i} className="relative">
-        <Icon name="Star" size={26} style={{ color: 'rgba(255,255,255,0.18)' }} />
+        <Icon name="Star" size={26} className="text-muted-foreground/30" />
         {fill > 0 && (
           <div className="absolute top-0 left-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
             <Icon name="Star" size={26} style={{ color: '#ffb547', fill: '#ffb547' }} />
@@ -91,26 +91,26 @@ const AverageRatingCard = ({ period, dateFrom, dateTo }: AverageRatingCardProps)
   const avg = stats?.avg_rating ?? 0;
 
   return (
-    <Card className="h-full" style={{ background: '#111c44', border: '1px solid rgba(255, 181, 71, 0.4)', borderTop: '4px solid #ffb547', boxShadow: '0 0 30px rgba(255, 181, 71, 0.18), inset 0 0 15px rgba(255, 181, 71, 0.05)' }}>
+    <Card className="h-full bg-card border border-[#ffb547]/40 border-t-4 border-t-[#ffb547]">
       <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
         <div className="flex justify-between items-start mb-4 sm:mb-5">
           <div>
-            <div className="text-base sm:text-lg font-bold mb-2" style={{ color: '#fff' }}>Средняя оценка</div>
-            <div className="text-xs sm:text-sm font-medium" style={{ color: '#a3aed0' }}>
+            <div className="text-base sm:text-lg font-bold mb-2 text-foreground">Средняя оценка</div>
+            <div className="text-xs sm:text-sm font-medium text-muted-foreground">
               {PERIOD_LABELS[period]}
             </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255, 181, 71, 0.1)', color: '#ffb547', border: '1px solid rgba(255, 181, 71, 0.2)' }}>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-[#ffb547]/10 text-[#ffb547] border border-[#ffb547]/20">
             <Icon name="Star" size={18} className="sm:w-5 sm:h-5" />
           </div>
         </div>
-        <div className="text-3xl sm:text-4xl font-extrabold mb-3" style={{ color: '#fff' }}>
+        <div className="text-3xl sm:text-4xl font-extrabold mb-3 text-foreground">
           {loading ? '...' : avg > 0 ? avg.toFixed(2) : '—'}
         </div>
         <div className="mb-3">
           <Stars value={avg} />
         </div>
-        <div className="text-xs sm:text-sm font-medium" style={{ color: '#a3aed0' }}>
+        <div className="text-xs sm:text-sm font-medium text-muted-foreground">
           {loading ? 'Загрузка...' : `${stats?.rated_count ?? 0} оценок`}
         </div>
       </CardContent>

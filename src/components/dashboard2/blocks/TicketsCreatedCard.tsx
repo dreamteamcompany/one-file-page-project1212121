@@ -80,23 +80,23 @@ const TicketsCreatedCard = ({ period, dateFrom, dateTo }: TicketsCreatedCardProp
   const hasChange = stats?.change_percent !== null && stats?.change_percent !== undefined;
 
   return (
-    <Card className="h-full" style={{ background: '#111c44', border: '1px solid rgba(117, 81, 233, 0.4)', borderTop: '4px solid #7551e9', boxShadow: '0 0 30px rgba(117, 81, 233, 0.2), inset 0 0 15px rgba(117, 81, 233, 0.05)' }}>
+    <Card className="h-full bg-card border border-[#7551e9]/40 border-t-4 border-t-[#7551e9]">
       <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
         <div className="flex justify-between items-start mb-4 sm:mb-5">
           <div>
-            <div className="text-base sm:text-lg font-bold mb-2" style={{ color: '#fff' }}>Заявок создано</div>
-            <div className="text-xs sm:text-sm font-medium" style={{ color: '#a3aed0' }}>
+            <div className="text-base sm:text-lg font-bold mb-2 text-foreground">Заявок создано</div>
+            <div className="text-xs sm:text-sm font-medium text-muted-foreground">
               {PERIOD_LABELS[period]}
             </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(117, 81, 233, 0.1)', color: '#7551e9', border: '1px solid rgba(117, 81, 233, 0.2)' }}>
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-[#7551e9]/10 text-[#7551e9] border border-[#7551e9]/20">
             <Icon name="Ticket" size={18} className="sm:w-5 sm:h-5" />
           </div>
         </div>
-        <div className="text-3xl sm:text-4xl font-extrabold mb-2" style={{ color: '#fff' }}>
+        <div className="text-3xl sm:text-4xl font-extrabold mb-2 text-foreground">
           {loading ? '...' : (stats?.count ?? 0).toLocaleString('ru-RU')}
         </div>
-        <div className="text-xs sm:text-sm font-medium mb-3" style={{ color: '#a3aed0' }}>Всего созданных заявок</div>
+        <div className="text-xs sm:text-sm font-medium mb-3 text-muted-foreground">Всего созданных заявок</div>
         {!loading && stats && hasChange && (
           <div className="flex items-center text-xs sm:text-sm font-semibold gap-1.5" style={{ color: stats.is_increase ? '#01b574' : '#e31a1a' }}>
             <Icon name={stats.is_increase ? 'ArrowUp' : 'ArrowDown'} size={14} />
