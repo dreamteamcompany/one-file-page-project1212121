@@ -43,6 +43,8 @@ const getIcon = (fieldName?: string): string => {
     case 'title': return 'FileText';
     case 'description':
     case 'content': return 'AlignLeft';
+    case 'watcher_added':
+    case 'watcher_removed': return 'Eye';
     default: return 'Activity';
   }
 };
@@ -56,6 +58,8 @@ const getColor = (fieldName?: string): string => {
     case 'comment': return 'text-blue-400';
     case 'reopen_reason': return 'text-amber-400';
     case 'due_date': return 'text-purple-400';
+    case 'watcher_added': return 'text-teal-400';
+    case 'watcher_removed': return 'text-rose-400';
     default: return 'text-muted-foreground';
   }
 };
@@ -73,6 +77,14 @@ const getActionText = (log: HistoryLog): string => {
 
   if (log.field_name === 'reopen_reason') {
     return `повторно открыл заявку: ${log.new_value || ''}`;
+  }
+
+  if (log.field_name === 'watcher_added') {
+    return `добавил наблюдателя: ${log.new_value || ''}`;
+  }
+
+  if (log.field_name === 'watcher_removed') {
+    return `убрал наблюдателя: ${log.old_value || ''}`;
   }
 
   if (log.old_value && log.new_value) {

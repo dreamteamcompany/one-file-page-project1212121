@@ -98,6 +98,22 @@ const EVENT_CONFIG: Record<string, {
     label: () => 'Заявка открыта повторно',
     detail: (log) => log.new_value || null,
   },
+  watcher_added: {
+    icon: 'Eye',
+    color: 'text-teal-400',
+    borderColor: 'border-teal-500/30',
+    bgColor: 'bg-teal-500/10',
+    label: () => 'Наблюдатель добавлен',
+    detail: (log) => log.new_value || null,
+  },
+  watcher_removed: {
+    icon: 'EyeOff',
+    color: 'text-rose-400',
+    borderColor: 'border-rose-500/30',
+    bgColor: 'bg-rose-500/10',
+    label: () => 'Наблюдатель убран',
+    detail: (log) => log.old_value || null,
+  },
   title: {
     icon: 'Edit',
     color: 'text-muted-foreground',

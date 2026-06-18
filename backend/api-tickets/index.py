@@ -2689,6 +2689,18 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
             """, (ticket_id, watcher_user_id))
             inserted_row = cur.fetchone()
             really_inserted = bool(inserted_row)
+
+            # Запись в историю заявки (только если реально добавили нового)
+            if really_inserted:
+                cur.execute(f"SELECT full_name FROM {SCHEMA}.users WHERE id = %s", (watcher_user_id,))
+                _wn = cur.fetchone()
+                watcher_name = _wn['full_name'] if _wn else str(watcher_user_id)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_history
+                    (ticket_id, user_id, field_name, old_value, new_value, is_internal, created_at)
+                    VALUES (%s, %s, 'watcher_added', NULL, %s, false, NOW())
+                """, (ticket_id, user_id, watcher_name))
+
             conn.commit()
 
             # Уведомление новому наблюдателю
@@ -2749,6 +2761,19 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
                 DELETE FROM {SCHEMA}.ticket_watchers
                 WHERE ticket_id = %s AND user_id = %s
             """, (ticket_id, watcher_user_id))
+            really_deleted = cur.rowcount > 0
+
+            # Запись в историю заявки (только если реально удалили)
+            if really_deleted:
+                cur.execute(f"SELECT full_name FROM {SCHEMA}.users WHERE id = %s", (watcher_user_id,))
+                _wn = cur.fetchone()
+                watcher_name = _wn['full_name'] if _wn else str(watcher_user_id)
+                cur.execute(f"""
+                    INSERT INTO {SCHEMA}.ticket_history
+                    (ticket_id, user_id, field_name, old_value, new_value, is_internal, created_at)
+                    VALUES (%s, %s, 'watcher_removed', %s, NULL, false, NOW())
+                """, (ticket_id, user_id, watcher_name))
+
             conn.commit()
             return response(200, {'success': True})
 
