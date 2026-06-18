@@ -1,10 +1,14 @@
 import { useCallback, useState } from 'react';
+import { UPLOAD_FILE_URL, apiFetch } from '@/utils/api';
 
-const fileToDataUrl = (file: File): Promise<string> =>
+const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.includes(',') ? result.split(',')[1] : result);
+    };
     reader.readAsDataURL(file);
   });
 
@@ -17,10 +21,12 @@ export interface PastedImage {
 
 interface UsePasteImageOptions {
   folder?: string;
-  onInsert: (dataUrl: string, cursorPos: number) => void;
+  /** Вызывается после успешной загрузки картинки на сервер, передаёт публичную ссылку */
+  onUploaded: (url: string, cursorPos: number) => void;
+  onError?: (message: string) => void;
 }
 
-export const usePasteImage = ({ onInsert }: UsePasteImageOptions) => {
+export const usePasteImage = ({ folder = 'uploads/ticket-description', onUploaded, onError }: UsePasteImageOptions) => {
   const [uploadingPaste, setUploadingPaste] = useState(false);
 
   const handlePaste = useCallback(
@@ -37,15 +43,30 @@ export const usePasteImage = ({ onInsert }: UsePasteImageOptions) => {
       try {
         const file = imageItem.getAsFile();
         if (!file) return;
-        const dataUrl = await fileToDataUrl(file);
-        onInsert(dataUrl, cursorPos);
-      } catch {
-        console.error('[usePasteImage] failed to read image');
+        const base64 = await fileToBase64(file);
+        const filename = file.name && file.name !== 'image.png'
+          ? file.name
+          : `screenshot-${Date.now()}.png`;
+        const resp = await apiFetch(UPLOAD_FILE_URL, {
+          method: 'POST',
+          body: JSON.stringify({ file: base64, filename, folder }),
+        });
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '');
+          throw new Error(`${resp.status} ${text}`);
+        }
+        const data = await resp.json();
+        const url = data.cdn_url || data.url;
+        if (!url) throw new Error('Сервер не вернул ссылку на файл');
+        onUploaded(url, cursorPos);
+      } catch (err) {
+        console.error('[usePasteImage] upload failed', err);
+        onError?.('Не удалось загрузить изображение. Попробуйте ещё раз.');
       } finally {
         setUploadingPaste(false);
       }
     },
-    [onInsert],
+    [folder, onUploaded, onError],
   );
 
   return { handlePaste, uploadingPaste };

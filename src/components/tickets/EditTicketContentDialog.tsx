@@ -100,7 +100,17 @@ const EditTicketContentDialog = ({
   const descRef = useRef<HTMLTextAreaElement>(null);
 
   const { handlePaste: handleDescPaste, uploadingPaste } = usePasteImage({
-    onInsert: (dataUrl) => setDescPastedImages((prev) => [...prev, dataUrl]),
+    onUploaded: (url) => {
+      setDescPastedImages((prev) => [...prev, url]);
+      setDescription((prev) => {
+        const base = prev.trim();
+        const markdown = `![](${url})`;
+        return base ? `${base}\n\n${markdown}` : markdown;
+      });
+    },
+    onError: (message) => {
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
+    },
   });
 
   useEffect(() => {
@@ -126,11 +136,7 @@ const EditTicketContentDialog = ({
       return;
     }
 
-    let finalDescription = description.trim();
-    if (descPastedImages.length > 0) {
-      const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
-      finalDescription = finalDescription ? `${finalDescription}\n\n${imgs}` : imgs;
-    }
+    const finalDescription = description.trim();
 
     const payload: {
       title?: string;
@@ -262,9 +268,18 @@ const EditTicketContentDialog = ({
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setDescPastedImages((prev) => prev.filter((_, j) => j !== i))
-                      }
+                      onClick={() => {
+                        setDescPastedImages((prev) => prev.filter((_, j) => j !== i));
+                        const markdown = `![](${src})`;
+                        setDescription((prev) =>
+                          prev
+                            .split('\n')
+                            .filter((line) => line.trim() !== markdown)
+                            .join('\n')
+                            .replace(/\n{3,}/g, '\n\n')
+                            .trim(),
+                        );
+                      }}
                       className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       ×
@@ -351,11 +366,16 @@ const EditTicketContentDialog = ({
             >
               Отмена
             </Button>
-            <Button type="submit" disabled={updating} className="gap-2">
+            <Button type="submit" disabled={updating || uploadingPaste} className="gap-2">
               {updating ? (
                 <>
                   <Icon name="Loader2" size={16} className="animate-spin" />
                   Сохранение...
+                </>
+              ) : uploadingPaste ? (
+                <>
+                  <Icon name="Loader2" size={16} className="animate-spin" />
+                  Загрузка фото...
                 </>
               ) : (
                 <>

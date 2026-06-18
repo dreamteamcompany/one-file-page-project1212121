@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { usePasteImage } from '@/hooks/usePasteImage';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -91,10 +92,20 @@ const TicketFormStep1 = ({
   const [descPastedImages, setDescPastedImages] = useState<string[]>([]);
 
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
 
   const { handlePaste: handleDescPaste, uploadingPaste } = usePasteImage({
-    onInsert: (dataUrl) => {
-      setDescPastedImages((prev) => [...prev, dataUrl]);
+    onUploaded: (url) => {
+      setDescPastedImages((prev) => [...prev, url]);
+      const base = formData.description.trim();
+      const markdown = `![](${url})`;
+      setFormData({
+        ...formData,
+        description: base ? `${base}\n\n${markdown}` : markdown,
+      });
+    },
+    onError: (message) => {
+      toast({ title: 'Ошибка', description: message, variant: 'destructive' });
     },
   });
 
@@ -140,13 +151,7 @@ const TicketFormStep1 = ({
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    if (descPastedImages.length > 0) {
-      const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
-      const base = formData.description.trim();
-      setFormData({ ...formData, description: base ? `${base}\n\n${imgs}` : imgs });
-      setDescPastedImages([]);
-    }
+    if (isSubmitting || uploadingPaste) return;
     onSubmit(e);
   };
 
@@ -230,7 +235,19 @@ const TicketFormStep1 = ({
                   />
                   <button
                     type="button"
-                    onClick={() => setDescPastedImages((prev) => prev.filter((_, j) => j !== i))}
+                    onClick={() => {
+                      setDescPastedImages((prev) => prev.filter((_, j) => j !== i));
+                      const markdown = `![](${src})`;
+                      setFormData({
+                        ...formData,
+                        description: formData.description
+                          .split('\n')
+                          .filter((line) => line.trim() !== markdown)
+                          .join('\n')
+                          .replace(/\n{3,}/g, '\n\n')
+                          .trim(),
+                      });
+                    }}
                     className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     ×
@@ -314,43 +331,27 @@ const TicketFormStep1 = ({
             <Button
               type="button"
               className="flex-1 gap-2"
-              onClick={() => {
-                if (descPastedImages.length > 0) {
-                  const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
-                  const base = formData.description.trim();
-                  setFormData({ ...formData, description: base ? `${base}\n\n${imgs}` : imgs });
-                  setDescPastedImages([]);
-                }
-                onNext?.();
-              }}
-              disabled={!canProceed || isUploadingFiles}
+              onClick={() => onNext?.()}
+              disabled={!canProceed || isUploadingFiles || uploadingPaste}
             >
               <Icon name={classificationMode === 'ai' ? 'Sparkles' : 'ArrowRight'} size={18} />
-              {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Далее'}
+              {isUploadingFiles || uploadingPaste ? 'Дождитесь загрузки файлов...' : 'Далее'}
             </Button>
           ) : hasCustomFields && onNext ? (
             <Button
               type="button"
               className="flex-1 gap-2"
-              onClick={() => {
-                if (descPastedImages.length > 0) {
-                  const imgs = descPastedImages.map((s) => `![](${s})`).join('\n');
-                  const base = formData.description.trim();
-                  setFormData({ ...formData, description: base ? `${base}\n\n${imgs}` : imgs });
-                  setDescPastedImages([]);
-                }
-                onNext?.();
-              }}
-              disabled={isUploadingFiles || !canProceed}
+              onClick={() => onNext?.()}
+              disabled={isUploadingFiles || uploadingPaste || !canProceed}
             >
-              {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Далее'}
+              {isUploadingFiles || uploadingPaste ? 'Дождитесь загрузки файлов...' : 'Далее'}
               <Icon name="ArrowRight" size={18} />
             </Button>
           ) : (
             <Button
               type="submit"
               className="flex-1 gap-2"
-              disabled={isUploadingFiles || !canProceed || isSubmitting}
+              disabled={isUploadingFiles || uploadingPaste || !canProceed || isSubmitting}
             >
               {isSubmitting ? (
                 <>
@@ -360,7 +361,7 @@ const TicketFormStep1 = ({
               ) : (
                 <>
                   <Icon name="Send" size={18} />
-                  {isUploadingFiles ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}
+                  {isUploadingFiles || uploadingPaste ? 'Дождитесь загрузки файлов...' : 'Создать заявку'}
                 </>
               )}
             </Button>
