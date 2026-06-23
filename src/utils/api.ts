@@ -37,6 +37,7 @@ const ENDPOINT_MAP: Record<string, string> = {
   'dashboard-ops': TICKETS_API,
   'dashboard-sla': TICKETS_API,
   'dashboard-services': TICKETS_API,
+  'dashboard-team': TICKETS_API,
   'api-tickets': TICKETS_API,
   'service_categories': TICKETS_API,
   'ticket-dictionaries-api': TICKETS_API,

@@ -8,6 +8,7 @@ import DashboardSwitcher, { DashboardId } from '@/components/dashboard2/ops/Dash
 import OperationsDashboard from '@/components/dashboard2/ops/OperationsDashboard';
 import SlaDashboard from '@/components/dashboard2/sla/SlaDashboard';
 import ServicesDashboard from '@/components/dashboard2/services/ServicesDashboard';
+import TeamDashboard from '@/components/dashboard2/team/TeamDashboard';
 
 const Dashboard2 = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -22,6 +23,7 @@ const Dashboard2 = () => {
         {activeDashboard === 'operations' && <OperationsDashboard />}
         {activeDashboard === 'sla' && <SlaDashboard />}
         {activeDashboard === 'services' && <ServicesDashboard />}
+        {activeDashboard === 'team' && <TeamDashboard />}
       </div>
     </PageLayout>
   );
