@@ -465,6 +465,252 @@ def handle_tickets_rating_stats(method: str, event: Dict[str, Any], conn) -> Dic
         cur.close()
 
 
+def _fmt_duration(seconds: Optional[float]) -> str:
+    """Форматирует длительность в человекочитаемый вид: '12 мин' или '4 ч 18 мин'."""
+    if seconds is None or seconds <= 0:
+        return '—'
+    total_min = int(round(seconds / 60.0))
+    hours = total_min // 60
+    mins = total_min % 60
+    if hours > 0:
+        return f"{hours} ч {mins:02d} мин"
+    return f"{mins} мин"
+
+
+def handle_dashboard_ops(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Операционный дашборд: KPI, динамика заявок, критические, возраст, нагрузка, каналы.
+
+    Параметры (queryStringParameters):
+      period — today | week | month | year | custom (по умолчанию month)
+      from_date, to_date — даты YYYY-MM-DD (для period=custom)
+
+    Возвращает единый JSON для дашборда "Операционный центр".
+    """
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+
+    params = event.get('queryStringParameters', {}) or {}
+    period = (params.get('period') or 'month').strip().lower()
+
+    period_sql = {
+        'today': "date_trunc('day', NOW())",
+        'week': "date_trunc('week', NOW())",
+        'month': "date_trunc('month', NOW())",
+        'year': "date_trunc('year', NOW())",
+    }
+
+    if period == 'custom':
+        from_date = (params.get('from_date') or '').strip()
+        to_date = (params.get('to_date') or '').strip()
+        if not from_date or not to_date:
+            return response(400, {'error': 'from_date и to_date обязательны для period=custom'})
+        start_expr = "%(from_date)s::date"
+        end_expr = "(%(to_date)s::date + INTERVAL '1 day')"
+        prev_start_expr = "(%(from_date)s::date - (%(to_date)s::date - %(from_date)s::date) - INTERVAL '1 day')"
+        prev_end_expr = "%(from_date)s::date"
+    else:
+        trunc = period_sql.get(period, period_sql['month'])
+        unit = {'today': 'day', 'week': 'week', 'month': 'month', 'year': 'year'}.get(period, 'month')
+        start_expr = trunc
+        end_expr = "NOW()"
+        prev_start_expr = f"{trunc} - INTERVAL '1 {unit}'"
+        prev_end_expr = trunc
+
+    qp = {'from_date': params.get('from_date'), 'to_date': params.get('to_date')}
+
+    cur = conn.cursor()
+    try:
+        # 1) KPI
+        cur.execute(f"""
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE NOT COALESCE(s.is_closed, false) AND NOT t.is_archived
+                ) AS active_count,
+                COUNT(*) FILTER (
+                    WHERE t.created_at >= date_trunc('day', NOW())
+                ) AS new_today,
+                COUNT(*) FILTER (
+                    WHERE NOT COALESCE(s.is_closed, false) AND NOT t.is_archived
+                      AND t.due_date IS NOT NULL AND t.due_date < NOW()
+                ) AS overdue_sla,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(s.is_reopened, false)
+                      AND t.created_at >= {start_expr} AND t.created_at < {end_expr}
+                ) AS reopened_count
+            FROM {SCHEMA}.tickets t
+            LEFT JOIN {SCHEMA}.ticket_statuses s ON s.id = t.status_id
+        """, qp)
+        k = cur.fetchone()
+
+        # Среднее время ответа и решения за период
+        cur.execute(f"""
+            SELECT
+                AVG(EXTRACT(EPOCH FROM (t.confirmation_sent_at - t.created_at)))
+                    FILTER (WHERE t.confirmation_sent_at IS NOT NULL) AS avg_response_sec,
+                AVG(EXTRACT(EPOCH FROM (t.closed_at - t.created_at)))
+                    FILTER (WHERE t.closed_at IS NOT NULL) AS avg_resolve_sec
+            FROM {SCHEMA}.tickets t
+            WHERE t.created_at >= {start_expr} AND t.created_at < {end_expr}
+        """, qp)
+        tm = cur.fetchone()
+
+        # Предыдущий период для дельт активных/новых
+        cur.execute(f"""
+            SELECT
+                COUNT(*) FILTER (WHERE t.created_at >= {start_expr} AND t.created_at < {end_expr}) AS cur_created,
+                COUNT(*) FILTER (WHERE t.created_at >= {prev_start_expr} AND t.created_at < {prev_end_expr}) AS prev_created
+            FROM {SCHEMA}.tickets t
+        """, qp)
+        d = cur.fetchone()
+        cur_created = d['cur_created'] or 0
+        prev_created = d['prev_created'] or 0
+        created_delta = cur_created - prev_created
+
+        kpi = {
+            'active': int(k['active_count'] or 0),
+            'new_today': int(k['new_today'] or 0),
+            'overdue_sla': int(k['overdue_sla'] or 0),
+            'avg_response': _fmt_duration(tm['avg_response_sec']),
+            'avg_resolve': _fmt_duration(tm['avg_resolve_sec']),
+            'reopened': int(k['reopened_count'] or 0),
+            'created_delta': int(created_delta),
+        }
+
+        # 2) Динамика по дням: создано / закрыто
+        cur.execute(f"""
+            WITH days AS (
+                SELECT generate_series(
+                    date_trunc('day', {start_expr}),
+                    date_trunc('day', {end_expr} - INTERVAL '1 second'),
+                    INTERVAL '1 day'
+                )::date AS d
+            )
+            SELECT
+                days.d AS day,
+                (SELECT COUNT(*) FROM {SCHEMA}.tickets t
+                    WHERE t.created_at::date = days.d) AS created,
+                (SELECT COUNT(*) FROM {SCHEMA}.tickets t
+                    WHERE t.closed_at::date = days.d) AS closed
+            FROM days
+            ORDER BY days.d
+        """, qp)
+        dynamics = []
+        running = 0
+        for r in cur.fetchall():
+            created = int(r['created'] or 0)
+            closed = int(r['closed'] or 0)
+            running += created - closed
+            dynamics.append({
+                'day': r['day'].strftime('%d.%m'),
+                'created': created,
+                'closed': closed,
+                'open': max(running, 0),
+            })
+
+        # 3) Критические заявки (высокий/критический приоритет, активные, просроченные первыми)
+        cur.execute(f"""
+            SELECT t.id, t.title,
+                   COALESCE(u.full_name, u.email, 'Клиент') AS author,
+                   t.due_date,
+                   EXTRACT(EPOCH FROM (NOW() - t.created_at)) AS age_sec
+            FROM {SCHEMA}.tickets t
+            LEFT JOIN {SCHEMA}.ticket_statuses s ON s.id = t.status_id
+            LEFT JOIN {SCHEMA}.ticket_priorities p ON p.id = t.priority_id
+            LEFT JOIN {SCHEMA}.users u ON u.id = t.created_by
+            WHERE NOT COALESCE(s.is_closed, false) AND NOT t.is_archived
+              AND (LOWER(COALESCE(p.name,'')) IN ('критический','высокий')
+                   OR (t.due_date IS NOT NULL AND t.due_date < NOW()))
+            ORDER BY (t.due_date IS NOT NULL AND t.due_date < NOW()) DESC, t.created_at ASC
+            LIMIT 5
+        """)
+        critical = []
+        for r in cur.fetchall():
+            critical.append({
+                'id': r['id'],
+                'title': r['title'],
+                'author': r['author'],
+                'age': _fmt_duration(float(r['age_sec']) if r['age_sec'] is not None else None) + ' назад',
+            })
+
+        # 4) Возраст активных заявок
+        cur.execute(f"""
+            SELECT
+                COUNT(*) FILTER (WHERE NOW() - t.created_at < INTERVAL '1 hour') AS lt1h,
+                COUNT(*) FILTER (WHERE NOW() - t.created_at >= INTERVAL '1 hour'
+                                   AND NOW() - t.created_at < INTERVAL '4 hour') AS h1_4,
+                COUNT(*) FILTER (WHERE NOW() - t.created_at >= INTERVAL '4 hour'
+                                   AND NOW() - t.created_at < INTERVAL '24 hour') AS h4_24,
+                COUNT(*) FILTER (WHERE NOW() - t.created_at >= INTERVAL '24 hour') AS gt24h
+            FROM {SCHEMA}.tickets t
+            LEFT JOIN {SCHEMA}.ticket_statuses s ON s.id = t.status_id
+            WHERE NOT COALESCE(s.is_closed, false) AND NOT t.is_archived
+        """)
+        a = cur.fetchone()
+        age_total = (a['lt1h'] or 0) + (a['h1_4'] or 0) + (a['h4_24'] or 0) + (a['gt24h'] or 0)
+
+        def _pct(v):
+            return round((v or 0) / age_total * 100) if age_total else 0
+
+        age_buckets = [
+            {'label': 'До 1 часа', 'count': int(a['lt1h'] or 0), 'percent': _pct(a['lt1h'])},
+            {'label': '1 – 4 часа', 'count': int(a['h1_4'] or 0), 'percent': _pct(a['h1_4'])},
+            {'label': '4 – 24 часа', 'count': int(a['h4_24'] or 0), 'percent': _pct(a['h4_24'])},
+            {'label': 'Более 24 часов', 'count': int(a['gt24h'] or 0), 'percent': _pct(a['gt24h'])},
+        ]
+
+        # 5) Нагрузка по часам (день недели x час) за период
+        cur.execute(f"""
+            SELECT EXTRACT(DOW FROM t.created_at)::int AS dow,
+                   EXTRACT(HOUR FROM t.created_at)::int AS hour,
+                   COUNT(*) AS cnt
+            FROM {SCHEMA}.tickets t
+            WHERE t.created_at >= {start_expr} AND t.created_at < {end_expr}
+            GROUP BY 1, 2
+        """, qp)
+        # dow: 0=Вс..6=Сб → переведём в Пн..Вс
+        heatmap = {}
+        max_load = 0
+        for r in cur.fetchall():
+            dow = r['dow']
+            row_idx = 6 if dow == 0 else dow - 1  # Пн=0 .. Вс=6
+            cnt = int(r['cnt'] or 0)
+            heatmap[f"{row_idx}-{r['hour']}"] = cnt
+            if cnt > max_load:
+                max_load = cnt
+
+        # 6) Каналы (распределение по приоритетам как доступное измерение)
+        cur.execute(f"""
+            SELECT COALESCE(p.name, 'Без приоритета') AS name, COUNT(*) AS cnt
+            FROM {SCHEMA}.tickets t
+            LEFT JOIN {SCHEMA}.ticket_priorities p ON p.id = t.priority_id
+            WHERE t.created_at >= {start_expr} AND t.created_at < {end_expr}
+            GROUP BY 1
+            ORDER BY cnt DESC
+        """, qp)
+        ch_rows = cur.fetchall()
+        ch_total = sum(int(r['cnt'] or 0) for r in ch_rows) or 1
+        channels = [{
+            'name': r['name'],
+            'count': int(r['cnt'] or 0),
+            'percent': round(int(r['cnt'] or 0) / ch_total * 100),
+        } for r in ch_rows]
+
+        return response(200, {
+            'kpi': kpi,
+            'dynamics': dynamics,
+            'critical': critical,
+            'age_buckets': age_buckets,
+            'heatmap': heatmap,
+            'heatmap_max': max_load,
+            'channels': channels,
+        })
+    finally:
+        cur.close()
+
+
 def handler(event: dict, context) -> dict:
     """API для работы с заявками и категориями сервисов"""
     method = event.get('httpMethod', 'GET')
@@ -516,6 +762,8 @@ def handler(event: dict, context) -> dict:
             return handle_tickets_created_stats(method, event, conn)
         elif endpoint == 'tickets-rating-stats':
             return handle_tickets_rating_stats(method, event, conn)
+        elif endpoint == 'dashboard-ops':
+            return handle_dashboard_ops(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:

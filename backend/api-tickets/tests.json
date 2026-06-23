@@ -142,6 +142,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get dashboard ops (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=dashboard-ops&period=month",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }
