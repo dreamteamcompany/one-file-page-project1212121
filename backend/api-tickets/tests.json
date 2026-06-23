@@ -152,6 +152,16 @@
         "error": "Требуется авторизация"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get dashboard sla (requires auth)",
+      "method": "GET",
+      "path": "/?endpoint=dashboard-sla&period=month",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "Требуется авторизация"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

@@ -14,6 +14,8 @@ interface OpsHeaderProps {
   onDateToChange: (d: Date | undefined) => void;
   onRefresh: () => void;
   loading: boolean;
+  title?: string;
+  subtitle?: string;
 }
 
 const PERIODS: { value: PeriodType; label: string }[] = [
@@ -33,13 +35,15 @@ const OpsHeader = ({
   onDateToChange,
   onRefresh,
   loading,
+  title = '1. Операционный центр',
+  subtitle = 'Оперативный обзор работы службы поддержки',
 }: OpsHeaderProps) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">1. Операционный центр</h1>
-          <p className="text-sm text-muted-foreground mt-1">Оперативный обзор работы службы поддержки</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <button
           onClick={onRefresh}

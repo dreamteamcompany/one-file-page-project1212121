@@ -11,8 +11,8 @@ export interface DashboardTab {
 
 export const DASHBOARD_TABS: DashboardTab[] = [
   { id: 'operations', label: 'Операционный центр', icon: 'LayoutDashboard' },
+  { id: 'sla', label: 'SLA и качество', icon: 'Gauge' },
   { id: 'team', label: 'Команда', icon: 'Users', disabled: true },
-  { id: 'sla', label: 'SLA', icon: 'Gauge', disabled: true },
 ];
 
 interface DashboardSwitcherProps {

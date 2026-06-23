@@ -714,6 +714,132 @@ def handle_dashboard_ops(method: str, event: Dict[str, Any], conn) -> Dict[str, 
         cur.close()
 
 
+def handle_dashboard_sla(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Дашборд "SLA и качество".
+
+    SLA-метрики (соблюдение, в срок/просрочено, по приоритетам, просроченные,
+    мини-графики времени) — пока заглушки.
+    CSAT, распределение оценок и среднее время первого ответа/решения — из БД.
+    """
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+
+    params = event.get('queryStringParameters', {}) or {}
+    period = (params.get('period') or 'month').strip().lower()
+
+    period_sql = {
+        'today': "date_trunc('day', NOW())",
+        'week': "date_trunc('week', NOW())",
+        'month': "date_trunc('month', NOW())",
+        'year': "date_trunc('year', NOW())",
+    }
+
+    if period == 'custom':
+        from_date = (params.get('from_date') or '').strip()
+        to_date = (params.get('to_date') or '').strip()
+        if not from_date or not to_date:
+            return response(400, {'error': 'from_date и to_date обязательны для period=custom'})
+        start_expr = "%(from_date)s::date"
+        end_expr = "(%(to_date)s::date + INTERVAL '1 day')"
+    else:
+        trunc = period_sql.get(period, period_sql['month'])
+        start_expr = trunc
+        end_expr = "NOW()"
+
+    qp = {'from_date': params.get('from_date'), 'to_date': params.get('to_date')}
+
+    cur = conn.cursor()
+    try:
+        # Среднее время первого ответа (по первому внешнему комментарию)
+        cur.execute(f"""
+            SELECT AVG(EXTRACT(EPOCH FROM (fc.first_reply - t.created_at))) AS avg_sec
+            FROM {SCHEMA}.tickets t
+            JOIN LATERAL (
+                SELECT MIN(c.created_at) AS first_reply
+                FROM {SCHEMA}.ticket_comments c
+                WHERE c.ticket_id = t.id AND c.user_id <> t.created_by AND NOT COALESCE(c.is_internal, false)
+            ) fc ON fc.first_reply IS NOT NULL
+            WHERE t.created_at >= {start_expr} AND t.created_at < {end_expr}
+        """, qp)
+        first_resp_sec = cur.fetchone()['avg_sec']
+
+        # Среднее время решения
+        cur.execute(f"""
+            SELECT AVG(EXTRACT(EPOCH FROM (t.closed_at - t.created_at))) AS avg_sec
+            FROM {SCHEMA}.tickets t
+            WHERE t.closed_at IS NOT NULL
+              AND t.created_at >= {start_expr} AND t.created_at < {end_expr}
+        """, qp)
+        resolve_sec = cur.fetchone()['avg_sec']
+
+        # CSAT и распределение оценок
+        cur.execute(f"""
+            SELECT rating, COUNT(*) AS cnt
+            FROM {SCHEMA}.tickets t
+            WHERE rating IS NOT NULL
+              AND COALESCE(t.closed_at, t.created_at) >= {start_expr}
+              AND COALESCE(t.closed_at, t.created_at) < {end_expr}
+            GROUP BY rating
+        """, qp)
+        rating_map = {int(r['rating']): int(r['cnt']) for r in cur.fetchall()}
+        total_rated = sum(rating_map.values())
+        csat = round(
+            sum(star * cnt for star, cnt in rating_map.items()) / total_rated, 2
+        ) if total_rated else 0.0
+
+        rating_distribution = []
+        for star in range(5, 0, -1):
+            cnt = rating_map.get(star, 0)
+            rating_distribution.append({
+                'star': star,
+                'count': cnt,
+                'percent': round(cnt / total_rated * 100) if total_rated else 0,
+            })
+        rating_histogram = [
+            {'star': star, 'count': rating_map.get(star, 0)} for star in range(1, 6)
+        ]
+
+        # Мини-графики (тренды) — заглушки
+        def _stub_trend(base: int, n: int = 14):
+            return [{'i': i, 'v': base + (i % 5) - 2} for i in range(n)]
+
+        return response(200, {
+            # SLA — заглушки
+            'sla_compliance': {'value': 97.4, 'delta': 2.1, 'is_increase': True},
+            'sla_split': {'on_time': 1416, 'on_time_pct': 97.4, 'overdue': 34, 'overdue_pct': 2.6},
+            'sla_by_priority': [
+                {'name': 'Критичный', 'percent': 92, 'color': '#ef4444'},
+                {'name': 'Высокий', 'percent': 95, 'color': '#f59e0b'},
+                {'name': 'Средний', 'percent': 98, 'color': '#22c55e'},
+                {'name': 'Низкий', 'percent': 99, 'color': '#22c55e'},
+            ],
+            'overdue_total': {'value': 8, 'delta': -2, 'is_increase': False},
+            'first_response': {
+                'value': _fmt_duration(first_resp_sec),
+                'delta': '-5 мин',
+                'is_increase': False,
+                'trend': _stub_trend(12),
+            },
+            'resolution': {
+                'value': _fmt_duration(resolve_sec),
+                'delta': '-1 ч 02 мин',
+                'is_increase': False,
+                'trend': _stub_trend(10),
+            },
+            'overdue_trend': _stub_trend(8),
+            # CSAT — реальные данные
+            'csat': {'value': csat, 'delta': 0.15, 'is_increase': True},
+            'csat_histogram': rating_histogram,
+            'rating_total': total_rated,
+            'rating_distribution': rating_distribution,
+        })
+    finally:
+        cur.close()
+
+
 def handler(event: dict, context) -> dict:
     """API для работы с заявками и категориями сервисов"""
     method = event.get('httpMethod', 'GET')
@@ -767,6 +893,8 @@ def handler(event: dict, context) -> dict:
             return handle_tickets_rating_stats(method, event, conn)
         elif endpoint == 'dashboard-ops':
             return handle_dashboard_ops(method, event, conn)
+        elif endpoint == 'dashboard-sla':
+            return handle_dashboard_sla(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:
