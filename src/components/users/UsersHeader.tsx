@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 interface UsersHeaderProps {
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
+  searchQuery?: string;
+  onSearchChange?: (value: string) => void;
 }
 
-const UsersHeader = ({ menuOpen, setMenuOpen }: UsersHeaderProps) => {
+const UsersHeader = ({ menuOpen, setMenuOpen, searchQuery = '', onSearchChange }: UsersHeaderProps) => {
   return (
     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-[30px] px-4 md:px-[25px] py-4 md:py-[18px] bg-[#1b254b]/50 backdrop-blur-[20px] rounded-[15px] border border-border">
       <button
@@ -20,6 +22,8 @@ const UsersHeader = ({ menuOpen, setMenuOpen }: UsersHeaderProps) => {
         <Input 
           type="text" 
           placeholder="Поиск пользователей..." 
+          value={searchQuery}
+          onChange={(e) => onSearchChange?.(e.target.value)}
           className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
         />
       </div>

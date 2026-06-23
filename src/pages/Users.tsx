@@ -47,6 +47,7 @@ const Users = () => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [showBlocked, setShowBlocked] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -328,7 +329,15 @@ const Users = () => {
 
   const activeUsers = users.filter((u) => u.is_active);
   const blockedUsers = users.filter((u) => !u.is_active);
-  const visibleUsers = showBlocked ? blockedUsers : activeUsers;
+  const baseUsers = showBlocked ? blockedUsers : activeUsers;
+  const query = searchQuery.trim().toLowerCase();
+  const visibleUsers = query
+    ? baseUsers.filter((u) =>
+        [u.full_name, u.username, u.position, u.email]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(query))
+      )
+    : baseUsers;
 
   return (
     <div className="flex min-h-screen">
@@ -351,7 +360,12 @@ const Users = () => {
       )}
 
       <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
-        <UsersHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+        <UsersHeader
+          menuOpen={menuOpen}
+          setMenuOpen={setMenuOpen}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
@@ -395,9 +409,11 @@ const Users = () => {
               <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
             ) : visibleUsers.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                {showBlocked
-                  ? 'Нет заблокированных пользователей.'
-                  : 'Нет активных пользователей. Добавьте первого пользователя.'}
+                {query
+                  ? `Ничего не найдено по запросу «${searchQuery.trim()}».`
+                  : showBlocked
+                    ? 'Нет заблокированных пользователей.'
+                    : 'Нет активных пользователей. Добавьте первого пользователя.'}
               </div>
             ) : (
               <UsersTable
