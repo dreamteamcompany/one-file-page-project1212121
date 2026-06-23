@@ -840,6 +840,174 @@ def handle_dashboard_sla(method: str, event: Dict[str, Any], conn) -> Dict[str, 
         cur.close()
 
 
+def handle_dashboard_services(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
+    """Дашборд "Аналитика услуг" — на реальных привязках заявок к услугам.
+
+    Источник: ticket_to_service_mappings + ticket_services + tickets.
+    """
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+    if method != 'GET':
+        return response(405, {'error': 'Только GET запросы'})
+
+    params = event.get('queryStringParameters', {}) or {}
+    period = (params.get('period') or 'month').strip().lower()
+
+    period_sql = {
+        'today': "date_trunc('day', NOW())",
+        'week': "date_trunc('week', NOW())",
+        'month': "date_trunc('month', NOW())",
+        'year': "date_trunc('year', NOW())",
+    }
+
+    if period == 'custom':
+        from_date = (params.get('from_date') or '').strip()
+        to_date = (params.get('to_date') or '').strip()
+        if not from_date or not to_date:
+            return response(400, {'error': 'from_date и to_date обязательны для period=custom'})
+        start_expr = "%(from_date)s::date"
+        end_expr = "(%(to_date)s::date + INTERVAL '1 day')"
+        prev_start_expr = "(%(from_date)s::date - (%(to_date)s::date - %(from_date)s::date) - INTERVAL '1 day')"
+        prev_end_expr = "%(from_date)s::date"
+    else:
+        trunc = period_sql.get(period, period_sql['month'])
+        unit = {'today': 'day', 'week': 'week', 'month': 'month', 'year': 'year'}.get(period, 'month')
+        start_expr = trunc
+        end_expr = "NOW()"
+        prev_start_expr = f"{trunc} - INTERVAL '1 {unit}'"
+        prev_end_expr = trunc
+
+    qp = {'from_date': params.get('from_date'), 'to_date': params.get('to_date')}
+
+    base_join = f"""
+        FROM {SCHEMA}.ticket_to_service_mappings m
+        JOIN {SCHEMA}.ticket_services ts ON ts.id = m.ticket_service_id
+        JOIN {SCHEMA}.tickets t ON t.id = m.ticket_id
+        LEFT JOIN {SCHEMA}.ticket_statuses s ON s.id = t.status_id
+        WHERE t.created_at >= {start_expr} AND t.created_at < {end_expr}
+    """
+
+    cur = conn.cursor()
+    try:
+        # Общее число привязанных заявок за период (для долей)
+        cur.execute(f"SELECT COUNT(*) AS cnt {base_join}", qp)
+        total_tickets = int(cur.fetchone()['cnt'] or 0) or 1
+
+        # Топ услуг + метрики
+        cur.execute(f"""
+            SELECT ts.id, ts.name,
+                   COUNT(*) AS cnt,
+                   AVG(EXTRACT(EPOCH FROM (t.closed_at - t.created_at)))
+                       FILTER (WHERE t.closed_at IS NOT NULL) AS avg_resolve_sec,
+                   COUNT(*) FILTER (WHERE COALESCE(s.is_reopened, false)) AS reopened
+            {base_join}
+            GROUP BY ts.id, ts.name
+            ORDER BY cnt DESC
+            LIMIT 10
+        """, qp)
+        services_rows = cur.fetchall()
+
+        # Предыдущий период — для изменения
+        cur.execute(f"""
+            SELECT ts.id, COUNT(*) AS cnt
+            FROM {SCHEMA}.ticket_to_service_mappings m
+            JOIN {SCHEMA}.ticket_services ts ON ts.id = m.ticket_service_id
+            JOIN {SCHEMA}.tickets t ON t.id = m.ticket_id
+            WHERE t.created_at >= {prev_start_expr} AND t.created_at < {prev_end_expr}
+            GROUP BY ts.id
+        """, qp)
+        prev_map = {r['id']: int(r['cnt'] or 0) for r in cur.fetchall()}
+
+        def _cost_level(avg_sec):
+            if avg_sec is None:
+                return {'label': 'Низкая', 'tone': 'low'}
+            hrs = float(avg_sec) / 3600.0
+            if hrs >= 4:
+                return {'label': 'Высокая', 'tone': 'high'}
+            if hrs >= 1:
+                return {'label': 'Средняя', 'tone': 'mid'}
+            return {'label': 'Низкая', 'tone': 'low'}
+
+        top_services = []
+        high_volume = []
+        cost_services = []
+        for r in services_rows:
+            cnt = int(r['cnt'] or 0)
+            prev = prev_map.get(r['id'], 0)
+            if prev > 0:
+                change = round((cnt - prev) / prev * 100)
+            elif cnt > 0:
+                change = 100
+            else:
+                change = 0
+            avg_sec = r['avg_resolve_sec']
+            reopened = int(r['reopened'] or 0)
+            top_services.append({
+                'name': r['name'],
+                'count': cnt,
+                'share': round(cnt / total_tickets * 100),
+            })
+            high_volume.append({
+                'name': r['name'],
+                'count': cnt,
+                'change': change,
+                'avg_resolve': _fmt_duration(avg_sec),
+                'reopened': reopened,
+                'reopened_pct': round(reopened / cnt * 100, 1) if cnt else 0.0,
+            })
+            cost_services.append({
+                'name': r['name'],
+                'cost': _cost_level(avg_sec),
+            })
+
+        # Топ проблем — по заголовкам заявок
+        cur.execute(f"""
+            SELECT t.title AS title, COUNT(*) AS cnt
+            {base_join}
+            GROUP BY t.title
+            ORDER BY cnt DESC
+            LIMIT 6
+        """, qp)
+        top_problems = [{'title': r['title'], 'count': int(r['cnt'] or 0)} for r in cur.fetchall()]
+
+        # Динамика по топ-5 услугам (по дням)
+        top5_ids = [r['id'] for r in services_rows[:5]]
+        top5_names = {r['id']: r['name'] for r in services_rows[:5]}
+        dynamics = []
+        if top5_ids:
+            ids_csv = ','.join(str(int(i)) for i in top5_ids)
+            cur.execute(f"""
+                SELECT t.created_at::date AS day, ts.id AS sid, COUNT(*) AS cnt
+                {base_join}
+                  AND ts.id IN ({ids_csv})
+                GROUP BY day, ts.id
+                ORDER BY day
+            """, qp)
+            by_day = {}
+            for r in cur.fetchall():
+                day = r['day'].strftime('%d.%m')
+                by_day.setdefault(day, {})[r['sid']] = int(r['cnt'] or 0)
+            for day, vals in by_day.items():
+                point = {'day': day}
+                for sid in top5_ids:
+                    point[f's{sid}'] = vals.get(sid, 0)
+                dynamics.append(point)
+
+        dynamics_series = [{'key': f's{sid}', 'name': top5_names[sid]} for sid in top5_ids]
+
+        return response(200, {
+            'top_services': top_services[:5],
+            'top_problems': top_problems,
+            'dynamics': dynamics,
+            'dynamics_series': dynamics_series,
+            'high_volume': high_volume,
+            'cost_services': cost_services,
+        })
+    finally:
+        cur.close()
+
+
 def handler(event: dict, context) -> dict:
     """API для работы с заявками и категориями сервисов"""
     method = event.get('httpMethod', 'GET')
@@ -895,6 +1063,8 @@ def handler(event: dict, context) -> dict:
             return handle_dashboard_ops(method, event, conn)
         elif endpoint == 'dashboard-sla':
             return handle_dashboard_sla(method, event, conn)
+        elif endpoint == 'dashboard-services':
+            return handle_dashboard_services(method, event, conn)
         else:
             return response(400, {'error': 'Unknown endpoint'})
     finally:

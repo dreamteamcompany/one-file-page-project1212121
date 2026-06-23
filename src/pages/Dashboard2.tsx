@@ -7,6 +7,7 @@ import AppHeader from '@/components/layout/AppHeader';
 import DashboardSwitcher, { DashboardId } from '@/components/dashboard2/ops/DashboardSwitcher';
 import OperationsDashboard from '@/components/dashboard2/ops/OperationsDashboard';
 import SlaDashboard from '@/components/dashboard2/sla/SlaDashboard';
+import ServicesDashboard from '@/components/dashboard2/services/ServicesDashboard';
 
 const Dashboard2 = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -20,6 +21,7 @@ const Dashboard2 = () => {
         <DashboardSwitcher active={activeDashboard} onChange={setActiveDashboard} />
         {activeDashboard === 'operations' && <OperationsDashboard />}
         {activeDashboard === 'sla' && <SlaDashboard />}
+        {activeDashboard === 'services' && <ServicesDashboard />}
       </div>
     </PageLayout>
   );

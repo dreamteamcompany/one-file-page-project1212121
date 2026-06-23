@@ -1,6 +1,6 @@
 import Icon from '@/components/ui/icon';
 
-export type DashboardId = 'operations' | 'team' | 'sla';
+export type DashboardId = 'operations' | 'sla' | 'services' | 'team';
 
 export interface DashboardTab {
   id: DashboardId;
@@ -12,6 +12,7 @@ export interface DashboardTab {
 export const DASHBOARD_TABS: DashboardTab[] = [
   { id: 'operations', label: 'Операционный центр', icon: 'LayoutDashboard' },
   { id: 'sla', label: 'SLA и качество', icon: 'Gauge' },
+  { id: 'services', label: 'Аналитика услуг', icon: 'Boxes' },
   { id: 'team', label: 'Команда', icon: 'Users', disabled: true },
 ];
 
