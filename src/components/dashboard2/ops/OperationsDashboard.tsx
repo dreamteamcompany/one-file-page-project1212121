@@ -16,7 +16,7 @@ const OperationsDashboard = () => {
   const { data, loading, refresh } = useOpsDashboard(period, dateFrom, dateTo);
 
   return (
-    <div className="flex flex-col gap-5 max-w-[1400px]">
+    <div className="flex flex-col gap-5 w-full">
       <OpsHeader
         period={period}
         onPeriodChange={setPeriod}
