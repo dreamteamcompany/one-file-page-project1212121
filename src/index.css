@@ -279,6 +279,19 @@
   animation: bounce-slow 2s ease-in-out infinite;
 }
 
+/* Нейтрализуем оранжевую обводку/подсветку пунктов в выпадающих списках (cmdk) */
+[cmdk-item] {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+[cmdk-item][data-selected="true"],
+[cmdk-item][aria-selected="true"]:hover,
+[cmdk-item]:hover {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
 @keyframes comment-highlight-flash {
   0% {
     box-shadow:
