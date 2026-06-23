@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import PageLayout from '@/components/layout/PageLayout';
@@ -19,6 +20,8 @@ const Settings = () => {
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
   const [classificationMode, setClassificationMode] = useState<'ai' | 'manual'>('ai');
   const [classificationLoading, setClassificationLoading] = useState(false);
+  const [dueDays, setDueDays] = useState('1');
+  const [dueDaysLoading, setDueDaysLoading] = useState(false);
 
   useEffect(() => {
     const loadClassificationMode = async () => {
@@ -35,6 +38,50 @@ const Settings = () => {
     };
     loadClassificationMode();
   }, []);
+
+  useEffect(() => {
+    const loadDueDays = async () => {
+      try {
+        const url = `${getApiUrl('system_settings')}?resource=system_settings&key=default_due_working_days`;
+        const res = await apiFetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value && /^\d+$/.test(String(data.value))) {
+            setDueDays(String(data.value));
+          }
+        }
+      } catch (e) { console.error(e); }
+    };
+    loadDueDays();
+  }, []);
+
+  const handleSaveDueDays = async () => {
+    const n = parseInt(dueDays, 10);
+    if (!Number.isInteger(n) || n < 1 || n > 30) {
+      toast({ title: 'Введите число от 1 до 30', variant: 'destructive' });
+      return;
+    }
+    setDueDaysLoading(true);
+    try {
+      const url = `${getApiUrl('system_settings')}?resource=system_settings`;
+      const res = await apiFetch(url, {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'default_due_working_days', value: String(n) }),
+      });
+      if (res.ok) {
+        setDueDays(String(n));
+        toast({ title: `Дедлайн по умолчанию: ${n} раб. дн.` });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: err.error || 'Не удалось сохранить настройку', variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Ошибка соединения с сервером', variant: 'destructive' });
+    } finally {
+      setDueDaysLoading(false);
+    }
+  };
 
   const handleClassificationModeToggle = async (checked: boolean) => {
     const newMode = checked ? 'ai' : 'manual';
@@ -342,6 +389,59 @@ const Settings = () => {
                   onCheckedChange={handleClassificationModeToggle}
                   disabled={classificationLoading}
                 />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasPermission('settings', 'read') && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-500/10">
+                <Icon name="CalendarClock" size={20} className="text-amber-500" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Дедлайн по умолчанию</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Если для услуги не задан срок решения по SLA, дедлайн заявки ставится автоматически
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-md bg-amber-500/10 flex items-center justify-center">
+                  <Icon name="Clock" size={16} className="text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Срок решения по умолчанию</p>
+                  <p className="text-xs text-muted-foreground">
+                    Количество рабочих дней (выходные не учитываются)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={dueDays}
+                  onChange={(e) => setDueDays(e.target.value)}
+                  className="h-9 w-20 text-sm"
+                />
+                <Label className="text-xs text-muted-foreground">раб. дн.</Label>
+                <Button
+                  size="sm"
+                  onClick={handleSaveDueDays}
+                  disabled={dueDaysLoading}
+                  className="gap-2"
+                >
+                  <Icon name={dueDaysLoading ? 'Loader2' : 'Check'} size={14} className={dueDaysLoading ? 'animate-spin' : ''} />
+                  Сохранить
+                </Button>
               </div>
             </div>
           </CardContent>

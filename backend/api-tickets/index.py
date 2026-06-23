@@ -1832,6 +1832,29 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 due_date_sql = f"NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
             if sla.get('response_time_minutes'):
                 response_due_date_sql = f"NOW() + INTERVAL '{int(sla['response_time_minutes'])} minutes'"
+
+        # Дедлайн по умолчанию: если SLA не задал срок решения и заявка создаётся
+        # без указанного дедлайна — ставим N рабочих дней (по умолчанию 1),
+        # пропуская субботу и воскресенье. Кол-во дней настраивается в админке.
+        if due_date_sql == 'NULL':
+            default_due_days = 1
+            cur.execute(
+                f"SELECT value FROM {SCHEMA}.system_settings WHERE key = 'default_due_working_days'"
+            )
+            dd_row = cur.fetchone()
+            dd_raw = (dd_row['value'] if dd_row else None) or ''
+            if str(dd_raw).strip().isdigit() and 1 <= int(str(dd_raw).strip()) <= 30:
+                default_due_days = int(str(dd_raw).strip())
+            due_date_sql = (
+                "(SELECT MAX(d)::timestamp FROM ("
+                "  SELECT d FROM generate_series("
+                "    NOW() + INTERVAL '1 day', NOW() + INTERVAL '90 days', INTERVAL '1 day'"
+                "  ) AS d"
+                "  WHERE EXTRACT(ISODOW FROM d) < 6"
+                "  ORDER BY d"
+                f"  LIMIT {default_due_days}"
+                ") sub)"
+            )
         
         cur.execute(f"""
             INSERT INTO {SCHEMA}.tickets 

@@ -2,7 +2,7 @@ import json
 from shared_utils import response, SCHEMA
 
 
-ALLOWED_KEYS = {'classification_mode', 'default_executor_group_id'}
+ALLOWED_KEYS = {'classification_mode', 'default_executor_group_id', 'default_due_working_days'}
 ALLOWED_VALUES = {'classification_mode': {'ai', 'manual'}}
 
 
@@ -41,6 +41,11 @@ def handle_system_settings(method, event, conn, payload):
 
         if key in ALLOWED_VALUES and value not in ALLOWED_VALUES[key]:
             return response(400, {'error': f'Invalid value for {key}'})
+
+        if key == 'default_due_working_days':
+            if not str(value).strip().isdigit() or not (1 <= int(str(value).strip()) <= 30):
+                return response(400, {'error': 'default_due_working_days must be an integer between 1 and 30'})
+            value = str(int(str(value).strip()))
 
         cur = conn.cursor()
         cur.execute(
