@@ -72,7 +72,7 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
                   <CommandItem
                     key={dept.id}
                     value={`${path} ${dept.name}`}
-                    className="border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                    className="items-start border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
                     onSelect={() => {
                       onChange(dept.id);
                       setOpen(false);
@@ -81,9 +81,9 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
                     <Icon
                       name="Check"
                       size={16}
-                      className={cn('mr-2 shrink-0', value === dept.id ? 'opacity-100' : 'opacity-0')}
+                      className={cn('mr-2 mt-0.5 shrink-0', value === dept.id ? 'opacity-100' : 'opacity-0')}
                     />
-                    <span className="truncate">{path}</span>
+                    <span className="whitespace-normal break-words">{path}</span>
                   </CommandItem>
                 );
               })}
