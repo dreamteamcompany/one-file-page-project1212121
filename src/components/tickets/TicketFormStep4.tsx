@@ -14,6 +14,7 @@ import {
 import CompanyStructureInput from '@/components/field-registry/CompanyStructureInput';
 import DateMaskedInput from '@/components/ui/date-masked-input';
 import PhoneMaskedInput from '@/components/ui/phone-masked-input';
+import CustomFileField from '@/components/tickets/CustomFileField';
 
 interface CustomField {
   id: number;
@@ -216,6 +217,18 @@ export const renderCustomField = (
           value={value}
           onChange={(phone) => updateCustomField(formData, setFormData, field.id, phone)}
           required={field.is_required}
+        />
+      );
+
+    case 'file':
+    case 'photo':
+    case 'image':
+      return (
+        <CustomFileField
+          value={value}
+          onChange={(url) => updateCustomField(formData, setFormData, field.id, url)}
+          isRequired={field.is_required}
+          accept={field.field_type === 'file' ? undefined : 'image/*'}
         />
       );
 
