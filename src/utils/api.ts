@@ -90,9 +90,10 @@ const getAuthToken = (): string | null => {
 // отдаёт rate-limit ошибки, которые backend-функции конвертируют в 500.
 // Короткая пауза + повтор обычно решает проблему.
 const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
-const MAX_RETRY_ATTEMPTS = 3;
-// Задержки между попытками: 1с, 2с, 4с (exponential backoff).
-const RETRY_DELAYS_MS = [1000, 2000, 4000];
+const MAX_RETRY_ATTEMPTS = 2;
+// Задержки между попытками: 1с (затем 2с). Меньше попыток и пауз,
+// чтобы зависший/таймаутящий запрос не держал интерфейс на десятки секунд.
+const RETRY_DELAYS_MS = [1000, 2000];
 
 const DISABLED_ENDPOINTS = new Set(['payments']);
 const DISABLED_FUNCTION_IDS = new Set(['42303a3a-efd9-4863-9d99-b41962f017dc']);

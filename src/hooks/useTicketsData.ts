@@ -200,14 +200,14 @@ export const useTicketsData = () => {
 
   useEffect(() => {
     if (token) {
-      setLoading(true);
-      Promise.all([
-        loadTickets(1),
-        loadDictionaries(),
-        loadServices(),
-        loadHiddenCount(),
-        loadNeedsMyReplyCount()
-      ]).finally(() => setLoading(false));
+      // Список заявок управляет спиннером сам (внутри loadTickets есть setLoading).
+      // Справочники, сервисы и счётчики грузим в фоне — они НЕ должны
+      // задерживать показ списка, даже если одна из функций тормозит/таймаутит.
+      loadTickets(1);
+      loadDictionaries();
+      loadServices();
+      loadHiddenCount();
+      loadNeedsMyReplyCount();
     }
   }, [token]);
 
