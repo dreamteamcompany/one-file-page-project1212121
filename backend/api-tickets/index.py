@@ -467,7 +467,10 @@ def handle_tickets_rating_stats(method: str, event: Dict[str, Any], conn) -> Dic
 
 def _fmt_duration(seconds: Optional[float]) -> str:
     """Форматирует длительность в человекочитаемый вид: '12 мин' или '4 ч 18 мин'."""
-    if seconds is None or seconds <= 0:
+    if seconds is None:
+        return '—'
+    seconds = float(seconds)
+    if seconds <= 0:
         return '—'
     total_min = int(round(seconds / 60.0))
     hours = total_min // 60
