@@ -12,6 +12,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [executorUsers, setExecutorUsers] = useState<User[]>([]);
   const [updating, setUpdating] = useState(false);
   const [sendingPing, setSendingPing] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'tasks' | 'related' | 'sla'>('info');
@@ -20,6 +21,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
     if (ticket?.id && token) {
       loadComments();
       loadUsers();
+      loadExecutorUsers();
     }
   }, [ticket?.id, token]);
 
@@ -58,6 +60,29 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
       }
     } catch (err) {
       console.error('[loadUsers] Failed to load users:', err);
+    }
+  };
+
+  const loadExecutorUsers = async () => {
+    if (!token) return;
+    try {
+      const response = await apiFetch(`${API_URL}?endpoint=users&system_roles=admin,executor`, {
+        headers: { 'X-Auth-Token': token },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const adaptedUsers = Array.isArray(data) ? (data as Array<{ id: number; full_name?: string; username?: string; is_active?: boolean }>)
+          .filter((u) => u.is_active !== false)
+          .map((u) => ({
+            id: u.id,
+            name: u.full_name || u.username,
+            email: u.username,
+            role: ''
+          })) : [];
+        setExecutorUsers(adaptedUsers);
+      }
+    } catch (err) {
+      console.error('[loadExecutorUsers] Failed:', err);
     }
   };
 
@@ -278,6 +303,7 @@ export const useTicketDetailsLogic = (ticket: Ticket | null, onTicketUpdate?: ()
     loadingComments,
     submittingComment,
     users,
+    executorUsers,
     updating,
     sendingPing,
     activeTab,

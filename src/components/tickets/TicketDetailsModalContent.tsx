@@ -14,6 +14,7 @@ interface TicketDetailsModalContentProps {
   loadingComments: boolean;
   submittingComment: boolean;
   users: User[];
+  executorUsers?: User[];
   updating: boolean;
   sendingPing: boolean;
   activeTab: 'info' | 'tasks' | 'related' | 'sla';
@@ -35,6 +36,7 @@ const TicketDetailsModalContent = ({
   loadingComments,
   submittingComment,
   users,
+  executorUsers,
   updating,
   sendingPing,
   activeTab,
@@ -96,6 +98,7 @@ const TicketDetailsModalContent = ({
         ticket={ticket}
         statuses={statuses}
         users={users}
+        executorUsers={executorUsers}
         updating={updating}
         onUpdateStatus={onUpdateStatus}
         onAssignUser={onAssignUser}

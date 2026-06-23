@@ -43,16 +43,31 @@ def handle_users(method, event, conn, payload):
                     return response(404, {'error': 'User not found'})
                 return response(200, dict(user))
             else:
+                # Опциональный фильтр по системным ролям: ?system_roles=admin,executor
+                system_roles_param = (params.get('system_roles') or '').strip()
+                having_clause = ''
+                query_args = ()
+                if system_roles_param:
+                    wanted = [s.strip().lower() for s in system_roles_param.split(',') if s.strip()]
+                    if wanted:
+                        placeholders = ','.join(['%s'] * len(wanted))
+                        having_clause = (
+                            f"HAVING bool_or(LOWER(COALESCE(r.system_role, '')) IN ({placeholders}))"
+                        )
+                        query_args = tuple(wanted)
+
                 cur.execute(f"""
                     SELECT {user_cols},
-                           COALESCE(json_agg(DISTINCT jsonb_build_object('id', r.id, 'name', r.name))
+                           COALESCE(json_agg(DISTINCT jsonb_build_object(
+                                'id', r.id, 'name', r.name, 'system_role', r.system_role))
                                     FILTER (WHERE r.id IS NOT NULL), '[]') as roles
                     FROM {SCHEMA}.users u
                     LEFT JOIN {SCHEMA}.user_roles ur ON u.id = ur.user_id
                     LEFT JOIN {SCHEMA}.roles r ON ur.role_id = r.id
                     GROUP BY u.id
+                    {having_clause}
                     ORDER BY u.id
-                """)
+                """, query_args)
                 users = cur.fetchall()
                 return response(200, [dict(u) for u in users])
         

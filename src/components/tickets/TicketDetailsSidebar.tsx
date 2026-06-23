@@ -78,6 +78,7 @@ interface TicketDetailsSidebarProps {
   ticket: Ticket;
   statuses: Status[];
   users: User[];
+  executorUsers?: User[];
   updating: boolean;
   sendingPing?: boolean;
   isCustomer?: boolean;
@@ -97,6 +98,7 @@ const TicketDetailsSidebar = ({
   ticket,
   statuses,
   users,
+  executorUsers,
   updating,
   sendingPing = false,
   isCustomer = false,
@@ -206,7 +208,7 @@ const TicketDetailsSidebar = ({
         <div className="rounded-lg bg-card border divide-y">
           <AssignmentSection
             ticket={ticket as AssignTicket}
-            users={users as AssignUser[]}
+            users={(executorUsers ?? users) as AssignUser[]}
             updating={updating}
             executorGroups={executorGroups as AssignGroup[]}
             canSeeGroup={canSeeGroup}

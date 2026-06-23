@@ -27,6 +27,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
   const [statuses, setStatuses] = useState<TicketStatus[]>([]);
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [executorUsers, setExecutorUsers] = useState<User[]>([]);
   const [executorGroups, setExecutorGroups] = useState<ExecutorGroup[]>([]);
   const [auditLogs, setAuditLogs] = useState<TicketAuditLog[]>([]);
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
@@ -156,6 +157,27 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       setUsers(adaptedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
+    }
+  };
+
+  const loadExecutorUsers = async () => {
+    try {
+      const data = await cachedJsonFetch<Array<{ id: number; full_name?: string; username?: string; photo_url?: string; is_active?: boolean }>>(
+        `${API_URL}?endpoint=users&system_roles=admin,executor`,
+        { headers: { 'X-Auth-Token': token } },
+      );
+      const adaptedUsers = Array.isArray(data) ? data
+        .filter((u) => u.is_active !== false)
+        .map((u) => ({
+          id: u.id,
+          name: u.full_name || u.username || '',
+          email: u.username || '',
+          role: '',
+          photo_url: u.photo_url || ''
+        })) : [];
+      setExecutorUsers(adaptedUsers);
+    } catch (error) {
+      console.error('Error loading executor users:', error);
     }
   };
 
@@ -346,6 +368,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
       loadStatuses();
       loadExecutorGroups();
       loadUsers();
+      loadExecutorUsers();
 
       // Fallback: если bundle через 3с НЕ вернул комментарии
       // (старая версия backend / ретраи всё ещё идут) — догрузим отдельным запросом.
@@ -386,6 +409,7 @@ export const useTicketData = (id: string | undefined, initialTicket: Ticket | nu
     statuses,
     comments,
     users,
+    executorUsers,
     executorGroups,
     auditLogs,
     approvals,

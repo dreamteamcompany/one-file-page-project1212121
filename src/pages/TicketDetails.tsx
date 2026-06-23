@@ -29,6 +29,7 @@ const TicketDetails = () => {
     statuses,
     comments,
     users,
+    executorUsers,
     executorGroups,
     auditLogs,
     loading,
@@ -301,6 +302,7 @@ const TicketDetails = () => {
               ticket={ticket}
               statuses={statuses}
               users={users}
+              executorUsers={executorUsers}
               updating={updating || isClosed}
               sendingPing={sendingPing}
               isCustomer={ticket.created_by === user?.id}
@@ -346,6 +348,7 @@ const TicketDetails = () => {
                   ticket={ticket}
                   statuses={statuses}
                   users={users}
+                  executorUsers={executorUsers}
                   updating={updating || isClosed}
                   sendingPing={sendingPing}
                   isCustomer={ticket.created_by === user?.id}

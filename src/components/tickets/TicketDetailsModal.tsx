@@ -16,6 +16,7 @@ const TicketDetailsModal = ({ ticket, onClose, statuses = [], onTicketUpdate }: 
     loadingComments,
     submittingComment,
     users,
+    executorUsers,
     updating,
     sendingPing,
     activeTab,
@@ -48,6 +49,7 @@ const TicketDetailsModal = ({ ticket, onClose, statuses = [], onTicketUpdate }: 
             loadingComments={loadingComments}
             submittingComment={submittingComment}
             users={users}
+            executorUsers={executorUsers}
             updating={updating}
             sendingPing={sendingPing}
             activeTab={activeTab}
