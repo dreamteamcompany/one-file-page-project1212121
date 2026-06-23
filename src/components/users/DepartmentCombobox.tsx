@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { cn } from '@/lib/utils';
 import { buildDepartmentPath } from '@/utils/departmentPath';
@@ -27,12 +27,34 @@ interface DepartmentComboboxProps {
 
 const DepartmentCombobox = ({ departments, value, onChange }: DepartmentComboboxProps) => {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const itemClass =
+    'items-start border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground';
+
+  const options = useMemo(
+    () =>
+      departments.map((dept) => ({
+        id: dept.id,
+        name: dept.name,
+        path: buildDepartmentPath(departments, dept.id),
+      })),
+    [departments],
+  );
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(
+      (o) => o.path.toLowerCase().includes(q) || o.name.toLowerCase().includes(q),
+    );
+  }, [options, search]);
 
   const selectedLabel =
     value != null ? buildDepartmentPath(departments, value) : 'Без отдела';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(''); }}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -46,14 +68,18 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Поиск отдела..." />
-          <CommandList>
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Поиск отдела..."
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList className="max-h-[320px]">
             <CommandEmpty>Отдел не найден</CommandEmpty>
             <CommandGroup>
               <CommandItem
-                value="Без отдела"
-                className="border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                value="none"
+                className={itemClass}
                 onSelect={() => {
                   onChange(null);
                   setOpen(false);
@@ -66,27 +92,24 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
                 />
                 Без отдела
               </CommandItem>
-              {departments.map((dept) => {
-                const path = buildDepartmentPath(departments, dept.id);
-                return (
-                  <CommandItem
-                    key={dept.id}
-                    value={`${path} ${dept.name} #${dept.id}`}
-                    className="items-start border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
-                    onSelect={() => {
-                      onChange(dept.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <Icon
-                      name="Check"
-                      size={16}
-                      className={cn('mr-2 mt-0.5 shrink-0', value === dept.id ? 'opacity-100' : 'opacity-0')}
-                    />
-                    <span className="whitespace-normal break-words">{path}</span>
-                  </CommandItem>
-                );
-              })}
+              {filtered.map((opt) => (
+                <CommandItem
+                  key={opt.id}
+                  value={String(opt.id)}
+                  className={itemClass}
+                  onSelect={() => {
+                    onChange(opt.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Icon
+                    name="Check"
+                    size={16}
+                    className={cn('mr-2 mt-0.5 shrink-0', value === opt.id ? 'opacity-100' : 'opacity-0')}
+                  />
+                  <span className="whitespace-normal break-words">{opt.path}</span>
+                </CommandItem>
+              ))}
             </CommandGroup>
           </CommandList>
         </Command>
