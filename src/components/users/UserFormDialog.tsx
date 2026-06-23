@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { UPLOAD_FILE_URL } from '@/utils/api';
-import { buildDepartmentPath } from '@/utils/departmentPath';
+import DepartmentCombobox from '@/components/users/DepartmentCombobox';
 import {
   Dialog,
   DialogContent,
@@ -248,19 +248,11 @@ const UserFormDialog = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="department">Отдел</Label>
-            <select
-              id="department"
-              value={formData.department_id ?? ''}
-              onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">Без отдела</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {buildDepartmentPath(departments, dept.id)}
-                </option>
-              ))}
-            </select>
+            <DepartmentCombobox
+              departments={departments}
+              value={formData.department_id ?? null}
+              onChange={(departmentId) => setFormData({ ...formData, department_id: departmentId })}
+            />
             <p className="text-xs text-muted-foreground">
               Подтягивается автоматически из Битрикс24, можно изменить вручную
             </p>
