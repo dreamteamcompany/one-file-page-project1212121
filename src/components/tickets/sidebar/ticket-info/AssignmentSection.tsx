@@ -1,4 +1,6 @@
+import { useState, useMemo } from 'react';
 import Icon from '@/components/ui/icon';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -29,6 +31,7 @@ const AssignmentSection = ({
   onAssignUser,
   onAssignGroup,
 }: AssignmentSectionProps) => {
+  const [userSearch, setUserSearch] = useState('');
   const currentGroupInList =
     ticket.executor_group_id != null &&
     executorGroups.some((g) => g.id === ticket.executor_group_id);
@@ -61,6 +64,17 @@ const AssignmentSection = ({
           ...users,
         ]
       : users;
+
+  const filteredUserOptions = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return userOptions;
+    return userOptions.filter(
+      (u) =>
+        u.id === ticket.assigned_to ||
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q),
+    );
+  }, [userOptions, userSearch, ticket.assigned_to]);
 
   return (
     <>
@@ -114,18 +128,34 @@ const AssignmentSection = ({
             value={ticket.assigned_to?.toString() || 'unassign'}
             onValueChange={onAssignUser}
             disabled={updating}
+            onOpenChange={(open) => { if (!open) setUserSearch(''); }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Выберите исполнителя" />
             </SelectTrigger>
             <SelectContent>
+              <div className="sticky top-0 z-10 bg-popover p-2 pb-1.5" onKeyDown={(e) => e.stopPropagation()}>
+                <div className="relative">
+                  <Icon name="Search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    autoFocus
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Поиск исполнителя..."
+                    className="h-8 pl-8 text-sm"
+                  />
+                </div>
+              </div>
               <SelectItem value="unassign">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Icon name="UserX" size={14} />
                   Не назначен
                 </div>
               </SelectItem>
-              {userOptions.map((u) => (
+              {filteredUserOptions.length === 0 && (
+                <div className="px-2 py-3 text-sm text-muted-foreground text-center">Ничего не найдено</div>
+              )}
+              {filteredUserOptions.map((u) => (
                 <SelectItem
                   key={u.id}
                   value={u.id.toString()}
