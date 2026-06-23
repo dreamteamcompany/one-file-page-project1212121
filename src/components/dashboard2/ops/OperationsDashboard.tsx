@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DashboardSwitcher, { DashboardId } from './DashboardSwitcher';
 import OpsHeader from './OpsHeader';
 import OpsKpiCards from './OpsKpiCards';
 import OpsDynamicsChart from './OpsDynamicsChart';
@@ -12,11 +13,14 @@ const OperationsDashboard = () => {
   const [period, setPeriod] = useState<PeriodType>('month');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
+  const [activeDashboard, setActiveDashboard] = useState<DashboardId>('operations');
 
   const { data, loading, refresh } = useOpsDashboard(period, dateFrom, dateTo);
 
   return (
     <div className="flex flex-col gap-5 w-full">
+      <DashboardSwitcher active={activeDashboard} onChange={setActiveDashboard} />
+
       <OpsHeader
         period={period}
         onPeriodChange={setPeriod}
