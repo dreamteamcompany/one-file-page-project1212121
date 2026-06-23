@@ -53,7 +53,7 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
             <CommandGroup>
               <CommandItem
                 value="Без отдела"
-                className="data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                className="border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
                 onSelect={() => {
                   onChange(null);
                   setOpen(false);
@@ -72,7 +72,7 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
                   <CommandItem
                     key={dept.id}
                     value={`${path} ${dept.name}`}
-                    className="data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                    className="border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
                     onSelect={() => {
                       onChange(dept.id);
                       setOpen(false);
