@@ -78,7 +78,10 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList className="max-h-[320px] overflow-y-auto">
+          <CommandList
+            className="max-h-[320px] overflow-y-auto overscroll-contain"
+            onWheel={(e) => e.stopPropagation()}
+          >
             <CommandEmpty>Отдел не найден</CommandEmpty>
             <CommandGroup>
               <CommandItem
