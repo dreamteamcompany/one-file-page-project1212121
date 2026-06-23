@@ -32,13 +32,17 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
   const itemClass =
     'items-start border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground';
 
+  const SEP = ' → ';
+
   const options = useMemo(
     () =>
-      departments.map((dept) => ({
-        id: dept.id,
-        name: dept.name,
-        path: buildDepartmentPath(departments, dept.id),
-      })),
+      departments.map((dept) => {
+        const path = buildDepartmentPath(departments, dept.id);
+        const idx = path.lastIndexOf(SEP);
+        const prefix = idx >= 0 ? path.slice(0, idx + SEP.length) : '';
+        const last = idx >= 0 ? path.slice(idx + SEP.length) : path;
+        return { id: dept.id, name: dept.name, path, prefix, last };
+      }),
     [departments],
   );
 
@@ -74,7 +78,7 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
             value={search}
             onValueChange={setSearch}
           />
-          <CommandList className="max-h-[320px]">
+          <CommandList className="max-h-[320px] overflow-y-auto">
             <CommandEmpty>Отдел не найден</CommandEmpty>
             <CommandGroup>
               <CommandItem
@@ -107,7 +111,10 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
                     size={16}
                     className={cn('mr-2 mt-0.5 shrink-0', value === opt.id ? 'opacity-100' : 'opacity-0')}
                   />
-                  <span className="whitespace-normal break-words">{opt.path}</span>
+                  <span className="whitespace-normal break-words">
+                    {opt.prefix}
+                    <span className="font-semibold">{opt.last}</span>
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
