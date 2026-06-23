@@ -71,7 +71,7 @@ const DepartmentCombobox = ({ departments, value, onChange }: DepartmentCombobox
                 return (
                   <CommandItem
                     key={dept.id}
-                    value={`${path} ${dept.name}`}
+                    value={`${path} ${dept.name} #${dept.id}`}
                     className="items-start border-0 outline-none ring-0 aria-selected:bg-muted aria-selected:text-foreground data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
                     onSelect={() => {
                       onChange(dept.id);
