@@ -66,6 +66,12 @@ const PRESET_OPTIONS: { value: SchedulePreset; label: string }[] = [
   { value: 'weekly', label: 'Раз в неделю' },
 ];
 
+const JOB_ICONS: Record<string, string> = {
+  bitrix_sync_positions: 'RefreshCw',
+  bitrix_inactive_users: 'UserX',
+  reassign_by_schedule: 'Users',
+};
+
 const MODE_OPTIONS = [
   { value: 'long_inactive', label: 'Давно не заходили' },
   { value: 'never_logged', label: 'Ни разу не заходили' },
@@ -272,7 +278,7 @@ const AutomationSettings = () => {
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10">
                       <Icon
-                        name={job.job_key === 'bitrix_sync_positions' ? 'RefreshCw' : 'UserX'}
+                        name={JOB_ICONS[job.job_key] || 'UserX'}
                         size={20}
                         className="text-primary"
                       />
