@@ -27,6 +27,8 @@ interface Status {
   is_pending_confirmation?: boolean;
   is_reopened?: boolean;
   is_in_progress?: boolean;
+  is_paused?: boolean;
+  is_waiting_response?: boolean;
 }
 
 interface ExecutorGroup {
@@ -118,6 +120,13 @@ const TicketDetailsSidebar = ({
   const canAssignExecutor = hasPermission('tickets', 'assign_executor');
   const canEditApprovers = hasPermission('tickets', 'edit_approvers');
 
+  const currentStatus = statuses.find(s => s.id === ticket.status_id);
+  const isTimerPaused = !!(
+    currentStatus?.is_closed ||
+    currentStatus?.is_paused ||
+    currentStatus?.is_waiting_response
+  );
+
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [selectedApprovers, setSelectedApprovers] = useState<number[]>([]);
@@ -182,7 +191,7 @@ const TicketDetailsSidebar = ({
     <>
       <div className="w-full lg:w-[400px] space-y-3 flex-shrink-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
-          <TicketTimerCard dueDate={ticket.due_date} />
+          <TicketTimerCard dueDate={ticket.due_date} paused={isTimerPaused} />
           {!hidePing && <TicketPingCard onSendPing={onSendPing} sendingPing={sendingPing} />}
         </div>
 

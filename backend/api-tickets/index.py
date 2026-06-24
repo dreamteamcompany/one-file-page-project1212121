@@ -2024,8 +2024,10 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             SELECT t.title, t.description, t.status_id, t.priority_id, t.assigned_to,
                    t.due_date, t.response_due_date, t.executor_group_id,
                    t.previous_status_id, t.sla_paused_at, t.sla_paused_total_seconds,
-                   t.created_by,
-                   ts.is_waiting_response AS current_is_waiting
+                   t.created_by, t.is_archived,
+                   ts.is_waiting_response AS current_is_waiting,
+                   COALESCE(ts.is_paused, false) AS current_is_paused,
+                   COALESCE(ts.is_closed, false) AS current_is_closed
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
             WHERE t.id = %s
@@ -2168,7 +2170,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
             cur.execute(
-                f"SELECT is_closed, is_waiting_response FROM {SCHEMA}.ticket_statuses WHERE id = %s",
+                f"SELECT is_closed, is_waiting_response, COALESCE(is_paused, false) AS is_paused "
+                f"FROM {SCHEMA}.ticket_statuses WHERE id = %s",
                 (body['status_id'],),
             )
             new_status = cur.fetchone()
@@ -2182,15 +2185,53 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                     except Exception as e:
                         print(f"[TICKETS] group_log close error: {e}")
 
-                is_going_to_waiting = bool(new_status['is_waiting_response'])
-                was_in_waiting = bool(old_ticket.get('current_is_waiting'))
+                # Таймер SLA приостанавливается, если новый статус: ожидает ответа,
+                # приостановлен или закрыт.
+                is_pausing = bool(
+                    new_status['is_waiting_response']
+                    or new_status['is_paused']
+                    or new_status['is_closed']
+                )
+                was_pausing = bool(
+                    old_ticket.get('current_is_waiting')
+                    or old_ticket.get('current_is_paused')
+                    or old_ticket.get('current_is_closed')
+                )
+                was_closed = bool(old_ticket.get('current_is_closed'))
+                # Повторное открытие = выход из закрытого статуса в активный (не на паузе).
+                reopening_to_open = was_closed and not is_pausing
 
-                if is_going_to_waiting and not was_in_waiting:
+                if is_pausing and not was_pausing:
+                    # Вход в состояние паузы: фиксируем момент остановки таймера.
                     update_fields.append("previous_status_id = %s")
                     params.append(old_ticket['status_id'])
                     update_fields.append("sla_paused_at = NOW()")
                     update_fields.append("waiting_reminder_sent_at = NULL")
-                elif (not is_going_to_waiting) and was_in_waiting:
+                elif reopening_to_open:
+                    # Повторное открытие закрытой заявки: срок считается заново по SLA.
+                    cur.execute(f"""
+                        SELECT service_id, ticket_service_id
+                        FROM {SCHEMA}.ticket_to_service_mappings
+                        WHERE ticket_id = %s
+                    """, (ticket_id,))
+                    svc_rows = cur.fetchall()
+                    svc_ids = [r['service_id'] for r in svc_rows if r['service_id']]
+                    ts_id = next((r['ticket_service_id'] for r in svc_rows if r['ticket_service_id']), None)
+                    sla = resolve_sla_for_ticket(cur, ts_id, svc_ids)
+                    if sla and sla.get('resolution_time_minutes'):
+                        update_fields.append(
+                            f"due_date = NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
+                        )
+                    if sla and sla.get('response_time_minutes'):
+                        update_fields.append(
+                            f"response_due_date = NOW() + INTERVAL '{int(sla['response_time_minutes'])} minutes'"
+                        )
+                    update_fields.append("sla_paused_at = NULL")
+                    update_fields.append("sla_paused_total_seconds = 0")
+                    update_fields.append("previous_status_id = NULL")
+                    update_fields.append("waiting_reminder_sent_at = NULL")
+                elif (not is_pausing) and was_pausing:
+                    # Снятие паузы (не из закрытого статуса): сдвигаем дедлайн на длительность паузы.
                     if old_ticket.get('sla_paused_at'):
                         cur.execute(
                             "SELECT EXTRACT(EPOCH FROM (NOW() - %s))::INTEGER AS sec",
@@ -2702,7 +2743,7 @@ def handle_ticket_dictionaries(method: str, event: Dict[str, Any], conn) -> Dict
         cur.execute(f"SELECT id, name, level, color, COALESCE(description, '') as description, COALESCE(is_critical, false) as is_critical FROM {SCHEMA}.ticket_priorities ORDER BY level DESC")
         priorities = [dict(row) for row in cur.fetchall()]
         
-        cur.execute(f'SELECT id, name, color, is_closed, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation, is_in_progress FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation, is_in_progress, COALESCE(is_paused, false) AS is_paused FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         status_role_map = _load_status_role_map(cur)
         user_id = payload.get('user_id')
@@ -2736,7 +2777,7 @@ def handle_ticket_statuses(method: str, event: Dict[str, Any], conn) -> Dict[str
     
     if method == 'GET':
         cur = conn.cursor()
-        cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation, count_for_distribution, is_in_progress, is_reopened FROM {SCHEMA}.ticket_statuses ORDER BY id')
+        cur.execute(f'SELECT id, name, color, is_closed, is_open, is_approval, is_approval_revoked, is_approved, is_waiting_response, is_pending_confirmation, count_for_distribution, is_in_progress, is_reopened, COALESCE(is_paused, false) AS is_paused FROM {SCHEMA}.ticket_statuses ORDER BY id')
         statuses = [dict(row) for row in cur.fetchall()]
         role_map = _load_status_role_map(cur)
         for st in statuses:

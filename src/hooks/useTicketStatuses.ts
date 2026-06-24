@@ -17,6 +17,7 @@ export interface TicketStatus {
   count_for_distribution: boolean;
   is_in_progress: boolean;
   is_reopened: boolean;
+  is_paused?: boolean;
   role_ids?: number[];
 }
 

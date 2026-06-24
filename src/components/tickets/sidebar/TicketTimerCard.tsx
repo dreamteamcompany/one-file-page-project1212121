@@ -4,20 +4,21 @@ import { getMskTimestamp } from '@/utils/dateFormat';
 
 interface TicketTimerCardProps {
   dueDate?: string;
+  paused?: boolean;
 }
 
-const TicketTimerCard = ({ dueDate }: TicketTimerCardProps) => {
+const TicketTimerCard = ({ dueDate, paused = false }: TicketTimerCardProps) => {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
-    if (!dueDate) return;
+    if (!dueDate || paused) return;
     
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [dueDate]);
+  }, [dueDate, paused]);
 
   const getTimeLeft = () => {
     if (!dueDate) return null;
@@ -42,6 +43,23 @@ const TicketTimerCard = ({ dueDate }: TicketTimerCardProps) => {
   };
 
   if (!dueDate) return null;
+
+  if (paused) {
+    return (
+      <div className="p-4 rounded-lg bg-card border flex flex-col md:h-[380px] lg:h-auto">
+        <div className="flex flex-col items-center flex-1 justify-center">
+          <h3 className="text-sm font-semibold mb-4 text-foreground">Времени осталось</h3>
+          <div className="w-24 h-24 rounded-full bg-muted border-2 flex items-center justify-center mb-4">
+            <Icon name="Pause" size={32} className="text-muted-foreground" />
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-muted-foreground">На паузе</div>
+            <div className="text-xs text-muted-foreground mt-1 tabular-nums">{getTimeLeft()?.time}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 rounded-lg bg-card border flex flex-col md:h-[380px] lg:h-auto">

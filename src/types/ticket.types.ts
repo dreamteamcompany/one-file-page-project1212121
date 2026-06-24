@@ -130,6 +130,8 @@ export interface TicketStatus {
   is_reopened?: boolean;
   is_in_progress?: boolean;
   is_approved?: boolean;
+  is_paused?: boolean;
+  is_waiting_response?: boolean;
 }
 
 export interface TicketPriority {
