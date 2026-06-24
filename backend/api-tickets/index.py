@@ -2027,7 +2027,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    t.created_by, t.is_archived,
                    ts.is_waiting_response AS current_is_waiting,
                    COALESCE(ts.is_paused, false) AS current_is_paused,
-                   COALESCE(ts.is_closed, false) AS current_is_closed
+                   COALESCE(ts.is_closed, false) AS current_is_closed,
+                   COALESCE(ts.is_pending_confirmation, false) AS current_is_pending
             FROM {SCHEMA}.tickets t
             LEFT JOIN {SCHEMA}.ticket_statuses ts ON ts.id = t.status_id
             WHERE t.id = %s
@@ -2170,7 +2171,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             update_fields.append("status_id = %s")
             params.append(body['status_id'])
             cur.execute(
-                f"SELECT is_closed, is_waiting_response, COALESCE(is_paused, false) AS is_paused "
+                f"SELECT is_closed, is_waiting_response, COALESCE(is_paused, false) AS is_paused, "
+                f"COALESCE(is_pending_confirmation, false) AS is_pending_confirmation "
                 f"FROM {SCHEMA}.ticket_statuses WHERE id = %s",
                 (body['status_id'],),
             )
@@ -2186,14 +2188,16 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                         print(f"[TICKETS] group_log close error: {e}")
 
                 # Таймер SLA приостанавливается, если новый статус: ожидает ответа,
-                # приостановлен или закрыт.
+                # ожидает подтверждения, приостановлен или закрыт.
                 is_pausing = bool(
                     new_status['is_waiting_response']
+                    or new_status['is_pending_confirmation']
                     or new_status['is_paused']
                     or new_status['is_closed']
                 )
                 was_pausing = bool(
                     old_ticket.get('current_is_waiting')
+                    or old_ticket.get('current_is_pending')
                     or old_ticket.get('current_is_paused')
                     or old_ticket.get('current_is_closed')
                 )

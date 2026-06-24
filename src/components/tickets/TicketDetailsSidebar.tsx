@@ -124,7 +124,8 @@ const TicketDetailsSidebar = ({
   const isTimerPaused = !!(
     currentStatus?.is_closed ||
     currentStatus?.is_paused ||
-    currentStatus?.is_waiting_response
+    currentStatus?.is_waiting_response ||
+    currentStatus?.is_pending_confirmation
   );
 
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
