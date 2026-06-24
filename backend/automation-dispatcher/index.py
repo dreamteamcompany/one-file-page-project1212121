@@ -12,6 +12,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 
 SYNC_POSITIONS_URL = 'https://functions.poehali.dev/554d2115-1c37-4955-b544-bc0a5df0b466'
 INACTIVE_USERS_URL = 'https://functions.poehali.dev/7bf1dc65-32dd-447a-a33e-8b1a7bed5b07'
+REASSIGN_BY_SCHEDULE_URL = 'https://functions.poehali.dev/42295d4a-eb89-4bd6-b915-d94a2a734b16'
 
 CORS_HEADERS = {
     'Content-Type': 'application/json',
@@ -167,6 +168,26 @@ def execute_job(job_key, params):
 
     if job_key == 'bitrix_inactive_users':
         return 'error', 'Авто-запуск проверки неактивных требует токена администратора. Запустите вручную.', {}
+
+    if job_key == 'reassign_by_schedule':
+        try:
+            r = requests.post(
+                REASSIGN_BY_SCHEDULE_URL,
+                json={},
+                headers={'Content-Type': 'application/json'},
+                timeout=300,
+            )
+            try:
+                data = r.json()
+            except Exception:
+                data = {'raw': r.text[:500]}
+            if r.ok:
+                reassigned = data.get('reassigned', 0)
+                checked = data.get('checked', 0)
+                return 'success', f'Проверено {checked}, передано {reassigned}', data
+            return 'error', data.get('error') or f'HTTP {r.status_code}', data
+        except Exception as e:
+            return 'error', str(e)[:500], {}
 
     return 'error', f'Неизвестная задача: {job_key}', {}
 
