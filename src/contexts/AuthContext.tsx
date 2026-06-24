@@ -228,6 +228,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     
     if (!user.permissions) return false;
+
+    if (
+      resource === 'users' &&
+      user.permissions.some((p) => p.resource === 'users' && p.action === 'access')
+    ) {
+      return true;
+    }
+
     return user.permissions.some(
       (p) => p.resource === resource && p.action === action
     );
