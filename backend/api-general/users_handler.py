@@ -116,8 +116,8 @@ def handle_users(method, event, conn, payload):
 
                 insert_query = f"""
                     INSERT INTO {SCHEMA}.users 
-                    (username, password_hash, full_name, position, email, photo_url, bitrix_user_id, max_user_id, is_active, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                    (username, password_hash, full_name, position, email, photo_url, bitrix_user_id, max_user_id, department_id, is_active, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
                     RETURNING id
                 """
                 log(f"[CREATE USER] About to execute INSERT, username={req.username}")
@@ -131,6 +131,7 @@ def handle_users(method, event, conn, payload):
                     req.photo_url if req.photo_url else '',
                     bitrix_id_value,
                     max_id_value,
+                    req.department_id,
                 ))
                 
                 new_user_id = cur.fetchone()['id']
