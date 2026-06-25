@@ -2527,7 +2527,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 t_grp = body['executor_group_id'] if 'executor_group_id' in body else old_ticket.get('executor_group_id')
 
                 cur.execute(f"""
-                    SELECT id, category_id, department_id, priority_id, executor_group_id
+                    SELECT id, category_id, department_id, priority_id,
+                           executor_group_id, assignee_id, match_mode
                     FROM {SCHEMA}.ticket_watcher_rules
                     WHERE is_active = true AND trigger_on_executor_change = true
                 """)
@@ -2535,15 +2536,24 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
 
                 matched_ids = []
                 for r in exec_rules:
-                    if r['category_id'] and r['category_id'] != t_cat:
+                    # Условие assignee_id сверяем с НОВЫМ исполнителем заявки
+                    conditions = [
+                        (r['category_id'], t_cat),
+                        (r['department_id'], t_dept),
+                        (r['priority_id'], t_prio),
+                        (r['executor_group_id'], t_grp),
+                        (r['assignee_id'], new_assignee),
+                    ]
+                    non_empty = [(rv, tv) for rv, tv in conditions if rv]
+                    if not non_empty:
                         continue
-                    if r['department_id'] and r['department_id'] != t_dept:
-                        continue
-                    if r['priority_id'] and r['priority_id'] != t_prio:
-                        continue
-                    if r['executor_group_id'] and r['executor_group_id'] != t_grp:
-                        continue
-                    matched_ids.append(r['id'])
+                    mode = str(r.get('match_mode') or 'AND').upper()
+                    if mode == 'OR':
+                        ok = any(rv == tv for rv, tv in non_empty)
+                    else:
+                        ok = all(rv == tv for rv, tv in non_empty)
+                    if ok:
+                        matched_ids.append(r['id'])
 
                 if matched_ids:
                     # Бывший исполнитель добавляется всегда (даже если он —
