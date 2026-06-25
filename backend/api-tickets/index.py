@@ -1243,46 +1243,84 @@ def handler(event: dict, context) -> dict:
         except:
             pass
 
-def resolve_company_structure(value_json: str, cur) -> dict:
+def _load_org_structure_cache(cur) -> dict:
+    """Загружает справочники компаний, подразделений и должностей одним набором
+    запросов, чтобы резолвить company_structure без обращений к БД в цикле.
+
+    Возвращает {'companies': {id: name}, 'departments': {id: (name, parent_id)},
+    'positions': {id: name}}.
+    """
+    companies = {}
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.companies")
+    for row in cur.fetchall():
+        companies[row['id']] = row['name']
+
+    departments = {}
+    cur.execute(f"SELECT id, name, parent_id FROM {SCHEMA}.departments")
+    for row in cur.fetchall():
+        departments[row['id']] = (row['name'], row['parent_id'])
+
+    positions = {}
+    cur.execute(f"SELECT id, name FROM {SCHEMA}.positions")
+    for row in cur.fetchall():
+        positions[row['id']] = row['name']
+
+    return {'companies': companies, 'departments': departments, 'positions': positions}
+
+
+def resolve_company_structure(value_json: str, cur, org_cache: dict = None) -> dict:
     try:
         data = json.loads(value_json)
     except (json.JSONDecodeError, TypeError):
         return {'display_value': value_json}
 
+    if org_cache is None:
+        org_cache = _load_org_structure_cache(cur)
+
+    companies = org_cache.get('companies', {})
+    departments = org_cache.get('departments', {})
+    positions = org_cache.get('positions', {})
+
     result = {}
     if data.get('company_id'):
-        cur.execute(f"SELECT name FROM {SCHEMA}.companies WHERE id = %s", (data['company_id'],))
-        row = cur.fetchone()
-        if row:
-            result['company'] = row['name']
+        name = companies.get(data['company_id'])
+        if name:
+            result['company'] = name
     if data.get('department_id'):
         dept_chain = []
         dept_id = data['department_id']
-        while dept_id:
-            cur.execute(f"SELECT name, parent_id FROM {SCHEMA}.departments WHERE id = %s", (dept_id,))
-            row = cur.fetchone()
-            if not row:
+        seen = set()
+        while dept_id and dept_id not in seen:
+            seen.add(dept_id)
+            dept = departments.get(dept_id)
+            if not dept:
                 break
-            dept_chain.append(row['name'])
-            dept_id = row['parent_id']
+            dept_chain.append(dept[0])
+            dept_id = dept[1]
         dept_chain.reverse()
         result['department'] = ' → '.join(dept_chain) if dept_chain else None
     if data.get('position_id'):
-        cur.execute(f"SELECT name FROM {SCHEMA}.positions WHERE id = %s", (data['position_id'],))
-        row = cur.fetchone()
-        if row:
-            result['position'] = row['name']
+        name = positions.get(data['position_id'])
+        if name:
+            result['position'] = name
 
     parts = [v for v in [result.get('company'), result.get('department')] if v]
     result['display_value'] = ' → '.join(parts) if parts else value_json
     return result
 
 
-def resolve_custom_field_values(fields: list, cur) -> list:
+def resolve_custom_field_values(fields: list, cur, org_cache: dict = None) -> list:
+    needs_org = any(
+        f.get('field_type') == 'company_structure' and f.get('value')
+        for f in fields
+    )
+    if needs_org and org_cache is None:
+        org_cache = _load_org_structure_cache(cur)
+
     resolved = []
     for field in fields:
         if field.get('field_type') == 'company_structure' and field.get('value'):
-            struct = resolve_company_structure(field['value'], cur)
+            struct = resolve_company_structure(field['value'], cur, org_cache)
             field['display_value'] = struct['display_value']
             if struct.get('position'):
                 resolved.append(dict(field))
@@ -1719,9 +1757,15 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 r = dict(row)
                 tid = r.pop('ticket_id')
                 cf_by_ticket.setdefault(tid, []).append(r)
+            org_cache = None
+            if any(
+                f.get('field_type') == 'company_structure' and f.get('value')
+                for fields in cf_by_ticket.values() for f in fields
+            ):
+                org_cache = _load_org_structure_cache(cur)
             for tid, fields in cf_by_ticket.items():
                 if tid in ticket_id_map:
-                    ticket_id_map[tid]['custom_fields'] = resolve_custom_field_values(fields, cur)
+                    ticket_id_map[tid]['custom_fields'] = resolve_custom_field_values(fields, cur, org_cache)
             
             cur.execute(f"""
                 SELECT ticket_id, COUNT(*) AS cnt
