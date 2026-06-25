@@ -99,7 +99,7 @@ const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: Confir
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
+    <div data-confirmation-overlay className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="rounded-2xl border bg-card shadow-2xl p-6 space-y-6">
           <div className="text-center space-y-2">

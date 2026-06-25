@@ -203,17 +203,62 @@ const TicketDetails = () => {
     if (!needsCreatorConfirmation) return;
     let ready = false;
     const timer = setTimeout(() => { ready = true; }, 300);
+    const currentPath = window.location.pathname + window.location.search;
+
     const handlePopState = (e: PopStateEvent) => {
       if (!ready) return;
       e.preventDefault();
       window.history.pushState(null, '', window.location.href);
       setConfirmationMode('confirm');
     };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+
+    const handleClickCapture = (e: MouseEvent) => {
+      if (!ready) return;
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      // не мешаем взаимодействию внутри модалки подтверждения и самого баннера
+      if (target.closest('[data-confirmation-overlay]') || target.closest('[data-confirmation-banner]')) {
+        return;
+      }
+
+      // перехватываем только навигацию: ссылки, пункты меню и явную кнопку «Назад»
+      const navEl = target.closest('a[href], [role="link"], [role="menuitem"], [data-back-button]') as HTMLElement | null;
+      if (!navEl) return;
+
+      // ссылка, ведущая на эту же страницу — пропускаем
+      if (navEl.tagName === 'A') {
+        const href = (navEl as HTMLAnchorElement).getAttribute('href') || '';
+        if (!href || href.startsWith('#')) return;
+        try {
+          const url = new URL(href, window.location.origin);
+          if (url.pathname + url.search === currentPath) return;
+        } catch {
+          /* относительный href — продолжаем перехват */
+        }
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      setConfirmationMode('confirm');
+    };
+
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('click', handleClickCapture, true);
     return () => {
       clearTimeout(timer);
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', handleClickCapture, true);
     };
   }, [needsCreatorConfirmation]);
 
@@ -253,6 +298,7 @@ const TicketDetails = () => {
         <Button
           variant="ghost"
           size="icon"
+          data-back-button
           onClick={handleBack}
           className="shrink-0 w-9 h-9"
         >
@@ -261,16 +307,16 @@ const TicketDetails = () => {
       </div>
 
       {needsCreatorConfirmation && (
-        <div className="mb-4 rounded-xl border-2 border-orange-500 bg-orange-500/10 p-4 relative overflow-hidden confirmation-banner-pulse">
+        <div data-confirmation-banner className="mb-4 rounded-xl border-2 border-orange-500 bg-orange-500/10 [.light_&]:bg-orange-100 [.light_&]:border-orange-500 p-4 relative overflow-hidden confirmation-banner-pulse">
           <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="shrink-0 w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center animate-bounce-slow">
-              <Icon name="ClipboardCheck" size={24} className="text-orange-400" />
+            <div className="shrink-0 w-12 h-12 rounded-full bg-orange-500/20 [.light_&]:bg-orange-500 flex items-center justify-center animate-bounce-slow">
+              <Icon name="ClipboardCheck" size={24} className="text-orange-400 [.light_&]:text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-orange-400 uppercase tracking-wide">
+              <h3 className="text-sm font-bold text-orange-400 [.light_&]:text-orange-700 uppercase tracking-wide">
                 Требуется ваше решение
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground [.light_&]:text-orange-900/80 mt-0.5">
                 Исполнитель сообщает, что работа выполнена. Подтвердите или отклоните результат.
               </p>
             </div>
@@ -286,7 +332,7 @@ const TicketDetails = () => {
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 sm:flex-none border-red-500/40 text-red-400 hover:bg-red-500/10"
+                className="flex-1 sm:flex-none border-red-500/40 text-red-400 [.light_&]:text-red-600 [.light_&]:border-red-500 [.light_&]:bg-white hover:bg-red-500/10"
                 onClick={() => setConfirmationMode('reject')}
               >
                 <Icon name="XCircle" size={14} className="mr-1" />
@@ -318,7 +364,7 @@ const TicketDetails = () => {
               onApprovalChange={loadTicket}
               onUpdateDueDate={isClosed ? undefined : lockedHandleUpdateDueDate}
               onReopened={loadTicket}
-              hidePing={isClosed}
+              hidePing={isClosed || needsCreatorConfirmation}
             />
           </div>
 
@@ -372,7 +418,7 @@ const TicketDetails = () => {
 
 
 
-          {!isClosed && (
+          {!isClosed && !needsCreatorConfirmation && (
             <div className="lg:hidden w-full">
               <Button
                 onClick={lockedHandleSendPing}
@@ -422,9 +468,11 @@ const TicketDetails = () => {
                 onRemoveAttachment={removeAttachment}
                 auditLogs={auditLogs}
                 loadingHistory={loadingHistory}
-                commentsBlocked={isClosed || (isReopened && !!isAssignee)}
+                commentsBlocked={isClosed || (isReopened && !!isAssignee) || needsCreatorConfirmation}
                 commentsBlockedMessage={
-                  isClosed
+                  needsCreatorConfirmation
+                    ? 'Сначала подтвердите или отклоните решение исполнителя — после этого комментарии снова станут доступны.'
+                    : isClosed
                     ? 'Заявка закрыта. Откройте её повторно, чтобы оставлять комментарии.'
                     : 'Заявка открыта повторно. Для работы с ней необходимо сначала принять её в работу, изменив статус.'
                 }
