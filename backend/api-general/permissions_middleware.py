@@ -30,8 +30,11 @@ def check_permission(conn, user_id: int, resource: str, action: str) -> bool:
         
         user_permissions = cur.fetchall()
         
-        # Право users.access даёт полный доступ к разделу Пользователи
-        if resource == 'users':
+        # Право users.access даёт полный доступ к разделу Пользователи.
+        # Раздел Пользователи требует чтения списка ролей (чтобы назначать
+        # роли при создании/редактировании пользователя), поэтому users.access
+        # также разрешает roles.read.
+        if resource == 'users' or (resource == 'roles' and action == 'read'):
             for perm in user_permissions:
                 if perm['resource'] == 'users' and perm['action'] == 'access':
                     return True

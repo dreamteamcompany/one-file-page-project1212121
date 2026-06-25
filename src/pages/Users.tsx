@@ -45,6 +45,7 @@ const Users = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesError, setRolesError] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [showBlocked, setShowBlocked] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,6 +105,7 @@ const Users = () => {
   };
 
   const loadRoles = async () => {
+    setRolesError(false);
     try {
       const response = await apiFetch(`${API_URL}?endpoint=roles`, {
         headers: {
@@ -116,10 +118,12 @@ const Users = () => {
         setRoles(Array.isArray(data) ? data : []);
       } else {
         setRoles([]);
+        setRolesError(true);
       }
     } catch (err) {
       console.error('Failed to load roles:', err);
       setRoles([]);
+      setRolesError(true);
     }
   };
 
@@ -396,6 +400,8 @@ const Users = () => {
             formData={formData}
             setFormData={setFormData}
             roles={roles}
+            rolesError={rolesError}
+            onRetryRoles={loadRoles}
             departments={departments}
             handleSubmit={handleSubmit}
             canCreate={hasPermission('users', 'create')}

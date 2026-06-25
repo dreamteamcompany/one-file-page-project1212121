@@ -63,6 +63,8 @@ interface UserFormDialogProps {
   };
   setFormData: (data: Record<string, string | number[] | boolean | number | null>) => void;
   roles: Role[];
+  rolesError?: boolean;
+  onRetryRoles?: () => void;
   departments?: Department[];
   handleSubmit: (e: React.FormEvent) => void;
   canCreate?: boolean;
@@ -78,6 +80,8 @@ const UserFormDialog = ({
   formData,
   setFormData,
   roles,
+  rolesError = false,
+  onRetryRoles,
   departments = [],
   handleSubmit,
   canCreate = true,
@@ -309,7 +313,17 @@ const UserFormDialog = ({
           <div className="space-y-2">
             <Label>Роли</Label>
             <div className="space-y-2 border border-border rounded-md p-3 bg-accent/30">
-              {!roles || roles.length === 0 ? (
+              {rolesError ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-destructive">Не удалось загрузить роли</p>
+                  {onRetryRoles && (
+                    <Button type="button" size="sm" variant="outline" onClick={onRetryRoles} className="gap-1">
+                      <Icon name="RefreshCw" size={14} />
+                      Повторить
+                    </Button>
+                  )}
+                </div>
+              ) : !roles || roles.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Загрузка ролей...</p>
               ) : (
                 roles.map((role) => (
