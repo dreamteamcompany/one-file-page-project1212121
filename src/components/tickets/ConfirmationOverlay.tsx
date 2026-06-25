@@ -23,7 +23,7 @@ const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) 
   const [hover, setHover] = useState(0);
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-3 sm:gap-4">
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
@@ -31,7 +31,7 @@ const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) 
           onClick={() => onChange(star)}
           onMouseEnter={() => setHover(star)}
           onMouseLeave={() => setHover(0)}
-          className="text-4xl transition-transform hover:scale-125 focus:outline-none"
+          className="text-6xl sm:text-7xl leading-none transition-transform hover:scale-125 focus:outline-none"
         >
           <span style={{ color: star <= (hover || value) ? '#f59e0b' : '#4b5563' }}>★</span>
         </button>
@@ -45,6 +45,7 @@ const RATING_LABELS = ['', 'Очень плохо', 'Плохо', 'Нормал�
 const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: ConfirmationOverlayProps) => {
   const { token } = useAuth();
   const [mode, setMode] = useState<'choose' | 'confirm' | 'reject'>(initialMode || 'choose');
+  const [rejectBackMode, setRejectBackMode] = useState<'choose' | 'confirm' | null>(null);
   const [rating, setRating] = useState(0);
   const [rejectionReason, setRejectionReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -100,18 +101,18 @@ const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: Confir
 
   return (
     <div data-confirmation-overlay className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="rounded-2xl border bg-card shadow-2xl p-6 space-y-6">
+      <div className="w-full max-w-lg">
+        <div className="rounded-2xl border bg-card shadow-2xl p-8 sm:p-10 space-y-7">
           <div className="text-center space-y-2">
-            <div className="mx-auto w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center mb-4">
-              <Icon name="ClipboardCheck" size={32} className="text-orange-500" />
+            <div className="mx-auto w-20 h-20 rounded-full bg-orange-500/10 flex items-center justify-center mb-4">
+              <Icon name="ClipboardCheck" size={40} className="text-orange-500" />
             </div>
-            <h2 className="text-xl font-bold">Подтверждение заявки</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-2xl font-bold">Подтверждение заявки</h2>
+            <p className="text-base text-muted-foreground">
               Заявка #{ticket.id}: {ticket.title}
             </p>
             {ticket.assignee_name && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Исполнитель: {ticket.assignee_name}
               </p>
             )}
@@ -134,8 +135,8 @@ const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: Confir
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 h-14 text-base"
-                  onClick={() => setMode('reject')}
+                  className="border-red-500/40 text-red-400 [.light_&]:text-red-600 [.light_&]:border-red-500 [.light_&]:bg-white hover:bg-red-500/10 h-14 text-base"
+                  onClick={() => { setRejectBackMode('choose'); setMode('reject'); }}
                 >
                   <Icon name="XCircle" size={20} className="mr-2" />
                   Отклонить
@@ -145,45 +146,59 @@ const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: Confir
           )}
 
           {mode === 'confirm' && (
-            <div className="space-y-5">
-              <div className="text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
+            <div className="space-y-6">
+              <div className="text-center space-y-4">
+                <p className="text-base text-muted-foreground">
                   Оцените качество выполнения:
                 </p>
                 <div className="flex justify-center">
                   <StarRating value={rating} onChange={setRating} />
                 </div>
                 {rating > 0 && (
-                  <p className="text-sm font-medium text-amber-500">
+                  <p className="text-base font-medium text-amber-500">
                     {RATING_LABELS[rating]}
                   </p>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="flex-1 h-12 text-base"
+                    onClick={() => { if (initialMode) { onClose?.(); } else { setMode('choose'); setRating(0); } }}
+                    disabled={loading}
+                  >
+                    Назад
+                  </Button>
+                  <Button
+                    size="lg"
+                    className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700 text-white"
+                    disabled={rating === 0 || loading}
+                    onClick={handleConfirm}
+                  >
+                    {loading && <Icon name="Loader2" size={18} className="mr-2 animate-spin" />}
+                    Подтвердить
+                  </Button>
+                </div>
                 <Button
+                  size="lg"
                   variant="outline"
-                  className="flex-1"
-                  onClick={() => { if (initialMode) { onClose?.(); } else { setMode('choose'); setRating(0); } }}
+                  className="w-full h-12 text-base border-red-500/40 text-red-400 [.light_&]:text-red-600 [.light_&]:border-red-500 [.light_&]:bg-white hover:bg-red-500/10"
+                  onClick={() => { setRejectBackMode('confirm'); setMode('reject'); setError(''); }}
                   disabled={loading}
                 >
-                  Назад
-                </Button>
-                <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  disabled={rating === 0 || loading}
-                  onClick={handleConfirm}
-                >
-                  {loading && <Icon name="Loader2" size={16} className="mr-2 animate-spin" />}
-                  Подтвердить
+                  <Icon name="XCircle" size={18} className="mr-2" />
+                  Отклонить
                 </Button>
               </div>
             </div>
           )}
 
           {mode === 'reject' && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-base text-muted-foreground">
                   Опишите, что не устроило — исполнитель увидит эту причину:
                 </p>
                 <Textarea
@@ -191,25 +206,39 @@ const ConfirmationOverlay = ({ ticket, initialMode, onChanged, onClose }: Confir
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   rows={4}
+                  className="text-base"
                   autoFocus
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <Button
+                  size="lg"
                   variant="outline"
-                  className="flex-1"
-                  onClick={() => { if (initialMode) { onClose?.(); } else { setMode('choose'); setRejectionReason(''); } }}
+                  className="flex-1 h-12 text-base"
+                  onClick={() => {
+                    if (rejectBackMode) {
+                      setMode(rejectBackMode);
+                      setRejectBackMode(null);
+                      setRejectionReason('');
+                    } else if (initialMode) {
+                      onClose?.();
+                    } else {
+                      setMode('choose');
+                      setRejectionReason('');
+                    }
+                  }}
                   disabled={loading}
                 >
                   Назад
                 </Button>
                 <Button
+                  size="lg"
                   variant="destructive"
-                  className="flex-1"
+                  className="flex-1 h-12 text-base"
                   disabled={!rejectionReason.trim() || loading}
                   onClick={handleReject}
                 >
-                  {loading && <Icon name="Loader2" size={16} className="mr-2 animate-spin" />}
+                  {loading && <Icon name="Loader2" size={18} className="mr-2 animate-spin" />}
                   Вернуть в работу
                 </Button>
               </div>
