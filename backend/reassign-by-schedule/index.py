@@ -134,7 +134,7 @@ def _pick_working_member(cur, group_id, current_day, current_time, exclude_user)
             GROUP BY assigned_to
         ) tc ON tc.assigned_to = m.user_id
         WHERE m.group_id = %s AND m.user_id <> %s
-        ORDER BY ticket_count ASC, m.is_lead DESC, m.user_id ASC
+        ORDER BY ticket_count ASC, m.is_lead DESC, RANDOM()
         LIMIT 1
     """, (current_day, current_time, current_time, group_id, exclude_user))
     row = cur.fetchone()

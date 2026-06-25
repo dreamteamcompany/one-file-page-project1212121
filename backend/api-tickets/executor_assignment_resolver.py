@@ -154,13 +154,16 @@ def _pick_member(cur, schema: str, group_id: int, assign_type: str = 'all', bala
 
     if balance_mode == 'balanced':
         subquery = f"""
-            SELECT assigned_to, COUNT(*) AS ticket_count
+            SELECT assigned_to,
+                   COUNT(*) FILTER (WHERE s.count_for_distribution = true) AS ticket_count,
+                   MAX(t.created_at) AS last_assigned_at
             FROM {schema}.tickets t
-            JOIN {schema}.ticket_statuses s ON s.id = t.status_id AND s.count_for_distribution = true
+            JOIN {schema}.ticket_statuses s ON s.id = t.status_id
+            WHERE t.assigned_to IS NOT NULL
             GROUP BY assigned_to
         """
         select_extra = "COALESCE(tc.ticket_count, 0) AS ticket_count"
-        order_clause = "m.is_lead DESC, ticket_count ASC, m.user_id ASC"
+        order_clause = "m.is_lead DESC, COALESCE(tc.ticket_count, 0) ASC, tc.last_assigned_at ASC NULLS FIRST, RANDOM()"
     else:
         subquery = f"""
             SELECT assigned_to, MAX(created_at) AS last_assigned_at
@@ -169,7 +172,7 @@ def _pick_member(cur, schema: str, group_id: int, assign_type: str = 'all', bala
             GROUP BY assigned_to
         """
         select_extra = "tc.last_assigned_at"
-        order_clause = "tc.last_assigned_at ASC NULLS FIRST, m.user_id ASC"
+        order_clause = "tc.last_assigned_at ASC NULLS FIRST, RANDOM()"
 
     schedule_join = ""
     params = (group_id,)
