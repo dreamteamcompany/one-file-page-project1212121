@@ -309,7 +309,7 @@ const Tickets = () => {
               <TicketsList
                 tickets={filteredTickets}
                 loading={loading}
-                onTicketClick={(ticket) => navigate(`/tickets/${ticket.id}`, { state: { ticket } })}
+                onTicketClick={(ticket) => window.open(`${window.location.origin}/tickets/${ticket.id}`, '_blank', 'noopener')}
                 selectedTicketIds={selectedTicketIds}
                 onToggleTicket={toggleTicketSelection}
                 onToggleAll={toggleAllTickets}
