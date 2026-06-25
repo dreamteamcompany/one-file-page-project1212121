@@ -56,7 +56,27 @@ const PaymentsSidebar = ({
   };
   
   const isActive = (path: string) => location.pathname === path;
-  
+
+  const settingsResources: Array<[string, string]> = [
+    ['settings', 'read'],
+    ['sla', 'read'],
+    ['ticket_services', 'read'],
+    ['ticket_service_categories', 'read'],
+    ['ticket_statuses', 'read'],
+    ['ticket_priorities', 'read'],
+    ['executor_groups', 'read'],
+    ['companies', 'read'],
+    ['departments', 'read'],
+    ['positions', 'read'],
+    ['field_registry', 'read'],
+    ['custom_field_groups', 'read'],
+    ['service_field_mappings', 'read'],
+    ['users', 'read'],
+    ['roles', 'read'],
+    ['log_analyzer', 'read'],
+  ];
+  const canAccessSettings = settingsResources.some(([r, a]) => hasPermission(r, a));
+
   return (
     <aside 
       style={{ backgroundColor: 'hsl(var(--sidebar-bg))' }}
@@ -110,7 +130,7 @@ const PaymentsSidebar = ({
         )}
 
 
-        {hasPermission('settings', 'read') && (
+        {canAccessSettings && (
           <li>
             <Link to="/settings" className={`flex items-center ${collapsed ? 'justify-center px-3 py-4' : 'gap-3 px-[15px] py-3'} rounded-lg ${isActive('/settings') ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'} transition-colors`} title="Настройки">
               <Icon name="Settings" size={22} />

@@ -32,9 +32,15 @@ const ProtectedRoute = ({ children, requiredPermission }: ProtectedRouteProps) =
     const isAdmin = user.roles?.some(role => role.name === 'Администратор' || role.name === 'Admin');
     
     if (!isAdmin) {
-      const hasPermission = user.permissions?.some(
-        (p) => p.resource === resource && p.action === action
-      );
+      const usersFullAccess =
+        resource === 'users' &&
+        user.permissions?.some((p) => p.resource === 'users' && p.action === 'access');
+
+      const hasPermission =
+        usersFullAccess ||
+        user.permissions?.some(
+          (p) => p.resource === resource && p.action === action
+        );
 
       if (!hasPermission) {
         return <Navigate to="/tickets" replace />;

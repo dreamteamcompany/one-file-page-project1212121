@@ -158,13 +158,33 @@ const Settings = () => {
     }
   };
 
+  const settingsAccessResources: Array<[string, string]> = [
+    ['settings', 'read'],
+    ['sla', 'read'],
+    ['ticket_services', 'read'],
+    ['ticket_service_categories', 'read'],
+    ['ticket_statuses', 'read'],
+    ['ticket_priorities', 'read'],
+    ['executor_groups', 'read'],
+    ['companies', 'read'],
+    ['departments', 'read'],
+    ['positions', 'read'],
+    ['field_registry', 'read'],
+    ['custom_field_groups', 'read'],
+    ['service_field_mappings', 'read'],
+    ['users', 'read'],
+    ['roles', 'read'],
+    ['log_analyzer', 'read'],
+  ];
+  const canAccessSettings = settingsAccessResources.some(([r, a]) => hasPermission(r, a));
+
   useEffect(() => {
-    if (!hasPermission('settings', 'read')) {
+    if (!canAccessSettings) {
       navigate('/tickets');
     }
-  }, [hasPermission, navigate]);
+  }, [canAccessSettings, navigate]);
 
-  if (!hasPermission('settings', 'read')) {
+  if (!canAccessSettings) {
     return null;
   }
 
