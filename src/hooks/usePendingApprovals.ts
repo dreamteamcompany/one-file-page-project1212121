@@ -110,7 +110,7 @@ export const usePendingApprovals = () => {
 
     const start = () => {
       if (intervalId !== null) return;
-      intervalId = setInterval(loadPendingApprovals, 120000);
+      intervalId = setInterval(loadPendingApprovals, 240000);
     };
 
     const stop = () => {

@@ -1223,6 +1223,8 @@ def handler(event: dict, context) -> dict:
             return handle_ticket_watchers(method, event, conn)
         elif endpoint == 'tickets-full':
             return handle_tickets_full(method, event, conn)
+        elif endpoint == 'tickets-bootstrap':
+            return handle_tickets_bootstrap(method, event, conn)
         elif endpoint == 'tickets-created-stats':
             return handle_tickets_created_stats(method, event, conn)
         elif endpoint == 'tickets-rating-stats':
@@ -3614,6 +3616,69 @@ def handle_ticket_watchers(method: str, event: dict, conn) -> dict:
 
     finally:
         cur.close()
+
+
+def handle_tickets_bootstrap(method: str, event: dict, conn) -> dict:
+    """Объединённая стартовая загрузка страницы «Мои заявки» одним вызовом.
+
+    За один поход в БД (одно соединение) возвращает всё для первого рендера,
+    чтобы фронт не слал ~6 параллельных запросов и не упирался в rate-limit БД.
+
+    Возвращает: tickets (список с пагинацией), dictionaries (категории,
+    приоритеты, статусы, отделы, доп. поля), ticket_services,
+    hidden_count, needs_my_reply_count.
+
+    Параметры запроса — те же, что у endpoint=tickets (page, limit, sort_by,
+    sort_dir, фильтры, is_archived, hide_waiting и т.д.).
+    """
+    if method != 'GET':
+        return response(405, {'error': 'Only GET method allowed'})
+
+    payload = verify_token(event)
+    if not payload:
+        return response(401, {'error': 'Требуется авторизация'})
+
+    base_params = event.get('queryStringParameters', {}) or {}
+
+    def _call(handler_fn, extra_params=None):
+        ev = dict(event)
+        ev['queryStringParameters'] = {**base_params, **(extra_params or {})}
+        return handler_fn('GET', ev, conn)
+
+    def _parse(resp, default):
+        if resp.get('statusCode') == 200:
+            try:
+                return json.loads(resp.get('body') or 'null')
+            except (json.JSONDecodeError, TypeError):
+                return default
+        return default
+
+    # 1. Основной список заявок (с текущими фильтрами/сортировкой)
+    tickets_resp = handle_tickets('GET', event, conn)
+    if tickets_resp.get('statusCode') in (401, 403):
+        return tickets_resp
+    tickets_data = _parse(tickets_resp, {'tickets': [], 'total': 0, 'pages': 1})
+
+    # 2. Справочники
+    dictionaries = _parse(_call(handle_ticket_dictionaries), {})
+
+    # 3. Услуги заявок
+    ticket_services = _parse(_call(handle_ticket_services), [])
+
+    # 4. Счётчики: скрытые и «нужен мой ответ» (limit=1, берём только total)
+    hidden_resp = _call(handle_tickets, {'page': '1', 'limit': '1', 'is_hidden': 'true'})
+    hidden_count = _parse(hidden_resp, {}).get('total', 0)
+
+    reply_resp = _call(handle_tickets, {'page': '1', 'limit': '1', 'needs_my_reply': 'true'})
+    needs_my_reply_count = _parse(reply_resp, {}).get('total', 0)
+
+    return response(200, {
+        'tickets': tickets_data,
+        'dictionaries': dictionaries,
+        'ticket_services': ticket_services,
+        'hidden_count': hidden_count,
+        'needs_my_reply_count': needs_my_reply_count,
+    })
 
 
 def handle_tickets_full(method: str, event: dict, conn) -> dict:

@@ -42,7 +42,7 @@ const EMPTY: TicketCounters = {
   overdue: 0,
 };
 
-export const useTicketCounters = (pollMs = 60000) => {
+export const useTicketCounters = (pollMs = 120000) => {
   const { token, user } = useAuth();
   const [counters, setCounters] = useState<TicketCounters>(EMPTY);
   const [loading, setLoading] = useState(false);

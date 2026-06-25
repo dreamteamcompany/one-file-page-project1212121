@@ -198,17 +198,56 @@ export const useTicketsData = () => {
     }
   }, [token]);
 
-  useEffect(() => {
-    if (token) {
-      // Список заявок управляет спиннером сам (внутри loadTickets есть setLoading).
-      // Справочники, сервисы и счётчики грузим в фоне — они НЕ должны
-      // задерживать показ списка, даже если одна из функций тормозит/таймаутит.
+  const loadBootstrap = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const skipWaiting = hideWaiting;
+      let url = `${API_URL}?endpoint=tickets-bootstrap&page=1&limit=${TICKETS_PER_PAGE}&sort_by=${encodeURIComponent(sortBy)}&sort_dir=${sortDir}&is_archived=false`;
+      if (skipWaiting) url += '&hide_waiting=true';
+
+      const res = await apiFetch(url, { headers: { 'X-Auth-Token': token } });
+      if (!res.ok) {
+        throw new Error(`bootstrap ${res.status}`);
+      }
+      const data = await res.json();
+
+      const t = data.tickets || {};
+      setTickets(t.tickets || []);
+      setTotalPages(t.pages || 1);
+      setTotalTickets(t.total || 0);
+      setPage(1);
+
+      const dict = data.dictionaries || {};
+      setCategories(dict.categories || []);
+      setPriorities(dict.priorities || []);
+      setStatuses(dict.statuses || []);
+      setDepartments(dict.departments || []);
+      setCustomFields(dict.custom_fields || []);
+
+      setTicketServices(data.ticket_services || []);
+      setHiddenCount(data.hidden_count || 0);
+      setNeedsMyReplyCount(data.needs_my_reply_count || 0);
+      setLoading(false);
+
+      // services грузим отдельно в фоне (отдельная функция, нужна реже — для форм)
+      loadServices();
+    } catch (err) {
+      console.error('Bootstrap failed, fallback to separate requests:', err);
+      // Фолбэк на старую схему, чтобы страница не осталась пустой
       loadTickets(1);
       loadDictionaries();
       loadServices();
       loadHiddenCount();
       loadNeedsMyReplyCount();
     }
+  }, [token, hideWaiting, sortBy, sortDir, loadServices, loadTickets, loadDictionaries, loadHiddenCount, loadNeedsMyReplyCount]);
+
+  useEffect(() => {
+    if (token) {
+      loadBootstrap();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const toggleArchived = useCallback((archived: boolean) => {
