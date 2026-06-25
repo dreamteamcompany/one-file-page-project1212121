@@ -121,11 +121,13 @@ const TicketDetailsSidebar = ({
   const canEditApprovers = hasPermission('tickets', 'edit_approvers');
 
   const currentStatus = statuses.find(s => s.id === ticket.status_id);
+  const statusIsPendingConfirmation =
+    ticket.status_is_pending_confirmation ?? !!currentStatus?.is_pending_confirmation;
   const isTimerPaused = !!(
-    currentStatus?.is_closed ||
+    (ticket.status_is_closed ?? currentStatus?.is_closed) ||
     currentStatus?.is_paused ||
-    currentStatus?.is_waiting_response ||
-    currentStatus?.is_pending_confirmation
+    (ticket.status_is_waiting_response ?? currentStatus?.is_waiting_response) ||
+    statusIsPendingConfirmation
   );
 
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
@@ -205,7 +207,7 @@ const TicketDetailsSidebar = ({
           updating={updating}
           isCustomer={isCustomer}
           executorGroups={executorGroups}
-          isPendingConfirmation={!!statuses.find(s => s.id === ticket.status_id)?.is_pending_confirmation}
+          isPendingConfirmation={statusIsPendingConfirmation}
           onStatusChange={handleStatusChange}
           onAssignUser={onAssignUser}
           onAssignGroup={onAssignGroup}

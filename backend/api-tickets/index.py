@@ -1606,6 +1606,8 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                    t.previous_status_id,
                    s.name as status_name, s.color as status_color, s.is_closed as status_is_closed,
                    s.is_waiting_response as status_is_waiting_response,
+                   COALESCE(s.is_pending_confirmation, false) as status_is_pending_confirmation,
+                   COALESCE(s.is_reopened, false) as status_is_reopened,
                    p.name as priority_name, p.color as priority_color,
                    u1.username as assignee_email, u1.full_name as assignee_name, u1.photo_url as assignee_photo_url,
                    u2.username as creator_email, u2.full_name as creator_name, u2.photo_url as creator_photo_url,

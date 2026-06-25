@@ -20,6 +20,10 @@ export interface Ticket {
   status_id?: number;
   status_name?: string;
   status_color?: string;
+  status_is_closed?: boolean;
+  status_is_waiting_response?: boolean;
+  status_is_pending_confirmation?: boolean;
+  status_is_reopened?: boolean;
   department_id?: number;
   department_name?: string;
   service_id?: number;

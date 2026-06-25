@@ -90,18 +90,21 @@ const TicketDetails = () => {
   const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
 
   const isPendingConfirmation = useMemo(
-    () => !!statuses.find(s => s.id === ticket?.status_id)?.is_pending_confirmation,
-    [statuses, ticket?.status_id]
+    () => ticket?.status_is_pending_confirmation
+      ?? !!statuses.find(s => s.id === ticket?.status_id)?.is_pending_confirmation,
+    [statuses, ticket?.status_id, ticket?.status_is_pending_confirmation]
   );
   const isCreator = user?.id === ticket?.created_by;
   const isAssignee = user?.id === ticket?.assigned_to;
   const isReopened = useMemo(
-    () => !!statuses.find(s => s.id === ticket?.status_id)?.is_reopened,
-    [statuses, ticket?.status_id]
+    () => ticket?.status_is_reopened
+      ?? !!statuses.find(s => s.id === ticket?.status_id)?.is_reopened,
+    [statuses, ticket?.status_id, ticket?.status_is_reopened]
   );
   const isClosed = useMemo(
-    () => !!statuses.find(s => s.id === ticket?.status_id)?.is_closed,
-    [statuses, ticket?.status_id]
+    () => ticket?.status_is_closed
+      ?? !!statuses.find(s => s.id === ticket?.status_id)?.is_closed,
+    [statuses, ticket?.status_id, ticket?.status_is_closed]
   );
 
   const showLockedToast = useCallback(() => {
