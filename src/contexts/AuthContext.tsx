@@ -121,11 +121,51 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Запрос токена у других открытых вкладок (для случая, когда заявка
+  // открыта в новой вкладке, а токен лежит в sessionStorage текущей сессии).
+  const requestTokenFromOtherTabs = (): Promise<string | null> => {
+    if (typeof BroadcastChannel === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let channel: BroadcastChannel | null = null;
+      let done = false;
+      const finish = (value: string | null) => {
+        if (done) return;
+        done = true;
+        try { channel?.close(); } catch { /* ignore */ }
+        resolve(value);
+      };
+      try {
+        channel = new BroadcastChannel('auth-sync');
+        channel.onmessage = (e) => {
+          if (e.data?.type === 'token-response' && e.data.token) {
+            finish(e.data.token as string);
+          }
+        };
+        channel.postMessage({ type: 'request-token' });
+      } catch {
+        finish(null);
+        return;
+      }
+      // Ждём ответ не дольше 700мс, иначе считаем что других вкладок нет
+      setTimeout(() => finish(null), 700);
+    });
+  };
+
   const checkAuth = async () => {
-    const savedToken = getStoredToken();
+    let savedToken = getStoredToken();
     
     console.log('[checkAuth] savedToken:', savedToken ? 'exists' : 'null');
     
+    if (!savedToken) {
+      // Возможно, токен есть в другой вкладке (sessionStorage не шарится).
+      const sharedToken = await requestTokenFromOtherTabs();
+      if (sharedToken) {
+        console.log('[checkAuth] Got token from another tab');
+        sessionStorage.setItem('auth_token', sharedToken);
+        savedToken = sharedToken;
+      }
+    }
+
     if (!savedToken) {
       console.log('[checkAuth] No token found, skipping auth check');
       setLoading(false);
@@ -159,6 +199,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // Отвечаем другим вкладкам, которые просят токен текущей сессии.
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('auth-sync');
+    channel.onmessage = (e) => {
+      if (e.data?.type === 'request-token') {
+        const current = getStoredToken();
+        if (current) {
+          channel.postMessage({ type: 'token-response', token: current });
+        }
+      }
+    };
+    return () => {
+      try { channel.close(); } catch { /* ignore */ }
+    };
   }, []);
 
   useEffect(() => {
