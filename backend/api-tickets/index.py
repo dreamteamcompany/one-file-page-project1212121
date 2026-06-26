@@ -3,6 +3,7 @@ API для работы с заявками (tickets) и категориями 
 """
 import json
 import re
+import traceback
 from typing import Dict, Any, Optional, Set, List
 from pydantic import BaseModel, Field
 from shared_utils import response, get_db_connection, verify_token, handle_options, get_endpoint, SCHEMA
@@ -1844,42 +1845,54 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
             resolved_ts_id = ts_row['ticket_service_id'] if ts_row else None
 
         assigned_to = data.assigned_to
-        if not assigned_to and resolved_ts_id:
-            assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
-
         executor_group_id = None
-        if resolved_ts_id:
-            executor_group_id = resolve_executor_group(cur, SCHEMA, resolved_ts_id, data.service_ids)
+        try:
+            if not assigned_to and resolved_ts_id:
+                assigned_to = resolve_executor(cur, SCHEMA, resolved_ts_id, data.service_ids)
 
-        if not assigned_to and not executor_group_id:
-            cur.execute(
-                f"SELECT value FROM {SCHEMA}.system_settings WHERE key = 'default_executor_group_id'"
-            )
-            ds_row = cur.fetchone()
-            default_group_raw = (ds_row['value'] if ds_row else None) or ''
-            if str(default_group_raw).strip().isdigit():
-                default_group_id = int(str(default_group_raw).strip())
+            if resolved_ts_id:
+                executor_group_id = resolve_executor_group(cur, SCHEMA, resolved_ts_id, data.service_ids)
+
+            if not assigned_to and not executor_group_id:
                 cur.execute(
-                    f"SELECT id FROM {SCHEMA}.executor_groups WHERE id = %s AND is_active = true",
-                    (default_group_id,)
+                    f"SELECT value FROM {SCHEMA}.system_settings WHERE key = 'default_executor_group_id'"
                 )
-                if cur.fetchone():
-                    executor_group_id = default_group_id
+                ds_row = cur.fetchone()
+                default_group_raw = (ds_row['value'] if ds_row else None) or ''
+                if str(default_group_raw).strip().isdigit():
+                    default_group_id = int(str(default_group_raw).strip())
+                    cur.execute(
+                        f"SELECT id FROM {SCHEMA}.executor_groups WHERE id = %s AND is_active = true",
+                        (default_group_id,)
+                    )
+                    if cur.fetchone():
+                        executor_group_id = default_group_id
 
-        if executor_group_id and not assigned_to:
-            from executor_assignment_resolver import pick_member_for_group
-            picked = pick_member_for_group(cur, SCHEMA, executor_group_id)
-            if picked:
-                assigned_to = picked
-        
-        sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
+            if executor_group_id and not assigned_to:
+                from executor_assignment_resolver import pick_member_for_group
+                picked = pick_member_for_group(cur, SCHEMA, executor_group_id)
+                if picked:
+                    assigned_to = picked
+        except Exception as e:
+            print(f"[TICKETS] executor resolve error on create: {e}\n{traceback.format_exc()}")
+            conn.rollback()
+            assigned_to = data.assigned_to
+            executor_group_id = None
+
         due_date_sql = 'NULL'
         response_due_date_sql = 'NULL'
-        if sla:
-            if sla.get('resolution_time_minutes'):
-                due_date_sql = f"NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
-            if sla.get('response_time_minutes'):
-                response_due_date_sql = f"NOW() + INTERVAL '{int(sla['response_time_minutes'])} minutes'"
+        try:
+            sla = resolve_sla_for_ticket(cur, data.ticket_service_id, data.service_ids)
+            if sla:
+                if sla.get('resolution_time_minutes'):
+                    due_date_sql = f"NOW() + INTERVAL '{int(sla['resolution_time_minutes'])} minutes'"
+                if sla.get('response_time_minutes'):
+                    response_due_date_sql = f"NOW() + INTERVAL '{int(sla['response_time_minutes'])} minutes'"
+        except Exception as e:
+            print(f"[TICKETS] SLA resolve error on create: {e}\n{traceback.format_exc()}")
+            conn.rollback()
+            due_date_sql = 'NULL'
+            response_due_date_sql = 'NULL'
 
         # Дедлайн по умолчанию: если SLA не задал срок решения и заявка создаётся
         # без указанного дедлайна — ставим N рабочих дней (по умолчанию 1),
@@ -1904,20 +1917,26 @@ def handle_tickets(method: str, event: Dict[str, Any], conn) -> Dict[str, Any]:
                 ") sub)"
             )
         
-        cur.execute(f"""
-            INSERT INTO {SCHEMA}.tickets 
-            (title, description, status_id, priority_id, assigned_to, executor_group_id, created_by, due_date, response_due_date, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, {due_date_sql}, {response_due_date_sql}, NOW(), NOW())
-            RETURNING id, title, description, status_id, priority_id, assigned_to, executor_group_id, created_by, due_date, response_due_date, created_at, updated_at
-        """, (
-            data.title,
-            data.description,
-            status_id,
-            priority_id,
-            assigned_to,
-            executor_group_id,
-            payload['user_id']
-        ))
+        try:
+            cur.execute(f"""
+                INSERT INTO {SCHEMA}.tickets 
+                (title, description, status_id, priority_id, assigned_to, executor_group_id, created_by, due_date, response_due_date, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, {due_date_sql}, {response_due_date_sql}, NOW(), NOW())
+                RETURNING id, title, description, status_id, priority_id, assigned_to, executor_group_id, created_by, due_date, response_due_date, created_at, updated_at
+            """, (
+                data.title,
+                data.description,
+                status_id,
+                priority_id,
+                assigned_to,
+                executor_group_id,
+                payload['user_id']
+            ))
+        except Exception as e:
+            print(f"[TICKETS] INSERT ticket error on create: {e}\n{traceback.format_exc()}")
+            conn.rollback()
+            cur.close()
+            return response(400, {'error': 'Не удалось создать заявку. Проверьте выбранные параметры.'})
         
         ticket = dict(cur.fetchone())
         ticket['auto_assigned'] = (assigned_to is not None and data.assigned_to is None)
