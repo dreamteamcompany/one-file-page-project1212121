@@ -67,89 +67,89 @@ const TicketsWorkspace = ({
   }, [tickets, currentUserId, overdueCount, closedCount]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <WorkspaceKpiCards kpi={kpi} />
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
+      {/* Левая колонка: KPI + тулбар + таблица */}
+      <div className="flex min-w-0 flex-col gap-4">
+        <WorkspaceKpiCards kpi={kpi} />
 
-      {/* Тулбар: поиск + режим отображения */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-sm">
-          <Icon
-            name="Search"
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Поиск по заявкам..."
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Режим:</span>
-          <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
-            <button
-              type="button"
-              title="Список"
-              onClick={() => setGridMode(false)}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                !gridMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              <Icon name="List" size={16} />
-            </button>
-            <button
-              type="button"
-              title="Доска (скоро)"
-              onClick={() => setGridMode(true)}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                gridMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              <Icon name="LayoutGrid" size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {gridMode ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card py-20 text-muted-foreground">
-          <Icon name="LayoutGrid" size={40} className="mb-3" />
-          <p className="text-sm">Режим доски в разработке</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
-          <div className="min-w-0">
-            <WorkspaceTicketsTable
-              tickets={tickets}
-              loading={loading}
-              selectedTicketId={selectedTicket?.id ?? null}
-              onSelectTicket={setSelectedTicket}
-              page={page}
-              totalPages={totalPages}
-              totalTickets={totalTickets}
-              onPageChange={onPageChange}
+        {/* Тулбар: поиск + режим отображения */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm">
+            <Icon
+              name="Search"
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Поиск по заявкам..."
+              className="pl-9"
             />
           </div>
 
-          <div className="xl:sticky xl:top-4 xl:h-[calc(100vh-8rem)]">
-            {selectedTicket ? (
-              <WorkspaceDetailsPanel
-                key={selectedTicket.id}
-                ticketId={selectedTicket.id}
-                onClose={() => setSelectedTicket(null)}
-                onChanged={onReloadList}
-              />
-            ) : (
-              <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card text-muted-foreground">
-                <Icon name="MousePointerClick" size={40} className="mb-3" />
-                <p className="text-sm">Выберите заявку, чтобы увидеть детали</p>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Режим:</span>
+            <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
+              <button
+                type="button"
+                title="Список"
+                onClick={() => setGridMode(false)}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                  !gridMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <Icon name="List" size={16} />
+              </button>
+              <button
+                type="button"
+                title="Доска (скоро)"
+                onClick={() => setGridMode(true)}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                  gridMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <Icon name="LayoutGrid" size={16} />
+              </button>
+            </div>
           </div>
         </div>
-      )}
+
+        {gridMode ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card py-20 text-muted-foreground">
+            <Icon name="LayoutGrid" size={40} className="mb-3" />
+            <p className="text-sm">Режим доски в разработке</p>
+          </div>
+        ) : (
+          <WorkspaceTicketsTable
+            tickets={tickets}
+            loading={loading}
+            selectedTicketId={selectedTicket?.id ?? null}
+            onSelectTicket={setSelectedTicket}
+            page={page}
+            totalPages={totalPages}
+            totalTickets={totalTickets}
+            onPageChange={onPageChange}
+          />
+        )}
+      </div>
+
+      {/* Правая колонка: детали заявки */}
+      <div className="xl:sticky xl:top-4 xl:h-[calc(100vh-8rem)]">
+        {selectedTicket ? (
+          <WorkspaceDetailsPanel
+            key={selectedTicket.id}
+            ticketId={selectedTicket.id}
+            onClose={() => setSelectedTicket(null)}
+            onChanged={onReloadList}
+          />
+        ) : (
+          <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card text-muted-foreground">
+            <Icon name="MousePointerClick" size={40} className="mb-3" />
+            <p className="text-sm">Выберите заявку, чтобы увидеть детали</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
