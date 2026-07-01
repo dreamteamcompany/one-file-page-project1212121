@@ -270,10 +270,6 @@ const Tickets = () => {
           <TicketsWorkspace
             tickets={filteredTickets}
             loading={loading}
-            page={page}
-            totalPages={totalPages}
-            totalTickets={totalTickets}
-            onPageChange={(p) => loadTickets(p)}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             currentUserId={user?.id}

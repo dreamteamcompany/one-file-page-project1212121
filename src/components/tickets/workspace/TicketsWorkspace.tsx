@@ -3,7 +3,7 @@
  * KPI-карточки + таблица заявок + правая панель деталей.
  * Работает на реальных данных, детали открываются справа без перехода на новую страницу.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import type { Ticket } from '@/types';
@@ -15,10 +15,6 @@ import { getSlaBadge } from '@/utils/slaFormat';
 interface TicketsWorkspaceProps {
   tickets: Ticket[];
   loading: boolean;
-  page: number;
-  totalPages: number;
-  totalTickets: number;
-  onPageChange: (page: number) => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   currentUserId?: number;
@@ -29,13 +25,11 @@ interface TicketsWorkspaceProps {
 
 const isClosed = (t: Ticket): boolean => !!t.status_is_closed;
 
+const PAGE_SIZE = 7;
+
 const TicketsWorkspace = ({
   tickets,
   loading,
-  page,
-  totalPages,
-  totalTickets,
-  onPageChange,
   searchQuery,
   onSearchChange,
   currentUserId,
@@ -45,6 +39,20 @@ const TicketsWorkspace = ({
 }: TicketsWorkspaceProps) => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [gridMode, setGridMode] = useState(false);
+  const [localPage, setLocalPage] = useState(1);
+
+  // Клиентская пагинация по 7 заявок на страницу (только для нового интерфейса).
+  const localTotalPages = Math.max(1, Math.ceil(tickets.length / PAGE_SIZE));
+
+  // Сброс на первую страницу при изменении набора заявок (поиск/фильтры/серверная страница).
+  useEffect(() => {
+    setLocalPage(1);
+  }, [tickets, searchQuery]);
+
+  const pagedTickets = useMemo(
+    () => tickets.slice((localPage - 1) * PAGE_SIZE, localPage * PAGE_SIZE),
+    [tickets, localPage]
+  );
 
   const kpi: WorkspaceKpi = useMemo(() => {
     let overdue = overdueCount;
@@ -122,14 +130,14 @@ const TicketsWorkspace = ({
           </div>
         ) : (
           <WorkspaceTicketsTable
-            tickets={tickets}
+            tickets={pagedTickets}
             loading={loading}
             selectedTicketId={selectedTicket?.id ?? null}
             onSelectTicket={setSelectedTicket}
-            page={page}
-            totalPages={totalPages}
-            totalTickets={totalTickets}
-            onPageChange={onPageChange}
+            page={localPage}
+            totalPages={localTotalPages}
+            totalTickets={tickets.length}
+            onPageChange={(p) => setLocalPage(p)}
           />
         )}
       </div>
