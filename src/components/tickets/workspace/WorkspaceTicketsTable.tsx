@@ -96,7 +96,7 @@ const WorkspaceTicketsTable = ({
   return (
     <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden flex flex-col">
       {/* Шапка */}
-      <div className={`grid ${GRID} items-center gap-2 border-b border-border px-4 py-3 text-xs font-medium text-muted-foreground`}>
+      <div className={`grid ${GRID} items-center gap-2 border-b border-border px-4 py-4 text-xs font-medium text-muted-foreground`}>
         <span className="flex items-center">
           {bulkMode && (
             <Checkbox
