@@ -1,17 +1,24 @@
 /**
  * Новый интерфейс страницы заявок — «рабочее место оператора».
- * KPI-карточки + таблица заявок + правая панель деталей.
+ * KPI-карточки + тулбар (чипсы фильтров, сортировка, режим) + таблица + правая панель деталей.
  * Работает на реальных данных, детали открываются справа без перехода на новую страницу.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import type { Ticket } from '@/types';
+import type { TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
 import WorkspaceKpiCards, { WorkspaceKpi } from './WorkspaceKpiCards';
+import WorkspaceToolbar from './WorkspaceToolbar';
 import WorkspaceTicketsTable from './WorkspaceTicketsTable';
 import WorkspaceDetailsPanel from './WorkspaceDetailsPanel';
 import { getSlaBadge } from '@/utils/slaFormat';
 import { formatDateOnlyMSK } from '@/utils/dateFormat';
+
+interface SortOption {
+  value: string;
+  label: string;
+}
 
 interface TicketsWorkspaceProps {
   tickets: Ticket[];
@@ -22,11 +29,22 @@ interface TicketsWorkspaceProps {
   overdueCount: number;
   closedCount: number;
   onReloadList: () => void;
+  // Фильтры и сортировка (серверная логика)
+  filters: TicketsFiltersValue;
+  onRemoveFilter: (key: keyof TicketsFiltersValue) => void;
+  sortBy: string;
+  onSortByChange: (value: string) => void;
+  sortDir: 'asc' | 'desc';
+  onSortDirToggle: () => void;
+  sortOptions: SortOption[];
+  // Массовые действия
+  bulkMode: boolean;
+  selectedTicketIds: number[];
+  onToggleTicket: (id: number) => void;
+  onToggleAll: (ids: number[], allSelected: boolean) => void;
 }
 
 const isClosed = (t: Ticket): boolean => !!t.status_is_closed;
-
-const PAGE_SIZE = 7;
 
 // Проверка, что дата приходится на сегодняшний день (по московскому времени).
 const isToday = (date?: string): boolean => {
@@ -44,22 +62,34 @@ const TicketsWorkspace = ({
   overdueCount,
   closedCount,
   onReloadList,
+  filters,
+  onRemoveFilter,
+  sortBy,
+  onSortByChange,
+  sortDir,
+  onSortDirToggle,
+  sortOptions,
+  bulkMode,
+  selectedTicketIds,
+  onToggleTicket,
+  onToggleAll,
 }: TicketsWorkspaceProps) => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [gridMode, setGridMode] = useState(false);
   const [localPage, setLocalPage] = useState(1);
+  const [pageSize, setPageSize] = useState(7);
 
-  // Клиентская пагинация по 7 заявок на страницу (только для нового интерфейса).
-  const localTotalPages = Math.max(1, Math.ceil(tickets.length / PAGE_SIZE));
+  // Клиентская пагинация (по умолчанию 7, выбирается пользователем).
+  const localTotalPages = Math.max(1, Math.ceil(tickets.length / pageSize));
 
-  // Сброс на первую страницу при изменении набора заявок (поиск/фильтры/серверная страница).
+  // Сброс на первую страницу при изменении набора заявок или размера страницы.
   useEffect(() => {
     setLocalPage(1);
-  }, [tickets, searchQuery]);
+  }, [tickets, searchQuery, pageSize]);
 
   const pagedTickets = useMemo(
-    () => tickets.slice((localPage - 1) * PAGE_SIZE, localPage * PAGE_SIZE),
-    [tickets, localPage]
+    () => tickets.slice((localPage - 1) * pageSize, localPage * pageSize),
+    [tickets, localPage, pageSize]
   );
 
   const kpi: WorkspaceKpi = useMemo(() => {
@@ -114,48 +144,33 @@ const TicketsWorkspace = ({
       <div className="flex min-w-0 flex-col gap-4">
         <WorkspaceKpiCards kpi={kpi} today={todayKpi} />
 
-        {/* Тулбар: поиск + режим отображения */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-sm">
-            <Icon
-              name="Search"
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Поиск по заявкам..."
-              className="pl-9"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Режим:</span>
-            <div className="inline-flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
-              <button
-                type="button"
-                title="Список"
-                onClick={() => setGridMode(false)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                  !gridMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <Icon name="List" size={16} />
-              </button>
-              <button
-                type="button"
-                title="Доска (скоро)"
-                onClick={() => setGridMode(true)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                  gridMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <Icon name="LayoutGrid" size={16} />
-              </button>
-            </div>
-          </div>
+        {/* Поиск */}
+        <div className="relative w-full sm:max-w-sm">
+          <Icon
+            name="Search"
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Поиск по заявкам..."
+            className="pl-9"
+          />
         </div>
+
+        {/* Чипсы фильтров + сортировка + режим отображения */}
+        <WorkspaceToolbar
+          filters={filters}
+          onRemoveFilter={onRemoveFilter}
+          sortBy={sortBy}
+          onSortByChange={onSortByChange}
+          sortDir={sortDir}
+          onSortDirToggle={onSortDirToggle}
+          sortOptions={sortOptions}
+          gridMode={gridMode}
+          onGridModeChange={setGridMode}
+        />
 
         {gridMode ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card py-20 text-muted-foreground">
@@ -172,6 +187,12 @@ const TicketsWorkspace = ({
             totalPages={localTotalPages}
             totalTickets={tickets.length}
             onPageChange={(p) => setLocalPage(p)}
+            bulkMode={bulkMode}
+            selectedTicketIds={selectedTicketIds}
+            onToggleTicket={onToggleTicket}
+            onToggleAll={onToggleAll}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
           />
         )}
       </div>

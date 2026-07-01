@@ -156,8 +156,10 @@ const Tickets = () => {
     handleDelete,
   } = useBulkTicketOperations(selectedTicketIds, () => loadTickets(page), clearSelection);
 
+  const bulkDataNeeded = bulkMode || (ticketsInterface === 'workspace' && canBulkActions);
+
   useEffect(() => {
-    if (!isAdmin || !token || !bulkMode) return;
+    if (!isAdmin || !token || !bulkDataNeeded) return;
     if (bulkUsers.length === 0) {
       apiFetch(`${API_URL}?endpoint=users`, { headers: { 'X-Auth-Token': token } })
         .then((r) => (r.ok ? r.json() : []))
@@ -178,8 +180,17 @@ const Tickets = () => {
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, token, bulkMode]);
-  
+  }, [isAdmin, token, bulkDataNeeded]);
+
+  // В новом интерфейсе справочники статусов/приоритетов нужны сразу
+  // (для панели массовых действий и селектов в деталях).
+  useEffect(() => {
+    if (ticketsInterface === 'workspace' && statuses.length === 0) {
+      loadDictionaries();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketsInterface]);
+
   useEffect(() => {
     // Проверяем, есть ли ЛЮБОЕ право на просмотр заявок
     const canViewTickets = hasPermission('tickets', 'view_all') || hasPermission('tickets', 'view_own_only');
@@ -256,6 +267,14 @@ const Tickets = () => {
     loadTickets(1, undefined, undefined, undefined, undefined, undefined, undefined, sortBy, sortDir, normalized);
   };
 
+  const handleRemoveFilter = (key: keyof TicketsFiltersValue) => {
+    const next: Record<string, string> = { ...searchFilters };
+    delete next[key];
+    if (key === 'search_content') setSearchQuery('');
+    setSearchFilters(next);
+    loadTickets(1, undefined, undefined, undefined, undefined, undefined, undefined, sortBy, sortDir, next);
+  };
+
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader
@@ -266,6 +285,7 @@ const Tickets = () => {
 
       <div className="w-full flex flex-col flex-1">
         {ticketsInterface === 'workspace' ? (
+          <>
           <TicketsWorkspace
             tickets={filteredTickets}
             loading={loading}
@@ -275,7 +295,36 @@ const Tickets = () => {
             overdueCount={overdueCount}
             closedCount={closedCount}
             onReloadList={() => loadTickets(page)}
+            filters={searchFilters as TicketsFiltersValue}
+            onRemoveFilter={handleRemoveFilter}
+            sortBy={sortBy}
+            onSortByChange={handleSortByChange}
+            sortDir={sortDir}
+            onSortDirToggle={handleSortDirToggle}
+            sortOptions={SORT_OPTIONS}
+            bulkMode={canBulkActions}
+            selectedTicketIds={selectedTicketIds}
+            onToggleTicket={toggleTicketSelection}
+            onToggleAll={toggleAllTickets}
           />
+          {canBulkActions && selectedCount > 0 && (
+            <BulkActionsBar
+              selectedCount={selectedCount}
+              statuses={statuses}
+              priorities={priorities}
+              users={bulkUsers}
+              executorGroups={bulkExecutorGroups}
+              isAdmin={isAdmin}
+              onChangeStatus={handleChangeStatus}
+              onChangePriority={handleChangePriority}
+              onChangeExecutor={handleChangeExecutor}
+              onChangeExecutorGroup={handleChangeExecutorGroup}
+              onAddWatchers={handleAddWatchers}
+              onDelete={handleDelete}
+              onCancel={clearSelection}
+            />
+          )}
+          </>
         ) : (
         <>
         <TicketsViewToggle
