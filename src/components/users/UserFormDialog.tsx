@@ -180,7 +180,7 @@ const UserFormDialog = ({
           <span>Добавить пользователя</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[720px] w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto overflow-x-hidden">
+      <DialogContent className="sm:max-w-[720px] w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editingUser ? 'Редактировать пользователя' : 'Новый пользователь'}</DialogTitle>
           <DialogDescription>
@@ -355,7 +355,7 @@ const UserFormDialog = ({
           </div>
           {editingUser && onToggleStatus && (
             <div className="flex items-center justify-between p-3 rounded-md border border-border bg-accent/30">
-              <div>
+              <div className="flex-1 mr-3">
                 <Label className="font-medium">Статус учётной записи</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {editingUser.is_active ? 'Пользователь активен и может входить в систему' : 'Учётная запись отключена, вход заблокирован'}
