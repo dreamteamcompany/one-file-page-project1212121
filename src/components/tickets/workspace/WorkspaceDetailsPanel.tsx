@@ -34,6 +34,11 @@ const initials = (name?: string): string => {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 };
 
+const ticketSlug = (id: number): string => {
+  const base = (id * 2654435761) >>> 0;
+  return base.toString(36).slice(0, 7);
+};
+
 const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetailsPanelProps) => {
   const { hasPermission } = useAuth();
   const id = String(ticketId);
@@ -142,6 +147,7 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
         </div>
 
         <h2 className="mt-2 text-lg font-bold text-foreground">{ticket.title}</h2>
+        <div className="mt-0.5 font-mono text-xs text-muted-foreground">{ticketSlug(ticket.id)}</div>
 
         {/* Мини-теги (заглушка) */}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -438,13 +444,32 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
           </button>
         </div>
         <div className="flex items-end gap-2">
-          <Textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Напишите комментарий..."
-            rows={2}
-            className="resize-none"
-          />
+          <div className="relative flex-1">
+            <Textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Напишите комментарий..."
+              rows={2}
+              className="resize-none pr-16"
+            />
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <button
+                type="button"
+                title="Прикрепить файл (скоро)"
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
+                <Icon name="Paperclip" size={15} />
+              </button>
+              <button
+                type="button"
+                title="Эмодзи"
+                onClick={() => setNewComment(newComment + ' 🙂')}
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
+                <Icon name="Smile" size={15} />
+              </button>
+            </div>
+          </div>
           <Button
             size="icon"
             disabled={submittingComment || !newComment.trim()}

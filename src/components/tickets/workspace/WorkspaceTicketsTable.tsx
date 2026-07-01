@@ -56,6 +56,12 @@ const initials = (name?: string): string => {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 };
 
+// Стабильный короткий код заявки из её id (для отображения slug под темой).
+const ticketSlug = (id: number): string => {
+  const base = (id * 2654435761) >>> 0;
+  return base.toString(36).slice(0, 7);
+};
+
 const WorkspaceTicketsTable = ({
   tickets,
   loading,
@@ -184,7 +190,7 @@ const WorkspaceTicketsTable = ({
                 {/* Заявка */}
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-foreground">{ticket.title}</div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">#{ticket.id}</div>
+                  <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">{ticketSlug(ticket.id)}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {ticket.category_name && (
                       <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">

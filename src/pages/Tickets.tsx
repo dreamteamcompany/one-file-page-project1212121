@@ -27,7 +27,7 @@ import TicketsList from '@/components/tickets/TicketsList';
 import TicketsKanban from '@/components/tickets/TicketsKanban';
 import BulkActionsBar from '@/components/tickets/BulkActionsBar';
 import { API_URL, apiFetch } from '@/utils/api';
-import type { TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
+import TicketsFilters, { type TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
 import { getDeadlineSeverity } from '@/utils/dateFormat';
 
 type CounterRole = 'assignee' | 'customer' | 'approver' | 'mentions' | 'overdue';
@@ -123,6 +123,10 @@ const Tickets = () => {
   }, [searchedTickets, counterRole, user?.id]);
 
   const overdueCount = useMemo(() => filteredTickets.filter(isOverdueTicket).length, [filteredTickets]);
+  const assignedToMeCount = useMemo(
+    () => filteredTickets.filter((t) => t.assigned_to === user?.id).length,
+    [filteredTickets, user?.id]
+  );
   const closedCount = useMemo(
     () => filteredTickets.filter((t) => {
       const status = (t.status_name || '').trim().toLowerCase();
@@ -275,6 +279,15 @@ const Tickets = () => {
     loadTickets(1, undefined, undefined, undefined, undefined, undefined, undefined, sortBy, sortDir, next);
   };
 
+  const handleCreateTicket = () => {
+    handleFormOpen();
+    setDialogOpen(true);
+  };
+
+  // Верхние табы нового интерфейса используют только assignee/overdue.
+  const workspaceActiveRole: 'assignee' | 'overdue' | null =
+    counterRole === 'assignee' || counterRole === 'overdue' ? counterRole : null;
+
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
       <AppHeader
@@ -306,7 +319,37 @@ const Tickets = () => {
             selectedTicketIds={selectedTicketIds}
             onToggleTicket={toggleTicketSelection}
             onToggleAll={toggleAllTickets}
+            activeRole={workspaceActiveRole}
+            onSelectRole={(role) => setCounterRole(role)}
+            assignedCount={assignedToMeCount}
+            canCreate={hasPermission('tickets', 'create')}
+            onCreateTicket={handleCreateTicket}
+            filtersSlot={
+              <TicketsFilters
+                value={searchFilters as TicketsFiltersValue}
+                onChange={handleFiltersChange}
+                compact
+              />
+            }
           />
+          <div className="hidden">
+            <TicketForm
+              dialogOpen={dialogOpen}
+              setDialogOpen={setDialogOpen}
+              formData={formData}
+              setFormData={setFormData}
+              categories={categories}
+              priorities={priorities}
+              statuses={statuses}
+              departments={departments}
+              customFields={customFields}
+              services={services}
+              ticketServices={ticketServices}
+              handleSubmit={handleSubmit}
+              onDialogOpen={handleFormOpen}
+              canCreate={false}
+            />
+          </div>
           {canBulkActions && selectedCount > 0 && (
             <BulkActionsBar
               selectedCount={selectedCount}

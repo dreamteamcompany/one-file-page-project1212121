@@ -3,12 +3,12 @@
  * KPI-карточки + тулбар (чипсы фильтров, сортировка, режим) + таблица + правая панель деталей.
  * Работает на реальных данных, детали открываются справа без перехода на новую страницу.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import Icon from '@/components/ui/icon';
-import { Input } from '@/components/ui/input';
 import type { Ticket } from '@/types';
 import type { TicketsFiltersValue } from '@/components/tickets/TicketsFilters';
 import WorkspaceKpiCards, { WorkspaceKpi } from './WorkspaceKpiCards';
+import WorkspaceHeader from './WorkspaceHeader';
 import WorkspaceToolbar from './WorkspaceToolbar';
 import WorkspaceTicketsTable from './WorkspaceTicketsTable';
 import WorkspaceDetailsPanel from './WorkspaceDetailsPanel';
@@ -42,6 +42,13 @@ interface TicketsWorkspaceProps {
   selectedTicketIds: number[];
   onToggleTicket: (id: number) => void;
   onToggleAll: (ids: number[], allSelected: boolean) => void;
+  // Верхняя строка
+  activeRole: 'assignee' | 'overdue' | null;
+  onSelectRole: (role: 'assignee' | 'overdue' | null) => void;
+  assignedCount: number;
+  filtersSlot?: ReactNode;
+  onCreateTicket?: () => void;
+  canCreate: boolean;
 }
 
 const isClosed = (t: Ticket): boolean => !!t.status_is_closed;
@@ -73,6 +80,12 @@ const TicketsWorkspace = ({
   selectedTicketIds,
   onToggleTicket,
   onToggleAll,
+  activeRole,
+  onSelectRole,
+  assignedCount,
+  filtersSlot,
+  onCreateTicket,
+  canCreate,
 }: TicketsWorkspaceProps) => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [gridMode, setGridMode] = useState(false);
@@ -139,25 +152,24 @@ const TicketsWorkspace = ({
   }, [tickets, currentUserId]);
 
   return (
+    <div className="flex flex-col gap-4">
+      {/* Верхняя строка: заголовок + табы + поиск + фильтры + создать */}
+      <WorkspaceHeader
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        assignedCount={assignedCount}
+        overdueCount={overdueCount}
+        activeRole={activeRole}
+        onSelectRole={onSelectRole}
+        filtersSlot={filtersSlot}
+        onCreateTicket={onCreateTicket}
+        canCreate={canCreate}
+      />
+
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
       {/* Левая колонка: KPI + тулбар + таблица */}
       <div className="flex min-w-0 flex-col gap-4">
         <WorkspaceKpiCards kpi={kpi} today={todayKpi} />
-
-        {/* Поиск */}
-        <div className="relative w-full sm:max-w-sm">
-          <Icon
-            name="Search"
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Поиск по заявкам..."
-            className="pl-9"
-          />
-        </div>
 
         {/* Чипсы фильтров + сортировка + режим отображения */}
         <WorkspaceToolbar
@@ -213,6 +225,7 @@ const TicketsWorkspace = ({
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };
