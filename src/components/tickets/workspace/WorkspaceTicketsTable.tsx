@@ -139,7 +139,7 @@ const WorkspaceTicketsTable = ({
               <div
                 key={ticket.id}
                 onClick={() => onSelectTicket(ticket)}
-                className={`relative grid ${GRID} cursor-pointer items-center gap-2 border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted/50 ${
+                className={`relative grid ${GRID} cursor-pointer items-center gap-2 border-b border-border px-4 py-5 text-left transition-colors hover:bg-muted/50 ${
                   active ? 'bg-primary/5' : ''
                 }`}
               >
