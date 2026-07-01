@@ -382,7 +382,7 @@ const KnowledgeBase = () => {
 
   return (
     <PageLayout>
-      <div className="max-w-5xl mx-auto w-full h-full">
+      <div className="max-w-7xl mx-auto w-full h-full">
         {/* === Main === */}
         <main className="flex-1 min-w-0">
           {search.trim() || mode === 'list' ? (

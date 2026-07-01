@@ -30,37 +30,91 @@ interface KBArticleListProps {
   startNewArticle: () => void;
 }
 
+const FOLDER_IMG = 'https://cdn.poehali.dev/projects/1bde8275-3fbd-44e1-b7ff-9b0123cbb82a/files/920f3295-c00e-44c3-8903-eab1a56a4818.jpg';
+
+// Палитра пастельных плашек для иконок категорий статей.
+const ICON_PALETTES = [
+  { bg: 'bg-violet-100 dark:bg-violet-950/40', fg: 'text-violet-600 dark:text-violet-300' },
+  { bg: 'bg-emerald-100 dark:bg-emerald-950/40', fg: 'text-emerald-600 dark:text-emerald-300' },
+  { bg: 'bg-blue-100 dark:bg-blue-950/40', fg: 'text-blue-600 dark:text-blue-300' },
+  { bg: 'bg-pink-100 dark:bg-pink-950/40', fg: 'text-pink-600 dark:text-pink-300' },
+  { bg: 'bg-amber-100 dark:bg-amber-950/40', fg: 'text-amber-600 dark:text-amber-300' },
+  { bg: 'bg-cyan-100 dark:bg-cyan-950/40', fg: 'text-cyan-600 dark:text-cyan-300' },
+];
+
+const paletteFor = (id: number) => ICON_PALETTES[id % ICON_PALETTES.length];
+
+// Примерное время чтения (заглушка): по summary/длине заголовка.
+const readingTime = (a: ArticleListItem): number => {
+  const len = (a.summary?.length || 0) + a.title.length;
+  return Math.max(3, Math.round(len / 120) + 3);
+};
+
+// Большая премиальная карточка статьи (по эталону).
 const ArticleCard = ({
   a,
   openArticle,
 }: {
   a: ArticleListItem;
   openArticle: (id: number) => void;
-}) => (
-  <button
-    onClick={() => openArticle(a.id)}
-    className="group text-left p-4 rounded-lg border border-border bg-muted/40 hover:bg-muted/60 hover:border-primary/60 transition-colors flex flex-col gap-2 font-normal"
-  >
-    <div className="flex items-start justify-between gap-2">
-      <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1 group-hover:text-primary transition-colors">
+}) => {
+  const palette = paletteFor(a.category_id || a.id);
+  return (
+    <button
+      onClick={() => openArticle(a.id)}
+      className="group flex h-full flex-col rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:border-primary/40"
+    >
+      <div className="mb-4 flex items-start justify-between">
+        <span className={cn('flex h-12 w-12 items-center justify-center rounded-2xl', palette.bg)}>
+          <Icon name={a.category_color ? 'Phone' : 'FileText'} size={22} className={palette.fg} />
+        </span>
+        <Icon
+          name="Bookmark"
+          size={18}
+          className={a.is_favorite ? 'fill-primary text-primary' : 'text-muted-foreground/50'}
+        />
+      </div>
+
+      <h3 className="mb-3 line-clamp-3 text-base font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
         {a.title}
       </h3>
-      {a.is_favorite && <Icon name="Star" size={14} className="text-amber-500 shrink-0" />}
-    </div>
-    {a.summary && <p className="text-xs font-normal text-muted-foreground line-clamp-2">{a.summary}</p>}
-    <div className="flex items-center gap-3 text-xs font-normal text-muted-foreground mt-auto pt-1">
-      {a.category_name && <span className="truncate">{a.category_name}</span>}
-      <span className="flex items-center gap-1">
-        <Icon name="Eye" size={12} />
-        {a.views_count}
-      </span>
-      <span className="flex items-center gap-1">
-        <Icon name="Heart" size={12} className={a.is_liked ? 'fill-red-500 text-red-500' : ''} />
-        {a.likes_count}
-      </span>
-    </div>
-  </button>
-);
+
+      {a.category_name && (
+        <span className={cn('mb-4 inline-flex w-fit rounded-md px-2 py-0.5 text-xs font-medium', palette.bg, palette.fg)}>
+          {a.category_name}
+        </span>
+      )}
+
+      <div className="mt-auto flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Icon name="Eye" size={13} />
+          {a.views_count}
+        </span>
+        <span className="flex items-center gap-1">
+          <Icon name="Heart" size={13} className={a.is_liked ? 'fill-red-500 text-red-500' : ''} />
+          {a.likes_count}
+        </span>
+        <span className="ml-auto">{readingTime(a)} мин чтения</span>
+      </div>
+    </button>
+  );
+};
+
+const SECTION_ICONS = ['LayoutGrid', 'Star', 'FileText', 'ShieldCheck', 'Landmark'];
+const SECTION_PALETTES = [
+  { bg: 'bg-violet-100 dark:bg-violet-950/40', fg: 'text-violet-600 dark:text-violet-300' },
+  { bg: 'bg-amber-100 dark:bg-amber-950/40', fg: 'text-amber-600 dark:text-amber-300' },
+  { bg: 'bg-blue-100 dark:bg-blue-950/40', fg: 'text-blue-600 dark:text-blue-300' },
+  { bg: 'bg-emerald-100 dark:bg-emerald-950/40', fg: 'text-emerald-600 dark:text-emerald-300' },
+  { bg: 'bg-cyan-100 dark:bg-cyan-950/40', fg: 'text-cyan-600 dark:text-cyan-300' },
+];
+
+const FEATURES = [
+  { icon: 'Zap', title: 'Быстрый поиск', text: 'Найдите нужную информацию за секунды', bg: 'bg-violet-100 dark:bg-violet-950/40', fg: 'text-violet-600 dark:text-violet-300' },
+  { icon: 'Bookmark', title: 'Избранное', text: 'Сохраняйте важные статьи для себя', bg: 'bg-blue-100 dark:bg-blue-950/40', fg: 'text-blue-600 dark:text-blue-300' },
+  { icon: 'ShieldCheck', title: 'Проверенная информация', text: 'Только актуальные и проверенные данные', bg: 'bg-emerald-100 dark:bg-emerald-950/40', fg: 'text-emerald-600 dark:text-emerald-300' },
+  { icon: 'Bell', title: 'Уведомления', text: 'Будьте в курсе важных обновлений', bg: 'bg-amber-100 dark:bg-amber-950/40', fg: 'text-amber-600 dark:text-amber-300' },
+];
 
 const KBArticleList = ({
   search,
@@ -126,112 +180,148 @@ const KBArticleList = ({
     );
   }
 
-  // === Home: Help Center style ===
+  // === Home: премиальный дизайн help-центра ===
   if (isHome) {
+    const totalCount = categories.reduce((s, c) => s + (c.articles_count || 0), 0) || articles.length;
+
     return (
-      <div className="space-y-6">
-        {/* Hero with big search */}
-        <Card className="border-border overflow-hidden">
-          <CardContent className="p-6 md:p-10 text-center bg-gradient-to-b from-primary/5 to-transparent">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Icon name="BookOpen" size={28} className="text-primary" />
-              <h1 className="text-2xl md:text-3xl font-bold">База знаний</h1>
-            </div>
-            <p className="text-sm md:text-base text-muted-foreground mb-5">
-              Найдите ответ или выберите раздел ниже
+      <div className="space-y-8">
+        {/* Верхняя строка */}
+        <div className="flex items-center justify-end gap-2">
+          {canWrite && (
+            <Button variant="outline" onClick={startNewArticle} className="gap-2 rounded-xl">
+              <Icon name="PenLine" size={16} />
+              Предложить статью
+            </Button>
+          )}
+        </div>
+
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+          <div className="relative z-10 max-w-2xl p-2 md:p-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">База знаний</h1>
+            <p className="mt-3 text-base text-muted-foreground">
+              Найдите ответ на любой вопрос или выберите нужный раздел
             </p>
-            <div className="relative max-w-xl mx-auto">
-              <Icon name="Search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative mt-6 max-w-xl">
+              <Icon name="Search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Что вы ищете?"
-                className="pl-11 h-12 text-base rounded-full"
+                className="h-14 rounded-2xl border-border pl-12 pr-16 text-base shadow-sm"
               />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                ⌘K
+              </span>
             </div>
-            {canWrite && (
-              <Button onClick={startNewArticle} className="gap-2 mt-5">
-                <Icon name="Plus" size={16} />
-                Новая статья
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Compact filters: all / favorites / categories / tags */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              setFilterCategory(null);
-              setFilterTag(null);
-              setShowFavorites(false);
-            }}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs border transition-colors',
-              !filterCategory && !filterTag && !showFavorites
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'border-border hover:bg-accent',
-            )}
-          >
-            Все статьи
-          </button>
-          <button
-            onClick={() => {
-              setShowFavorites(true);
-              setFilterCategory(null);
-              setFilterTag(null);
-            }}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs border transition-colors flex items-center gap-1',
-              showFavorites ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent',
-            )}
-          >
-            <Icon name="Star" size={12} />
-            Избранное
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => {
-                setFilterCategory(c.id);
-                setFilterTag(null);
-                setShowFavorites(false);
-              }}
-              className="px-3 py-1.5 rounded-full text-xs border border-border hover:bg-accent transition-colors flex items-center gap-1"
-            >
-              <Icon name={c.icon || 'Folder'} size={12} style={{ color: c.color || undefined }} />
-              {c.name}
-            </button>
-          ))}
-          {tags.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setFilterTag(t.id);
-                setFilterCategory(null);
-                setShowFavorites(false);
-              }}
-              className="px-3 py-1.5 rounded-full text-xs border border-border hover:bg-accent transition-colors"
-              style={t.color ? { borderColor: t.color, color: t.color } : undefined}
-            >
-              #{t.name}
-            </button>
-          ))}
+          </div>
+          <img
+            src={FOLDER_IMG}
+            alt=""
+            className="pointer-events-none absolute -right-4 top-1/2 hidden h-56 w-56 -translate-y-1/2 select-none object-contain opacity-95 lg:block"
+          />
         </div>
 
-        {/* All articles */}
+        {/* Карточки-разделы */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {/* Все статьи */}
+          <SectionCard
+            active={!filterCategory && !filterTag && !showFavorites}
+            icon="LayoutGrid"
+            label="Все статьи"
+            count={totalCount}
+            palette={SECTION_PALETTES[0]}
+            onClick={() => { setFilterCategory(null); setFilterTag(null); setShowFavorites(false); }}
+          />
+          {/* Избранное */}
+          <SectionCard
+            active={showFavorites}
+            icon="Star"
+            label="Избранное"
+            count={articles.filter((a) => a.is_favorite).length}
+            palette={SECTION_PALETTES[1]}
+            onClick={() => { setShowFavorites(true); setFilterCategory(null); setFilterTag(null); }}
+          />
+          {/* Категории */}
+          {categories.slice(0, 3).map((c, i) => (
+            <SectionCard
+              key={c.id}
+              active={filterCategory === c.id}
+              icon={c.icon || SECTION_ICONS[(i + 2) % SECTION_ICONS.length]}
+              label={c.name}
+              count={c.articles_count}
+              palette={SECTION_PALETTES[(i + 2) % SECTION_PALETTES.length]}
+              iconColor={c.color || undefined}
+              onClick={() => { setFilterCategory(c.id); setFilterTag(null); setShowFavorites(false); }}
+            />
+          ))}
+          {/* Все теги */}
+          <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-4 shadow-sm">
+            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Icon name="Diamond" size={18} className="text-muted-foreground" />
+              Все теги
+            </span>
+            <Icon name="ChevronDown" size={16} className="text-muted-foreground" />
+          </div>
+        </div>
+
+        {/* Теги (компактно) */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {tags.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => { setFilterTag(t.id); setFilterCategory(null); setShowFavorites(false); }}
+                className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
+                style={t.color ? { borderColor: t.color, color: t.color } : undefined}
+              >
+                #{t.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Популярные статьи */}
         <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">Популярные статьи</h2>
+            <button
+              onClick={() => setSortBy('popular')}
+              className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              Смотреть все
+              <Icon name="ArrowRight" size={15} />
+            </button>
+          </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Загрузка...</p>
-          ) : articles.length === 0 ? (
+          ) : (popular.length ? popular : articles).length === 0 ? (
             <p className="text-sm text-muted-foreground">Статей пока нет</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {articles.map((a) => (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {(popular.length ? popular : articles).slice(0, 4).map((a) => (
                 <ArticleCard key={a.id} a={a} openArticle={openArticle} />
               ))}
             </div>
           )}
+        </div>
+
+        {/* Панель фич */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="flex items-start gap-3">
+                <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', f.bg)}>
+                  <Icon name={f.icon} size={20} className={f.fg} />
+                </span>
+                <div>
+                  <div className="text-sm font-semibold text-foreground">{f.title}</div>
+                  <div className="text-xs text-muted-foreground">{f.text}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -247,71 +337,113 @@ const KBArticleList = ({
     : 'Статьи';
 
   return (
-    <Card>
-      <CardContent className="p-4 md:p-6">
-        <header className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <div>
+    <div>
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <button
+            onClick={() => {
+              setFilterCategory(null);
+              setFilterTag(null);
+              setShowFavorites(false);
+            }}
+            className="mb-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+          >
+            <Icon name="ChevronLeft" size={12} />
+            База знаний
+          </button>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">{title}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {loading ? 'Загрузка...' : `${articles.length} ${articles.length === 1 ? 'статья' : 'статей'}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex overflow-hidden rounded-lg border border-border">
             <button
-              onClick={() => {
-                setFilterCategory(null);
-                setFilterTag(null);
-                setShowFavorites(false);
-              }}
-              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mb-1"
+              onClick={() => setSortBy('new')}
+              className={cn('px-3 py-1.5 text-xs', sortBy === 'new' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
             >
-              <Icon name="ChevronLeft" size={12} />
-              База знаний
+              Новые
             </button>
-            <h1 className="text-xl font-bold flex items-center gap-2">{title}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {loading ? 'Загрузка...' : `${articles.length} ${articles.length === 1 ? 'статья' : 'статей'}`}
-            </p>
+            <button
+              onClick={() => setSortBy('popular')}
+              className={cn('px-3 py-1.5 text-xs', sortBy === 'popular' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
+            >
+              Популярные
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              <button
-                onClick={() => setSortBy('new')}
-                className={cn('px-3 py-1.5 text-xs', sortBy === 'new' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
-              >
-                Новые
-              </button>
-              <button
-                onClick={() => setSortBy('popular')}
-                className={cn('px-3 py-1.5 text-xs', sortBy === 'popular' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}
-              >
-                Популярные
-              </button>
-            </div>
-            {canWrite && (
-              <Button onClick={startNewArticle} className="gap-2">
-                <Icon name="Plus" size={16} />
-                Новая статья
-              </Button>
-            )}
-          </div>
-        </header>
+          {canWrite && (
+            <Button onClick={startNewArticle} className="gap-2">
+              <Icon name="Plus" size={16} />
+              Новая статья
+            </Button>
+          )}
+        </div>
+      </header>
 
-        {articles.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Icon name="FileText" size={48} className="mx-auto mb-3 opacity-30" />
-            <p>Статей пока нет</p>
-            {canWrite && (
-              <Button onClick={startNewArticle} variant="outline" className="mt-3 gap-2">
-                <Icon name="Plus" size={14} />
-                Создать первую
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {articles.map((a) => (
-              <ArticleCard key={a.id} a={a} openArticle={openArticle} />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {articles.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground">
+          <Icon name="FileText" size={48} className="mx-auto mb-3 opacity-30" />
+          <p>Статей пока нет</p>
+          {canWrite && (
+            <Button onClick={startNewArticle} variant="outline" className="mt-3 gap-2">
+              <Icon name="Plus" size={14} />
+              Создать первую
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {articles.map((a) => (
+            <ArticleCard key={a.id} a={a} openArticle={openArticle} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
+
+// Карточка-раздел в верхнем ряду.
+const SectionCard = ({
+  active,
+  icon,
+  label,
+  count,
+  palette,
+  iconColor,
+  onClick,
+}: {
+  active: boolean;
+  icon: string;
+  label: string;
+  count: number;
+  palette: { bg: string; fg: string };
+  iconColor?: string;
+  onClick: () => void;
+}) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      'flex items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+      active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card',
+    )}
+  >
+    <span
+      className={cn(
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+        active ? 'bg-white/20' : palette.bg,
+      )}
+    >
+      <Icon name={icon} size={20} className={active ? 'text-primary-foreground' : palette.fg} style={!active && iconColor ? { color: iconColor } : undefined} />
+    </span>
+    <div className="min-w-0">
+      <div className={cn('truncate text-sm font-semibold', active ? 'text-primary-foreground' : 'text-foreground')}>
+        {label}
+      </div>
+      <div className={cn('text-xs', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+        {count} {count === 1 ? 'статья' : 'статей'}
+      </div>
+    </div>
+  </button>
+);
 
 export default KBArticleList;
