@@ -11,6 +11,7 @@ import WorkspaceKpiCards, { WorkspaceKpi } from './WorkspaceKpiCards';
 import WorkspaceTicketsTable from './WorkspaceTicketsTable';
 import WorkspaceDetailsPanel from './WorkspaceDetailsPanel';
 import { getSlaBadge } from '@/utils/slaFormat';
+import { formatDateOnlyMSK } from '@/utils/dateFormat';
 
 interface TicketsWorkspaceProps {
   tickets: Ticket[];
@@ -26,6 +27,13 @@ interface TicketsWorkspaceProps {
 const isClosed = (t: Ticket): boolean => !!t.status_is_closed;
 
 const PAGE_SIZE = 7;
+
+// Проверка, что дата приходится на сегодняшний день (по московскому времени).
+const isToday = (date?: string): boolean => {
+  if (!date) return false;
+  const todayStr = formatDateOnlyMSK(new Date());
+  return formatDateOnlyMSK(date) === todayStr;
+};
 
 const TicketsWorkspace = ({
   tickets,
@@ -74,11 +82,37 @@ const TicketsWorkspace = ({
     return { overdue, slaToday, assignedToMe, waitingResponse, closed: closedCount };
   }, [tickets, currentUserId, overdueCount, closedCount]);
 
+  // Разбивка «за сегодня» — заявки, созданные сегодня, по тем же категориям.
+  const todayKpi: WorkspaceKpi = useMemo(() => {
+    let overdue = 0;
+    let slaToday = 0;
+    let assignedToMe = 0;
+    let waitingResponse = 0;
+    let closed = 0;
+
+    for (const t of tickets) {
+      if (!isToday(t.created_at)) continue;
+      if (isClosed(t)) {
+        closed += 1;
+        continue;
+      }
+      const sla = getSlaBadge(t.due_date);
+      if (sla) {
+        if (sla.overdue) overdue += 1;
+        else if (sla.color === 'red' || sla.color === 'orange') slaToday += 1;
+      }
+      if (t.assigned_to === currentUserId) assignedToMe += 1;
+      if (t.status_is_waiting_response) waitingResponse += 1;
+    }
+
+    return { overdue, slaToday, assignedToMe, waitingResponse, closed };
+  }, [tickets, currentUserId]);
+
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_400px]">
       {/* Левая колонка: KPI + тулбар + таблица */}
       <div className="flex min-w-0 flex-col gap-4">
-        <WorkspaceKpiCards kpi={kpi} />
+        <WorkspaceKpiCards kpi={kpi} today={todayKpi} />
 
         {/* Тулбар: поиск + режим отображения */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
