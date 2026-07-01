@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom';
 interface AppHeaderProps {
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
+  actions?: React.ReactNode;
 }
 
-const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
+const AppHeader = ({ menuOpen, setMenuOpen, actions }: AppHeaderProps) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -41,6 +42,7 @@ const AppHeader = ({ menuOpen, setMenuOpen }: AppHeaderProps) => {
       </div>
 
       <div className="flex items-center gap-3">
+        {actions}
         <NotificationBell />
         <div className="flex items-center gap-2 text-foreground">
           <span className="text-sm">{user?.username || 'User'}</span>

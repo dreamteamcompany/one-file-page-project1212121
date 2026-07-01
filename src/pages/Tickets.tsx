@@ -258,13 +258,13 @@ const Tickets = () => {
 
   return (
     <PageLayout menuOpen={menuOpen} setMenuOpen={setMenuOpen}>
-      <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
-      
-      <div className="w-full flex flex-col flex-1">
-        <div className="flex items-center justify-end gap-3 mb-4">
-          <InterfaceSwitcher value={ticketsInterface} onChange={setInterface} />
-        </div>
+      <AppHeader
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        actions={<InterfaceSwitcher value={ticketsInterface} onChange={setInterface} />}
+      />
 
+      <div className="w-full flex flex-col flex-1">
         {ticketsInterface === 'workspace' ? (
           <TicketsWorkspace
             tickets={filteredTickets}
