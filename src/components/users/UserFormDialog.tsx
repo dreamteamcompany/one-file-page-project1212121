@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -90,6 +90,7 @@ const UserFormDialog = ({
 }: UserFormDialogProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,17 +208,27 @@ const UserFormDialog = ({
                   <Icon name="User" size={32} className="text-muted-foreground" />
                 </div>
               )}
-              <div className="flex-1">
-                <Input
+              <div className="flex-1 min-w-0">
+                <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handlePhotoUpload}
                   disabled={uploading}
-                  className="cursor-pointer"
+                  className="hidden"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {uploading ? 'Загрузка...' : 'JPG, PNG или GIF, до 5 МБ'}
-                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2 w-full"
+                >
+                  <Icon name="Upload" size={14} />
+                  {uploading ? 'Загрузка...' : 'Выбрать фото'}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">JPG, PNG или GIF, до 5 МБ</p>
               </div>
             </div>
           </div>
