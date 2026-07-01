@@ -197,7 +197,7 @@ const KBArticleList = ({
         </div>
 
         {/* Hero */}
-        <div className="relative rounded-3xl bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+        <div className="relative rounded-3xl bg-background">
           <div className="relative z-10 max-w-2xl p-2 md:p-4">
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">База знаний</h1>
             <p className="mt-3 text-base text-muted-foreground">
