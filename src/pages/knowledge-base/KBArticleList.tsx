@@ -30,7 +30,7 @@ interface KBArticleListProps {
   startNewArticle: () => void;
 }
 
-const FOLDER_IMG = 'https://cdn.poehali.dev/projects/1bde8275-3fbd-44e1-b7ff-9b0123cbb82a/files/920f3295-c00e-44c3-8903-eab1a56a4818.jpg';
+const FOLDER_IMG = 'https://cdn.poehali.dev/projects/1bde8275-3fbd-44e1-b7ff-9b0123cbb82a/bucket/6e5d7c73-caf8-44d3-a2b2-983f5af9a95b.png';
 
 // Палитра пастельных плашек для иконок категорий статей.
 const ICON_PALETTES = [
