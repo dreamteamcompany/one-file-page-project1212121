@@ -344,7 +344,7 @@ const Users = () => {
     : baseUsers;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden">
       <PaymentsSidebar
         menuOpen={menuOpen}
         dictionariesOpen={dictionariesOpen}
@@ -363,7 +363,7 @@ const Users = () => {
         />
       )}
 
-      <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 overflow-x-hidden max-w-full">
+      <main className="lg:ml-[250px] p-4 md:p-6 lg:p-[30px] min-h-screen flex-1 min-w-0 overflow-x-hidden">
         <UsersHeader
           menuOpen={menuOpen}
           setMenuOpen={setMenuOpen}
