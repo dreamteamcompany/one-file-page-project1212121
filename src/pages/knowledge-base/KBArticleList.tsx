@@ -219,7 +219,12 @@ const KBArticleList = ({
           <img
             src={FOLDER_IMG}
             alt=""
-            className="pointer-events-none absolute right-2 top-1/2 hidden h-80 w-80 -translate-y-1/2 select-none object-contain opacity-95 lg:block xl:h-96 xl:w-96"
+            style={{
+              WebkitMaskImage: 'radial-gradient(circle at center, black 55%, transparent 78%)',
+              maskImage: 'radial-gradient(circle at center, black 55%, transparent 78%)',
+              mixBlendMode: 'multiply',
+            }}
+            className="animate-float pointer-events-none absolute right-2 top-1/2 hidden h-80 w-80 select-none object-contain lg:block xl:h-96 xl:w-96"
           />
         </div>
 
