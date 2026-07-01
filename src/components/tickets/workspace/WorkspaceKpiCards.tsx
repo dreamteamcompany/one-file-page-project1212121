@@ -41,7 +41,7 @@ const WorkspaceKpiCards = ({ kpi, today }: WorkspaceKpiCardsProps) => {
       {CARDS.map((card) => (
         <div
           key={card.key}
-          className="relative flex min-h-[168px] flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm"
+          className="relative flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm"
         >
           <div className="flex items-start justify-between">
             <span className="text-sm text-muted-foreground">{card.label}</span>
@@ -50,7 +50,7 @@ const WorkspaceKpiCards = ({ kpi, today }: WorkspaceKpiCardsProps) => {
             </span>
           </div>
           <div>
-            <div className={`text-4xl font-bold ${card.numberColor}`}>
+            <div className={`text-3xl font-bold ${card.numberColor}`}>
               {kpi[card.key]}
             </div>
             <div className={`mt-1 text-xs font-medium ${card.numberColor}`}>
