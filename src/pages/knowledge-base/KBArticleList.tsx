@@ -219,7 +219,7 @@ const KBArticleList = ({
           <img
             src={FOLDER_IMG}
             alt=""
-            className="pointer-events-none absolute -right-4 top-1/2 hidden h-56 w-56 -translate-y-1/2 select-none object-contain opacity-95 lg:block"
+            className="pointer-events-none absolute right-2 top-1/2 hidden h-80 w-80 -translate-y-1/2 select-none object-contain opacity-95 lg:block xl:h-96 xl:w-96"
           />
         </div>
 
