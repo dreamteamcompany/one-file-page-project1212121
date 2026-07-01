@@ -107,7 +107,8 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
   }
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border bg-card shadow-sm">
+    <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm">
       {/* Заголовок */}
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-2">
@@ -413,9 +414,10 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
           </TabsContent>
         </Tabs>
       </div>
+      </div>
 
-      {/* Быстрые действия */}
-      <div className="border-t border-border p-4">
+      {/* Быстрые действия — отдельная карточка */}
+      <div className="mt-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-2 text-xs font-medium text-muted-foreground">Быстрые действия</div>
         <div className="mb-3 flex flex-wrap gap-2">
           <button
