@@ -197,7 +197,7 @@ const KBArticleList = ({
         </div>
 
         {/* Hero */}
-        <div className="relative rounded-3xl bg-background">
+        <div className="relative rounded-3xl bg-gradient-to-br from-primary/5 via-transparent to-transparent">
           <div className="relative z-10 max-w-2xl p-2 md:p-4">
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">База знаний</h1>
             <p className="mt-3 text-base text-muted-foreground">
@@ -219,7 +219,11 @@ const KBArticleList = ({
           <img
             src={FOLDER_IMG}
             alt=""
-            className="animate-float pointer-events-none absolute right-4 top-1/2 hidden max-h-[90%] w-64 select-none object-contain mix-blend-multiply lg:block xl:w-72"
+            style={{
+              WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at center, black 45%, transparent 70%)',
+              maskImage: 'radial-gradient(ellipse 60% 60% at center, black 45%, transparent 70%)',
+            }}
+            className="animate-float pointer-events-none absolute right-4 top-1/2 hidden max-h-[90%] w-64 select-none object-contain lg:block xl:w-72"
           />
         </div>
 
