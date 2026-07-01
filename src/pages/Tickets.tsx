@@ -13,7 +13,10 @@ import { useTicketsData } from '@/hooks/useTicketsData';
 import { useTicketForm } from '@/hooks/useTicketForm';
 import { useBulkTicketActions } from '@/hooks/useBulkTicketActions';
 import { useTicketsView } from '@/hooks/useTicketsView';
+import { useTicketsInterface } from '@/hooks/useTicketsInterface';
 import { useBulkTicketOperations } from '@/hooks/useBulkTicketOperations';
+import InterfaceSwitcher from '@/components/tickets/InterfaceSwitcher';
+import TicketsWorkspace from '@/components/tickets/workspace/TicketsWorkspace';
 import PageLayout from '@/components/layout/PageLayout';
 import AppHeader from '@/components/layout/AppHeader';
 import TicketsSearchBar from '@/components/tickets/TicketsSearchBar';
@@ -96,6 +99,7 @@ const Tickets = () => {
   } = useTicketsData();
 
   const { viewMode, setViewMode, bulkMode, toggleBulkMode, disableBulkMode } = useTicketsView();
+  const { ui: ticketsInterface, setInterface } = useTicketsInterface();
   // Поиск выполняется на сервере (по теме, описанию, доп. полям, комментариям,
   // участникам, номеру, дате, сервису и услуге) — см. эффект ниже.
   const searchedTickets = tickets;
@@ -117,6 +121,15 @@ const Tickets = () => {
     }
     return searchedTickets;
   }, [searchedTickets, counterRole, user?.id]);
+
+  const overdueCount = useMemo(() => filteredTickets.filter(isOverdueTicket).length, [filteredTickets]);
+  const closedCount = useMemo(
+    () => filteredTickets.filter((t) => {
+      const status = (t.status_name || '').trim().toLowerCase();
+      return t.status_is_closed || CLOSED_STATUSES.includes(status);
+    }).length,
+    [filteredTickets]
+  );
 
   const {
     selectedTicketIds,
@@ -248,6 +261,28 @@ const Tickets = () => {
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full flex flex-col flex-1">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-2xl font-bold text-foreground">Заявки</h1>
+          <InterfaceSwitcher value={ticketsInterface} onChange={setInterface} />
+        </div>
+
+        {ticketsInterface === 'workspace' ? (
+          <TicketsWorkspace
+            tickets={filteredTickets}
+            loading={loading}
+            page={page}
+            totalPages={totalPages}
+            totalTickets={totalTickets}
+            onPageChange={(p) => loadTickets(p)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            currentUserId={user?.id}
+            overdueCount={overdueCount}
+            closedCount={closedCount}
+            onReloadList={() => loadTickets(page)}
+          />
+        ) : (
+        <>
         <TicketsViewToggle
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -362,6 +397,8 @@ const Tickets = () => {
             />
             </div>
           )}
+        </>
+        )}
       </div>
 
       <footer className="mt-auto pt-8 py-4 text-center text-xs text-muted-foreground border-t border-border/40">
