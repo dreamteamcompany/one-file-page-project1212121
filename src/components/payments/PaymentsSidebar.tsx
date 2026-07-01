@@ -31,7 +31,7 @@ const PaymentsSidebar = ({
   handleTouchMove,
   handleTouchEnd,
 }: PaymentsSidebarProps) => {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, activeRole, setActiveRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -143,6 +143,37 @@ const PaymentsSidebar = ({
       </div>
       
       <div className="flex-shrink-0 border-t border-border p-4 space-y-3">
+
+        {(user?.roles?.length ?? 0) >= 2 && (
+          <div className={`${collapsed ? 'flex justify-center' : ''}`}>
+            {collapsed ? (
+              <button
+                title={`Роль: ${activeRole?.name ?? ''}`}
+                className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold"
+              >
+                {activeRole?.name?.charAt(0) ?? '?'}
+              </button>
+            ) : (
+              <div className="bg-primary/5 rounded-xl p-1 flex gap-1">
+                {user!.roles.map((role) => (
+                  <button
+                    key={role.id}
+                    onClick={() => setActiveRole(role)}
+                    title={role.description || role.name}
+                    className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-lg transition-all duration-200 truncate ${
+                      activeRole?.id === role.id
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'
+                    }`}
+                  >
+                    {role.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           onClick={toggleTheme}
           className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 py-2 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors`}

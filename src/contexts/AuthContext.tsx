@@ -12,6 +12,7 @@ interface Role {
   name: string;
   description: string;
   system_role?: string;
+  permissions?: Permission[];
 }
 
 interface User {
@@ -30,6 +31,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
+  activeRole: Role | null;
+  setActiveRole: (role: Role) => void;
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   hasPermission: (resource: string, action: string) => boolean;
@@ -55,6 +58,12 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [activeRole, setActiveRoleState] = useState<Role | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('active_role');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [token, setToken] = useState<string | null>(() => {
     const rememberMe = localStorage.getItem('remember_me') === 'true';
     const token = rememberMe 
@@ -84,6 +93,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
   
+  const setActiveRole = (role: Role) => {
+    setActiveRoleState(role);
+    try { sessionStorage.setItem('active_role', JSON.stringify(role)); } catch { /* ignore */ }
+  };
+
+  const applyUser = (userData: User) => {
+    setUser(userData);
+    setActiveRoleState(prev => {
+      const roles = userData.roles ?? [];
+      if (roles.length === 0) return null;
+      if (prev && roles.find(r => r.id === prev.id)) {
+        const fresh = roles.find(r => r.id === prev.id)!;
+        try { sessionStorage.setItem('active_role', JSON.stringify(fresh)); } catch { /* ignore */ }
+        return fresh;
+      }
+      try { sessionStorage.setItem('active_role', JSON.stringify(roles[0])); } catch { /* ignore */ }
+      return roles[0];
+    });
+  };
+
   const logout = () => {
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
@@ -91,8 +120,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     setToken(null);
     setUser(null);
+    setActiveRoleState(null);
     localStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('active_role');
     localStorage.removeItem('remember_me');
   };
   
@@ -112,7 +143,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const data = await response.json();
         if (data.token && data.user) {
           setToken(data.token);
-          setUser(data.user);
+          applyUser(data.user);
           saveToken(data.token);
         }
       }
@@ -183,7 +214,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (response.ok) {
         const userData = await response.json();
         console.log('[checkAuth] Token valid, user:', userData.username);
-        setUser(userData);
+        applyUser(userData);
         setToken(savedToken);
       } else {
         console.log('[checkAuth] Token invalid, status:', response.status);
@@ -262,7 +293,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const data = await response.json();
       console.log('[Login] Success! Token received');
       setToken(data.token);
-      setUser(data.user);
+      applyUser(data.user);
       
       if (rememberMe) {
         localStorage.setItem('auth_token', data.token);
@@ -277,41 +308,45 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const getActivePermissions = (): Permission[] => {
+    if (!user) return [];
+    const roles = user.roles ?? [];
+    if (roles.length <= 1) return user.permissions ?? [];
+    if (!activeRole) return user.permissions ?? [];
+    return activeRole.permissions ?? [];
+  };
+
   const hasPermission = (resource: string, action: string): boolean => {
     if (!user) return false;
-    
-    if (user.roles?.some(role => role.name === 'Администратор' || role.name === 'Admin')) {
+
+    const roles = user.roles ?? [];
+    const effectiveRole = roles.length <= 1 ? (roles[0] ?? null) : activeRole;
+
+    if (effectiveRole?.name === 'Администратор' || effectiveRole?.name === 'Admin') return true;
+    if (!effectiveRole && roles.some(r => r.name === 'Администратор' || r.name === 'Admin')) return true;
+
+    const perms = getActivePermissions();
+    if (!perms.length) return false;
+
+    if (resource === 'users' && perms.some((p) => p.resource === 'users' && p.action === 'access')) {
       return true;
     }
-    
-    if (!user.permissions) return false;
 
-    if (
-      resource === 'users' &&
-      user.permissions.some((p) => p.resource === 'users' && p.action === 'access')
-    ) {
-      return true;
-    }
-
-    return user.permissions.some(
-      (p) => p.resource === resource && p.action === action
-    );
+    return perms.some((p) => p.resource === resource && p.action === action);
   };
 
   const hasExactPermission = (resource: string, action: string): boolean => {
-    if (!user?.permissions) return false;
-    return user.permissions.some(
-      (p) => p.resource === resource && p.action === action
-    );
+    return getActivePermissions().some((p) => p.resource === resource && p.action === action);
   };
 
   const hasSystemRole = (...roles: string[]): boolean => {
     if (!user?.roles) return false;
-    return user.roles.some(role => role.system_role && roles.includes(role.system_role));
+    const effectiveRoles = (user.roles ?? []).length <= 1 ? user.roles : (activeRole ? [activeRole] : user.roles);
+    return effectiveRoles.some(role => role.system_role && roles.includes(role.system_role));
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, hasPermission, hasExactPermission, hasSystemRole, checkAuth, refreshToken }}>
+    <AuthContext.Provider value={{ user, token, loading, activeRole, setActiveRole, login, logout, hasPermission, hasExactPermission, hasSystemRole, checkAuth, refreshToken }}>
       {children}
     </AuthContext.Provider>
   );
