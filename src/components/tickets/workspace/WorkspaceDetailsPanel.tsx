@@ -107,8 +107,8 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm">
+    <div className="flex min-h-full flex-col">
+      <div className="flex flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm">
       {/* Заголовок */}
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-2">
@@ -172,7 +172,7 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 p-4">
         {/* Метрики */}
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div>

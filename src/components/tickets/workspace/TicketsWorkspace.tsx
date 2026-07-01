@@ -210,7 +210,7 @@ const TicketsWorkspace = ({
       </div>
 
       {/* Правая колонка: детали заявки */}
-      <div className="xl:sticky xl:top-4 xl:h-[calc(100vh-8rem)]">
+      <div className="xl:sticky xl:top-4 xl:min-h-[calc(100vh-2rem)]">
         {selectedTicket ? (
           <WorkspaceDetailsPanel
             key={selectedTicket.id}
