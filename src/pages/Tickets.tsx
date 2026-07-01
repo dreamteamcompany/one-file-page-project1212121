@@ -261,8 +261,7 @@ const Tickets = () => {
       <AppHeader menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       
       <div className="w-full flex flex-col flex-1">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <h1 className="text-2xl font-bold text-foreground">Заявки</h1>
+        <div className="flex items-center justify-end gap-3 mb-4">
           <InterfaceSwitcher value={ticketsInterface} onChange={setInterface} />
         </div>
 
