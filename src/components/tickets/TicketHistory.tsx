@@ -12,7 +12,7 @@ interface HistoryLog {
 }
 
 interface TicketHistoryProps {
-  logs: HistoryLog[];
+  logs: HistoryLog[] | Array<HistoryLog & Record<string, unknown>>;
   loading?: boolean;
 }
 

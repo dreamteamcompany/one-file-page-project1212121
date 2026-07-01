@@ -1,7 +1,7 @@
 /**
- * Правая панель деталей заявки в новом интерфейсе.
- * Полностью рабочая: загружает данные выбранной заявки, позволяет менять статус,
- * исполнителя, отправлять комментарии. Переиспользует useTicketData/useTicketActions.
+ * Правая панель деталей заявки в новом интерфейсе (по эталону).
+ * Вкладки: Детали / Комментарии / История / Файлы. Рабочие: статус, исполнитель,
+ * комментарии, история, файлы, контакты заявителя. Метки — визуальная заглушка.
  */
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import TicketHistory from '@/components/tickets/TicketHistory';
+import TicketFiles from '@/components/tickets/TicketFiles';
 import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { formatDateMSK, getDeadlineSeverity, getDeadlineLeftLabel } from '@/utils/dateFormat';
@@ -41,8 +43,10 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
     statuses,
     comments,
     executorUsers,
+    auditLogs,
     loading,
     loadingComments,
+    loadingHistory,
     loadTicket,
     loadComments,
     loadHistory,
@@ -59,10 +63,26 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
   } = useTicketActions(id, async () => { await loadTicket(false); onChanged?.(); }, loadComments, loadHistory);
 
   const [tab, setTab] = useState('details');
+  const [assigneeEdit, setAssigneeEdit] = useState(false);
 
   const canUpdate = hasPermission('tickets', 'update');
-
   const severity = useMemo(() => getDeadlineSeverity(ticket?.due_date), [ticket?.due_date]);
+  const filesCount = useMemo(
+    () => comments.reduce((s, c) => s + (c.attachments?.length || 0), 0),
+    [comments]
+  );
+
+  // Телефон и подкатегория ищем среди кастомных полей заявки.
+  const phoneField = useMemo(
+    () => ticket?.custom_fields?.find((f) => f.field_type === 'phone' && f.value),
+    [ticket?.custom_fields]
+  );
+  const subcategoryField = useMemo(
+    () => ticket?.custom_fields?.find(
+      (f) => /подкатег|subcateg/i.test(f.name) && f.value
+    ),
+    [ticket?.custom_fields]
+  );
 
   if (loading && !ticket) {
     return (
@@ -84,8 +104,8 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
   return (
     <div className="flex h-full flex-col rounded-2xl border border-border bg-card shadow-sm">
       {/* Заголовок */}
-      <div className="flex items-start justify-between gap-2 border-b border-border p-4">
-        <div className="min-w-0">
+      <div className="border-b border-border p-4">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground">#{ticket.id}</span>
             {ticket.status_name && (
@@ -94,19 +114,59 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
               </span>
             )}
           </div>
-          <h2 className="mt-1 truncate text-lg font-bold text-foreground">{ticket.title}</h2>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              title="Назначить исполнителя"
+              onClick={() => { setTab('details'); setAssigneeEdit(true); }}
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            >
+              <Icon name="Shuffle" size={16} />
+            </button>
+            <button
+              type="button"
+              title="Действия (скоро)"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            >
+              <Icon name="EllipsisVertical" size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Закрыть"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            >
+              <Icon name="X" size={18} />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-        >
-          <Icon name="X" size={18} />
-        </button>
+
+        <h2 className="mt-2 text-lg font-bold text-foreground">{ticket.title}</h2>
+
+        {/* Мини-теги (заглушка) */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {ticket.category_name && (
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {ticket.category_name}
+            </span>
+          )}
+          {ticket.department_name && (
+            <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {ticket.department_name}
+            </span>
+          )}
+          <button
+            type="button"
+            title="Добавить (скоро)"
+            className="flex h-5 w-5 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground hover:bg-muted"
+          >
+            <Icon name="Plus" size={12} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        {/* Метрики: создано / обновлено / SLA */}
+        {/* Метрики */}
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div>
             <div className="text-muted-foreground">Создано</div>
@@ -133,24 +193,52 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
         )}
 
         <Tabs value={tab} onValueChange={setTab} className="mt-4">
-          <TabsList className="w-full justify-start">
+          <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="details">Детали</TabsTrigger>
             <TabsTrigger value="comments">Комментарии {comments.length > 0 ? comments.length : ''}</TabsTrigger>
+            <TabsTrigger value="history">История</TabsTrigger>
+            <TabsTrigger value="files">Файлы {filesCount > 0 ? filesCount : ''}</TabsTrigger>
           </TabsList>
 
+          {/* Детали */}
           <TabsContent value="details" className="mt-4 space-y-5">
             {/* Заявитель */}
             <div>
               <div className="mb-2 text-xs font-medium text-muted-foreground">Заявитель</div>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={ticket.creator_photo_url} />
-                  <AvatarFallback>{initials(ticket.creator_name)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-foreground">{ticket.creator_name || '—'}</div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={ticket.creator_photo_url} />
+                    <AvatarFallback>{initials(ticket.creator_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-foreground">{ticket.creator_name || '—'}</div>
+                    {ticket.creator_email && (
+                      <div className="truncate text-xs text-muted-foreground">{ticket.creator_email}</div>
+                    )}
+                    {phoneField && (
+                      <div className="truncate text-xs text-muted-foreground">{phoneField.value}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
                   {ticket.creator_email && (
-                    <div className="truncate text-xs text-muted-foreground">{ticket.creator_email}</div>
+                    <a
+                      href={`mailto:${ticket.creator_email}`}
+                      title="Написать письмо"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
+                    >
+                      <Icon name="Mail" size={15} />
+                    </a>
+                  )}
+                  {phoneField && (
+                    <a
+                      href={`tel:${phoneField.value.replace(/[^\d+]/g, '')}`}
+                      title="Позвонить"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
+                    >
+                      <Icon name="Phone" size={15} />
+                    </a>
                   )}
                 </div>
               </div>
@@ -158,56 +246,110 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
 
             {/* Исполнитель */}
             <div>
-              <div className="mb-2 text-xs font-medium text-muted-foreground">Исполнитель</div>
-              <Select
-                value={ticket.assigned_to ? String(ticket.assigned_to) : 'unassign'}
-                onValueChange={(v) => canUpdate && handleAssignUser(v)}
-                disabled={!canUpdate || updating}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Не назначен" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassign">Не назначен</SelectItem>
-                  {executorUsers.map((u) => (
-                    <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Исполнитель</span>
+                {canUpdate && !assigneeEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setAssigneeEdit(true)}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Изменить
+                  </button>
+                )}
+              </div>
+              {assigneeEdit ? (
+                <Select
+                  value={ticket.assigned_to ? String(ticket.assigned_to) : 'unassign'}
+                  onValueChange={(v) => { if (canUpdate) { handleAssignUser(v); setAssigneeEdit(false); } }}
+                  disabled={!canUpdate || updating}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Не назначен" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassign">Не назначен</SelectItem>
+                    {executorUsers.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={ticket.assignee_photo_url} />
+                    <AvatarFallback>{initials(ticket.assignee_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {ticket.assignee_name || 'Не назначен'}
+                    </div>
+                    {ticket.department_name && (
+                      <div className="truncate text-xs text-muted-foreground">{ticket.department_name}</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Статус */}
-            <div>
-              <div className="mb-2 text-xs font-medium text-muted-foreground">Статус</div>
-              <Select
-                value={ticket.status_id ? String(ticket.status_id) : undefined}
-                onValueChange={(v) => canUpdate && handleUpdateStatus(Number(v))}
-                disabled={!canUpdate || updating}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите статус" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Приоритет / Категория (только чтение) */}
+            {/* Приоритет / Статус */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="mb-1 text-xs font-medium text-muted-foreground">Приоритет</div>
-                <div className="rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+                <div className="rounded-lg border border-border px-3 py-2 text-sm text-foreground truncate">
                   {ticket.priority_name || '—'}
                 </div>
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground">Категория</div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground">Статус</div>
+                <Select
+                  value={ticket.status_id ? String(ticket.status_id) : undefined}
+                  onValueChange={(v) => canUpdate && handleUpdateStatus(Number(v))}
+                  disabled={!canUpdate || updating}
+                >
+                  <SelectTrigger className="h-[38px]">
+                    <SelectValue placeholder="Статус" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Категория */}
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground">Категория</div>
+              <div className="rounded-lg border border-border px-3 py-2 text-sm text-foreground truncate">
+                {ticket.category_name || '—'}
+              </div>
+            </div>
+
+            {/* Подкатегория (если есть в кастомных полях) */}
+            {subcategoryField && (
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground">Подкатегория</div>
                 <div className="rounded-lg border border-border px-3 py-2 text-sm text-foreground truncate">
-                  {ticket.category_name || '—'}
+                  {subcategoryField.value}
                 </div>
+              </div>
+            )}
+
+            {/* Метки (заглушка) */}
+            <div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">Метки</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">Помощь</span>
+                <button
+                  type="button"
+                  title="Скоро"
+                  className="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  <Icon name="Plus" size={12} />
+                  Добавить метку
+                </button>
               </div>
             </div>
 
@@ -221,6 +363,7 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
             )}
           </TabsContent>
 
+          {/* Комментарии */}
           <TabsContent value="comments" className="mt-4">
             {loadingComments ? (
               <div className="flex items-center justify-center py-8">
@@ -252,12 +395,48 @@ const WorkspaceDetailsPanel = ({ ticketId, onClose, onChanged }: WorkspaceDetail
               </div>
             )}
           </TabsContent>
+
+          {/* История */}
+          <TabsContent value="history" className="mt-4">
+            <TicketHistory logs={auditLogs} loading={loadingHistory} />
+          </TabsContent>
+
+          {/* Файлы */}
+          <TabsContent value="files" className="mt-4">
+            <TicketFiles comments={comments} />
+          </TabsContent>
         </Tabs>
       </div>
 
-      {/* Быстрое добавление комментария */}
+      {/* Быстрые действия */}
       <div className="border-t border-border p-4">
         <div className="mb-2 text-xs font-medium text-muted-foreground">Быстрые действия</div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setTab('comments')}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-foreground hover:bg-muted"
+          >
+            <Icon name="Reply" size={13} />
+            Ответить
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('comments')}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-foreground hover:bg-muted"
+          >
+            <Icon name="MessageSquare" size={13} />
+            Комментарий
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('details')}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-foreground hover:bg-muted"
+          >
+            <Icon name="RefreshCw" size={13} />
+            Изменить статус
+          </button>
+        </div>
         <div className="flex items-end gap-2">
           <Textarea
             value={newComment}
