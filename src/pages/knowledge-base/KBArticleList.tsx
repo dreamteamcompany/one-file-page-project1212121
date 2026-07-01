@@ -220,9 +220,8 @@ const KBArticleList = ({
             src={FOLDER_IMG}
             alt=""
             style={{
-              WebkitMaskImage: 'radial-gradient(circle at center, black 60%, transparent 82%)',
-              maskImage: 'radial-gradient(circle at center, black 60%, transparent 82%)',
-              mixBlendMode: 'multiply',
+              WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at center, black 45%, transparent 70%)',
+              maskImage: 'radial-gradient(ellipse 60% 60% at center, black 45%, transparent 70%)',
             }}
             className="animate-float pointer-events-none absolute right-4 top-1/2 hidden max-h-[90%] w-64 select-none object-contain lg:block xl:w-72"
           />
