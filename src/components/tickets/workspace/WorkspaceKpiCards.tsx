@@ -37,13 +37,13 @@ const WorkspaceKpiCards = ({ kpi }: WorkspaceKpiCardsProps) => {
       {CARDS.map((card) => (
         <div
           key={card.key}
-          className="relative rounded-2xl border border-border bg-card p-4 shadow-sm"
+          className="relative flex min-h-[168px] flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm"
         >
           <div className="flex items-start justify-between">
             <span className="text-sm text-muted-foreground">{card.label}</span>
-            <Icon name={card.icon} size={18} className={card.color} />
+            <Icon name={card.icon} size={20} className={card.color} />
           </div>
-          <div className="mt-2 text-3xl font-bold text-foreground">
+          <div className="text-4xl font-bold text-foreground">
             {kpi[card.key]}
           </div>
         </div>
