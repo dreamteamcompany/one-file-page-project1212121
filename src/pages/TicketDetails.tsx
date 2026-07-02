@@ -12,6 +12,16 @@ import { useTicketData } from '@/hooks/useTicketData';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { useTicketMarkRead } from '@/hooks/useTicketMarkRead';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 
 const TicketDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +30,7 @@ const TicketDetails = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [confirmationMode, setConfirmationMode] = useState<'confirm' | 'reject' | null>(null);
+  const [watcherDialog, setWatcherDialog] = useState<{ userId: number; userName: string } | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { user, hasPermission } = useAuth();
   const { toast } = useToast();
@@ -64,6 +75,7 @@ const TicketDetails = () => {
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,
+    handleAddWatcher,
     handleUpdateDueDate,
     handleUpdateContent,
   } = useTicketActions(id, loadTicket, loadComments, loadHistory);
@@ -125,10 +137,15 @@ const TicketDetails = () => {
     return handleAssignUser(userId);
   }, [isClosed, showLockedToast, handleAssignUser]);
 
-  const lockedHandleAssignGroup = useCallback((groupId: string) => {
+  const lockedHandleAssignGroup = useCallback(async (groupId: string) => {
     if (isClosed) { showLockedToast(); return; }
-    return handleAssignGroup(groupId);
-  }, [isClosed, showLockedToast, handleAssignGroup]);
+    const currentAssignedTo = ticket?.assigned_to ?? null;
+    const currentAssigneeName = ticket?.assignee_name ?? null;
+    const { clearedAssignee } = await handleAssignGroup(groupId, currentAssignedTo);
+    if (clearedAssignee && currentAssigneeName) {
+      setWatcherDialog({ userId: clearedAssignee, userName: currentAssigneeName });
+    }
+  }, [isClosed, showLockedToast, handleAssignGroup, ticket?.assigned_to, ticket?.assignee_name]);
 
   const lockedHandleUpdateDueDate = useCallback((dueDate: string | null) => {
     if (isClosed) { showLockedToast(); return; }
@@ -504,6 +521,28 @@ const TicketDetails = () => {
           onClose={() => setConfirmationMode(null)}
         />
       )}
+
+      <AlertDialog open={!!watcherDialog} onOpenChange={(open) => { if (!open) setWatcherDialog(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Добавить в наблюдатели?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Исполнитель <strong>{watcherDialog?.userName}</strong> был снят с заявки. Добавить его в наблюдатели, чтобы он видел дальнейшие обновления?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setWatcherDialog(null)}>Нет</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (watcherDialog) handleAddWatcher(watcherDialog.userId);
+                setWatcherDialog(null);
+              }}
+            >
+              Добавить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };

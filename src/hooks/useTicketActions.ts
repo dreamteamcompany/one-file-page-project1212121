@@ -212,10 +212,17 @@ export const useTicketActions = (
     }
   };
 
-  const handleAssignGroup = async (groupId: string) => {
+  const handleAssignGroup = async (
+    groupId: string,
+    currentAssignedTo?: number | null,
+  ): Promise<{ clearedAssignee: number | null }> => {
     try {
       setUpdating(true);
       const executorGroupId = groupId === 'unassign' ? null : Number(groupId);
+      const hadAssignee = executorGroupId !== null && currentAssignedTo ? currentAssignedTo : null;
+
+      const body: Record<string, unknown> = { id: ticketId, executor_group_id: executorGroupId };
+      if (hadAssignee) body.assigned_to = null;
 
       const response = await apiFetch(`${API_URL}?endpoint=tickets`, {
         method: 'PUT',
@@ -223,15 +230,17 @@ export const useTicketActions = (
           'Content-Type': 'application/json',
           'X-Auth-Token': token,
         },
-        body: JSON.stringify({ id: ticketId, executor_group_id: executorGroupId }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
         loadTicket(false);
         loadHistory();
       }
+      return { clearedAssignee: hadAssignee };
     } catch (error) {
       console.error('Error assigning group:', error);
+      return { clearedAssignee: null };
     } finally {
       setUpdating(false);
     }
@@ -297,6 +306,19 @@ export const useTicketActions = (
     }
   };
 
+  const handleAddWatcher = async (userId: number) => {
+    try {
+      await apiFetch(`${API_URL}?endpoint=ticket-watchers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
+        body: JSON.stringify({ ticket_id: Number(ticketId), user_id: userId }),
+      });
+      loadTicket(false);
+    } catch (error) {
+      console.error('Error adding watcher:', error);
+    }
+  };
+
   return {
     newComment,
     setNewComment,
@@ -319,6 +341,7 @@ export const useTicketActions = (
     handleFileUpload,
     handleAssignUser,
     handleAssignGroup,
+    handleAddWatcher,
     handleUpdateDueDate,
     handleUpdateContent,
   };
