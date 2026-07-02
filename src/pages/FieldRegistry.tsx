@@ -17,6 +17,7 @@ interface Field {
   label?: string;
   description?: string;
   required?: boolean;
+  is_required?: boolean;
   hide_label?: boolean;
   created_at?: string;
   company_structure?: {
@@ -180,7 +181,7 @@ const FieldRegistry = () => {
         placeholder: field.placeholder || '',
         label: field.label || '',
         description: field.description || '',
-        required: field.required || false,
+        required: field.is_required ?? field.required ?? false,
         hide_label: field.hide_label || false,
         company_structure: field.company_structure,
       });
